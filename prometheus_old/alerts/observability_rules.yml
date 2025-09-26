@@ -1,0 +1,26 @@
+groups:
+- name: observability.rules
+  rules:
+  - alert: InstanceDown
+    expr: up == 0
+    for: 2m
+    labels: {severity: critical}
+    annotations:
+      summary: "Instancia caída: {{ $labels.instance }}"
+      description: "El target {{ $labels.job }} ({{ $labels.instance }}) no responde"
+
+  - alert: HighCPUUsage
+    expr: avg by (instance)(rate(process_cpu_seconds_total[5m])) > 0.7
+    for: 5m
+    labels: {severity: warning}
+    annotations:
+      summary: "CPU alta en {{ $labels.instance }}"
+      description: "Uso CPU > 70% durante 5m"
+
+  - alert: LokiErrorRate
+    expr: sum(rate({level=~"error|ERROR|ERR"}[5m])) > 0
+    for: 5m
+    labels: {severity: warning}
+    annotations:
+      summary: "Errores detectados en logs"
+      description: "Se detectan errores en Loki en los últimos 5m"

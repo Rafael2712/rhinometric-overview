@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+  license-server:
+    image: rhinometric-license-server
+    container_name: license-server
+    ports:
+      - "5000:5000"
+    volumes:
+      - license-data:/data
+    networks:
+      - monitoring
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana-licensed
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./licenses/grafana.key:/etc/rhinometric/license.key:ro
+      - grafana-data:/var/lib/grafana
+    networks:
+      - monitoring
+    depends_on:
+      - license-server
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus-licensed
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./licenses/prometheus.key:/etc/rhinometric/license.key:ro
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    networks:
+      - monitoring
+
+  loki:
+    image: grafana/loki:latest
+    container_name: loki-licensed
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./licenses/loki.key:/etc/rhinometric/license.key:ro
+      - loki-data:/loki
+    networks:
+      - monitoring
+
+networks:
+  monitoring:
+    driver: bridge
+
+volumes:
+  license-data:
+  grafana-data:
+  prometheus-data:
+  loki-data:

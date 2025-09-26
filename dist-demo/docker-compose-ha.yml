@@ -1,0 +1,6 @@
+
+  # Agregar al servicio grafana1 y grafana2:
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin123
+      - GF_SECURITY_ALLOW_EMBEDDING=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer

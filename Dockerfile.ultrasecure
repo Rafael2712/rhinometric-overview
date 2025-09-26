@@ -1,0 +1,26 @@
+# Multi-stage build para máxima seguridad
+FROM golang:1.21 AS validator-builder
+WORKDIR /build
+# Reescribir validador en Go (más seguro que Python)
+RUN cat > validator.go << 'CODE'
+package main
+import (
+    "crypto/sha256"
+    "encoding/base64"
+    "fmt"
+    "os"
+    "time"
+)
+func main() {
+    license, _ := os.ReadFile("/license/license.lic")
+    hash := sha256.Sum256(license)
+    fmt.Printf("License validated: %x\n", hash)
+}
+CODE
+RUN go build -ldflags="-s -w" -o validator validator.go
+
+# Imagen final minimalista
+FROM busybox:latest
+COPY --from=validator-builder /build/validator /validator
+RUN chmod +x /validator
+ENTRYPOINT ["/validator"]

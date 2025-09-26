@@ -1,0 +1,24 @@
+FROM alpine:3.18
+RUN apk add --no-cache python3 py3-pip docker-compose bash curl
+
+WORKDIR /app
+
+# Copiar toda la plataforma
+COPY docker-compose.yml .
+COPY docker-compose.override.yml .
+COPY monitoring/ ./monitoring/
+COPY licensing/scripts/license_validator.py ./validator.py
+COPY html/ ./html/
+
+# IMPORTANTE: Copiar dashboards pre-configurados
+COPY monitoring/grafana/provisioning/ ./monitoring/grafana/provisioning/
+
+# Ofuscar el validador
+RUN python3 -m py_compile validator.py
+RUN rm validator.py && mv __pycache__/*.pyc validator.pyc
+
+# Script de arranque mejorado
+COPY entrypoint-full.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+ENTRYPOINT ["/entrypoint.sh"]

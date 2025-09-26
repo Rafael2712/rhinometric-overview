@@ -1,0 +1,28 @@
+{
+  "id": null,
+  "uid": "obs-overview",
+  "title": "Observability - Overview",
+  "schemaVersion": 38,
+  "refresh": "10s",
+  "time": { "from": "now-30m", "to": "now" },
+  "panels": [
+    {
+      "type":"stat","title":"Targets UP (Prometheus)",
+      "gridPos":{"h":6,"w":6,"x":0,"y":0},
+      "datasource":"Prometheus",
+      "targets":[{"refId":"A","expr":"sum(up)"}]
+    },
+    {
+      "type":"stat","title":"Log lines/sec (Loki)",
+      "gridPos":{"h":6,"w":6,"x":6,"y":0},
+      "datasource":"Loki",
+      "targets":[{"refId":"A","expr":"sum(rate({}[1m]))","resultFormat":"time_series"}]
+    },
+    {
+      "type":"timeseries","title":"Latencia blackbox (media 5m)",
+      "gridPos":{"h":6,"w":12,"x":12,"y":0},
+      "datasource":"Prometheus",
+      "targets":[{"refId":"A","expr":"avg_over_time(probe_duration_seconds[5m])"}]
+    }
+  ]
+}

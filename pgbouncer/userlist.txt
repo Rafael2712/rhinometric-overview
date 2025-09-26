@@ -1,0 +1,3 @@
+"postgres" "md500280375478c8fc00d88220a657f10a2"
+"usuario" "md5<md5(password+usuario)>"
+

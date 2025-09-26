@@ -1,0 +1,26 @@
+FROM ubuntu:22.04
+
+# Paquetes mínimos
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      python3 ca-certificates bash tini \
+    && rm -rf /var/lib/apt/lists/*
+
+# Variables por defecto (puedes sobreescribirlas en docker run)
+ENV LICENSE_PATH=/license/license.lic
+ENV START_CMD="tail -f /dev/null"
+
+# Copiamos validador y entrypoint
+COPY tools/container_validator.py /usr/local/bin/container_validator.py
+COPY entrypoint-secure.sh /entrypoint.sh
+RUN chmod +x /usr/local/bin/container_validator.py /entrypoint.sh
+
+# El archivo de licencia se montará en runtime en /license/license.lic
+VOLUME ["/license"]
+
+# Healthcheck simple: revalida la firma periódicamente
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
+  CMD python3 /usr/local/bin/container_validator.py "$LICENSE_PATH" || exit 1
+
+# Usa tini como init para forward de señales y limpieza de zombies
+ENTRYPOINT ["/usr/bin/tini","--","/entrypoint.sh"]
+

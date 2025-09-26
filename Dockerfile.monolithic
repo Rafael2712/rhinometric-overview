@@ -1,0 +1,84 @@
+FROM ubuntu:22.04
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Instalar TODAS las dependencias necesarias (incluido unzip)
+RUN apt-get update && apt-get install -y \
+    curl wget gnupg2 software-properties-common unzip \
+    supervisor nginx python3 python3-pip \
+    && rm -rf /var/lib/apt/lists/*
+
+# Instalar Prometheus
+RUN wget https://github.com/prometheus/prometheus/releases/download/v2.45.0/prometheus-2.45.0.linux-amd64.tar.gz && \
+    tar xzf prometheus-2.45.0.linux-amd64.tar.gz && \
+    mv prometheus-2.45.0.linux-amd64/prometheus /usr/local/bin/ && \
+    mv prometheus-2.45.0.linux-amd64/promtool /usr/local/bin/ && \
+    rm -rf prometheus-2.45.0.linux-amd64*
+
+# Instalar Grafana
+RUN wget -q -O - https://packages.grafana.com/gpg.key | apt-key add - && \
+    echo "deb https://packages.grafana.com/oss/deb stable main" > /etc/apt/sources.list.d/grafana.list && \
+    apt-get update && apt-get install -y grafana && \
+    rm -rf /var/lib/apt/lists/*
+
+# Instalar Loki
+RUN wget https://github.com/grafana/loki/releases/download/v2.9.0/loki-linux-amd64.zip && \
+    unzip loki-linux-amd64.zip && \
+    mv loki-linux-amd64 /usr/local/bin/loki && \
+    rm loki-linux-amd64.zip
+
+WORKDIR /app
+
+# Copiar configuraciones (crear directorios si no existen)
+RUN mkdir -p /etc/prometheus /etc/grafana /etc/loki /var/lib/grafana/dashboards
+COPY monitoring/prometheus/ /etc/prometheus/ || true
+COPY monitoring/grafana/provisioning/ /etc/grafana/provisioning/ || true
+COPY monitoring/loki/ /etc/loki/ || true
+COPY monitoring/grafana/dashboards/ /var/lib/grafana/dashboards/ || true
+COPY licensing/scripts/license_validator.py /app/validator.py
+
+# Compilar validador
+RUN python3 -m py_compile validator.py && \
+    mv __pycache__/*.pyc validator.pyc && \
+    rm -rf validator.py __pycache__
+
+# Configuración de Supervisor
+RUN cat > /etc/supervisor/conf.d/supervisord.conf << 'SUPER'
+[supervisord]
+nodaemon=true
+logfile=/var/log/supervisord.log
+
+[program:prometheus]
+command=/usr/local/bin/prometheus --config.file=/etc/prometheus/prometheus.yml --storage.tsdb.path=/data/prometheus
+autostart=true
+autorestart=true
+
+[program:grafana]
+command=/usr/sbin/grafana-server --homepath=/usr/share/grafana --config=/etc/grafana/grafana.ini
+autostart=true
+autorestart=true
+
+[program:loki]
+command=/usr/local/bin/loki -config.file=/etc/loki/config.yml
+autostart=true
+autorestart=true
+SUPER
+
+# Script de entrada seguro
+RUN cat > /entrypoint.sh << 'ENTRY'
+#!/bin/bash
+set -e
+echo "🔐 Validando licencia..."
+python3 /app/validator.pyc /license/license.lic
+if [ $? -ne 0 ]; then
+    echo "❌ Licencia inválida"
+    exit 1
+fi
+echo "✅ Licencia válida"
+echo "🚀 Iniciando servicios..."
+mkdir -p /data/prometheus /var/lib/grafana
+exec /usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.conf
+ENTRY
+
+RUN chmod +x /entrypoint.sh
+EXPOSE 3000
+ENTRYPOINT ["/entrypoint.sh"]

@@ -1,0 +1,66 @@
+version: '3.8'
+
+services:
+  # GRAFANA PRINCIPAL
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana-main
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana-storage:/var/lib/grafana
+    restart: unless-stopped
+    networks:
+      - default # Usamos la red por defecto para la comunicación interna
+      
+  # GRAFANA BACKUP (Compartiendo el mismo volumen)
+  grafana-backup:
+    image: grafana/grafana:latest
+    container_name: grafana-backup
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana-storage:/var/lib/grafana
+    restart: unless-stopped
+    networks:
+      - default
+
+  # PROMETHEUS
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus-main
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-storage:/prometheus
+    restart: unless-stopped
+    networks:
+      - default
+
+  # LOKI (Versión corregida sin archivo de configuración externo)
+  loki:
+    image: grafana/loki:latest
+    container_name: loki-main
+    ports:
+      - "3100:3100"
+    volumes:
+      - loki-storage:/loki
+    restart: unless-stopped
+    networks:
+      - default
+
+volumes:
+  grafana-storage:
+  prometheus-storage:
+  loki-storage:
+
+networks:
+  default:
+    driver: bridge

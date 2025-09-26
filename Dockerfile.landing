@@ -1,0 +1,4 @@
+FROM nginx:alpine
+COPY landing.html /usr/share/nginx/html/index.html
+COPY --from=grafana/grafana:latest /usr/share/grafana /grafana
+RUN echo 'location /grafana { proxy_pass http://localhost:3000; }' >> /etc/nginx/conf.d/default.conf

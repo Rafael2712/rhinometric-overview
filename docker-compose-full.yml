@@ -1,0 +1,39 @@
+services:
+  license-server:
+    image: rhinometric-license-server
+    ports:
+      - "5000:5000"
+    volumes:
+      - license-data:/data
+    restart: unless-stopped
+  promtail:
+    image: grafana/promtail:latest
+    volumes:
+      - license-data:/app/logs:ro
+      - /mnt/c/Users/canel/mi-proyecto/promtail-config.yml:/etc/promtail/config.yml
+    command: -config.file=/etc/promtail/config.yml
+    networks:
+      - observability
+    restart: unless-stopped
+    depends_on:
+      - loki
+  loki:
+    image: grafana/loki:latest
+    ports:
+      - "3100:3100"
+    networks:
+      - observability
+    restart: unless-stopped
+volumes:
+  license-data:
+networks:
+  observability:
+grafana:
+  image: grafana/grafana:latest
+  ports:
+    - "3000:3000"
+  networks:
+    - observability
+  restart: unless-stopped
+  depends_on:
+    - loki

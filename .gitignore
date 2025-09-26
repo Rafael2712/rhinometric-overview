@@ -1,0 +1,8 @@
+*.tar
+*.log
+*.bak
+*.tmp
+backups/
+venv/
+dist/
+*.deb

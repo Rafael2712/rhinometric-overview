@@ -1,0 +1,13 @@
+version: '3.8'
+services:
+  bundle:
+    image: rafael0410/rhinometric-bundle:latest
+    build:
+      context: .
+      dockerfile: Dockerfile.bundle
+    ports:
+      - "3000:3000"
+      - "9090:9090" 
+      - "3100:3100"
+    volumes:
+      - ./license.lic:/license/license.lic:ro

@@ -1,0 +1,11 @@
+services:
+  web:
+    ports: ["127.0.0.1:8088:80"]      # antes 80
+  grafana:
+    ports: ["127.0.0.1:3300:3000"]    # antes 3002
+  prometheus:
+    ports: ["127.0.0.1:9099:9090"]    # antes 9090
+  loki:
+    ports: ["127.0.0.1:3110:3100"]    # antes 3100
+  traefik:
+    ports: ["127.0.0.1:8099:8080"]    # antes 8090

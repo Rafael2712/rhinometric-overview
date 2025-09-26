@@ -1,0 +1,59 @@
+{
+  "id": null,
+  "uid": "ayto-servicios",
+  "title": "Ayuntamiento - Servicios críticos",
+  "schemaVersion": 38,
+  "version": 1,
+  "refresh": "10s",
+  "time": { "from": "now-24h", "to": "now" },
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Disponibilidad (últimas 24h) %",
+      "gridPos": {"h": 6, "w": 8, "x": 0, "y": 0},
+      "targets": [
+        { "refId":"A", "expr":"avg_over_time(probe_success[24h]) * 100" }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "HTTP status (último scrape)",
+      "gridPos": {"h": 6, "w": 8, "x": 8, "y": 0},
+      "targets": [
+        { "refId":"A", "expr":"max by (target) (probe_http_status_code)" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Latencia HTTP (seg) - 1h",
+      "gridPos": {"h": 8, "w": 16, "x": 0, "y": 6},
+      "targets": [
+        { "refId":"A", "expr":"avg_over_time(probe_duration_seconds[5m])" }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Errores (logs/min)",
+      "gridPos": {"h": 6, "w": 8, "x": 0, "y": 14},
+      "targets": [
+        {
+          "refId":"A",
+          "datasource": { "type":"loki", "uid":"fey5fwke7h4hsd" },
+          "expr":"(sum(rate({}|= \"error\"[1m])) or vector(0))"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Eventos de log/min (Total)",
+      "gridPos": {"h": 6, "w": 8, "x": 8, "y": 14},
+      "targets": [
+        {
+          "refId":"A",
+          "datasource": { "type":"loki", "uid":"fey5fwke7h4hsd" },
+          "expr":"(sum(rate({}[1m])) or vector(0))"
+        }
+      ]
+    }
+  ]
+}

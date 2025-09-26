@@ -1,0 +1,61 @@
+version: '3.7'
+services:
+  nginx:
+    image: nginx:alpine
+    # El usuario accede aquí:
+    ports:
+      - "8080:80" 
+    volumes:
+      # Asume que este archivo existe y configura el balanceo entre grafana1 y grafana2
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - grafana1
+      - grafana2
+    restart: unless-stopped
+
+  grafana1:
+    image: grafana/grafana:latest
+    environment:
+      # **SOLUCIÓN VITAL:** Apunta al puerto externo de Nginx para la cookie
+      - GF_SERVER_ROOT_URL=http://localhost:8080/ 
+      - GF_SECURITY_ADMIN_PASSWORD=admin123
+      - GF_SECURITY_COOKIE_SAMESITE=disabled
+      - GF_SECURITY_COOKIE_SECURE=false
+    volumes:
+      - grafana-data1:/var/lib/grafana
+    restart: unless-stopped
+
+  grafana2:
+    image: grafana/grafana:latest
+    environment:
+      # La misma URL pública para la segunda instancia:
+      - GF_SERVER_ROOT_URL=http://localhost:8080/ 
+      - GF_SECURITY_ADMIN_PASSWORD=admin123
+      - GF_SECURITY_COOKIE_SAMESITE=disabled
+      - GF_SECURITY_COOKIE_SECURE=false
+    volumes:
+      - grafana-data2:/var/lib/grafana
+    restart: unless-stopped
+    
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    restart: unless-stopped
+    
+  loki:
+    image: grafana/loki:latest
+    ports:
+      - "3100:3100"
+    volumes:
+      - loki-data:/loki
+    restart: unless-stopped
+
+volumes:
+  grafana-data1:
+  grafana-data2:
+  prometheus-data:
+  loki-data:

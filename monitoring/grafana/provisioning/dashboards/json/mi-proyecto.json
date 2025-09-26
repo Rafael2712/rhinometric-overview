@@ -1,0 +1,86 @@
+{
+  "title": "Mi Proyecto - Observabilidad",
+  "schemaVersion": 38,
+  "version": 1,
+  "refresh": "10s",
+  "time": { "from": "now-6h", "to": "now" },
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Targets up por job",
+      "gridPos": { "x": 0, "y": 0, "w": 8, "h": 6 },
+      "targets": [ { "expr": "sum by (job) (up)" } ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Traefik: requests por entrypoint (req/s)",
+      "gridPos": { "x": 8, "y": 0, "w": 16, "h": 6 },
+      "options": { "legend": { "displayMode": "table", "placement": "bottom" } },
+      "targets": [ { "expr": "sum by (entrypoint) (rate(traefik_entrypoint_requests_total[5m]))" } ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Traefik: 2xx/4xx/5xx (req/s)",
+      "gridPos": { "x": 0, "y": 6, "w": 12, "h": 6 },
+      "options": { "legend": { "displayMode": "table", "placement": "bottom" } },
+      "targets": [ { "expr": "sum by (code) (rate(traefik_service_requests_total{code=~\"2..|4..|5..\"}[5m]))" } ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Traefik: latencia media (s)",
+      "gridPos": { "x": 12, "y": 6, "w": 12, "h": 6 },
+      "targets": [
+        { "expr": "sum(rate(traefik_service_request_duration_seconds_sum[5m])) / sum(rate(traefik_service_request_duration_seconds_count[5m]))" }
+      ]
+    },
+    {
+      "type": "gauge",
+      "title": "NGINX: conexiones activas",
+      "gridPos": { "x": 0, "y": 12, "w": 6, "h": 6 },
+      "targets": [ { "expr": "nginx_connections_active" } ]
+    },
+    {
+      "type": "timeseries",
+      "title": "NGINX: requests (req/s)",
+      "gridPos": { "x": 6, "y": 12, "w": 10, "h": 6 },
+      "targets": [ { "expr": "rate(nginx_http_requests_total[5m])" } ]
+    },
+    {
+      "type": "stat",
+      "title": "Postgres up",
+      "gridPos": { "x": 16, "y": 12, "w": 4, "h": 6 },
+      "targets": [ { "expr": "max(pg_up)" } ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Postgres: conexiones por DB",
+      "gridPos": { "x": 20, "y": 12, "w": 8, "h": 6 },
+      "targets": [ { "expr": "sum by (datname) (pg_stat_database_numbackends)" } ]
+    },
+    {
+      "type": "timeseries",
+      "title": "PgBouncer: consultas/s por DB",
+      "gridPos": { "x": 0, "y": 18, "w": 12, "h": 6 },
+      "targets": [ { "expr": "sum by (database) (rate(pgbouncer_stats_queries_total[5m]))" } ]
+    },
+    {
+      "type": "timeseries",
+      "title": "PgBouncer: tiempo medio de consulta (s)",
+      "gridPos": { "x": 12, "y": 18, "w": 12, "h": 6 },
+      "targets": [ { "expr": "avg by (database) (pgbouncer_stats_avg_query_time_seconds)" } ]
+    },
+    {
+      "type": "timeseries",
+      "title": "CPU host %",
+      "gridPos": { "x": 0, "y": 24, "w": 12, "h": 6 },
+      "fieldConfig": { "defaults": { "unit": "percent" }, "overrides": [] },
+      "targets": [ { "expr": "100 - (avg by (instance) (irate(node_cpu_seconds_total{mode=\"idle\"}[5m])) * 100)" } ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Memoria usada (bytes)",
+      "gridPos": { "x": 12, "y": 24, "w": 12, "h": 6 },
+      "targets": [ { "expr": "node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes" } ]
+    }
+  ]
+}

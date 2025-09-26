@@ -1,0 +1,16 @@
+global:
+  resolve_timeout: 5m
+  smtp_smarthost: 'mailhog:1025'
+  smtp_from: 'alerts@rhinometric.local'
+
+route:
+  receiver: team-email
+  group_wait: 10s
+  group_interval: 1m
+  repeat_interval: 3h
+
+receivers:
+  - name: team-email
+    email_configs:
+      - to: 'it@rhinometric.local'
+        send_resolved: true

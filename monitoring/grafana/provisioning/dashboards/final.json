@@ -1,0 +1,23 @@
+{
+  "uid": "mi-proy-final",
+  "title": "Mi Proyecto – Observabilidad (FINAL)",
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "time": { "from": "now-15m", "to": "now" },
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "PgBouncer QPS por DB",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 0 },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "prometheus", "uid": "prom" },
+          "expr": "sum by (database) (rate(pgbouncer_stats_totals_queries_pooled_total[5m]))",
+          "legendFormat": "{{database}}"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,35 @@
+{
+  "id": null,
+  "uid": "infra-contenedores",
+  "title": "Infra - Contenedores",
+  "schemaVersion": 38,
+  "version": 1,
+  "refresh": "10s",
+  "time": { "from": "now-6h", "to": "now" },
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "CPU por contenedor",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+      "targets": [
+        { "refId":"A", "expr":"sum by (name) (rate(container_cpu_usage_seconds_total[3m]))" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Memoria por contenedor (bytes)",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+      "targets": [
+        { "refId":"A", "expr":"container_memory_usage_bytes" }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Containers UP",
+      "gridPos": {"h": 6, "w": 6, "x": 0, "y": 8},
+      "targets": [
+        { "refId":"A", "expr":"count(container_last_seen > time() - 60)" }
+      ]
+    }
+  ]
+}

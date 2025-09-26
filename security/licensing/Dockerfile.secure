@@ -1,0 +1,31 @@
+# STAGE 1: builder - Instala Python y dependencias
+FROM python:3.9 as builder
+RUN pip install --no-cache-dir \
+    prometheus-client \
+    supervisor
+
+WORKDIR /validator
+COPY . /validator
+
+# STAGE 2: Prometheus - Extrae binarios desde imagen oficial
+FROM prom/prometheus as prometheus
+COPY --from=builder /validator /validator
+
+# STAGE 3: Imagen final - Ligera y funcional
+FROM python:3.9-slim
+
+# Copia binarios de Prometheus
+COPY --from=prometheus /bin/prometheus /usr/local/bin/prometheus
+COPY --from=prometheus /bin/promtool /usr/local/bin/promtool
+
+# Copia validador desde builder
+COPY --from=builder /validator /validator
+
+# Copia configuración y archivos necesarios
+COPY supervisord.conf /etc/supervisord.conf
+COPY start.sh /validator/start.sh
+COPY license.lic /license/license.lic
+
+WORKDIR /validator
+RUN chmod +x /validator/start.sh
+ENTRYPOINT ["./start.sh"]

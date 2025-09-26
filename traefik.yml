@@ -1,0 +1,17 @@
+entryPoints:
+web:
+address: ":80"
+http:
+routers:
+web-router:
+rule: "PathPrefix(/)"
+service: web-service
+entryPoints:
+
+web
+services:
+web-service:
+loadBalancer:
+servers:
+
+url: http://web:80

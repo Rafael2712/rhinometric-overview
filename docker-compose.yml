@@ -1,0 +1,377 @@
+services:
+  license-server:
+    image: my-rhinometric-license-server
+    container_name: mi-proyecto-license-server
+    ports:
+      - "127.0.0.1:5000:5000"
+    volumes:
+      - license-data:/data  # Volumen nativo para persistencia
+    networks:
+      - observability
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  traefik:
+    image: traefik:v2.10
+    command:
+      - "--entrypoints.web.address=:80"
+      - "--providers.docker=true"
+      - "--api.dashboard=true"
+      - "--metrics.prometheus=true"
+    ports:
+      - "80:80"
+      - "8090:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./licenses/license.key:/etc/license.key:ro
+      - ./rhinometric-license/generator/license_check.py:/license_check.py:ro
+    depends_on:
+      - license-server
+    networks:
+      - observability
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  web:
+    image: mi-proyecto-web
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ./licenses/license.key:/etc/license.key:ro
+      - ./rhinometric-license/generator/license_check.py:/license_check.py:ro
+    command: ["/bin/sh", "-c", "python /license_check.py && /docker-entrypoint.sh"]
+    depends_on:
+      - traefik
+      - license-server
+    networks:
+      - observability
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    depends_on:
+      - license-server
+    restart: unless-stopped
+
+  pgbouncer:
+    image: bitnami/pgbouncer:1.23.1
+    environment:
+      POSTGRESQL_HOST: db
+      POSTGRESQL_PORT_NUMBER: "5432"
+      POSTGRESQL_USERNAME: postgres
+      POSTGRES_PASSWORD: postgres
+      PGBOUNCER_POOL_MODE: transaction
+      PGBOUNCER_PORT: "6432"
+      PGBOUNCER_PASSWORD: 271211Rc$
+    volumes:
+      - ./licenses/license.key:/etc/license.key:ro
+      - ./rhinometric-license/generator/license_check.py:/license_check.py:ro
+    command: ["/bin/sh", "-c", "python /license_check.py && /opt/bitnami/scripts/pgbouncer/run.sh"]
+    depends_on:
+      db:
+        condition: service_healthy
+      license-server:
+        condition: service_healthy
+    ports:
+      - "6432:6432"
+    networks:
+      - observability
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres", "-p", "6432"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    command:
+      - "/bin/sh"
+      - "-c"
+      - "python /license_check.py && /bin/prometheus --config.file=/etc/prometheus/prometheus.yml"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./licenses/license.key:/etc/license.key:ro
+      - ./rhinometric-license/generator/license_check.py:/license_check.py:ro
+    ports:
+      - "9090:9090"
+    depends_on:
+      - license-server
+    networks:
+      - observability
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9090/-/ready"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    command:
+      - "/bin/sh"
+      - "-c"
+      - "python /license_check.py && /bin/alertmanager --config.file=/etc/alertmanager/alertmanager.yml"
+    volumes:
+      - ./alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - ./licenses/license.key:/etc/license.key:ro
+      - ./rhinometric-license/generator/license_check.py:/license_check.py:ro
+    ports:
+      - "9093:9093"
+    depends_on:
+      - license-server
+    networks:
+      - observability
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9093/-/ready"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  grafana:
+    image: grafana/grafana-oss:10.4.5
+    command:
+      - "/bin/sh"
+      - "-c"
+      - "python /license_check.py && /run.sh"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: "271211Rc$$"
+      GF_USERS_DEFAULT_THEME: dark
+    volumes:
+      - ./grafana:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./licenses/license.key:/etc/license.key:ro
+      - ./rhinometric-license/generator/license_check.py:/license_check.py:ro
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+      - loki
+      - license-server
+    networks:
+      - observability
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  loki:
+    image: grafana/loki:2.9.6
+    container_name: mi-proyecto-loki
+    command:
+      - "/bin/sh"
+      - "-c"
+      - "python /license_check.py && /usr/bin/loki -config.file=/etc/loki/config.yml"
+    volumes:
+      - ./loki/config.yml:/etc/loki/config.yml:ro
+      - ./loki:/loki
+      - ./licenses/license.key:/etc/license.key:ro
+      - ./rhinometric-license/generator/license_check.py:/license_check.py:ro
+    ports:
+      - "3100:3100"
+    networks:
+      - observability
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3100/ready"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  promtail:
+    image: grafana/promtail:2.9.6
+    command:
+      - "/bin/sh"
+      - "-c"
+      - "python /license_check.py && /usr/bin/promtail -config.file=/etc/promtail/config.yml"
+    volumes:
+      - /var/log:/var/log:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./promtail-config.yml:/etc/promtail/config.yml:ro
+      - ./licenses/license.key:/etc/license.key:ro
+      - ./rhinometric-license/generator/license_check.py:/license_check.py:ro
+    depends_on:
+      - loki
+      - license-server
+    networks:
+      - observability
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "promtail -version"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  node-exporter:
+    image: prom/node-exporter:v1.8.2
+    command:
+      - "/bin/sh"
+      - "-c"
+      - "python /license_check.py && /bin/node_exporter --path.rootfs=/host"
+    volumes:
+      - /:/host:ro
+      - ./licenses/license.key:/etc/license.key:ro
+      - ./rhinometric-license/generator/license_check.py:/license_check.py:ro
+    ports:
+      - "9100:9100"
+    depends_on:
+      - license-server
+    networks:
+      - observability
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9100/metrics"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.47.2
+    command:
+      - "/bin/sh"
+      - "-c"
+      - "python /license_check.py && /usr/bin/cadvisor"
+    privileged: true
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker:/var/lib/docker:ro
+      - ./licenses/license.key:/etc/license.key:ro
+      - ./rhinometric-license/generator/license_check.py:/license_check.py:ro
+    ports:
+      - "8080:8080"
+    depends_on:
+      - license-server
+    networks:
+      - observability
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  nginx-exporter:
+    image: nginx/nginx-prometheus-exporter:0.11.0
+    command:
+      - "/bin/sh"
+      - "-c"
+      - "python /license_check.py && /nginx-prometheus-exporter -nginx.scrape-uri=http://web/nginx_status"
+    ports:
+      - "9113:9113"
+    depends_on:
+      - web
+      - license-server
+    networks:
+      - observability
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9113/metrics"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:v0.15.0
+    environment:
+      DATA_SOURCE_NAME: "postgresql://postgres:postgres@db:5432/postgres?sslmode=disable"
+    volumes:
+      - ./licenses/license.key:/etc/license.key:ro
+      - ./rhinometric-license/generator/license_check.py:/license_check.py:ro
+    command: ["/bin/sh", "-c", "python /license_check.py && /bin/postgres_exporter"]
+    ports:
+      - "9187:9187"
+    depends_on:
+      - db
+      - license-server
+    networks:
+      - observability
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9187/metrics"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  pgbouncer-exporter:
+    image: prometheuscommunity/pgbouncer-exporter:v0.7.0
+    command:
+      - "/bin/sh"
+      - "-c"
+      - "python /license_check.py && /pgbouncer_exporter --web.listen-address=:9127 --pgbouncer.connectionString=postgres://postgres:postgres@pgbouncer:6432/pgbouncer?sslmode=disable"
+    ports:
+      - "9127:9127"
+    depends_on:
+      - pgbouncer
+      - license-server
+    networks:
+      - observability
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9127/metrics"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  blackbox-exporter:
+    image: prom/blackbox-exporter:v0.25.0
+    command:
+      - "/bin/sh"
+      - "-c"
+      - "python /license_check.py && /blackbox_exporter"
+    ports:
+      - "9115:9115"
+    depends_on:
+      - license-server
+    networks:
+      - observability
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9115/metrics"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+networks:
+  observability:
+    driver: bridge
+
+volumes:
+  grafana:
+  prometheus:
+  loki:
+  db-data:
+  license-data:
