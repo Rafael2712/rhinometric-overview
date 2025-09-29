@@ -1,0 +1,4 @@
+#!/bin/bash
+# Script de validación simulado
+echo "LICENCIA VÁLIDA. Servicio iniciado."
+exit 0

@@ -1,0 +1,11 @@
+version: '3'
+services:
+  rhinometric:
+    image: rafael0410/rhinometric:trial
+    container_name: rhinometric-platform
+    volumes:
+      - ./license.lic:/license/license.lic:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+    network_mode: host
+    privileged: true
+    restart: unless-stopped
