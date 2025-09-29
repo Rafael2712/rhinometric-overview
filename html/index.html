@@ -1,28 +1,8 @@
 <!DOCTYPE html>
 <html>
-<head>
-  <title>Rhinometric Observability Platform</title>
-</head>
+<head><title>Rhinometric Platform</title></head>
 <body>
-  <h1>Rhinometric Observability Platform</h1>
-  <div id="status"></div>
-  <script>
-    const licenseKey = localStorage.getItem('licenseKey') || prompt('Ingresa tu clave de licencia:');
-    const hardwareId = 'ABC123'; // Generar dinámicamente según sea necesario
-    fetch('http://localhost:5000/validate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ license_key: licenseKey, hardware_id: hardwareId })
-    })
-    .then(response => response.json())
-    .then(data => {
-      if (data.status === 'valid') {
-        document.getElementById('status').innerText = 'Acceso concedido.';
-        localStorage.setItem('licenseKey', licenseKey);
-      } else {
-        document.getElementById('status').innerText = 'Licencia inválida. Contacta al soporte.';
-      }
-    });
-  </script>
+    <h1>Rhinometric Observability Platform</h1>
+    <p>Sistema funcionando correctamente</p>
 </body>
 </html>

@@ -1,7 +1,7 @@
 version: '3.8'
 
 services:
-  # BASE DE DATOS - Sin dependencias para evitar ciclos
+  # BASE DE DATOS - Sin dependencias
   db:
     image: postgres:15
     container_name: mi-proyecto-db-1
@@ -16,30 +16,13 @@ services:
     networks:
       - rhinometric_network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U admin -d rhinometric || exit 1"]
+      test: ["CMD-SHELL", "pg_isready -U admin -d rhinometric"]
       interval: 10s
       timeout: 5s
       retries: 5
     restart: unless-stopped
 
-  # LICENSE SERVER
-  license-server:
-    build:
-      context: .
-      dockerfile: Dockerfile-license-server
-    container_name: mi-proyecto-license-server
-    ports:
-      - "5000:5000"
-    volumes:
-      - license_data:/data
-      - ./logs:/app/logs
-    environment:
-      - PYTHONUNBUFFERED=1
-    networks:
-      - rhinometric_network
-    restart: unless-stopped
-
-  # PGBOUNCER
+  # PGBOUNCER - Solo depende de DB
   pgbouncer:
     image: pgbouncer/pgbouncer:latest
     container_name: mi-proyecto-pgbouncer-1
@@ -53,12 +36,29 @@ services:
     ports:
       - "6432:6432"
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     networks:
       - rhinometric_network
     restart: unless-stopped
 
-  # TRAEFIK
+  # LICENSE SERVER - Sin healthcheck por ahora
+  license-server:
+    build:
+      context: .
+      dockerfile: Dockerfile-license-server
+    container_name: mi-proyecto-license-server
+    ports:
+      - "5000:5000"
+    volumes:
+      - license_data:/data
+    environment:
+      - PYTHONUNBUFFERED=1
+    networks:
+      - rhinometric_network
+    restart: unless-stopped
+
+  # TRAEFIK v2.10 (compatible)
   traefik:
     image: traefik:v2.10
     container_name: mi-proyecto-traefik-1
@@ -75,7 +75,7 @@ services:
       - rhinometric_network
     restart: unless-stopped
 
-  # WEB
+  # WEB con nginx.conf corregido
   web:
     image: nginx:alpine
     container_name: mi-proyecto-web-1
@@ -93,7 +93,6 @@ services:
     ports:
       - "9090:9090"
     volumes:
-      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
@@ -151,7 +150,7 @@ services:
       - rhinometric_network
     restart: unless-stopped
 
-  # NODE EXPORTER
+  # EXPORTERS
   node-exporter:
     image: prom/node-exporter:latest
     container_name: mi-proyecto-node-exporter-1
@@ -161,7 +160,6 @@ services:
       - rhinometric_network
     restart: unless-stopped
 
-  # CADVISOR
   cadvisor:
     image: gcr.io/cadvisor/cadvisor:v0.47.2
     container_name: mi-proyecto-cadvisor-1
@@ -177,7 +175,6 @@ services:
       - rhinometric_network
     restart: unless-stopped
 
-  # BLACKBOX EXPORTER
   blackbox-exporter:
     image: prom/blackbox-exporter:latest
     container_name: mi-proyecto-blackbox-exporter-1
@@ -187,7 +184,6 @@ services:
       - rhinometric_network
     restart: unless-stopped
 
-  # POSTGRES EXPORTER
   postgres-exporter:
     image: prometheuscommunity/postgres-exporter:latest
     container_name: mi-proyecto-postgres-exporter-1
@@ -201,21 +197,19 @@ services:
       - rhinometric_network
     restart: unless-stopped
 
-  # NGINX EXPORTER
   nginx-exporter:
     image: nginx/nginx-prometheus-exporter:latest
     container_name: mi-proyecto-nginx-exporter-1
     ports:
       - "9113:9113"
     command:
-      - -nginx.scrape-uri=http://web/nginx_status
+      - -nginx.scrape-uri=http://mi-proyecto-web-1/nginx_status
     depends_on:
       - web
     networks:
       - rhinometric_network
     restart: unless-stopped
 
-  # PGBOUNCER EXPORTER
   pgbouncer-exporter:
     image: prometheuscommunity/pgbouncer-exporter:latest
     container_name: mi-proyecto-pgbouncer-exporter-1
