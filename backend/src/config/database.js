@@ -11,7 +11,7 @@ const dbConfig = {
     // Connection pool settings
     max: 20,                    // Maximum number of clients
     idleTimeoutMillis: 30000,   // Close idle clients after 30 seconds
-    connectionTimeoutMillis: 10000, // Return error after 10 seconds if connection could not be established
+    connectionTimeoutMillis: 30000, // Return error after 30 seconds if connection could not be established
 };
 
 // Create connection pool

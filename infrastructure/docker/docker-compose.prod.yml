@@ -1,0 +1,184 @@
+version: '3.8'
+
+services:
+  # SaaS API Backend - Production
+  rhinometric-api:
+    build: 
+      context: ../../backend
+      target: production
+    container_name: rhinometric-api-prod
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-rhinometric_prod}
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD}
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: ${JWT_SECRET}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-https://api.rhinometric.com,https://rhinometric.com}
+      # Production optimizations
+      NODE_OPTIONS: "--max-old-space-size=1024"
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - rhinometric-prod-network
+    restart: unless-stopped
+    volumes:
+      - rhinometric-prod-api-logs:/app/logs
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/api/v1/health', (res) => process.exit(res.statusCode === 200 ? 0 : 1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
+
+  # PostgreSQL Database - Production
+  postgres:
+    image: postgres:13-alpine
+    container_name: rhinometric-postgres-prod
+    environment:
+      POSTGRES_DB: ${DB_NAME:-rhinometric_prod}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      PGDATA: /var/lib/postgresql/data/pgdata
+      # Production PostgreSQL settings
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
+    ports:
+      - "5434:5432"  # Different port for production
+    volumes:
+      - rhinometric-prod-postgres-data:/var/lib/postgresql/data/pgdata
+      - ../init-db:/docker-entrypoint-initdb.d
+      # Production backup location
+      - /opt/backups/postgres:/backups
+    networks:
+      - rhinometric-prod-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-rhinometric_prod}"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 512M
+
+  # Redis Cache - Production  
+  redis:
+    image: redis:6-alpine
+    container_name: rhinometric-redis-prod
+    command: redis-server --requirepass ${REDIS_PASSWORD:-prod_redis_password} --maxmemory 256mb --maxmemory-policy allkeys-lru
+    ports:
+      - "6381:6379"  # Different port for production
+    volumes:
+      - rhinometric-prod-redis-data:/data
+      - /opt/backups/redis:/backups
+    networks:
+      - rhinometric-prod-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 128M
+
+  # Nginx Reverse Proxy - Production
+  nginx:
+    image: nginx:alpine
+    container_name: rhinometric-nginx-prod
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ../../nginx/nginx-prod.conf:/etc/nginx/nginx.conf
+      - ../../nginx/ssl:/etc/nginx/ssl
+      - rhinometric-prod-nginx-logs:/var/log/nginx
+    networks:
+      - rhinometric-prod-network
+    depends_on:
+      - rhinometric-api
+    restart: unless-stopped
+
+  # Monitoring - Production
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: rhinometric-prometheus-prod
+    ports:
+      - "9092:9090"  # Production Prometheus port
+    volumes:
+      - ../../prometheus.yml:/etc/prometheus/prometheus.yml
+      - rhinometric-prod-prometheus-data:/prometheus
+    networks:
+      - rhinometric-prod-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 128M
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: rhinometric-grafana-prod
+    ports:
+      - "3003:3000"  # Production Grafana port
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD}
+      - GF_SECURITY_SECRET_KEY=${GRAFANA_SECRET_KEY}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SECURITY_DISABLE_GRAVATAR=true
+    volumes:
+      - rhinometric-prod-grafana-data:/var/lib/grafana
+      - /opt/backups/grafana:/backups
+    networks:
+      - rhinometric-prod-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 128M
+
+volumes:
+  rhinometric-prod-postgres-data:
+    name: rhinometric-prod-postgres-data
+  rhinometric-prod-redis-data:
+    name: rhinometric-prod-redis-data
+  rhinometric-prod-api-logs:
+    name: rhinometric-prod-api-logs
+  rhinometric-prod-prometheus-data:
+    name: rhinometric-prod-prometheus-data
+  rhinometric-prod-grafana-data:
+    name: rhinometric-prod-grafana-data
+  rhinometric-prod-nginx-logs:
+    name: rhinometric-prod-nginx-logs
+
+networks:
+  rhinometric-prod-network:
+    name: rhinometric-prod-network
+    driver: bridge

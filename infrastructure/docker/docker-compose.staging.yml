@@ -1,0 +1,124 @@
+version: '3.8'
+
+services:
+  # SaaS API Backend - Staging
+  rhinometric-api:
+    build: 
+      context: ../../backend
+      target: production
+    container_name: rhinometric-api-staging
+    environment:
+      NODE_ENV: staging
+      PORT: 3002
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-rhinometric_staging}
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD}
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: ${JWT_SECRET}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-https://staging-api.rhinometric.com,https://staging.rhinometric.com}
+    ports:
+      - "3002:3002"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - rhinometric-staging-network
+    restart: unless-stopped
+    volumes:
+      - rhinometric-staging-api-logs:/app/logs
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3002/api/v1/health', (res) => process.exit(res.statusCode === 200 ? 0 : 1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # PostgreSQL Database - Staging
+  postgres:
+    image: postgres:13-alpine
+    container_name: rhinometric-postgres-staging
+    environment:
+      POSTGRES_DB: ${DB_NAME:-rhinometric_staging}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "5433:5432"  # Different port to avoid conflicts
+    volumes:
+      - rhinometric-staging-postgres-data:/var/lib/postgresql/data/pgdata
+      - ../init-db:/docker-entrypoint-initdb.d
+    networks:
+      - rhinometric-staging-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-rhinometric_staging}"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  # Redis Cache - Staging
+  redis:
+    image: redis:6-alpine
+    container_name: rhinometric-redis-staging
+    command: redis-server --requirepass ${REDIS_PASSWORD:-staging_redis_password}
+    ports:
+      - "6380:6379"  # Different port to avoid conflicts
+    volumes:
+      - rhinometric-staging-redis-data:/data
+    networks:
+      - rhinometric-staging-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+
+  # Monitoring - Staging
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: rhinometric-prometheus-staging
+    ports:
+      - "9091:9090"  # Different port
+    volumes:
+      - ../../prometheus.yml:/etc/prometheus/prometheus.yml
+      - rhinometric-staging-prometheus-data:/prometheus
+    networks:
+      - rhinometric-staging-network
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: rhinometric-grafana-staging
+    ports:
+      - "3001:3000"  # Grafana on different port
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-staging_admin_password}
+    volumes:
+      - rhinometric-staging-grafana-data:/var/lib/grafana
+    networks:
+      - rhinometric-staging-network
+    restart: unless-stopped
+
+volumes:
+  rhinometric-staging-postgres-data:
+    name: rhinometric-staging-postgres-data
+  rhinometric-staging-redis-data:
+    name: rhinometric-staging-redis-data
+  rhinometric-staging-api-logs:
+    name: rhinometric-staging-api-logs
+  rhinometric-staging-prometheus-data:
+    name: rhinometric-staging-prometheus-data
+  rhinometric-staging-grafana-data:
+    name: rhinometric-staging-grafana-data
+
+networks:
+  rhinometric-staging-network:
+    name: rhinometric-staging-network
+    driver: bridge
