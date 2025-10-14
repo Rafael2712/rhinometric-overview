@@ -1,0 +1,80 @@
+"""
+Configuración para el monitoreo de APIs de AEMET
+"""
+
+# Configuración de la API
+API_KEY = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJjYW5lbG9ucmFmYWVsQGdtYWlsLmNvbSIsImp0aSI6IjdjYjk1ZGI1LTc4ZjctNGMyOS1iOWRmLTE5MTJjZjZkYjZlMSIsImlzcyI6IkFFTUVUIiwiaWF0IjoxNzYwMDk5MDQxLCJ1c2VySWQiOiI3Y2I5NWRiNS03OGY3LTRjMjktYjlkZi0xOTEyY2Y2ZGI2ZTEiLCJyb2xlIjoiIn0.oYfw8s6Wso0ELhfqzw4Fi_0HRsN1JnK0Bmhebiru0rU"
+
+TIMEOUT = 30  # timeout en segundos
+
+API_CONFIG = {
+    "base_url": "https://opendata.aemet.es/opendata/api",
+    "api_key": API_KEY,
+    "endpoints": {
+        "prediccion_madrid": "/prediccion/especifica/municipio/28079",
+        "observacion_madrid": "/observacion/convencional/datos/estacion/3195", 
+        "temperatura_actual": "/observacion/convencional/todas"
+    },
+    "headers": {
+        "Accept": "application/json",
+        "api_key": API_KEY,
+        "Cache-Control": "no-cache"
+    },
+    "timeout": TIMEOUT
+}
+
+# Configuración de monitoreo
+MONITOR_CONFIG = {
+    "interval": 900,          # 15 minutos entre consultas (AEMET actualiza cada hora)
+    "retry": {
+        "max_attempts": 3,    
+        "backoff_factor": 2,  # Backoff exponencial 
+        "max_delay": 60       # Máximo 1 minuto entre reintentos
+    },
+    "cache": {
+        "enabled": True,
+        "duration": 300       # 5 minutos de caché
+    },
+    "batch_size": 2,         # Número de endpoints a consultar en paralelo
+    "batch_timeout": TIMEOUT, # Mismo timeout que las peticiones API
+    "request_timeout": TIMEOUT,# Mismo timeout que las peticiones API
+    "health_check": {
+        "enabled": True,
+        "interval": 60       # Verificar salud cada minuto
+    }
+}
+
+# Métricas a monitorear
+METRICS = {
+    "response_time": {
+        "enabled": True,
+        "threshold_warning": 2.0,    # segundos
+        "threshold_critical": 5.0,   # segundos
+        "percentiles": [50, 90, 99]  # seguimiento de percentiles
+    },
+    "data_freshness": {
+        "enabled": True,
+        "max_age": {
+            "prediccion_madrid": 3600 * 6,    # 6 horas para predicciones
+            "observacion_madrid": 3600,       # 1 hora para observaciones
+            "temperatura_actual": 3600         # 1 hora para temperatura
+        }
+    },
+    "data_quality": {
+        "required_fields": {
+            "prediccion_madrid": ["prediccion", "fecha"],
+            "observacion_madrid": ["idema", "fint"],
+            "temperatura_actual": ["idema", "fint", "ta"]
+        },
+        "validation_rules": {
+            "prediccion_madrid": lambda x: isinstance(x["prediccion"], list),  # La API devuelve lista
+            "observacion_madrid": lambda x: isinstance(x, list),  # La API devuelve lista
+            "temperatura_actual": lambda x: isinstance(x, list)   # La API devuelve lista
+        }
+    },
+    "availability": {
+        "enabled": True,
+        "min_success_rate": 0.95,  # 95% de tasa de éxito requerida
+        "window_size": 3600        # ventana de 1 hora para el cálculo
+    }
+}

@@ -1,0 +1,79 @@
+version: '3.8'
+
+services:
+  # HAProxy Load Balancer
+  haproxy:
+    image: haproxy:2.4
+    container_name: mi-proyecto-haproxy
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8404:8404"  # Statistics page
+    volumes:
+      - ./haproxy/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+      - ./nginx/certs:/etc/ssl/certs:ro
+    depends_on:
+      - nginx-1
+      - nginx-2
+    networks:
+      - rhinometric_network
+    restart: unless-stopped
+
+  # Nginx Instances
+  nginx-1:
+    extends:
+      file: docker-compose.ssl.yml
+      service: nginx
+    container_name: mi-proyecto-nginx-1
+
+  nginx-2:
+    extends:
+      file: docker-compose.ssl.yml
+      service: nginx
+    container_name: mi-proyecto-nginx-2
+
+  # Database Primary
+  db-primary:
+    image: postgres:15
+    container_name: mi-proyecto-db-primary
+    environment:
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_DB: ${DB_NAME}
+    volumes:
+      - db_primary_data:/var/lib/postgresql/data
+      - ./postgresql/primary:/etc/postgresql/conf.d
+    networks:
+      - rhinometric_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Database Replica
+  db-replica:
+    image: postgres:15
+    container_name: mi-proyecto-db-replica
+    environment:
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_DB: ${DB_NAME}
+    volumes:
+      - db_replica_data:/var/lib/postgresql/data
+      - ./postgresql/replica:/etc/postgresql/conf.d
+    networks:
+      - rhinometric_network
+    depends_on:
+      - db-primary
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  db_primary_data:
+  db_replica_data:

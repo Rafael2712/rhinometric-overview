@@ -1,0 +1,189 @@
+#cloud-config
+package_update: true
+package_upgrade: true
+
+packages:
+  - docker-engine
+  - docker-compose
+  - git
+  - wget
+  - curl
+  - htop
+  - unzip
+
+runcmd:
+  # Install Docker Compose if not available
+  - |
+    if ! command -v docker-compose &> /dev/null; then
+      curl -L "https://github.com/docker/compose/releases/download/v2.21.0/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+      chmod +x /usr/local/bin/docker-compose
+      ln -s /usr/local/bin/docker-compose /usr/bin/docker-compose
+    fi
+
+  # Start and enable Docker
+  - systemctl start docker
+  - systemctl enable docker
+  - usermod -aG docker opc
+
+  # Create application directory
+  - mkdir -p /opt/saas-platform
+  - cd /opt/saas-platform
+
+  # Decode and write docker-compose file
+  - echo "${docker_compose_content}" | base64 -d > docker-compose.yml
+
+  # Decode and write environment file
+  - echo "${env_file_content}" | base64 -d > .env
+
+  # Create required directories
+  - mkdir -p config/grafana config/prometheus config/alertmanager config/nginx/conf.d init-db
+  - mkdir -p certs logs
+
+  # Create basic configs (these will be improved)
+  - |
+    cat > config/prometheus.yml << 'EOF'
+    global:
+      scrape_interval: 15s
+    scrape_configs:
+      - job_name: 'prometheus'
+        static_configs:
+          - targets: ['localhost:9090']
+      - job_name: 'grafana'
+        static_configs:
+          - targets: ['grafana:3000']
+    EOF
+
+  - |
+    cat > config/loki-config.yml << 'EOF'
+    auth_enabled: false
+    server:
+      http_listen_port: 3100
+    common:
+      path_prefix: /loki
+      storage:
+        filesystem:
+          chunks_directory: /loki/chunks
+          rules_directory: /loki/rules
+      replication_factor: 1
+      ring:
+        kvstore:
+          store: inmemory
+    schema_config:
+      configs:
+        - from: 2020-10-24
+          store: boltdb-shipper
+          object_store: filesystem
+          schema: v11
+          index:
+            prefix: index_
+            period: 24h
+    EOF
+
+  - |
+    cat > config/alertmanager.yml << 'EOF'
+    global:
+      smtp_smarthost: 'localhost:587'
+      smtp_from: 'alerts@rhinometric.com'
+    route:
+      group_by: ['alertname']
+      group_wait: 30s
+      group_interval: 5m
+      repeat_interval: 12h
+      receiver: 'web.hook'
+    receivers:
+    - name: 'web.hook'
+      webhook_configs:
+      - url: 'http://localhost:5000/alerts'
+        send_resolved: true
+    EOF
+
+  # Setup firewall for required ports
+  - firewall-cmd --permanent --add-port=80/tcp
+  - firewall-cmd --permanent --add-port=443/tcp
+  - firewall-cmd --permanent --add-port=3000/tcp
+  - firewall-cmd --permanent --add-port=9090-9093/tcp
+  - firewall-cmd --reload
+
+  # Mount additional storage
+  - |
+    # Format and mount the block volume (if not already mounted)
+    DEVICE=$(lsblk | grep -E "sdb|nvme1n1" | head -1 | awk '{print $1}')
+    if [ ! -z "$DEVICE" ]; then
+      if ! mount | grep -q "/dev/$DEVICE"; then
+        mkfs.ext4 "/dev/$DEVICE" || true
+        mkdir -p /opt/data
+        mount "/dev/$DEVICE" /opt/data || true
+        echo "/dev/$DEVICE /opt/data ext4 defaults 0 2" >> /etc/fstab
+        chown -R opc:opc /opt/data
+      fi
+    fi
+
+  # Fix permissions
+  - chown -R opc:opc /opt/saas-platform
+  - chmod +x /opt/saas-platform/*.sh
+
+  # Start the SaaS platform
+  - |
+    cd /opt/saas-platform
+    # Wait for docker to be fully ready
+    sleep 30
+    
+    # Pull images first to avoid timeout issues
+    sudo -u opc docker-compose pull || true
+    
+    # Start the platform
+    sudo -u opc docker-compose up -d
+    
+    # Create a startup script for future reboots
+    cat > /etc/systemd/system/saas-platform.service << 'EOF'
+    [Unit]
+    Description=SaaS Monitoring Platform
+    Requires=docker.service
+    After=docker.service
+    
+    [Service]
+    Type=oneshot
+    RemainAfterExit=yes
+    WorkingDirectory=/opt/saas-platform
+    ExecStart=/usr/local/bin/docker-compose up -d
+    ExecStop=/usr/local/bin/docker-compose down
+    TimeoutStartSec=0
+    User=opc
+    Group=opc
+    
+    [Install]
+    WantedBy=multi-user.target
+    EOF
+    
+    systemctl enable saas-platform.service
+
+write_files:
+  - path: /opt/saas-platform/startup-info.txt
+    content: |
+      SaaS Monitoring Platform - Oracle Cloud Deployment
+      ================================================
+      
+      Services should be accessible at:
+      - Grafana: http://PUBLIC_IP:3000 (admin/admin_secure_2024)
+      - Prometheus: http://PUBLIC_IP:9090
+      - Alertmanager: http://PUBLIC_IP:9093
+      
+      SSH Access: ssh opc@PUBLIC_IP
+      
+      Logs: docker-compose -f /opt/saas-platform/docker-compose.yml logs
+      Status: docker-compose -f /opt/saas-platform/docker-compose.yml ps
+      
+      Configuration files are in: /opt/saas-platform/config/
+    owner: opc:opc
+    permissions: '0644'
+
+final_message: |
+  SaaS Monitoring Platform installation completed!
+  
+  The platform should be starting up now. It may take a few minutes for all services to be ready.
+  
+  Access your platform at:
+  - Grafana: http://$(curl -s ifconfig.me):3000
+  - Prometheus: http://$(curl -s ifconfig.me):9090
+  
+  Check status with: docker-compose -f /opt/saas-platform/docker-compose.yml ps

@@ -1,0 +1,28 @@
+FROM python:3.9-slim
+
+WORKDIR /app
+
+# Instalar dependencias del sistema
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    libpq-dev gcc python3-dev && \
+    rm -rf /var/lib/apt/lists/*
+
+# Instalar dependencias de Python
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copiar el script del exporter
+COPY pgbouncer_exporter.py .
+
+# Hacer el script ejecutable
+RUN chmod +x pgbouncer_exporter.py
+
+# Puerto por defecto
+EXPOSE 9127
+
+# Configuración para evitar el buffering de la salida de Python
+ENV PYTHONUNBUFFERED=1
+
+# Comando para ejecutar el exporter
+CMD ["python", "-u", "pgbouncer_exporter.py"]

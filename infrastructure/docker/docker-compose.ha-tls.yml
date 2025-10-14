@@ -1,0 +1,95 @@
+version: '3.8'
+
+services:
+  prometheus-1:
+    image: prom/prometheus:v2.45.0
+    container_name: mi-proyecto-prometheus-1
+    ports:
+      - "9091:9090"
+    volumes:
+      - ./monitoring/prometheus/ha:/etc/prometheus
+      - ./monitoring/prometheus/ha/certs:/etc/prometheus/certs:ro
+      - prometheus_data_1:/prometheus
+    environment:
+      - REPLICA_NUMBER=1
+      - VAULT_ADDR=http://vault:8200
+      - VAULT_ROLE_ID=${VAULT_PROMETHEUS_ROLE_ID:-default}
+      - VAULT_SECRET_ID=${VAULT_PROMETHEUS_SECRET_ID:-default}
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--web.config.file=/etc/prometheus/web-config.yml'
+    networks:
+      - rhinometric_network
+    restart: unless-stopped
+
+  prometheus-2:
+    image: prom/prometheus:v2.45.0
+    container_name: mi-proyecto-prometheus-2
+    ports:
+      - "9092:9090"
+    volumes:
+      - ./monitoring/prometheus/ha:/etc/prometheus
+      - ./monitoring/prometheus/ha/certs:/etc/prometheus/certs:ro
+      - prometheus_data_2:/prometheus
+    environment:
+      - REPLICA_NUMBER=2
+      - VAULT_ADDR=http://vault:8200
+      - VAULT_ROLE_ID=${VAULT_PROMETHEUS_ROLE_ID:-default}
+      - VAULT_SECRET_ID=${VAULT_PROMETHEUS_SECRET_ID:-default}
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--web.config.file=/etc/prometheus/web-config.yml'
+    networks:
+      - rhinometric_network
+    restart: unless-stopped
+
+  haproxy:
+    build: ./haproxy
+    container_name: mi-proyecto-haproxy
+    ports:
+      - "9090:9090"
+      - "443:443"
+    volumes:
+      - ./haproxy:/usr/local/etc/haproxy:ro
+      - ./monitoring/prometheus/ha/certs:/etc/ssl/certs:ro
+    networks:
+      - rhinometric_network
+    restart: unless-stopped
+    depends_on:
+      - prometheus-1
+      - prometheus-2
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: mi-proyecto-grafana
+    expose:
+      - "3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/prometheus/ha/certs:/etc/grafana/certs:ro
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_SERVER_PROTOCOL=https
+      - GF_SERVER_CERT_FILE=/etc/grafana/certs/server.pem
+      - GF_SERVER_CERT_KEY=/etc/grafana/certs/server.pem
+    networks:
+      - rhinometric_network
+    restart: unless-stopped
+
+networks:
+  rhinometric_network:
+    driver: bridge
+
+volumes:
+  prometheus_data_1:
+    driver: local
+  prometheus_data_2:
+    driver: local
+  grafana_data:
+    driver: local

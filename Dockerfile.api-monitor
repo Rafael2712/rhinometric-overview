@@ -1,0 +1,40 @@
+FROM python:3.9-slim
+
+# Instalar dependencias del sistema y herramientas de diagnóstico
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    build-essential \
+    curl \
+    iputils-ping \
+    net-tools \
+    && rm -rf /var/lib/apt/lists/*
+
+# Crear directorios necesarios
+WORKDIR /app
+RUN mkdir -p /app/logs /app/config /app/api_monitor
+
+# Copiar archivos de configuración y código
+COPY requirements.txt /app/
+COPY config/api_config.py /app/config/
+COPY api_monitor/monitor.py /app/api_monitor/
+
+# Instalar dependencias Python
+COPY requirements.vault.txt /app/
+RUN pip install --no-cache-dir -r requirements.txt -r requirements.vault.txt
+
+# Configurar variables de entorno
+ENV PYTHONUNBUFFERED=1
+ENV LOG_LEVEL=INFO
+ENV PYTHONPATH=/app
+
+# Copiar el wrapper de Vault
+COPY api_monitor/vault_wrapper.py /app/api_monitor/
+
+# Dar permisos de escritura al directorio de logs
+RUN chmod -R 777 /app/logs
+
+# Configurar volumen para logs
+VOLUME ["/app/logs"]
+
+# Ejecutar el monitor a través del wrapper de Vault
+CMD ["python", "-m", "api_monitor.vault_wrapper", "-m", "api_monitor.monitor"]

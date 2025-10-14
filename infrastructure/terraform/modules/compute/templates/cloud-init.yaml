@@ -1,0 +1,38 @@
+#cloud-config
+write_files:
+  - path: /etc/docker/daemon.json
+    content: |
+      {
+        "log-driver": "json-file",
+        "log-opts": {
+          "max-size": "100m",
+          "max-file": "3"
+        }
+      }
+  - path: /etc/systemd/system/monitoring.service
+    content: |
+      [Unit]
+      Description=Monitoring Stack Container
+      After=docker.service
+      Requires=docker.service
+
+      [Service]
+      TimeoutStartSec=0
+      Restart=always
+      ExecStartPre=-/usr/bin/docker stop %n
+      ExecStartPre=-/usr/bin/docker rm %n
+      ExecStart=/usr/bin/docker run --name %n \
+        --restart=always \
+        --network=host \
+        ${node_type}:latest
+
+      [Install]
+      WantedBy=multi-user.target
+
+runcmd:
+  - dnf config-manager --add-repo=https://download.docker.com/linux/centos/docker-ce.repo
+  - dnf install -y docker-ce docker-ce-cli containerd.io
+  - systemctl enable docker
+  - systemctl start docker
+  - systemctl enable monitoring
+  - systemctl start monitoring

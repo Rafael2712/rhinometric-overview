@@ -1,0 +1,66 @@
+services:
+  vault:
+    extends:
+      file: docker-compose.vault.yml
+      service: vault
+
+  loki:
+    image: grafana/loki:2.9.0
+    container_name: mi-proyecto-loki
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./monitoring/loki/data/chunks:/loki/chunks
+      - ./monitoring/loki/data/rules:/loki/rules
+      - ./monitoring/loki-config.yml:/etc/loki/local-config.yaml:ro
+    environment:
+      - VAULT_ADDR=http://vault:8200
+      - VAULT_ROLE_ID=${VAULT_LOKI_ROLE_ID:-default}
+      - VAULT_SECRET_ID=${VAULT_LOKI_SECRET_ID:-default}
+    networks:
+      - rhinometric_network
+    restart: unless-stopped
+    user: "10001:10001"
+    command: -config.file=/etc/loki/local-config.yaml
+
+  prometheus:
+    image: prom/prometheus:v2.45.0
+    container_name: mi-proyecto-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus:/etc/prometheus
+      - prometheus_data:/prometheus
+    environment:
+      - VAULT_ADDR=http://vault:8200
+      - VAULT_ROLE_ID=${VAULT_PROMETHEUS_ROLE_ID:-default}
+      - VAULT_SECRET_ID=${VAULT_PROMETHEUS_SECRET_ID:-default}
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    networks:
+      - rhinometric_network
+    restart: unless-stopped
+
+  pushgateway:
+    image: prom/pushgateway:v1.6.0
+    container_name: mi-proyecto-pushgateway
+    ports:
+      - "9091:9091"
+    networks:
+      - rhinometric_network
+    restart: unless-stopped
+
+
+
+networks:
+  rhinometric_network:
+    driver: bridge
+
+volumes:
+  prometheus_data:
+    driver: local
+  vault_data:
+    driver: local

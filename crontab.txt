@@ -1,0 +1,2 @@
+# Backup diario a las 3 AM
+0 3 * * * /mnt/c/users/canel/mi-proyecto/scripts/backup-db.sh > /dev/null 2>&1

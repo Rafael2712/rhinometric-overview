@@ -1,0 +1,14 @@
+apiVersion: 1
+
+providers:
+  - name: 'Default'
+    orgId: 1
+    folder: 'Mi Proyecto'
+    folderUid: 'mi-proyecto'
+    type: file
+    disableDeletion: false
+    editable: true
+    updateIntervalSeconds: 10
+    allowUiUpdates: true
+    options:
+      path: /etc/grafana/dashboards

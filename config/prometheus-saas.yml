@@ -1,0 +1,54 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - "rules/*.yml"
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - alertmanager:9093
+
+scrape_configs:
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: tenant
+        replacement: 'system'
+
+  # Grafana monitoring
+  - job_name: 'grafana'
+    static_configs:
+      - targets: ['grafana:3000']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: tenant
+        replacement: 'system'
+
+  # License server monitoring
+  - job_name: 'license-server'
+    static_configs:
+      - targets: ['license-server:5000']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: tenant
+        replacement: 'system'
+
+  # PostgreSQL monitoring (if postgres_exporter is added later)
+  # - job_name: 'postgres'
+  #   static_configs:
+  #     - targets: ['postgres-exporter:9187']
+
+  # Redis monitoring
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis:6379']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: tenant
+        replacement: 'system'

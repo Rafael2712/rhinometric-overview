@@ -1,0 +1,86 @@
+# Oracle Cloud Infrastructure Configuration
+# =====================================
+# 
+# To obtain these values, follow these steps:
+# 1. Log into your Oracle Cloud Console
+# 2. Go to Identity & Security -> Users -> Your Profile
+# 3. Note your User OCID
+# 4. Go to Tenancy Details to get Tenancy OCID
+# 5. Create API Key pair and note the fingerprint
+# 6. Create or use existing compartment OCID
+
+# Authentication Variables
+# -----------------------
+user_ocid         = "ocid1.user.oc1..aaaaaaaa..." # Your user OCID
+tenancy_ocid      = "ocid1.tenancy.oc1..aaaaaaaa..." # Your tenancy OCID  
+fingerprint       = "aa:bb:cc:dd:ee:ff:00:11:22:33:44:55:66:77:88:99" # API key fingerprint
+private_key_path  = "~/.oci/oci_api_key.pem" # Path to your private API key
+
+# Regional Configuration
+# ---------------------
+region            = "us-ashburn-1" # Choose your preferred region
+compartment_ocid  = "ocid1.compartment.oc1..aaaaaaaa..." # Target compartment
+
+# SSH Access Configuration
+# -----------------------
+ssh_public_key = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQ... your-email@domain.com"
+
+# Project Configuration
+# --------------------
+project_name = "saas-monitoring"
+
+# Instance Configuration (Free Tier Optimized)
+# -------------------------------------------
+# These values are optimized for Oracle Cloud Free Tier
+# VM.Standard.A1.Flex allows up to 4 OCPUs and 24GB RAM for free
+instance_ocpus     = 4    # Maximum free tier OCPUs
+instance_memory_gb = 24   # Maximum free tier memory
+
+# Oracle Linux 8 for ARM (Ampere A1) - Update this OCID for your region
+# Get latest image OCID with: oci compute image list --compartment-id <tenancy-ocid> --operating-system "Oracle Linux" --shape "VM.Standard.A1.Flex"
+instance_image_ocid = "ocid1.image.oc1.iad.aaaaaaaa..." # Oracle Linux 8 ARM64
+
+# =====================================
+# How to obtain required OCIDs:
+# =====================================
+
+# 1. TENANCY OCID:
+#    - Oracle Cloud Console -> Administration -> Tenancy Details
+#    - Copy the OCID value
+
+# 2. USER OCID:
+#    - Oracle Cloud Console -> Identity & Security -> Users
+#    - Click your username -> Copy User OCID
+
+# 3. COMPARTMENT OCID:
+#    - Oracle Cloud Console -> Identity & Security -> Compartments
+#    - Select compartment -> Copy OCID
+#    - Or use tenancy OCID as compartment for root compartment
+
+# 4. API KEY SETUP:
+#    - Generate key pair: openssl genrsa -out ~/.oci/oci_api_key.pem 2048
+#    - Public key: openssl rsa -pubout -in ~/.oci/oci_api_key.pem -out ~/.oci/oci_api_key_public.pem
+#    - Add public key to OCI Console -> User Profile -> API Keys
+#    - Copy the fingerprint shown after adding the key
+
+# 5. SSH KEY PAIR:
+#    - Generate: ssh-keygen -t rsa -b 4096 -f ~/.ssh/oci_key
+#    - Use public key content (~/.ssh/oci_key.pub) for ssh_public_key variable
+
+# 6. REGION SELECTION:
+#    - Choose region closest to your users
+#    - Popular regions: us-ashburn-1, us-phoenix-1, eu-frankfurt-1, ap-tokyo-1
+
+# 7. IMAGE OCID (for ARM/Ampere):
+#    - Use OCI CLI: oci compute image list --compartment-id <tenancy-ocid> --operating-system "Oracle Linux" --shape "VM.Standard.A1.Flex"
+#    - Or Oracle Cloud Console -> Compute -> Custom Images -> Oracle Images
+#    - Filter by: Oracle Linux 8, ARM64, Latest
+
+# =====================================
+# Deployment Commands:
+# =====================================
+# 1. Copy this file: cp terraform.tfvars.example terraform.tfvars
+# 2. Edit terraform.tfvars with your actual values
+# 3. Initialize: terraform init
+# 4. Plan: terraform plan
+# 5. Deploy: terraform apply

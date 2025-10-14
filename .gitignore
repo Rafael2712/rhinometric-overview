@@ -1,4 +1,97 @@
+# Dependencies
+node_modules/
+*/node_modules/
+
+# Environment files
 .env
+.env.*
+!.env.example
+
+# Build outputs
+dist/
+build/
+*/dist/
+*/build/
+
+# Logs
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Docker volumes and data
+data/
+*/data/
+volumes/
+*/volumes/
+
+# Generated certificates
+certs/
+*/certs/
+*.pem
+*.key
+*.crt
+*.csr
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Backup files
+*.bak
+*.backup
+backup*/
+*backup*
+
+# Prometheus/Grafana data
+prometheus/data/
+grafana/data/
+loki-data/
+monitoring/*/data/
+
+# License files (security)
+*.lic
+license*
+!license-validator.py
+
+# Terraform files
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+
+# Local development
+271211Rc$/
+config_backups/
+varlog/
 *.log
 venv/
 *.pyc

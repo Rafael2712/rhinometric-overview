@@ -1,0 +1,254 @@
+version: '3.8'
+
+services:
+  # =================================
+  # TIER 1: SERVICIOS CRÍTICOS SaaS
+  # =================================
+  
+  # Base de datos principal (multi-tenant por schema)
+  postgres:
+    image: postgres:15
+    container_name: saas-postgres
+    environment:
+      POSTGRES_DB: saas_platform
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secure_password_2024}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db:/docker-entrypoint-initdb.d
+    networks:
+      - saas_network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 1G
+
+  # Connection pooling para múltiples tenants
+  pgbouncer:
+    image: edoburu/pgbouncer:latest
+    container_name: saas-pgbouncer
+    environment:
+      DB_USER: postgres
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-secure_password_2024}
+      DB_HOST: postgres
+      DB_NAME: saas_platform
+      POOL_MODE: transaction
+      MAX_CLIENT_CONN: 100
+      DEFAULT_POOL_SIZE: 25
+    depends_on:
+      - postgres
+    networks:
+      - saas_network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.3'
+          memory: 256M
+
+  # Sistema de métricas (con tenant isolation)
+  prometheus:
+    image: prom/prometheus:v2.45.0
+    container_name: saas-prometheus
+    volumes:
+      - ./config/prometheus-saas.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--web.enable-lifecycle'
+      - '--storage.tsdb.retention.time=30d'
+    networks:
+      - saas_network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 1G
+
+  # Dashboards multi-tenant
+  grafana:
+    image: grafana/grafana:latest
+    container_name: saas-grafana
+    environment:
+      # Configuración multi-tenant
+      GF_DATABASE_TYPE: postgres
+      GF_DATABASE_HOST: pgbouncer:5432
+      GF_DATABASE_NAME: saas_platform
+      GF_DATABASE_USER: postgres
+      GF_DATABASE_PASSWORD: ${POSTGRES_PASSWORD:-secure_password_2024}
+      
+      # Seguridad
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin_secure_2024}
+      GF_SECURITY_SECRET_KEY: ${GRAFANA_SECRET_KEY:-your_secret_key_here}
+      
+      # Multi-tenancy settings
+      GF_USERS_AUTO_ASSIGN_ORG: "true"
+      GF_USERS_AUTO_ASSIGN_ORG_ROLE: "Viewer"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      
+      # Server settings
+      GF_SERVER_ROOT_URL: https://monitor.rhinometric.com
+      GF_SERVER_SERVE_FROM_SUB_PATH: "false"
+      GF_SERVER_DOMAIN: monitor.rhinometric.com
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./config/grafana:/etc/grafana/provisioning
+    depends_on:
+      - pgbouncer
+      - prometheus
+    networks:
+      - saas_network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.8'
+          memory: 1G
+        reservations:
+          cpus: '0.3'
+          memory: 512M
+
+  # Logs centralizados por tenant
+  loki:
+    image: grafana/loki:2.9.0
+    container_name: saas-loki
+    volumes:
+      - ./config/loki-saas.yml:/etc/loki/local-config.yaml:ro
+      - loki_data:/loki
+    command: -config.file=/etc/loki/local-config.yaml
+    networks:
+      - saas_network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 1G
+        reservations:
+          cpus: '0.2'
+          memory: 512M
+
+  # Alertas por tenant
+  alertmanager:
+    image: prom/alertmanager:latest
+    container_name: saas-alertmanager
+    volumes:
+      - ./config/alertmanager-saas.yml:/etc/alertmanager/alertmanager.yml:ro
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+      - '--web.external-url=https://monitor.rhinometric.com/alertmanager'
+    networks:
+      - saas_network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.3'
+          memory: 512M
+
+  # Sistema de licencias SaaS
+  license-server:
+    build:
+      context: ./licensing
+      dockerfile: Dockerfile
+    container_name: saas-license-server
+    environment:
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-secure_password_2024}@pgbouncer:5432/saas_platform
+      JWT_SECRET: ${JWT_SECRET:-your_jwt_secret_here}
+      REDIS_URL: redis://redis:6379
+    volumes:
+      - ./licenses:/app/licenses:ro
+      - license_data:/app/data
+    depends_on:
+      - pgbouncer
+      - redis
+    networks:
+      - saas_network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+
+  # Cache para sesiones y licencias
+  redis:
+    image: redis:7-alpine
+    container_name: saas-redis
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    networks:
+      - saas_network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.2'
+          memory: 256M
+
+  # Reverse proxy multi-tenant
+  nginx:
+    image: nginx:alpine
+    container_name: saas-nginx
+    ports:
+      - "8080:80"
+      - "8443:443"
+    volumes:
+      - ./config/nginx-saas.conf:/etc/nginx/nginx.conf:ro
+      - ./certs:/etc/nginx/certs:ro
+      - ./config/nginx/conf.d:/etc/nginx/conf.d:ro
+    depends_on:
+      - grafana
+      - prometheus
+      - alertmanager
+      - license-server
+    networks:
+      - saas_network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+
+networks:
+  saas_network:
+    driver: bridge
+    driver_opts:
+      com.docker.network.bridge.name: saas-network
+
+volumes:
+  postgres_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+  loki_data:
+    driver: local
+  license_data:
+    driver: local
+  redis_data:
+    driver: local
+
+# =================================
+# RECURSOS TOTALES ESTIMADOS:
+# CPU: ~4.6 vCPUs (límites)
+# RAM: ~8.5 GB (límites)  
+# ✅ CABE EN ORACLE FREE TIER
+# =================================

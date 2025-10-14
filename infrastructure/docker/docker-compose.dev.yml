@@ -1,0 +1,92 @@
+version: '3.8'
+
+services:
+  # SaaS API Backend
+  rhinometric-api:
+    build: 
+      context: ../../backend
+      target: ${BUILD_TARGET:-production}
+    container_name: rhinometric-api
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+      PORT: ${API_PORT:-3001}
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-rhinometric_saas}
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD}
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: ${JWT_SECRET}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3000}
+    ports:
+      - "${API_PORT:-3001}:${API_PORT:-3001}"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - saas-network
+    restart: unless-stopped
+    volumes:
+      - api-logs:/app/logs
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:${API_PORT:-3001}/api/v1/health', (res) => process.exit(res.statusCode === 200 ? 0 : 1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # PostgreSQL Database
+  postgres:
+    image: postgres:13-alpine
+    container_name: rhinometric-postgres
+    environment:
+      POSTGRES_DB: ${DB_NAME:-rhinometric_saas}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ../init-db:/docker-entrypoint-initdb.d
+    networks:
+      - saas-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-rhinometric_saas}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis Cache
+  redis:
+    image: redis:6-alpine
+    container_name: rhinometric-redis
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-}
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - saas-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+networks:
+  saas-network:
+    driver: bridge
+    name: rhinometric-saas
+
+volumes:
+  postgres-data:
+    name: rhinometric-postgres-data
+  redis-data:
+    name: rhinometric-redis-data
+  api-logs:
+    name: rhinometric-api-logs

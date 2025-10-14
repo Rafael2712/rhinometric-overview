@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  vault:
+    image: hashicorp/vault:1.13
+    container_name: mi-proyecto-vault
+    ports:
+      - "8200:8200"
+    environment:
+      VAULT_ADDR: "http://0.0.0.0:8200"
+      VAULT_API_ADDR: "http://0.0.0.0:8200"
+      VAULT_DEV_ROOT_TOKEN_ID: "${VAULT_DEV_ROOT_TOKEN}"
+    cap_add:
+      - IPC_LOCK
+      - SETFCAP
+    volumes:
+      - vault_data:/vault/data
+    user: "100:100"
+    command: server -dev -dev-root-token-id="${VAULT_DEV_ROOT_TOKEN}" -dev-no-store-token
+    networks:
+      - rhinometric_network
+    restart: unless-stopped
+
+volumes:
+  vault_data:

@@ -1,0 +1,57 @@
+pgbouncer_pools:
+  query: "SHOW POOLS"
+  master: true
+  metrics:
+    - cl_active:
+        usage: "GAUGE"
+        description: "Active client connections"
+    - cl_waiting:
+        usage: "GAUGE"
+        description: "Client connections waiting on a server"
+    - sv_active:
+        usage: "GAUGE"
+        description: "Active server connections"
+    - sv_idle:
+        usage: "GAUGE"
+        description: "Idle server connections"
+    - sv_used:
+        usage: "GAUGE"
+        description: "Server connections idle more than server_check_delay"
+    - sv_tested:
+        usage: "GAUGE"
+        description: "Server connections currently being tested"
+    - sv_login:
+        usage: "GAUGE"
+        description: "Server connections currently in login process"
+    - maxwait:
+        usage: "GAUGE"
+        description: "Age of oldest unserved client connection"
+
+pgbouncer_stats:
+  query: "SHOW STATS"
+  master: true
+  metrics:
+    - total_requests:
+        usage: "COUNTER"
+        description: "Total number of SQL requests pooled"
+    - total_received:
+        usage: "COUNTER"
+        description: "Total volume in bytes of network traffic received"
+    - total_sent:
+        usage: "COUNTER"
+        description: "Total volume in bytes of network traffic sent"
+    - total_query_time:
+        usage: "COUNTER"
+        description: "Total number of microseconds spent waiting for queries to run"
+    - avg_req:
+        usage: "GAUGE"
+        description: "Average requests per second in last stats period"
+    - avg_recv:
+        usage: "GAUGE"
+        description: "Average received (from clients) bytes per second"
+    - avg_sent:
+        usage: "GAUGE"
+        description: "Average sent (to clients) bytes per second"
+    - avg_query:
+        usage: "GAUGE"
+        description: "Average query duration in microseconds"

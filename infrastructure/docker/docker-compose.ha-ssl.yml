@@ -1,0 +1,187 @@
+version: '3.8'
+
+services:
+  # Monitoreo Principal
+  prometheus:
+    image: prom/prometheus:v2.45.0
+    container_name: mi-proyecto-prometheus
+    volumes:
+      - ./monitoring/prometheus:/etc/prometheus
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    networks:
+      - rhinometric_network
+    restart: unless-stopped
+
+  loki:
+    image: grafana/loki:2.9.0
+    container_name: mi-proyecto-loki
+    volumes:
+      - ./monitoring/loki/data/chunks:/loki/chunks
+      - ./monitoring/loki/data/rules:/loki/rules
+      - ./monitoring/loki-config.yml:/etc/loki/local-config.yaml:ro
+    networks:
+      - rhinometric_network
+    restart: unless-stopped
+    user: "10001:10001"
+    command: -config.file=/etc/loki/local-config.yaml
+
+  # Exporters
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: mi-proyecto-node-exporter
+    restart: unless-stopped
+    networks:
+      - rhinometric_network
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    container_name: mi-proyecto-cadvisor
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    restart: unless-stopped
+    networks:
+      - rhinometric_network
+
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:latest
+    container_name: mi-proyecto-postgres-exporter
+    environment:
+      - DATA_SOURCE_NAME=postgresql://postgres:password@db:5432/postgres?sslmode=disable
+    restart: unless-stopped
+    networks:
+      - rhinometric_network
+
+  nginx-exporter:
+    image: nginx/nginx-prometheus-exporter:latest
+    container_name: mi-proyecto-nginx-exporter
+    command:
+      - -nginx.scrape-uri=http://nginx:8080/stub_status
+    restart: unless-stopped
+    networks:
+      - rhinometric_network
+
+  blackbox-exporter:
+    image: prom/blackbox-exporter:latest
+    container_name: mi-proyecto-blackbox-exporter
+    restart: unless-stopped
+    networks:
+      - rhinometric_network
+
+  # Base de datos
+  db:
+    image: postgres:15
+    container_name: mi-proyecto-db
+    environment:
+      - POSTGRES_PASSWORD=password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - rhinometric_network
+    restart: unless-stopped
+
+  pgbouncer:
+    image: edoburu/pgbouncer:latest
+    container_name: mi-proyecto-pgbouncer
+    environment:
+      - DB_USER=postgres
+      - DB_PASSWORD=password
+      - DB_HOST=db
+      - DB_NAME=postgres
+    networks:
+      - rhinometric_network
+    restart: unless-stopped
+
+  # Visualización y Logging
+  grafana:
+    image: grafana/grafana:latest
+    container_name: mi-proyecto-grafana
+    volumes:
+      - grafana_data:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+      - GF_SERVER_ROOT_URL=https://monitor.rhinometric.com/grafana
+      - GF_SERVER_SERVE_FROM_SUB_PATH=true
+    networks:
+      - rhinometric_network
+    restart: unless-stopped
+
+  promtail:
+    image: grafana/promtail:latest
+    container_name: mi-proyecto-promtail
+    volumes:
+      - /var/log:/var/log:ro
+      - ./monitoring/promtail:/etc/promtail
+    command: -config.file=/etc/promtail/config.yml
+    networks:
+      - rhinometric_network
+    restart: unless-stopped
+
+  tempo:
+    image: grafana/tempo:latest
+    container_name: mi-proyecto-tempo
+    command: -config.file=/etc/tempo/tempo.yaml
+    volumes:
+      - ./monitoring/tempo:/etc/tempo
+      - tempo_data:/tmp/tempo
+    ports:
+      - "14268:14268"  # puerto para jaeger
+    networks:
+      - rhinometric_network
+    restart: unless-stopped
+
+  # Alertas
+  alertmanager:
+    image: prom/alertmanager:latest
+    container_name: mi-proyecto-alertmanager
+    volumes:
+      - ./monitoring/alertmanager:/etc/alertmanager
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+    networks:
+      - rhinometric_network
+    restart: unless-stopped
+
+  # Reverse Proxy con SSL
+  nginx:
+    image: nginx:alpine
+    container_name: mi-proyecto-nginx
+    ports:
+      - "9999:80"
+    volumes:
+      - ./nginx/nginx.simple.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./nginx/ssl.conf:/etc/nginx/ssl.conf:ro
+      - ./nginx/certs:/etc/nginx/certs:ro
+      - ./nginx/.htpasswd:/etc/nginx/.htpasswd:ro
+    depends_on:
+      - prometheus
+      - loki
+      - grafana
+      - alertmanager
+      - tempo
+    networks:
+      - rhinometric_network
+    restart: unless-stopped
+
+networks:
+  rhinometric_network:
+    driver: bridge
+
+volumes:
+  prometheus_data:
+    driver: local
+  postgres_data:
+    driver: local
+  grafana_data:
+    driver: local
+  tempo_data:
+    driver: local

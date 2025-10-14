@@ -1,0 +1,270 @@
+version: '3.8'
+services:
+  # =================================================
+  # TIER 1: BASE DE DATOS Y CACHE
+  # =================================================
+  
+  # Base de datos principal (multi-tenant por schema)
+  postgres:
+    image: postgres:15
+    container_name: saas-postgres
+    environment:
+      POSTGRES_DB: saas_platform
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secure_password_2024}
+    volumes:
+      - ./postgres_data:/var/lib/postgresql/data
+      - ./init-db:/docker-entrypoint-initdb.d
+    networks:
+      - saas_network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 1G
+        reservations:
+          cpus: '0.2'
+          memory: 256M
+
+  # Connection pooling para múltiples tenants
+  pgbouncer:
+    image: edoburu/pgbouncer:latest
+    container_name: saas-pgbouncer
+    environment:
+      DB_USER: postgres
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-secure_password_2024}
+      DB_HOST: postgres
+      DB_NAME: saas_platform
+      POOL_MODE: transaction
+      MAX_CLIENT_CONN: 100
+      DEFAULT_POOL_SIZE: 25
+    volumes:
+      - ./config/pgbouncer:/etc/pgbouncer
+    depends_on:
+      - postgres
+    networks:
+      - saas_network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.2'
+          memory: 128M
+
+  # Cache y sesiones por tenant
+  redis:
+    image: redis:7-alpine
+    container_name: saas-redis
+    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    networks:
+      - saas_network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.3'
+          memory: 512M
+
+  # =================================================
+  # TIER 2: OBSERVABILIDAD PRINCIPAL (OPTIMIZADO)
+  # =================================================
+  
+  # Sistema de métricas por tenant
+  prometheus:
+    image: prom/prometheus:v2.45.0
+    container_name: saas-prometheus
+    volumes:
+      - ./config/prometheus-saas.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+      - '--storage.tsdb.retention.time=30d'
+    networks:
+      - saas_network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 1G
+        reservations:
+          cpus: '0.2'
+          memory: 256M
+
+  # Dashboards multi-tenant (Optimizado para 8GB)
+  grafana:
+    image: grafana/grafana:10.1.0
+    container_name: saas-grafana
+    environment:
+      # Multi-tenancy settings
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_USERS_ALLOW_ORG_CREATE: "false"
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin_secure_2024}
+      GF_SECURITY_SECRET_KEY: ${GRAFANA_SECRET_KEY:-your_grafana_secret_key_change_this}
+      
+      # Server settings
+      GF_SERVER_ROOT_URL: https://monitor.rhinometric.com
+      GF_SERVER_SERVE_FROM_SUB_PATH: "false"
+      GF_SERVER_DOMAIN: monitor.rhinometric.com
+      
+      # Multi-tenancy
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      
+      # Security
+      GF_SECURITY_ALLOW_EMBEDDING: "true"
+      GF_SECURITY_COOKIE_SECURE: "true"
+      GF_SECURITY_STRICT_TRANSPORT_SECURITY: "true"
+      
+      # Database (opcional - can use external DB)
+      GF_DATABASE_TYPE: postgres
+      GF_DATABASE_HOST: pgbouncer:5432
+      GF_DATABASE_NAME: saas_platform
+      GF_DATABASE_USER: postgres
+      GF_DATABASE_PASSWORD: ${POSTGRES_PASSWORD:-secure_password_2024}
+
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./config/grafana:/etc/grafana/provisioning
+    depends_on:
+      - postgres
+      - prometheus
+    networks:
+      - saas_network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.4'
+          memory: 512M
+
+  # =================================================
+  # TIER 3: LOGGING Y TRACING (ESENCIAL)
+  # =================================================
+  
+  # Sistema de logs centralizado
+  loki:
+    image: grafana/loki:2.9.0
+    container_name: saas-loki
+    volumes:
+      - ./config/loki-config.yml:/etc/loki/local-config.yml
+      - loki_data:/loki
+    command: -config.file=/etc/loki/local-config.yml
+    networks:
+      - saas_network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.3'
+          memory: 512M
+
+  # Recolector de logs
+  promtail:
+    image: grafana/promtail:2.9.0
+    container_name: saas-promtail
+    volumes:
+      - /var/log:/var/log:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - ./config/promtail-saas.yml:/etc/promtail/config.yml:ro
+    command: -config.file=/etc/promtail/config.yml
+    depends_on:
+      - loki
+    networks:
+      - saas_network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.2'
+          memory: 128M
+
+  # =================================================
+  # TIER 4: ALERTAS Y NOTIFICACIONES
+  # =================================================
+  
+  # Sistema de alertas por tenant
+  alertmanager:
+    image: prom/alertmanager:v0.25.0
+    container_name: saas-alertmanager
+    volumes:
+      - ./config/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanager_data:/alertmanager
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+      - '--web.external-url=https://monitor.rhinometric.com/alertmanager'
+      - '--web.route-prefix=/'
+    networks:
+      - saas_network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.2'
+          memory: 128M
+
+  # =================================================
+  # TIER 5: REVERSE PROXY Y LOAD BALANCING
+  # =================================================
+  
+  # Reverse proxy multi-tenant
+  nginx:
+    image: nginx:alpine
+    container_name: saas-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./config/nginx-saas.conf.d:/etc/nginx/conf.d:ro
+      - ./certs:/etc/nginx/certs:ro
+      - ./config/nginx-saas.conf:/etc/nginx/nginx.conf:ro
+      - ./logs:/var/log/nginx
+    depends_on:
+      - grafana
+      - prometheus
+      - alertmanager
+    networks:
+      - saas_network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.3'
+          memory: 256M
+
+volumes:
+  postgres_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+  loki_data:
+    driver: local
+  redis_data:
+    driver: local
+  alertmanager_data:
+    driver: local
+
+networks:
+  saas_network:
+    driver: bridge
+    driver_opts:
+      com.docker.network.bridge.name: saas-network
+
+# =================================================
+# RECURSOS TOTALES ESTIMADOS:
+# CPU: ~2.7 vCPUs (con límites)
+# RAM: ~4.3GB RAM (optimizado para 8GB deployment)
+# 
+# CUENTA AL MES: €35-40 con €250 = 6+ meses
+# =================================================
