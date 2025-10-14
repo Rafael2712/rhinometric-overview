@@ -9,9 +9,17 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "lint": "eslint .",
-    "migrate": "node migrations/migrate.js"
+    "migrate": "node migrations/migrate.js",
+    "seed": "node migrations/seeds.js",
+    "rollback": "node migrations/rollback.js",
+    "db:reset": "npm run rollback && npm run migrate && npm run seed"
   },
-  "keywords": ["saas", "rhinometric", "api", "multi-tenant"],
+  "keywords": [
+    "saas",
+    "rhinometric",
+    "api",
+    "multi-tenant"
+  ],
   "author": "Rafael Canelón",
   "license": "MIT",
   "dependencies": {
