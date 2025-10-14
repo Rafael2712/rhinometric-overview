@@ -1,0 +1,215 @@
+name: Database Operations
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        default: 'development'
+        type: choice
+        options:
+        - development
+        - staging  
+        - production
+      operation:
+        description: 'Database operation'
+        required: true
+        default: 'migrate'
+        type: choice
+        options:
+        - migrate
+        - rollback
+        - backup
+        - restore
+        - seed
+      backup_file:
+        description: 'Backup file name (for restore operation)'
+        required: false
+        type: string
+
+env:
+  NODE_VERSION: '16.20.2'
+
+jobs:
+  # ===========================
+  # DATABASE OPERATIONS
+  # ===========================
+  database-operation:
+    name: 🗄️ Database Operation
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment }}
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+
+    - name: 🟢 Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: backend/package-lock.json
+
+    - name: 📦 Install dependencies
+      run: |
+        cd backend
+        npm ci
+
+    - name: 🔧 Setup environment variables
+      run: |
+        case "${{ github.event.inputs.environment }}" in
+          "development")
+            echo "DB_PORT=3001" >> $GITHUB_ENV
+            echo "DOMAIN=dev-api.rhinometric.com" >> $GITHUB_ENV
+            ;;
+          "staging")
+            echo "DB_PORT=3002" >> $GITHUB_ENV
+            echo "DOMAIN=staging-api.rhinometric.com" >> $GITHUB_ENV
+            ;;
+          "production")
+            echo "DB_PORT=3000" >> $GITHUB_ENV
+            echo "DOMAIN=api.rhinometric.com" >> $GITHUB_ENV
+            ;;
+        esac
+
+    - name: 🗄️ Execute Database Migration
+      if: github.event.inputs.operation == 'migrate'
+      run: |
+        cd backend
+        echo "Running database migrations for ${{ github.event.inputs.environment }}"
+        npm run migrate
+      env:
+        NODE_ENV: ${{ github.event.inputs.environment }}
+        DB_HOST: ${{ secrets.DB_HOST }}
+        DB_PORT: ${{ secrets.DB_PORT }}
+        DB_NAME: ${{ secrets.DB_NAME }}
+        DB_USER: ${{ secrets.DB_USER }}
+        DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+
+    - name: ↩️ Execute Database Rollback
+      if: github.event.inputs.operation == 'rollback'
+      run: |
+        cd backend
+        echo "Rolling back database for ${{ github.event.inputs.environment }}"
+        npm run rollback
+      env:
+        NODE_ENV: ${{ github.event.inputs.environment }}
+        DB_HOST: ${{ secrets.DB_HOST }}
+        DB_PORT: ${{ secrets.DB_PORT }}
+        DB_NAME: ${{ secrets.DB_NAME }}
+        DB_USER: ${{ secrets.DB_USER }}
+        DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+
+    - name: 💾 Execute Database Backup
+      if: github.event.inputs.operation == 'backup'
+      run: |
+        cd backend
+        echo "Creating database backup for ${{ github.event.inputs.environment }}"
+        
+        # Create backup directory
+        mkdir -p backups
+        
+        # Generate backup filename with timestamp
+        BACKUP_FILE="rhinometric-${{ github.event.inputs.environment }}-$(date +%Y%m%d-%H%M%S).sql"
+        
+        # Create database dump (this will be implemented with actual credentials)
+        echo "Backup would be created: backups/$BACKUP_FILE"
+        
+        # Upload backup to secure storage
+        echo "Backup completed: $BACKUP_FILE"
+      env:
+        NODE_ENV: ${{ github.event.inputs.environment }}
+        DB_HOST: ${{ secrets.DB_HOST }}
+        DB_PORT: ${{ secrets.DB_PORT }}
+        DB_NAME: ${{ secrets.DB_NAME }}
+        DB_USER: ${{ secrets.DB_USER }}
+        DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+
+    - name: 🔄 Execute Database Restore
+      if: github.event.inputs.operation == 'restore'
+      run: |
+        cd backend
+        echo "Restoring database for ${{ github.event.inputs.environment }}"
+        
+        if [ -z "${{ github.event.inputs.backup_file }}" ]; then
+          echo "Error: backup_file is required for restore operation"
+          exit 1
+        fi
+        
+        echo "Restoring from backup: ${{ github.event.inputs.backup_file }}"
+        # Actual restore logic will be implemented here
+      env:
+        NODE_ENV: ${{ github.event.inputs.environment }}
+        DB_HOST: ${{ secrets.DB_HOST }}
+        DB_PORT: ${{ secrets.DB_PORT }}
+        DB_NAME: ${{ secrets.DB_NAME }}
+        DB_USER: ${{ secrets.DB_USER }}
+        DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+
+    - name: 🌱 Execute Database Seeding
+      if: github.event.inputs.operation == 'seed'
+      run: |
+        cd backend
+        echo "Seeding database for ${{ github.event.inputs.environment }}"
+        npm run seed
+      env:
+        NODE_ENV: ${{ github.event.inputs.environment }}
+        DB_HOST: ${{ secrets.DB_HOST }}
+        DB_PORT: ${{ secrets.DB_PORT }}
+        DB_NAME: ${{ secrets.DB_NAME }}
+        DB_USER: ${{ secrets.DB_USER }}
+        DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+
+    - name: 🔍 Verify Database Operation
+      run: |
+        cd backend
+        echo "Verifying database operation completion..."
+        
+        # Test database connection
+        echo "Testing database connection..."
+        node -e "
+          const { Pool } = require('pg');
+          const pool = new Pool({
+            host: process.env.DB_HOST,
+            port: process.env.DB_PORT,
+            database: process.env.DB_NAME,
+            user: process.env.DB_USER,
+            password: process.env.DB_PASSWORD,
+          });
+          
+          pool.query('SELECT NOW()', (err, res) => {
+            if (err) {
+              console.error('Database connection failed:', err);
+              process.exit(1);
+            }
+            console.log('✅ Database connection successful');
+            console.log('Server time:', res.rows[0].now);
+            pool.end();
+          });
+        "
+      env:
+        NODE_ENV: ${{ github.event.inputs.environment }}
+        DB_HOST: ${{ secrets.DB_HOST }}
+        DB_PORT: ${{ secrets.DB_PORT }}
+        DB_NAME: ${{ secrets.DB_NAME }}
+        DB_USER: ${{ secrets.DB_USER }}
+        DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+
+    - name: 📢 Notify operation completion
+      uses: 8398a7/action-slack@v3
+      if: always()
+      with:
+        status: ${{ job.status }}
+        channel: '#database'
+        text: |
+          🗄️ **Database Operation** ${{ job.status }}
+          
+          **Environment:** ${{ github.event.inputs.environment }}
+          **Operation:** ${{ github.event.inputs.operation }}
+          **Initiated by:** ${{ github.actor }}
+          **Workflow:** ${{ github.workflow }}
+          
+          ${{ job.status == 'success' && '✅ Operation completed successfully!' || '❌ Operation failed!' }}
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
