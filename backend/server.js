@@ -5,6 +5,7 @@ const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 
 const logger = require('./src/utils/logger');
+const tracing = require('./src/utils/tracing');
 const metricsMiddleware = require('./src/middleware/metricsMiddleware');
 const metricsRoutes = require('./src/routes/metrics');
 const authRoutes = require('./src/routes/auth');
@@ -42,6 +43,40 @@ app.use(express.urlencoded({ extended: true }));
 
 // Metrics middleware (DEBE IR ANTES del logging para capturar todos los requests)
 app.use(metricsMiddleware);
+
+// Tracing middleware
+app.use((req, res, next) => {
+    console.log('[TRACING MIDDLEWARE] Processing request:', req.method, req.path);
+    const trace = tracing.startTrace(`${req.method} ${req.path}`);
+    req.trace = trace;
+    
+    trace.log('Request started', {
+        method: req.method,
+        path: req.path,
+        ip: req.ip,
+        userAgent: req.get('User-Agent')
+    });
+    
+    // Interceptar el final de la response
+    const originalSend = res.send;
+    res.send = function(data) {
+        trace.log('Request completed', {
+            statusCode: res.statusCode,
+            responseSize: data ? data.length : 0
+        });
+        
+        trace.finish({
+            'http.method': req.method,
+            'http.url': req.path,
+            'http.status_code': res.statusCode,
+            'user.ip': req.ip
+        });
+        
+        return originalSend.call(this, data);
+    };
+    
+    next();
+});
 
 // Request logging middleware
 app.use((req, res, next) => {

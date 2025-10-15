@@ -60,6 +60,8 @@ services:
     ports:
       - "3200:3200"   # Tempo HTTP
       - "9095:9095"   # Tempo gRPC
+      - "4318:4318"   # OTLP HTTP
+      - "14268:14268" # Jaeger HTTP
     command: [ "-config.file=/etc/tempo.yaml" ]
     volumes:
       - ./tempo.yaml:/etc/tempo.yaml
