@@ -1,0 +1,80 @@
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://rhinometric-loki:3100/loki/api/v1/push
+
+scrape_configs:
+  # Configuración para containers Docker con labels específicos
+  - job_name: containers
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 5s
+        filters:
+          - name: label
+            values: ["job=rhinometric-api"]
+    
+    relabel_configs:
+      # Obtener container name
+      - source_labels: ['__meta_docker_container_name']
+        target_label: 'container'
+        regex: '/(.*)'
+        replacement: '${1}'
+      
+      # Obtener job label del container
+      - source_labels: ['__meta_docker_container_label_job']
+        target_label: 'job'
+      
+      # Obtener service name label
+      - source_labels: ['__meta_docker_container_label_service_name']
+        target_label: 'service_name'
+      
+      # Log path para Docker containers
+      - source_labels: ['__meta_docker_container_id']
+        target_label: '__path__'
+        replacement: '/var/lib/docker/containers/${1}/${1}-json.log'
+
+  # Configuración adicional para cualquier container de la red rhinometric
+  - job_name: rhinometric-network
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 5s
+        filters:
+          - name: network
+            values: ["mi-proyecto_rhinometric-network"]
+    
+    relabel_configs:
+      - source_labels: ['__meta_docker_container_name']
+        target_label: 'container'
+        regex: '/(.*)'
+        replacement: '${1}'
+      
+      - source_labels: ['__meta_docker_container_name']
+        target_label: 'job'
+        regex: '/rhinometric-(.*)'
+        replacement: 'rhinometric-${1}'
+      
+      - source_labels: ['__meta_docker_container_id']
+        target_label: '__path__'
+        replacement: '/var/lib/docker/containers/${1}/${1}-json.log'
+
+pipeline_stages:
+  # Parse JSON logs from Docker
+  - json:
+      expressions:
+        output: log
+        stream: stream
+        timestamp: time
+  
+  # Extract timestamp
+  - timestamp:
+      source: timestamp
+      format: RFC3339Nano
+  
+  # Output only the log content
+  - output:
+      source: output

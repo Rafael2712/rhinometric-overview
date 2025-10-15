@@ -1,5 +1,5 @@
 const express = require('express');
-const db = require('../config/database');
+const db = require('../config/database-ip');
 const logger = require('../utils/logger');
 
 const router = express.Router();
@@ -9,9 +9,10 @@ router.get('/', async (req, res) => {
     try {
         const startTime = Date.now();
         
-        // Check database connectivity
-        const dbHealthy = await db.testConnection();
-        const dbResponseTime = Date.now() - startTime;
+        // Check database connectivity with enhanced monitoring
+        const dbResult = await db.testConnection(); // No retries for speed
+        const dbHealthy = dbResult.success;
+        const dbResponseTime = dbResult.responseTime;
         
         // System information
         const systemInfo = {

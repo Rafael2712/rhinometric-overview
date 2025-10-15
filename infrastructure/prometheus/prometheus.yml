@@ -1,0 +1,55 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  # Prometheus propio
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # API Rhinometric (principal)
+  - job_name: 'rhinometric-api'
+    static_configs:
+      - targets: ['rhinometric-api:3001']
+    metrics_path: '/metrics'
+    scrape_interval: 5s
+    scrape_timeout: 4s
+
+  # Simulador de aplicaciones externas
+  - job_name: 'web-app-demo'
+    static_configs:
+      - targets: ['rhinometric-api:3001']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+    params:
+      app: ['web-app']
+
+  - job_name: 'mobile-api-demo'  
+    static_configs:
+      - targets: ['rhinometric-api:3001']
+    
+  # Pushgateway para métricas custom
+  - job_name: 'pushgateway'
+    static_configs:
+      - targets: ['rhinometric-pushgateway:9091']
+    scrape_interval: 15s
+    honor_labels: true
+
+  - job_name: 'payments-service-demo'
+    static_configs:
+      - targets: ['rhinometric-api:3001'] 
+    metrics_path: '/metrics'
+    scrape_interval: 20s
+    params:
+      app: ['payments']
+
+# Reglas de alertas básicas
+rule_files:
+  # - "alert_rules.yml"
+
+# Configuración de Alertmanager
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: []

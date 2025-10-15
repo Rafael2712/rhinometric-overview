@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  rhinometric-postgres:
+    image: postgres:15
+    container_name: rhinometric-postgres
+    environment:
+      POSTGRES_DB: rhinometric_saas
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: rhinometric123
+    ports:
+      - "5432:5432"
+    networks:
+      - rhinometric-network
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d rhinometric_saas"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  rhinometric-api:
+    build: 
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: rhinometric-api
+    environment:
+      NODE_ENV: development
+      PORT: 3001
+      DB_HOST: rhinometric-postgres
+      DB_PORT: 5432
+      DB_NAME: rhinometric_saas
+      DB_USER: postgres
+      DB_PASSWORD: rhinometric123
+      API_VERSION: v1
+    ports:
+      - "3001:3001"
+    networks:
+      - rhinometric-network
+    depends_on:
+      rhinometric-postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/api/v1/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+networks:
+  rhinometric-network:
+    driver: bridge
+
+volumes:
+  postgres_data:

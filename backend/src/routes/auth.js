@@ -1,350 +1,136 @@
 const express = require('express');
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-const { v4: uuidv4 } = require('uuid');
-const Joi = require('joi');
-
-const db = require('../config/database');
 const logger = require('../utils/logger');
+const SimpleAuth = require('../middleware/simpleAuth');
+const { authAttempts } = require('../utils/metrics');
 
 const router = express.Router();
+const simpleAuth = new SimpleAuth();
 
-// Validation schemas
-const registerSchema = Joi.object({
-    email: Joi.string().email().required(),
-    password: Joi.string().min(8).required(),
-    tenantName: Joi.string().min(2).max(100).required(),
-    firstName: Joi.string().min(1).max(50).optional(),
-    lastName: Joi.string().min(1).max(50).optional()
-});
-
-const loginSchema = Joi.object({
-    email: Joi.string().email().required(),
-    password: Joi.string().required()
-});
-
-// JWT helper functions
-const generateToken = (payload) => {
-    return jwt.sign(payload, process.env.JWT_SECRET, {
-        expiresIn: process.env.JWT_EXPIRES_IN || '7d'
-    });
-};
-
-const verifyToken = (token) => {
-    return jwt.verify(token, process.env.JWT_SECRET);
-};
-
-// Authentication middleware
-const authenticateToken = (req, res, next) => {
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
-
-    if (!token) {
-        return res.status(401).json({ 
-            error: 'Access denied', 
-            message: 'No token provided' 
-        });
-    }
-
-    try {
-        const decoded = verifyToken(token);
-        req.user = decoded;
-        next();
-    } catch (error) {
-        logger.warn('Invalid token attempt:', { 
-            error: error.message,
-            ip: req.ip 
-        });
-        
-        return res.status(403).json({ 
-            error: 'Access denied', 
-            message: 'Invalid token' 
-        });
-    }
-};
-
-// Register new user and tenant
-router.post('/register', async (req, res) => {
-    try {
-        // Validate input
-        const { error, value } = registerSchema.validate(req.body);
-        if (error) {
-            return res.status(400).json({
-                error: 'Validation error',
-                message: error.details[0].message
-            });
-        }
-
-        const { email, password, tenantName, firstName, lastName } = value;
-
-        // Check if user already exists
-        const existingUser = await db.query(
-            'SELECT id FROM users WHERE email = $1',
-            [email]
-        );
-
-        if (existingUser.rows.length > 0) {
-            return res.status(409).json({
-                error: 'User exists',
-                message: 'A user with this email already exists'
-            });
-        }
-
-        // Create tenant slug from name
-        const tenantSlug = tenantName.toLowerCase()
-            .replace(/[^a-z0-9]+/g, '-')
-            .replace(/^-+|-+$/g, '');
-
-        // Check if tenant slug already exists
-        const existingTenant = await db.query(
-            'SELECT id FROM tenants WHERE slug = $1',
-            [tenantSlug]
-        );
-
-        if (existingTenant.rows.length > 0) {
-            return res.status(409).json({
-                error: 'Tenant exists',
-                message: 'A tenant with this name already exists'
-            });
-        }
-
-        // Hash password
-        const saltRounds = 12;
-        const passwordHash = await bcrypt.hash(password, saltRounds);
-
-        // Start transaction
-        const client = await db.getClient();
-        try {
-            await client.query('BEGIN');
-
-            // Create tenant
-            const tenantResult = await client.query(
-                `INSERT INTO tenants (id, name, slug, plan, status, created_at, updated_at) 
-                 VALUES ($1, $2, $3, $4, $5, NOW(), NOW()) 
-                 RETURNING *`,
-                [uuidv4(), tenantName, tenantSlug, 'free', 'active']
-            );
-            const tenant = tenantResult.rows[0];
-
-            // Create user
-            const userResult = await client.query(
-                `INSERT INTO users (id, tenant_id, email, password_hash, role, first_name, last_name, created_at, updated_at) 
-                 VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW()) 
-                 RETURNING id, tenant_id, email, role, first_name, last_name, created_at`,
-                [uuidv4(), tenant.id, email, passwordHash, 'admin', firstName, lastName]
-            );
-            const user = userResult.rows[0];
-
-            await client.query('COMMIT');
-
-            // Generate JWT token
-            const token = generateToken({
-                userId: user.id,
-                tenantId: user.tenant_id,
-                email: user.email,
-                role: user.role
-            });
-
-            logger.info('New user registered:', {
-                userId: user.id,
-                tenantId: user.tenant_id,
-                email: user.email,
-                tenantName: tenant.name
-            });
-
-            res.status(201).json({
-                message: 'Registration successful',
-                token: token,
-                user: {
-                    id: user.id,
-                    email: user.email,
-                    role: user.role,
-                    firstName: user.first_name,
-                    lastName: user.last_name
-                },
-                tenant: {
-                    id: tenant.id,
-                    name: tenant.name,
-                    slug: tenant.slug,
-                    plan: tenant.plan
-                }
-            });
-
-        } catch (dbError) {
-            await client.query('ROLLBACK');
-            throw dbError;
-        } finally {
-            client.release();
-        }
-
-    } catch (error) {
-        logger.error('Registration failed:', { 
-            error: error.message,
-            email: req.body.email 
-        });
-
-        res.status(500).json({
-            error: 'Registration failed',
-            message: 'An error occurred during registration'
-        });
-    }
-});
-
-// Login user
+// Login endpoint
 router.post('/login', async (req, res) => {
     try {
-        // Validate input
-        const { error, value } = loginSchema.validate(req.body);
-        if (error) {
+        const { username, password } = req.body;
+
+        if (!username || !password) {
             return res.status(400).json({
-                error: 'Validation error',
-                message: error.details[0].message
+                error: 'Validation Error',
+                message: 'Username and password are required'
             });
         }
 
-        const { email, password } = value;
+        logger.info('Login attempt', { username });
 
-        // Find user with tenant information
-        const userResult = await db.query(`
-            SELECT u.*, t.name as tenant_name, t.slug as tenant_slug, t.plan as tenant_plan, t.status as tenant_status
-            FROM users u 
-            JOIN tenants t ON u.tenant_id = t.id 
-            WHERE u.email = $1
-        `, [email]);
+        const result = await simpleAuth.authenticate(username, password);
 
-        if (userResult.rows.length === 0) {
+        if (!result.success) {
+            // Registrar intento de autenticación fallido
+            authAttempts.inc({ result: 'failure', method: 'password' });
+            
             return res.status(401).json({
-                error: 'Authentication failed',
-                message: 'Invalid email or password'
+                error: 'Authentication Failed',
+                message: result.message
             });
         }
 
-        const user = userResult.rows[0];
-
-        // Check if tenant is active
-        if (user.tenant_status !== 'active') {
-            return res.status(403).json({
-                error: 'Account suspended',
-                message: 'Your account has been suspended. Please contact support.'
-            });
-        }
-
-        // Verify password
-        const isPasswordValid = await bcrypt.compare(password, user.password_hash);
-        if (!isPasswordValid) {
-            return res.status(401).json({
-                error: 'Authentication failed',
-                message: 'Invalid email or password'
-            });
-        }
-
-        // Generate JWT token
-        const token = generateToken({
-            userId: user.id,
-            tenantId: user.tenant_id,
-            email: user.email,
-            role: user.role
-        });
-
-        logger.info('User logged in:', {
-            userId: user.id,
-            tenantId: user.tenant_id,
-            email: user.email,
-            ip: req.ip
-        });
+        // Registrar intento de autenticación exitoso
+        authAttempts.inc({ result: 'success', method: 'password' });
 
         res.json({
-            message: 'Login successful',
-            token: token,
-            user: {
-                id: user.id,
-                email: user.email,
-                role: user.role,
-                firstName: user.first_name,
-                lastName: user.last_name
-            },
-            tenant: {
-                id: user.tenant_id,
-                name: user.tenant_name,
-                slug: user.tenant_slug,
-                plan: user.tenant_plan
-            }
+            message: 'Authentication successful',
+            user: result.user,
+            token: result.token,
+            expires_in: '24h'
         });
 
     } catch (error) {
-        logger.error('Login failed:', { 
-            error: error.message,
-            email: req.body.email,
-            ip: req.ip 
-        });
+        logger.error('Login error:', error.message);
 
         res.status(500).json({
-            error: 'Login failed',
-            message: 'An error occurred during login'
+            error: 'Internal Server Error',
+            message: 'Authentication service temporarily unavailable'
         });
     }
 });
 
-// Get current user (protected route)
-router.get('/me', authenticateToken, async (req, res) => {
-    try {
-        const userResult = await db.query(`
-            SELECT u.*, t.name as tenant_name, t.slug as tenant_slug, t.plan as tenant_plan
-            FROM users u 
-            JOIN tenants t ON u.tenant_id = t.id 
-            WHERE u.id = $1
-        `, [req.user.userId]);
-
-        if (userResult.rows.length === 0) {
-            return res.status(404).json({
-                error: 'User not found',
-                message: 'User account not found'
-            });
+// Obtener información del usuario actual
+router.get('/me', simpleAuth.authenticateToken(), (req, res) => {
+    res.json({
+        user: {
+            id: req.user.id,
+            username: req.user.username,
+            email: req.user.email,
+            name: req.user.name,
+            roles: req.user.roles
         }
-
-        const user = userResult.rows[0];
-
-        res.json({
-            user: {
-                id: user.id,
-                email: user.email,
-                role: user.role,
-                firstName: user.first_name,
-                lastName: user.last_name,
-                createdAt: user.created_at
-            },
-            tenant: {
-                id: user.tenant_id,
-                name: user.tenant_name,
-                slug: user.tenant_slug,
-                plan: user.tenant_plan
-            }
-        });
-
-    } catch (error) {
-        logger.error('Get user failed:', { 
-            error: error.message,
-            userId: req.user.userId 
-        });
-
-        res.status(500).json({
-            error: 'Failed to get user',
-            message: 'An error occurred while retrieving user information'
-        });
-    }
+    });
 });
 
-// Logout user (could be used to invalidate token on server-side)
-router.post('/logout', authenticateToken, (req, res) => {
-    logger.info('User logged out:', {
-        userId: req.user.userId,
-        tenantId: req.user.tenantId,
-        ip: req.ip
+// Verificar token (health check para autenticación)
+router.get('/verify', simpleAuth.authenticateToken(), (req, res) => {
+    res.json({
+        valid: true,
+        user: req.user.username,
+        roles: req.user.roles,
+        expires: req.user.token.exp
+    });
+});
+
+// Logout (simple - JWT es stateless)
+router.post('/logout', simpleAuth.authenticateToken(), (req, res) => {
+    logger.info('User logged out', { 
+        userId: req.user.id,
+        username: req.user.username 
     });
 
     res.json({
-        message: 'Logout successful'
+        message: 'Logout successful',
+        note: 'JWT tokens remain valid until expiration'
     });
+});
+
+// Obtener usuarios disponibles (solo para admin)
+router.get('/users', 
+    simpleAuth.authenticateToken(), 
+    simpleAuth.authorize(['admin']), 
+    (req, res) => {
+        const users = simpleAuth.getUsers();
+        res.json({
+            users: users,
+            count: users.length
+        });
+    }
+);
+
+// Obtener configuración de autenticación
+router.get('/config', async (req, res) => {
+    try {
+        const healthCheck = await simpleAuth.healthCheck();
+        
+        res.json({
+            auth: {
+                type: 'jwt-simple',
+                healthy: healthCheck.healthy,
+                loginEndpoint: '/api/v1/auth/login',
+                verifyEndpoint: '/api/v1/auth/verify',
+                userInfoEndpoint: '/api/v1/auth/me'
+            },
+            demo: {
+                users: [
+                    { username: 'admin', password: 'admin123', roles: ['admin'] },
+                    { username: 'manager', password: 'manager123', roles: ['tenant_manager'] },
+                    { username: 'user', password: 'user123', roles: ['user'] }
+                ]
+            }
+        });
+
+    } catch (error) {
+        logger.error('Config endpoint error:', error.message);
+        
+        res.status(500).json({
+            error: 'Configuration unavailable',
+            message: error.message
+        });
+    }
 });
 
 module.exports = router;

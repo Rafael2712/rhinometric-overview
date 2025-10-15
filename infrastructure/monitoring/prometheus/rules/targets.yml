@@ -1,0 +1,11 @@
+groups:
+- name: basic-availability
+  rules:
+  - alert: TargetDown
+    expr: up == 0
+    for: 2m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Algún target no responde"
+      description: "El job {{ $labels.job }} / {{ $labels.instance }} está caído."

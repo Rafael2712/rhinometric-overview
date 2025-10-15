@@ -1,0 +1,69 @@
+# GRAFANA DATASOURCES - SE CONFIGURAN AUTOMÁTICAMENTE AL ARRANCAR
+apiVersion: 1
+
+datasources:
+  # Prometheus principal - PERSISTENTE
+  - name: Prometheus-Rhinometric
+    type: prometheus
+    access: proxy
+    url: http://rhinometric-prometheus:9090
+    isDefault: true
+    basicAuth: false
+    editable: true
+    jsonData:
+      httpMethod: POST
+      queryTimeout: 60s
+      timeInterval: 15s
+    version: 1
+
+  # Loki para logs - PERSISTENTE  
+  - name: Loki-Rhinometric
+    type: loki
+    access: proxy
+    url: http://rhinometric-loki:3100
+    isDefault: false
+    basicAuth: false
+    editable: true
+    jsonData:
+      maxLines: 1000
+    version: 1
+
+  # TestData para datos ficticios de demo
+  - name: TestData-Demo
+    type: testdata
+    access: proxy
+    isDefault: false
+    editable: true
+    version: 1
+  # Tempo - DISTRIBUTED TRACING
+  - name: Tempo-Rhinometric
+    type: tempo
+    access: proxy
+    url: http://rhinometric-tempo:3200
+    orgId: 1
+    isDefault: false
+    jsonData:
+      tracesToMetrics:
+        datasourceUid: 'prometheus-rhinometric'
+        tags: [
+          { key: 'service.name', value: 'service_name' },
+          { key: 'span.name', value: 'span_name' }
+        ]
+        queries:
+          - name: 'Sample query'
+            query: 'sum(rate(traces_spanmetrics_latency_bucket{$$__tags}[5m]))'
+      tracesToLogs:
+        datasourceUid: 'loki-rhinometric'
+        tags: ['job', 'instance', 'pod', 'namespace']
+        mappedTags: [{ key: 'service.name', value: 'service' }]
+        mapTagNamesEnabled: false
+        spanStartTimeShift: '1h'
+        spanEndTimeShift: '1h'
+        filterByTraceID: false
+        filterBySpanID: false
+      serviceMap:
+        datasourceUid: 'prometheus-rhinometric'
+      search:
+        hide: false
+      nodeGraph:
+        enabled: true

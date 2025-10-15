@@ -76,7 +76,7 @@ services:
     image: prom/prometheus:v2.45.0
     container_name: saas-prometheus
     volumes:
-      - ./config/prometheus-saas.yml:/etc/prometheus/prometheus.yml:ro
+      - ../../config/prometheus-saas.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'

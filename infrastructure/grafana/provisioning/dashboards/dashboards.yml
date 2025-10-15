@@ -1,0 +1,14 @@
+# GRAFANA DASHBOARDS - SE IMPORTAN AUTOMÁTICAMENTE AL ARRANCAR
+apiVersion: 1
+
+providers:
+  # Dashboards empresariales Rhinometric
+  - name: 'rhinometric-dashboards'
+    orgId: 1
+    folder: 'Rhinometric'
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: true
+    options:
+      path: /etc/grafana/provisioning/dashboards/rhinometric

@@ -6,6 +6,12 @@ scrape_configs:
     static_configs:
       - targets: ['localhost:9090']
   
+  - job_name: 'rhinometric-api'
+    static_configs:
+      - targets: ['rhinometric-api:3001']
+    metrics_path: '/metrics'
+    scrape_interval: 15s
+  
   - job_name: 'grafana'
     static_configs:
       - targets: ['grafana1:3000', 'grafana2:3000']

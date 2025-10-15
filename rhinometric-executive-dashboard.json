@@ -1,0 +1,405 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "🚀 Rhinometric SaaS Platform - Executive Dashboard",
+    "tags": ["rhinometric", "saas", "executive"],
+    "timezone": "browser",
+    "refresh": "5s",
+    "time": {
+      "from": "now-30m",
+      "to": "now"
+    },
+    "panels": [
+      {
+        "id": 1,
+        "title": "🎯 API Performance Overview",
+        "type": "stat",
+        "gridPos": {"h": 8, "w": 6, "x": 0, "y": 0},
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "palette-classic"},
+            "custom": {
+              "displayMode": "list",
+              "placement": "bottom"
+            },
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"color": "red", "value": null},
+                {"color": "yellow", "value": 0.1},
+                {"color": "green", "value": 0.05}
+              ]
+            },
+            "unit": "s"
+          }
+        },
+        "options": {
+          "reduceOptions": {
+            "values": false,
+            "calcs": ["lastNotNull"],
+            "fields": ""
+          },
+          "orientation": "auto",
+          "textMode": "auto",
+          "colorMode": "value",
+          "graphMode": "area",
+          "justifyMode": "auto"
+        },
+        "pluginVersion": "10.1.0",
+        "targets": [
+          {
+            "datasource": {"type": "prometheus", "uid": "cf11jx3lbdm2oa"},
+            "editorMode": "code",
+            "expr": "rate(rhinometric_http_request_duration_seconds_sum[5m]) / rate(rhinometric_http_request_duration_seconds_count[5m])",
+            "legendFormat": "Avg Response Time",
+            "range": true,
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "id": 2,
+        "title": "📊 Requests per Second",
+        "type": "stat",
+        "gridPos": {"h": 8, "w": 6, "x": 6, "y": 0},
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "palette-classic"},
+            "custom": {
+              "displayMode": "list",
+              "placement": "bottom"
+            },
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"color": "red", "value": null},
+                {"color": "yellow", "value": 10},
+                {"color": "green", "value": 50}
+              ]
+            },
+            "unit": "reqps"
+          }
+        },
+        "options": {
+          "reduceOptions": {
+            "values": false,
+            "calcs": ["lastNotNull"],
+            "fields": ""
+          },
+          "orientation": "auto",
+          "textMode": "auto",
+          "colorMode": "value",
+          "graphMode": "area",
+          "justifyMode": "auto"
+        },
+        "targets": [
+          {
+            "datasource": {"type": "prometheus", "uid": "cf11jx3lbdm2oa"},
+            "editorMode": "code",
+            "expr": "rate(rhinometric_http_requests_total[5m])",
+            "legendFormat": "RPS",
+            "range": true,
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "id": 3,
+        "title": "🔐 Authentication Success Rate",
+        "type": "stat",
+        "gridPos": {"h": 8, "w": 6, "x": 12, "y": 0},
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "palette-classic"},
+            "custom": {
+              "displayMode": "list",
+              "placement": "bottom"
+            },
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"color": "red", "value": null},
+                {"color": "yellow", "value": 0.8},
+                {"color": "green", "value": 0.95}
+              ]
+            },
+            "unit": "percentunit",
+            "max": 1,
+            "min": 0
+          }
+        },
+        "options": {
+          "reduceOptions": {
+            "values": false,
+            "calcs": ["lastNotNull"],
+            "fields": ""
+          },
+          "orientation": "auto",
+          "textMode": "auto",
+          "colorMode": "value",
+          "graphMode": "area",
+          "justifyMode": "auto"
+        },
+        "targets": [
+          {
+            "datasource": {"type": "prometheus", "uid": "cf11jx3lbdm2oa"},
+            "editorMode": "code",
+            "expr": "rate(rhinometric_auth_attempts_total{result=\"success\"}[5m]) / rate(rhinometric_auth_attempts_total[5m])",
+            "legendFormat": "Success Rate",
+            "range": true,
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "id": 4,
+        "title": "💻 System Health",
+        "type": "stat",
+        "gridPos": {"h": 8, "w": 6, "x": 18, "y": 0},
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "palette-classic"},
+            "custom": {
+              "displayMode": "list",
+              "placement": "bottom"
+            },
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "yellow", "value": 0.7},
+                {"color": "red", "value": 0.9}
+              ]
+            },
+            "unit": "bytes"
+          }
+        },
+        "options": {
+          "reduceOptions": {
+            "values": false,
+            "calcs": ["lastNotNull"],
+            "fields": ""
+          },
+          "orientation": "auto",
+          "textMode": "auto",
+          "colorMode": "value",
+          "graphMode": "area",
+          "justifyMode": "auto"
+        },
+        "targets": [
+          {
+            "datasource": {"type": "prometheus", "uid": "cf11jx3lbdm2oa"},
+            "editorMode": "code",
+            "expr": "process_resident_memory_bytes{job=\"rhinometric-api\"}",
+            "legendFormat": "Memory Usage",
+            "range": true,
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "id": 5,
+        "title": "📈 Request Rate Trend (Last 30m)",
+        "type": "timeseries",
+        "gridPos": {"h": 9, "w": 12, "x": 0, "y": 8},
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "palette-classic"},
+            "custom": {
+              "axisLabel": "",
+              "axisPlacement": "auto",
+              "barAlignment": 0,
+              "drawStyle": "line",
+              "fillOpacity": 20,
+              "gradientMode": "opacity",
+              "hideFrom": {
+                "legend": false,
+                "tooltip": false,
+                "vis": false
+              },
+              "lineInterpolation": "smooth",
+              "lineWidth": 2,
+              "pointSize": 5,
+              "scaleDistribution": {"type": "linear"},
+              "showPoints": "never",
+              "spanNulls": false,
+              "stacking": {"group": "A", "mode": "none"},
+              "thresholdsStyle": {"mode": "off"}
+            },
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "red", "value": 80}
+              ]
+            },
+            "unit": "reqps"
+          }
+        },
+        "options": {
+          "legend": {"calcs": [], "displayMode": "list", "placement": "bottom"},
+          "tooltip": {"mode": "single", "sort": "none"}
+        },
+        "targets": [
+          {
+            "datasource": {"type": "prometheus", "uid": "cf11jx3lbdm2oa"},
+            "editorMode": "code",
+            "expr": "rate(rhinometric_http_requests_total[1m])",
+            "legendFormat": "{{method}} {{route}}",
+            "range": true,
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "id": 6,
+        "title": "⚡ Response Time Distribution",
+        "type": "timeseries",
+        "gridPos": {"h": 9, "w": 12, "x": 12, "y": 8},
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "palette-classic"},
+            "custom": {
+              "axisLabel": "",
+              "axisPlacement": "auto",
+              "barAlignment": 0,
+              "drawStyle": "line",
+              "fillOpacity": 20,
+              "gradientMode": "opacity",
+              "hideFrom": {
+                "legend": false,
+                "tooltip": false,
+                "vis": false
+              },
+              "lineInterpolation": "smooth",
+              "lineWidth": 2,
+              "pointSize": 5,
+              "scaleDistribution": {"type": "linear"},
+              "showPoints": "never",
+              "spanNulls": false,
+              "stacking": {"group": "A", "mode": "none"},
+              "thresholdsStyle": {"mode": "off"}
+            },
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "red", "value": 80}
+              ]
+            },
+            "unit": "s"
+          }
+        },
+        "options": {
+          "legend": {"calcs": [], "displayMode": "list", "placement": "bottom"},
+          "tooltip": {"mode": "single", "sort": "none"}
+        },
+        "targets": [
+          {
+            "datasource": {"type": "prometheus", "uid": "cf11jx3lbdm2oa"},
+            "editorMode": "code",
+            "expr": "histogram_quantile(0.95, rate(rhinometric_http_request_duration_seconds_bucket[5m]))",
+            "legendFormat": "95th percentile",
+            "range": true,
+            "refId": "A"
+          },
+          {
+            "datasource": {"type": "prometheus", "uid": "cf11jx3lbdm2oa"},
+            "editorMode": "code",
+            "expr": "histogram_quantile(0.50, rate(rhinometric_http_request_duration_seconds_bucket[5m]))",
+            "legendFormat": "50th percentile (median)",
+            "range": true,
+            "refId": "B"
+          }
+        ]
+      },
+      {
+        "id": 7,
+        "title": "🔍 Error Rate by Endpoint",
+        "type": "table",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 17},
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "thresholds"},
+            "custom": {
+              "align": "auto",
+              "displayMode": "auto"
+            },
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "red", "value": 80}
+              ]
+            }
+          }
+        },
+        "options": {
+          "showHeader": true
+        },
+        "targets": [
+          {
+            "datasource": {"type": "prometheus", "uid": "cf11jx3lbdm2oa"},
+            "editorMode": "code",
+            "expr": "sum by (route, status_code) (rate(rhinometric_http_requests_total[5m]))",
+            "format": "table",
+            "legendFormat": "__auto",
+            "range": true,
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "id": 8,
+        "title": "🎯 SLA Compliance (99.9% Target)",
+        "type": "gauge",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 17},
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "thresholds"},
+            "mappings": [],
+            "max": 1,
+            "min": 0.9,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"color": "red", "value": 0.9},
+                {"color": "yellow", "value": 0.995},
+                {"color": "green", "value": 0.999}
+              ]
+            },
+            "unit": "percentunit"
+          }
+        },
+        "options": {
+          "orientation": "auto",
+          "reduceOptions": {
+            "values": false,
+            "calcs": ["lastNotNull"],
+            "fields": ""
+          },
+          "showThresholdLabels": false,
+          "showThresholdMarkers": true
+        },
+        "targets": [
+          {
+            "datasource": {"type": "prometheus", "uid": "cf11jx3lbdm2oa"},
+            "editorMode": "code",
+            "expr": "1 - (rate(rhinometric_http_requests_total{status_code=~\"5..\"}[5m]) / rate(rhinometric_http_requests_total[5m]))",
+            "legendFormat": "Uptime %",
+            "range": true,
+            "refId": "A"
+          }
+        ]
+      }
+    ]
+  },
+  "overwrite": true
+}

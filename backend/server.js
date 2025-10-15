@@ -5,9 +5,12 @@ const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 
 const logger = require('./src/utils/logger');
+const metricsMiddleware = require('./src/middleware/metricsMiddleware');
+const metricsRoutes = require('./src/routes/metrics');
 const authRoutes = require('./src/routes/auth');
 const tenantRoutes = require('./src/routes/tenants');
-const healthRoutes = require('./src/routes/health');
+const healthRoutes = require('./src/routes/health-fast');
+const demoRoutes = require('./src/routes/demo');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -37,6 +40,9 @@ app.use(limiter);
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
+// Metrics middleware (DEBE IR ANTES del logging para capturar todos los requests)
+app.use(metricsMiddleware);
+
 // Request logging middleware
 app.use((req, res, next) => {
     logger.info(`${req.method} ${req.path}`, {
@@ -47,12 +53,16 @@ app.use((req, res, next) => {
     next();
 });
 
+// Metrics endpoint (sin prefijo API para compatibilidad con Prometheus)
+app.use('/metrics', metricsRoutes);
+
 // API routes
 const API_PREFIX = `/api/${process.env.API_VERSION || 'v1'}`;
 
 app.use(`${API_PREFIX}/auth`, authRoutes);
 app.use(`${API_PREFIX}/tenants`, tenantRoutes);
 app.use(`${API_PREFIX}/health`, healthRoutes);
+app.use(`${API_PREFIX}/demo`, demoRoutes);
 
 // Root endpoint
 app.get('/', (req, res) => {

@@ -4,19 +4,15 @@ const { v4: uuidv4 } = require('uuid');
 
 const db = require('../config/database');
 const logger = require('../utils/logger');
+const SimpleAuth = require('../middleware/simpleAuth');
 
 const router = express.Router();
+const simpleAuth = new SimpleAuth();
 
-// Mock authentication middleware (replace with real auth)
-const mockAuth = (req, res, next) => {
-    // For now, we'll mock a user
-    req.user = {
-        userId: 'mock-user-id',
-        tenantId: 'mock-tenant-id',
-        role: 'admin'
-    };
-    next();
-};
+// Authentication and authorization middleware
+const requireAuth = simpleAuth.authenticateToken();
+const requireAdmin = simpleAuth.authorize(['admin', 'tenant_manager']);
+const requireUser = simpleAuth.authorize(['admin', 'tenant_manager', 'user']);
 
 // Validation schemas
 const createTenantSchema = Joi.object({
@@ -30,8 +26,8 @@ const updateTenantSchema = Joi.object({
     status: Joi.string().valid('active', 'suspended', 'inactive').optional()
 });
 
-// Get all tenants (admin only)
-router.get('/', mockAuth, async (req, res) => {
+// Get all tenants (paginated) - Requires authentication
+router.get('/', requireAuth, requireUser, async (req, res) => {
     try {
         // In a real app, check if user is super admin
         const page = parseInt(req.query.page) || 1;
@@ -73,7 +69,7 @@ router.get('/', mockAuth, async (req, res) => {
 });
 
 // Get single tenant
-router.get('/:id', mockAuth, async (req, res) => {
+router.get('/:id', requireAuth, requireUser, async (req, res) => {
     try {
         const tenantId = req.params.id;
 
@@ -113,8 +109,8 @@ router.get('/:id', mockAuth, async (req, res) => {
     }
 });
 
-// Create new tenant
-router.post('/', mockAuth, async (req, res) => {
+// Create new tenant - Requires admin/tenant_manager role
+router.post('/', requireAuth, requireAdmin, async (req, res) => {
     try {
         // Validate input
         const { error, value } = createTenantSchema.validate(req.body);
@@ -180,7 +176,7 @@ router.post('/', mockAuth, async (req, res) => {
 });
 
 // Update tenant
-router.put('/:id', mockAuth, async (req, res) => {
+router.put('/:id', requireAuth, requireAdmin, async (req, res) => {
     try {
         const tenantId = req.params.id;
 
@@ -267,7 +263,7 @@ router.put('/:id', mockAuth, async (req, res) => {
 });
 
 // Delete tenant
-router.delete('/:id', mockAuth, async (req, res) => {
+router.delete('/:id', requireAuth, requireAdmin, async (req, res) => {
     try {
         const tenantId = req.params.id;
 
@@ -323,7 +319,7 @@ router.delete('/:id', mockAuth, async (req, res) => {
 });
 
 // Get tenant statistics
-router.get('/:id/stats', mockAuth, async (req, res) => {
+router.get('/:id/stats', requireAuth, requireUser, async (req, res) => {
     try {
         const tenantId = req.params.id;
 

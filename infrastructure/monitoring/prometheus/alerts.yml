@@ -1,0 +1,37 @@
+groups:
+  - name: general
+    rules:
+      - alert: InstanceDown
+        expr: up == 0
+        for: 2m
+        labels: { severity: critical }
+        annotations:
+          summary: "Instance down"
+          description: "{{ $labels.instance }} no responde."
+
+      - alert: PrometheusTooManyScrapeFailures
+        expr: scrape_series_added == 0
+        for: 10m
+        labels: { severity: warning }
+        annotations:
+          summary: "Prometheus sin series nuevas"
+          description: "Revisa si hay fallos de scrapeo o targets caídos."
+
+  - name: pgbouncer
+    rules:
+      - alert: PgBouncerExporterDown
+        expr: up{job="pgbouncer-exporter"} == 0
+        for: 2m
+        labels: { severity: critical }
+        annotations:
+          summary: "PgBouncer Exporter caído"
+          description: "El exporter de PgBouncer no responde en {{ $labels.instance }}."
+
+      - alert: PgBouncerClientsWaiting
+        # Muchos exporters exponen esta métrica (puede variar según imagen)
+        expr: sum by (instance) (pgbouncer_pools_cl_waiting) > 0
+        for: 5m
+        labels: { severity: warning }
+        annotations:
+          summary: "Clientes en espera en PgBouncer"
+          description: "Hay conexiones de cliente esperando en {{ $labels.instance }}."

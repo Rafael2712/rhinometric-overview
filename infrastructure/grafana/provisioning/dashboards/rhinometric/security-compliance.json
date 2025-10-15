@@ -1,0 +1,476 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "P3CB869730DC7E366"
+      },
+      "description": "**SECURITY EVENTS** - Real-time threat detection and monitoring",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 5
+              },
+              {
+                "color": "red",
+                "value": 20
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "9.5.2",
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P3CB869730DC7E366"
+          },
+          "editorMode": "code",
+          "expr": "5",
+          "legendFormat": "Security Incidents",
+          "queryType": "",
+          "refId": "A"
+        }
+      ],
+      "title": "🛡️ SECURITY INCIDENTS",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "P3CB869730DC7E366"
+      },
+      "description": "**AUDIT COMPLIANCE** - Regulatory compliance and audit trail",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 95
+              },
+              {
+                "color": "green",
+                "value": 99
+              }
+            ]
+          },
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 0
+      },
+      "id": 2,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "9.5.2",
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P3CB869730DC7E366"
+          },
+          "editorMode": "code",
+          "expr": "99.5",
+          "legendFormat": "Compliance Score",
+          "queryType": "",
+          "refId": "A"
+        }
+      ],
+      "title": "📋 AUDIT COMPLIANCE",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "P3CB869730DC7E366"
+      },
+      "description": "**DATA PROTECTION** - GDPR and privacy compliance monitoring",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 5
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 0
+      },
+      "id": 3,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "9.5.2",
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P3CB869730DC7E366"
+          },
+          "editorMode": "code",
+          "expr": "0",
+          "legendFormat": "Privacy Violations",
+          "queryType": "",
+          "refId": "A"
+        }
+      ],
+      "title": "🔒 DATA PROTECTION",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "P3CB869730DC7E366"
+      },
+      "description": "**CRITICAL ERROR ANALYSIS** - Real-time error tracking and alerting",
+      "gridPos": {
+        "h": 10,
+        "w": 12,
+        "x": 0,
+        "y": 8
+      },
+      "id": 4,
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": true,
+        "showCommonLabels": false,
+        "showLabels": true,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P3CB869730DC7E366"
+          },
+          "editorMode": "code",
+          "expr": "{job=\"rhinometric-api\", level=\"ERROR\"}",
+          "queryType": "",
+          "refId": "A"
+        }
+      ],
+      "title": "🚨 CRITICAL ERROR LOGS",
+      "type": "logs"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "P3CB869730DC7E366"
+      },
+      "description": "**APPLICATION PERFORMANCE** - Info and warning level insights",
+      "gridPos": {
+        "h": 10,
+        "w": 12,
+        "x": 12,
+        "y": 8
+      },
+      "id": 5,
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": true,
+        "showCommonLabels": false,
+        "showLabels": true,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P3CB869730DC7E366"
+          },
+          "editorMode": "code",
+          "expr": "{job=\"rhinometric-api\", level=~\"INFO|WARN\"}",
+          "queryType": "",
+          "refId": "A"
+        }
+      ],
+      "title": "📊 APPLICATION PERFORMANCE LOGS",
+      "type": "logs"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "P3CB869730DC7E366"
+      },
+      "description": "**LOG VOLUME ANALYSIS** - System health and activity patterns",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "Log Rate",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 20,
+            "gradientMode": "hue",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "vis": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "normal"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "logs/sec"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 24,
+        "x": 0,
+        "y": 18
+      },
+      "id": 6,
+      "options": {
+        "legend": {
+          "calcs": [
+            "mean",
+            "max",
+            "lastNotNull"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P3CB869730DC7E366"
+          },
+          "editorMode": "code",
+          "expr": "rate({level=\"ERROR\"}[5m])",
+          "legendFormat": "🚨 Error Rate",
+          "queryType": "",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P3CB869730DC7E366"
+          },
+          "editorMode": "code",
+          "expr": "rate({level=\"WARN\"}[5m])",
+          "hide": false,
+          "legendFormat": "⚠️ Warning Rate",
+          "queryType": "",
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P3CB869730DC7E366"
+          },
+          "editorMode": "code",
+          "expr": "rate({level=\"INFO\"}[5m])",
+          "hide": false,
+          "legendFormat": "ℹ️ Info Rate",
+          "queryType": "",
+          "refId": "C"
+        }
+      ],
+      "title": "📈 LOG VOLUME & PATTERN ANALYSIS",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "tempo",
+        "uid": "P61FA86BD38D33F73"
+      },
+      "description": "**DISTRIBUTED TRACING** - End-to-end request flow for enterprise applications",
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 27
+      },
+      "id": 7,
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": false,
+        "showCommonLabels": false,
+        "showLabels": false,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": false
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "tempo",
+            "uid": "P61FA86BD38D33F73"
+          },
+          "editorMode": "code",
+          "expr": "{}",
+          "queryType": "",
+          "refId": "A"
+        }
+      ],
+      "title": "🔍 ENTERPRISE DISTRIBUTED TRACING",
+      "type": "traces"
+    }
+  ],
+  "refresh": "10s",
+  "revision": 1,
+  "schemaVersion": 38,
+  "style": "dark",
+  "tags": [
+    "security",
+    "compliance",
+    "enterprise",
+    "governance"
+  ],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-30m",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "",
+  "title": "🛡️ RHINOMETRIC SECURITY & COMPLIANCE DASHBOARD",
+  "uid": "rhinometric-security",
+  "version": 1,
+  "weekStart": ""
+}

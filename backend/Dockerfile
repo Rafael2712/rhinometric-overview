@@ -1,8 +1,8 @@
 # Multi-stage build for production optimization
 FROM node:16-alpine AS base
 
-# Install dumb-init for proper signal handling
-RUN apk add --no-cache dumb-init
+# Install dumb-init and curl for proper signal handling and health checks
+RUN apk add --no-cache dumb-init curl
 
 # Create app directory
 WORKDIR /app

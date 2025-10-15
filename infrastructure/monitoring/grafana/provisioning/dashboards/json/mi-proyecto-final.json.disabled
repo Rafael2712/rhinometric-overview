@@ -1,0 +1,58 @@
+{
+  "title": "Mi Proyecto - Observabilidad (FINAL)",
+  "schemaVersion": 38,
+  "version": 1,
+  "refresh": "10s",
+  "time": { "from": "now-6h", "to": "now" },
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "PgBouncer: consultas/s por DB",
+      "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 },
+      "targets": [
+        { "refId": "A", "expr": "sum by (database) (rate(pgbouncer_stats_totals_queries_pooled_total[5m]))" }
+      ],
+      "options": { "legend": { "displayMode": "table" } },
+      "fieldConfig": { "defaults": { "custom": { "drawStyle": "line" } } }
+    },
+    {
+      "type": "timeseries",
+      "title": "PgBouncer: tiempo medio de consulta (s)",
+      "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (database) (rate(pgbouncer_stats_totals_queries_duration_seconds_total[5m])) / sum by (database) (rate(pgbouncer_stats_totals_queries_pooled_total[5m]))"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "s" } }
+    },
+    {
+      "type": "timeseries",
+      "title": "Postgres: conexiones por DB",
+      "gridPos": { "x": 12, "y": 8, "w": 12, "h": 8 },
+      "targets": [
+        { "refId": "A", "expr": "sum by (datname) (pg_stat_database_numbackends)" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "CPU host %",
+      "gridPos": { "x": 0, "y": 8, "w": 12, "h": 8 },
+      "targets": [
+        { "refId": "A", "expr": "100 - (avg by (instance)(rate(node_cpu_seconds_total{mode=\"idle\"}[5m])) * 100)" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "percent" } }
+    },
+    {
+      "type": "timeseries",
+      "title": "Memoria usada (bytes)",
+      "gridPos": { "x": 0, "y": 16, "w": 12, "h": 8 },
+      "targets": [
+        { "refId": "A", "expr": "node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "bytes" } }
+    }
+  ],
+  "annotations": { "list": [ { "builtIn": 1, "name": "Annotations & Alerts", "type": "dashboard" } ] }
+}

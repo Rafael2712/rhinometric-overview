@@ -1,0 +1,362 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "🔧 Rhinometric Technical Dashboard - DevOps & SRE",
+    "tags": ["rhinometric", "technical", "devops", "sre"],
+    "timezone": "browser",
+    "refresh": "10s",
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "panels": [
+      {
+        "id": 1,
+        "title": "🐳 Container Resources",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "palette-classic"},
+            "custom": {
+              "axisLabel": "",
+              "axisPlacement": "auto",
+              "barAlignment": 0,
+              "drawStyle": "line",
+              "fillOpacity": 10,
+              "gradientMode": "none",
+              "hideFrom": {
+                "legend": false,
+                "tooltip": false,
+                "vis": false
+              },
+              "lineInterpolation": "linear",
+              "lineWidth": 2,
+              "pointSize": 5,
+              "scaleDistribution": {"type": "linear"},
+              "showPoints": "never",
+              "spanNulls": false,
+              "stacking": {"group": "A", "mode": "none"},
+              "thresholdsStyle": {"mode": "off"}
+            },
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"color": "green", "value": null}
+              ]
+            },
+            "unit": "bytes"
+          }
+        },
+        "options": {
+          "legend": {"calcs": [], "displayMode": "list", "placement": "bottom"},
+          "tooltip": {"mode": "single", "sort": "none"}
+        },
+        "targets": [
+          {
+            "datasource": {"type": "prometheus", "uid": "cf11jx3lbdm2oa"},
+            "editorMode": "code",
+            "expr": "process_resident_memory_bytes{job=\"rhinometric-api\"}",
+            "legendFormat": "Memory Usage",
+            "range": true,
+            "refId": "A"
+          },
+          {
+            "datasource": {"type": "prometheus", "uid": "cf11jx3lbdm2oa"},
+            "editorMode": "code",
+            "expr": "process_virtual_memory_bytes{job=\"rhinometric-api\"}",
+            "legendFormat": "Virtual Memory",
+            "range": true,
+            "refId": "B"
+          }
+        ]
+      },
+      {
+        "id": 2,
+        "title": "⚡ Node.js Event Loop Lag",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "palette-classic"},
+            "custom": {
+              "axisLabel": "",
+              "axisPlacement": "auto",
+              "barAlignment": 0,
+              "drawStyle": "line",
+              "fillOpacity": 10,
+              "gradientMode": "none",
+              "hideFrom": {
+                "legend": false,
+                "tooltip": false,
+                "vis": false
+              },
+              "lineInterpolation": "linear",
+              "lineWidth": 2,
+              "pointSize": 5,
+              "scaleDistribution": {"type": "linear"},
+              "showPoints": "never",
+              "spanNulls": false,
+              "stacking": {"group": "A", "mode": "none"},
+              "thresholdsStyle": {"mode": "line"}
+            },
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "yellow", "value": 0.01},
+                {"color": "red", "value": 0.1}
+              ]
+            },
+            "unit": "s"
+          }
+        },
+        "options": {
+          "legend": {"calcs": [], "displayMode": "list", "placement": "bottom"},
+          "tooltip": {"mode": "single", "sort": "none"}
+        },
+        "targets": [
+          {
+            "datasource": {"type": "prometheus", "uid": "cf11jx3lbdm2oa"},
+            "editorMode": "code",
+            "expr": "nodejs_eventloop_lag_seconds{job=\"rhinometric-api\"}",
+            "legendFormat": "Event Loop Lag",
+            "range": true,
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "id": 3,
+        "title": "📊 HTTP Status Code Distribution",
+        "type": "piechart",
+        "gridPos": {"h": 8, "w": 8, "x": 0, "y": 8},
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "palette-classic"},
+            "custom": {
+              "hideFrom": {
+                "legend": false,
+                "tooltip": false,
+                "vis": false
+              }
+            },
+            "mappings": []
+          }
+        },
+        "options": {
+          "reduceOptions": {
+            "values": false,
+            "calcs": ["lastNotNull"],
+            "fields": ""
+          },
+          "pieType": "pie",
+          "tooltip": {"mode": "single", "sort": "none"},
+          "legend": {
+            "displayMode": "list",
+            "placement": "right"
+          }
+        },
+        "targets": [
+          {
+            "datasource": {"type": "prometheus", "uid": "cf11jx3lbdm2oa"},
+            "editorMode": "code",
+            "expr": "sum by (status_code) (increase(rhinometric_http_requests_total[5m]))",
+            "legendFormat": "{{status_code}}",
+            "range": true,
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "id": 4,
+        "title": "🔐 Authentication Metrics",
+        "type": "stat",
+        "gridPos": {"h": 8, "w": 8, "x": 8, "y": 8},
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "palette-classic"},
+            "custom": {
+              "displayMode": "list",
+              "placement": "bottom"
+            },
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"color": "green", "value": null}
+              ]
+            }
+          }
+        },
+        "options": {
+          "reduceOptions": {
+            "values": false,
+            "calcs": ["lastNotNull"],
+            "fields": ""
+          },
+          "orientation": "auto",
+          "textMode": "auto",
+          "colorMode": "value",
+          "graphMode": "area",
+          "justifyMode": "auto"
+        },
+        "targets": [
+          {
+            "datasource": {"type": "prometheus", "uid": "cf11jx3lbdm2oa"},
+            "editorMode": "code",
+            "expr": "sum(increase(rhinometric_auth_attempts_total{result=\"success\"}[5m]))",
+            "legendFormat": "Successful Logins",
+            "range": true,
+            "refId": "A"
+          },
+          {
+            "datasource": {"type": "prometheus", "uid": "cf11jx3lbdm2oa"},
+            "editorMode": "code",
+            "expr": "sum(increase(rhinometric_auth_attempts_total{result=\"failure\"}[5m]))",
+            "legendFormat": "Failed Logins",
+            "range": true,
+            "refId": "B"
+          }
+        ]
+      },
+      {
+        "id": 5,
+        "title": "🎯 Database Query Performance",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 8, "x": 16, "y": 8},
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "palette-classic"},
+            "custom": {
+              "axisLabel": "",
+              "axisPlacement": "auto",
+              "barAlignment": 0,
+              "drawStyle": "line",
+              "fillOpacity": 10,
+              "gradientMode": "none",
+              "hideFrom": {
+                "legend": false,
+                "tooltip": false,
+                "vis": false
+              },
+              "lineInterpolation": "linear",
+              "lineWidth": 2,
+              "pointSize": 5,
+              "scaleDistribution": {"type": "linear"},
+              "showPoints": "never",
+              "spanNulls": false,
+              "stacking": {"group": "A", "mode": "none"},
+              "thresholdsStyle": {"mode": "line"}
+            },
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "yellow", "value": 0.1},
+                {"color": "red", "value": 0.5}
+              ]
+            },
+            "unit": "s"
+          }
+        },
+        "options": {
+          "legend": {"calcs": [], "displayMode": "list", "placement": "bottom"},
+          "tooltip": {"mode": "single", "sort": "none"}
+        },
+        "targets": [
+          {
+            "datasource": {"type": "prometheus", "uid": "cf11jx3lbdm2oa"},
+            "editorMode": "code",
+            "expr": "rate(rhinometric_db_query_duration_seconds_sum[5m]) / rate(rhinometric_db_query_duration_seconds_count[5m])",
+            "legendFormat": "Avg Query Duration",
+            "range": true,
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "id": 6,
+        "title": "🚀 API Endpoint Performance Heatmap",
+        "type": "table",
+        "gridPos": {"h": 10, "w": 24, "x": 0, "y": 16},
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "thresholds"},
+            "custom": {
+              "align": "auto",
+              "displayMode": "color-background",
+              "filterable": true
+            },
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "yellow", "value": 0.1},
+                {"color": "orange", "value": 0.5},
+                {"color": "red", "value": 1.0}
+              ]
+            },
+            "unit": "s"
+          },
+          "overrides": [
+            {
+              "matcher": {"id": "byName", "options": "Requests/min"},
+              "properties": [
+                {
+                  "id": "unit",
+                  "value": "reqpm"
+                },
+                {
+                  "id": "thresholds",
+                  "value": {
+                    "mode": "absolute",
+                    "steps": [
+                      {"color": "red", "value": null},
+                      {"color": "yellow", "value": 10},
+                      {"color": "green", "value": 100}
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        "options": {
+          "showHeader": true,
+          "sortBy": [
+            {
+              "desc": true,
+              "displayName": "Avg Response Time"
+            }
+          ]
+        },
+        "targets": [
+          {
+            "datasource": {"type": "prometheus", "uid": "cf11jx3lbdm2oa"},
+            "editorMode": "code",
+            "expr": "sum by (method, route) (rate(rhinometric_http_requests_total[5m]) * 60)",
+            "format": "table",
+            "legendFormat": "Requests/min",
+            "range": true,
+            "refId": "A"
+          },
+          {
+            "datasource": {"type": "prometheus", "uid": "cf11jx3lbdm2oa"},
+            "editorMode": "code",
+            "expr": "sum by (method, route) (rate(rhinometric_http_request_duration_seconds_sum[5m])) / sum by (method, route) (rate(rhinometric_http_request_duration_seconds_count[5m]))",
+            "format": "table",
+            "legendFormat": "Avg Response Time",
+            "range": true,
+            "refId": "B"
+          }
+        ]
+      }
+    ]
+  },
+  "overwrite": true
+}

@@ -1,0 +1,86 @@
+version: '3.8'
+
+services:
+  # SaaS API Backend
+  rhinometric-api:
+    build: 
+      context: ../../backend
+    container_name: rhinometric-api
+    environment:
+      NODE_ENV: development
+      PORT: 3001
+      DB_HOST: rhinometric-postgres
+      DB_PORT: 5432
+      DB_NAME: rhinometric_dev
+      DB_USER: postgres
+      DB_PASSWORD: dev_password_change_me
+      REDIS_URL: redis://rhinometric-redis:6379
+      JWT_SECRET: dev-jwt-secret-change-in-production
+      ALLOWED_ORIGINS: http://localhost:3000
+    ports:
+      - "3001:3001"
+    depends_on:
+      rhinometric-postgres:
+        condition: service_healthy
+      rhinometric-redis:
+        condition: service_healthy
+    networks:
+      - rhinometric-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3001/api/v1/health', (res) => process.exit(res.statusCode === 200 ? 0 : 1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # PostgreSQL Database
+  rhinometric-postgres:
+    image: postgres:13-alpine
+    container_name: rhinometric-postgres
+    environment:
+      POSTGRES_DB: rhinometric_dev
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: dev_password_change_me
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - rhinometric-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d rhinometric_dev"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis Cache
+  rhinometric-redis:
+    image: redis:6-alpine
+    container_name: rhinometric-redis
+    command: redis-server --appendonly yes
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - rhinometric-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+networks:
+  rhinometric-network:
+    driver: bridge
+    name: rhinometric-network
+
+volumes:
+  postgres-data:
+    name: rhinometric-postgres-data
+  redis-data:
+    name: rhinometric-redis-data
