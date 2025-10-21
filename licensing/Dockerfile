@@ -17,11 +17,11 @@ RUN pip install --no-cache-dir \
     flask-cors==4.0.0
 
 # Crear directorios necesarios
-RUN mkdir -p /app/logs /data && \
-    chmod 755 /app/logs /data
+RUN mkdir -p /app/logs /data /app/licenses && \
+    chmod 755 /app/logs /data /app/licenses
 
 # Copiar script del servidor de licencias
-COPY ../rhinometric-license/server/license_server.py /app/license_server.py
+COPY license_server.py /app/license_server.py
 
 # Variables de entorno
 ENV FLASK_ENV=production
