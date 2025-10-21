@@ -1,8 +1,27 @@
-# 🦏 Rhinometric Trial - Plataforma de Observabilidad
+# 🦏 Rhinometric - Plataforma de Observabilidad
 
 **Versión Trial: 180 días (6 meses)**
 
 Bienvenido a Rhinometric, la plataforma completa de observabilidad que integra métricas, logs y trazas distribuidas en una solución unificada.
+
+---
+
+## 🏷️ Acerca de Rhinometric
+
+Rhinometric es una plataforma profesional de observabilidad que unifica:
+- **Métricas** con Prometheus
+- **Logs** con Loki
+- **Trazas distribuidas** con Tempo
+- **Visualización** con Grafana
+- **Alerting** con Alertmanager
+
+Todo integrado, configurado y soportado por el equipo de Rhinometric.
+
+### 📧 Contacto
+
+- **Soporte Técnico**: soporte@rhinometric.com
+- **Ventas**: ventas@rhinometric.com
+- **Información General**: info@rhinometric.com
 
 ---
 
@@ -440,12 +459,42 @@ Consulta: `docs/FAQ.md` y `docs/TROUBLESHOOTING.md`
 
 ## 📄 Licencia y Legal
 
-Esta versión Trial es proporcionada bajo licencia restringida:
+### Términos de Uso Trial
 
-- ✅ **Permitido**: Evaluación, testing, demos
-- ❌ **No permitido**: Uso en producción, reventa, modificación
+Esta versión Trial de Rhinometric está proporcionada bajo los siguientes términos:
 
-**Términos completos**: Ver `LICENSE.txt`
+#### ✅ Uso Permitido:
+- Evaluación del producto en entornos no productivos
+- Testing y pruebas de concepto (POC)
+- Demos comerciales internas
+- Formación y capacitación del equipo
+
+#### ❌ Uso NO Permitido:
+- Despliegue en entornos de producción
+- Redistribución o reventa del software
+- Modificación del código fuente
+- Uso comercial sin licencia válida
+- Uso después de los 180 días de trial
+
+**Términos completos**: Ver `LICENSE.txt` en este directorio.
+
+### 🔓 Componentes Open Source
+
+Rhinometric utiliza y agradece a los siguientes proyectos open source:
+
+| Componente | Licencia | Propósito |
+|------------|----------|-----------|
+| **Grafana** | Apache 2.0 | Visualización de datos |
+| **Prometheus** | Apache 2.0 | Recolección de métricas |
+| **Loki** | Apache 2.0 | Gestión de logs |
+| **Tempo** | Apache 2.0 | Trazas distribuidas |
+| **PostgreSQL** | PostgreSQL License | Base de datos |
+| **Redis** | BSD 3-Clause | Cache y sesiones |
+| **Alertmanager** | Apache 2.0 | Gestión de alertas |
+
+**Nota importante**: Aunque estos componentes son open source, la **integración, configuración personalizada, dashboards, sistema de licencias y soporte técnico** son proporcionados por Rhinometric y están sujetos a la licencia trial.
+
+Para detalles completos de las licencias de terceros, ver `THIRD_PARTY_LICENSES.txt`.
 
 ---
 

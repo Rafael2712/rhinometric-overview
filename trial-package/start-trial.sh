@@ -29,9 +29,13 @@ BOLD='\033[1m'
 print_header() {
     echo ""
     echo -e "${PURPLE}════════════════════════════════════════════════════════════════${NC}"
-    echo -e "${BOLD}  🦏 RHINOMETRIC TRIAL - INSTALADOR${NC}"
-    echo -e "${CYAN}  Plataforma de Observabilidad Completa${NC}"
-    echo -e "${YELLOW}  Versión Trial: 180 días${NC}"
+    echo -e "${BOLD}  🦏 RHINOMETRIC - PLATAFORMA DE OBSERVABILIDAD${NC}"
+    echo -e "${CYAN}  Versión Trial: 180 días (6 meses)${NC}"
+    echo -e "${PURPLE}════════════════════════════════════════════════════════════════${NC}"
+    echo ""
+    echo -e "${YELLOW}  Unificando Métricas, Logs y Trazas Distribuidas${NC}"
+    echo -e "${CYAN}  © 2025 Rhinometric. Todos los derechos reservados.${NC}"
+    echo ""
     echo -e "${PURPLE}════════════════════════════════════════════════════════════════${NC}"
     echo ""
 }
@@ -258,20 +262,124 @@ generate_license() {
     
     cat > "$LICENSE_FILE" << EOF
 ════════════════════════════════════════════════════════════════
-RHINOMETRIC TRIAL LICENSE
+🦏 RHINOMETRIC TRIAL LICENSE
 ════════════════════════════════════════════════════════════════
 
-Cliente:      ${CLIENT_NAME}
-Tipo:         Trial
 Producto:     Rhinometric Observability Platform
-Versión:      1.0
-
-Generado:     $(date +"%Y-%m-%d")
-Expira:       ${EXPIRE_DATE}
+Versión:      Trial 1.0
+Licenciado a: ${CLIENT_NAME}
+Tipo:         Uso exclusivo para evaluación
 Duración:     180 días (6 meses)
+
+Generado:     $(date +"%Y-%m-%d %H:%M:%S")
+Expira:       ${EXPIRE_DATE}
 
 ════════════════════════════════════════════════════════════════
 CARACTERÍSTICAS INCLUIDAS
+════════════════════════════════════════════════════════════════
+
+✅ Grafana Dashboard completo
+✅ Prometheus (recolección de métricas)
+✅ Loki (gestión centralizada de logs)
+✅ Tempo (trazas distribuidas)
+✅ Alertmanager (gestión de alertas)
+✅ PostgreSQL + Redis (base de datos y cache)
+✅ Exportadores de sistema (Node, cAdvisor)
+✅ Dashboard de monitoreo de licencias
+✅ Nginx reverse proxy
+✅ Provisioning automático de datasources
+
+════════════════════════════════════════════════════════════════
+LIMITACIONES TRIAL
+════════════════════════════════════════════════════════════════
+
+⏱️  Duración: 180 días desde instalación
+📊 Retención de datos: 7 días (Prometheus, Loki, Tempo)
+👥 Usuarios Grafana: Máximo 5
+🚫 Sin alta disponibilidad (HA)
+🚫 Sin backups automáticos
+🚫 Sin personalización de marca (White Label)
+📧 Soporte: Básico vía email (24-48h)
+⚠️  NO apto para entornos de producción
+
+════════════════════════════════════════════════════════════════
+TÉRMINOS DE USO
+════════════════════════════════════════════════════════════════
+
+✅ PERMITIDO:
+   • Evaluación del producto
+   • Testing en entornos no productivos
+   • Demos comerciales internos
+   • Proof of concept (POC)
+
+❌ NO PERMITIDO:
+   • Uso en entornos de producción
+   • Redistribución o reventa
+   • Modificación del código sin autorización
+   • Uso después de la fecha de expiración
+   • Transferencia a terceros
+
+Ver LICENSE.txt para términos completos.
+
+════════════════════════════════════════════════════════════════
+COMPONENTES OPEN SOURCE
+════════════════════════════════════════════════════════════════
+
+Esta plataforma integra los siguientes proyectos open source:
+
+• Grafana (Apache License 2.0) → https://grafana.com/
+• Prometheus (Apache License 2.0) → https://prometheus.io/
+• Loki (Apache License 2.0) → https://grafana.com/oss/loki/
+• Tempo (Apache License 2.0) → https://grafana.com/oss/tempo/
+• PostgreSQL (PostgreSQL License) → https://www.postgresql.org/
+• Redis (BSD License) → https://redis.io/
+
+La integración, configuración, dashboards personalizados, sistema de
+licencias y soporte técnico son proporcionados por Rhinometric.
+
+Ver THIRD_PARTY_LICENSES.txt para detalles completos de licencias.
+
+════════════════════════════════════════════════════════════════
+SOPORTE Y CONTACTO
+════════════════════════════════════════════════════════════════
+
+📧 Soporte Técnico:  soporte@rhinometric.com
+💼 Ventas:           ventas@rhinometric.com
+ℹ️  Información:     info@rhinometric.com
+
+Para convertir a licencia comercial o extender el trial,
+contacta con nuestro equipo de ventas.
+
+════════════════════════════════════════════════════════════════
+CONVERSIÓN A LICENCIA COMERCIAL
+════════════════════════════════════════════════════════════════
+
+Beneficios de la versión comercial:
+
+✨ Duración ilimitada
+✨ Retención de datos configurable
+✨ Alta disponibilidad (HA) multi-nodo
+✨ Usuarios ilimitados
+✨ Soporte prioritario 24/7
+✨ Backups automáticos
+✨ White Label completo
+✨ SLA garantizado (99.9%)
+✨ Almacenamiento cloud (S3/GCS/Azure)
+✨ Multi-tenancy
+
+Contacto: ventas@rhinometric.com
+
+════════════════════════════════════════════════════════════════
+AVISOS LEGALES
+════════════════════════════════════════════════════════════════
+
+© 2025 Rhinometric. Todos los derechos reservados.
+
+Este software se proporciona "TAL CUAL" sin garantías de ningún tipo.
+Al usar este software, acepta los términos de la licencia trial.
+
+════════════════════════════════════════════════════════════════
+EOF
 ════════════════════════════════════════════════════════════════
 
 ✅ Grafana Dashboard completo
