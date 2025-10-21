@@ -1,0 +1,55 @@
+{
+  "dashboard": {
+    "title": "🧭 Navigation - Quick Access",
+    "tags": ["navigation", "shortcuts", "explore"],
+    "timezone": "browser",
+    "schemaVersion": 38,
+    "version": 1,
+    "refresh": "",
+    "panels": [
+      {
+        "id": 1,
+        "title": "📊 METRICS - Explore Prometheus",
+        "type": "text",
+        "gridPos": {"h": 8, "w": 8, "x": 0, "y": 0},
+        "options": {
+          "mode": "markdown",
+          "content": "# 📊 METRICS\n\n## Quick Access to Prometheus Metrics\n\n### Popular Queries:\n\n#### System Metrics\n```\nnode_cpu_seconds_total\nnode_memory_MemAvailable_bytes\nnode_filesystem_avail_bytes\n```\n\n#### Container Metrics\n```\ncontainer_cpu_usage_seconds_total\ncontainer_memory_usage_bytes\ncontainer_network_receive_bytes_total\n```\n\n#### Application Metrics\n```\ntempo_request_message_bytes_count\ntempodb_backend_objects_total\nredis_commands_total\npg_locks_count\n```\n\n---\n\n[**🔗 Open Metrics Explorer →**](/explore?left=%7B%22datasource%22:%22ff1lws6mz39xcc%22,%22queries%22:%5B%7B%22refId%22:%22A%22,%22expr%22:%22%22%7D%5D,%22range%22:%7B%22from%22:%22now-1h%22,%22to%22:%22now%22%7D%7D)\n\n[**📈 View All Metrics →**](/explore?left=%7B%22datasource%22:%22ff1lws6mz39xcc%22,%22queries%22:%5B%7B%22refId%22:%22A%22,%22expr%22:%22%7Bjob%3D~%5C%22.%2B%5C%22%7D%22%7D%5D%7D)"
+        }
+      },
+      {
+        "id": 2,
+        "title": "📝 LOGS - Explore Loki",
+        "type": "text",
+        "gridPos": {"h": 8, "w": 8, "x": 8, "y": 0},
+        "options": {
+          "mode": "markdown",
+          "content": "# 📝 LOGS\n\n## Quick Access to Loki Logs\n\n### Popular Queries:\n\n#### All Logs\n```\n{service_name=~\".+\"}\n```\n\n#### Error Logs Only\n```\n{service_name=~\".+\"} |~ \"(?i)(error|exception|fail)\"\n```\n\n#### Specific Service\n```\n{service_name=\"frontend-web\"}\n{service_name=\"api-gateway\"}\n{service_name=\"auth-service\"}\n```\n\n#### By Level\n```\n{service_name=~\".+\"} | json | level=\"error\"\n```\n\n---\n\n[**🔗 Open Logs Explorer →**](/explore?left=%7B%22datasource%22:%22df1lwsdy0ecqof%22,%22queries%22:%5B%7B%22refId%22:%22A%22,%22expr%22:%22%7Bservice_name%3D~%5C%22.%2B%5C%22%7D%22%7D%5D,%22range%22:%7B%22from%22:%22now-1h%22,%22to%22:%22now%22%7D%7D)\n\n[**⚠️ View Error Logs →**](/explore?left=%7B%22datasource%22:%22df1lwsdy0ecqof%22,%22queries%22:%5B%7B%22refId%22:%22A%22,%22expr%22:%22%7Bservice_name%3D~%5C%22.%2B%5C%22%7D%20%7C~%20%5C%22%28%3Fi%29%28error%7Cexception%7Cfail%29%5C%22%22%7D%5D%7D)"
+        }
+      },
+      {
+        "id": 3,
+        "title": "🔍 TRACES - Explore Tempo",
+        "type": "text",
+        "gridPos": {"h": 8, "w": 8, "x": 16, "y": 0},
+        "options": {
+          "mode": "markdown",
+          "content": "# 🔍 TRACES\n\n## Quick Access to Tempo Traces\n\n### Popular Queries (TraceQL):\n\n#### All Traces\n```\n{}\n```\n\n#### Error Traces Only\n```\n{status=error}\n```\n\n#### By Service\n```\n{resource.service.name=\"frontend-web\"}\n{resource.service.name=\"payment-service\"}\n{resource.service.name=\"database-proxy\"}\n```\n\n#### By Duration\n```\n{duration > 1s}\n{duration > 500ms}\n```\n\n#### Combined Filters\n```\n{resource.service.name=\"payment-service\" && status=error}\n```\n\n---\n\n[**🔗 Open Traces Explorer →**](/explore?left=%7B%22datasource%22:%22cf1m5g6s0xvy8f%22,%22queries%22:%5B%7B%22refId%22:%22A%22,%22queryType%22:%22traceql%22,%22query%22:%22%7B%7D%22%7D%5D,%22range%22:%7B%22from%22:%22now-1h%22,%22to%22:%22now%22%7D%7D)\n\n[**⚠️ View Error Traces →**](/explore?left=%7B%22datasource%22:%22cf1m5g6s0xvy8f%22,%22queries%22:%5B%7B%22refId%22:%22A%22,%22queryType%22:%22traceql%22,%22query%22:%22%7Bstatus%3Derror%7D%22%7D%5D%7D)"
+        }
+      },
+      {
+        "id": 4,
+        "title": "🎯 DASHBOARDS - Quick Navigation",
+        "type": "text",
+        "gridPos": {"h": 10, "w": 24, "x": 0, "y": 8},
+        "options": {
+          "mode": "markdown",
+          "content": "# 🎯 DASHBOARDS - Enterprise Monitoring Suite\n\n## Core Observability\n| Dashboard | Description | Link |\n|-----------|-------------|------|\n| 🏠 **Overview** | Main dashboard with all key metrics | [Open →](/d/ef1m1elql2h34e/rhinometric-observability-overview) |\n| 🔍 **Tempo Tracing** | Distributed tracing analysis with RED metrics | [Open →](/d/cf1m3xo0up14wd/f09f948d-tempo-distributed-tracing) |\n| 📝 **Loki Logs** | Log analysis, patterns, and error tracking | [Open →](/d/af1m3xp4gl2ioe/f09f939d-loki-logs-analysis) |\n| 📡 **Prometheus** | Metrics overview and target health | [Open →](/d/ef1m3xuz20w00a/f09f93a1-prometheus-metrics-overview) |\n\n## Infrastructure & Services\n| Dashboard | Description | Link |\n|-----------|-------------|------|\n| 🗄️ **Postgres** | Database performance and connections | [Open →](/d/af1m3xq7xhb7kd/f09f9784-efb88f-postgres-database-performance) |\n| ⚡ **Redis** | Cache performance and memory usage | [Open →](/d/af1m3xrdw9wcgd/e29aa1-redis-cache-performance) |\n| 🌐 **Nginx** | Proxy status and endpoint monitoring | [Open →](/d/ef1m3xw3zczy8b/f09f8c90-nginx-proxy-dashboard) |\n| 🖥️ **Node Exporter** | System resources (CPU, Memory, Disk, Network) | [Open →](/d/ff1m3xsiw3wn4f/f09f96a5-efb88f-node-exporter-system-resources) |\n| 🐳 **cAdvisor** | Container metrics and resource usage | [Open →](/d/ff1m3xtvb51xcc/f09f90b3-cadvisor-container-metrics) |\n\n## Monitoring & Alerts\n| Dashboard | Description | Link |\n|-----------|-------------|------|\n| 🔔 **Alertmanager** | Active alerts and notification status | [Open →](/d/cf1m3xx1tzgn4a/f09f9494-alertmanager-alerts-dashboard) |\n| 📡 **Promtail** | Log collection status and ingestion rate | [Open →](/d/ef1m3xy08l43kb/f09f93a1-promtail-log-collection) |\n| 🔎 **Blackbox** | Endpoint monitoring and uptime | [Open →](/d/ef1m3xzyppzb4f/f09f948e-blackbox-exporter-endpoint-monitoring) |\n| 📊 **Full Stack** | Complete overview of all services | [Open →](/d/df1m3y8m3kb28a/f09f938a-full-stack-overview) |\n| 🎯 **APM** | Golden Signals (Latency, Traffic, Errors, Saturation) | [Open →](/d/cf1m3y99r3oxsf/f09f8eaf-apm-application-performance-monitoring) |\n\n---\n\n## 🚀 Quick Actions\n\n- [📊 View All Dashboards](/dashboards)\n- [🔍 Search Dashboards](/dashboards?query=)\n- [⚙️ Grafana Settings](/admin/settings)\n- [👥 Data Sources](/datasources)\n"
+        }
+      }
+    ]
+  },
+  "overwrite": true,
+  "folderId": 0,
+  "folderUid": ""
+}

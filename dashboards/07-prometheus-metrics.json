@@ -1,0 +1,21 @@
+{
+  "dashboard": {
+    "title": "📡 Prometheus - Metrics Overview",
+    "tags": ["prometheus", "metrics", "monitoring", "enterprise"],
+    "timezone": "browser",
+    "schemaVersion": 38,
+    "version": 1,
+    "refresh": "30s",
+    "panels": [
+      {"id": 1, "title": "📊 Total Time Series", "type": "stat", "gridPos": {"h": 6, "w": 6, "x": 0, "y": 0}, "datasource": {"type": "prometheus", "uid": "ff1lws6mz39xcc"}, "targets": [{"expr": "prometheus_tsdb_symbol_table_size_bytes", "refId": "A"}], "fieldConfig": {"defaults": {"unit": "bytes", "color": {"mode": "palette-classic"}}}, "options": {"graphMode": "area", "colorMode": "value"}},
+      {"id": 2, "title": "⚡ Scrape Duration", "type": "stat", "gridPos": {"h": 6, "w": 6, "x": 6, "y": 0}, "datasource": {"type": "prometheus", "uid": "ff1lws6mz39xcc"}, "targets": [{"expr": "avg(scrape_duration_seconds)", "refId": "A"}], "fieldConfig": {"defaults": {"unit": "s", "color": {"mode": "thresholds"}, "thresholds": {"steps": [{"value": 0, "color": "green"}, {"value": 1, "color": "yellow"}, {"value": 5, "color": "red"}]}}}, "options": {"graphMode": "area", "colorMode": "value"}},
+      {"id": 3, "title": "🎯 Targets Health", "type": "stat", "gridPos": {"h": 6, "w": 6, "x": 12, "y": 0}, "datasource": {"type": "prometheus", "uid": "ff1lws6mz39xcc"}, "targets": [{"expr": "sum(up)", "refId": "A"}], "fieldConfig": {"defaults": {"unit": "short", "color": {"mode": "palette-classic"}}}, "options": {"graphMode": "none", "colorMode": "value"}},
+      {"id": 4, "title": "💾 Storage Size", "type": "stat", "gridPos": {"h": 6, "w": 6, "x": 18, "y": 0}, "datasource": {"type": "prometheus", "uid": "ff1lws6mz39xcc"}, "targets": [{"expr": "prometheus_tsdb_storage_blocks_bytes", "refId": "A"}], "fieldConfig": {"defaults": {"unit": "bytes", "color": {"mode": "palette-classic"}}}, "options": {"graphMode": "area", "colorMode": "value"}},
+      {"id": 5, "title": "📈 Ingestion Rate", "type": "timeseries", "gridPos": {"h": 8, "w": 12, "x": 0, "y": 6}, "datasource": {"type": "prometheus", "uid": "ff1lws6mz39xcc"}, "targets": [{"expr": "rate(prometheus_tsdb_head_samples_appended_total[5m])", "legendFormat": "Samples/sec", "refId": "A"}], "fieldConfig": {"defaults": {"unit": "short", "custom": {"drawStyle": "line", "lineInterpolation": "smooth", "fillOpacity": 20}}}},
+      {"id": 6, "title": "🎯 Target Status", "type": "timeseries", "gridPos": {"h": 8, "w": 12, "x": 12, "y": 6}, "datasource": {"type": "prometheus", "uid": "ff1lws6mz39xcc"}, "targets": [{"expr": "up", "legendFormat": "{{job}} - {{instance}}", "refId": "A"}], "fieldConfig": {"defaults": {"unit": "short", "custom": {"drawStyle": "line", "lineInterpolation": "stepAfter", "fillOpacity": 50}}}},
+      {"id": 7, "title": "⏱️ Scrape Duration by Target", "type": "bargauge", "gridPos": {"h": 8, "w": 12, "x": 0, "y": 14}, "datasource": {"type": "prometheus", "uid": "ff1lws6mz39xcc"}, "targets": [{"expr": "scrape_duration_seconds", "legendFormat": "{{job}}", "refId": "A"}], "fieldConfig": {"defaults": {"unit": "s", "color": {"mode": "palette-classic"}}}, "options": {"orientation": "horizontal", "displayMode": "gradient"}},
+      {"id": 8, "title": "📊 Time Series Growth", "type": "timeseries", "gridPos": {"h": 8, "w": 12, "x": 12, "y": 14}, "datasource": {"type": "prometheus", "uid": "ff1lws6mz39xcc"}, "targets": [{"expr": "prometheus_tsdb_symbol_table_size_bytes", "legendFormat": "Time Series", "refId": "A"}], "fieldConfig": {"defaults": {"unit": "bytes", "custom": {"drawStyle": "line", "lineInterpolation": "smooth", "fillOpacity": 20}}}}
+    ]
+  },
+  "overwrite": true
+}

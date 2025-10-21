@@ -1,5 +1,7 @@
 from flask import Flask, jsonify
-import json, base64, datetime
+import json
+import base64
+from datetime import datetime
 
 app = Flask(__name__)
 
@@ -9,7 +11,11 @@ def license_metrics():
     licenses = []
     with open('/app/licenses.log', 'r') as f:
         for line in f:
-            lic = json.loads(base64.b64decode(line))
+            raw = line.strip()
+            if not raw:
+                continue
+            # Cada línea está codificada en base64 con un JSON
+            lic = json.loads(base64.b64decode(raw))
             licenses.append({
                 'customer': lic['customer'],
                 'type': lic['type'],

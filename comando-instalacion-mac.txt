@@ -1,0 +1,325 @@
+﻿# Copia TODO este bloque y pégalo en una Terminal de macOS con Docker Desktop abierto
+bash <<'RHINO_TRIAL'
+set -euo pipefail
+
+clear
+echo "════════════════════════════════════════════════════════"
+echo "  🦏 RHINOMETRIC TRIAL — Instalador de Observabilidad"
+echo "════════════════════════════════════════════════════════"
+
+# Preflight
+if ! command -v docker &>/dev/null; then
+  echo "❌ No se encontró Docker. Instala Docker Desktop y vuelve a intentar."; exit 1
+fi
+if ! docker info >/dev/null 2>&1; then
+  echo "❌ Docker Desktop no está corriendo. Ábrelo y vuelve a intentar."; exit 1
+fi
+
+DIR="$HOME/rhinometric"
+mkdir -p "$DIR/config" "$DIR/grafana/provisioning/datasources" "$DIR/grafana/provisioning/dashboards"
+cd "$DIR"
+
+# docker-compose.yml — stack completo (trial)
+cat > docker-compose.yml <<'EOF'
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: rhino-postgres
+    environment:
+      POSTGRES_DB: rhinometric
+      POSTGRES_USER: rhinometric
+      POSTGRES_PASSWORD: rhino123
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks: [rhino]
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: rhino-redis
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    networks: [rhino]
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:v2.48.0
+    container_name: rhino-prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.retention.time=7d'
+      - '--web.enable-lifecycle'
+    volumes:
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    ports: ["9090:9090"]
+    networks: [rhino]
+    restart: unless-stopped
+
+  loki:
+    image: grafana/loki:2.9.3
+    container_name: rhino-loki
+    command: -config.file=/etc/loki/local-config.yaml
+    volumes:
+      - ./config/loki.yml:/etc/loki/local-config.yaml:ro
+      - loki_data:/loki
+    ports: ["3100:3100"]
+    networks: [rhino]
+    restart: unless-stopped
+
+  tempo:
+    image: grafana/tempo:2.3.1
+    container_name: rhino-tempo
+    command: -config.file=/etc/tempo/tempo.yaml
+    volumes:
+      - ./config/tempo.yml:/etc/tempo/tempo.yaml:ro
+      - tempo_data:/tmp/tempo
+    ports:
+      - "3200:3200"
+      - "4317:4317"
+      - "4318:4318"
+    networks: [rhino]
+    restart: unless-stopped
+
+  alertmanager:
+    image: prom/alertmanager:v0.26.0
+    container_name: rhino-alertmanager
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+    volumes:
+      - ./config/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanager_data:/alertmanager
+    ports: ["9093:9093"]
+    networks: [rhino]
+    restart: unless-stopped
+
+  node-exporter:
+    image: prom/node-exporter:v1.7.0
+    container_name: rhino-node-exporter
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--path.rootfs=/host'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/host:ro
+    networks: [rhino]
+    restart: unless-stopped
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.47.2
+    container_name: rhino-cadvisor
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    networks: [rhino]
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:10.2.3
+    container_name: rhino-grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin123
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_USERS_ALLOW_ORG_CREATE: "false"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+    ports: ["3000:3000"]
+    networks: [rhino]
+    restart: unless-stopped
+
+networks:
+  rhino:
+    driver: bridge
+
+volumes:
+  postgres_data: {}
+  redis_data: {}
+  prometheus_data: {}
+  loki_data: {}
+  tempo_data: {}
+  alertmanager_data: {}
+  grafana_data: {}
+EOF
+
+# Prometheus
+cat > config/prometheus.yml <<'EOF'
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ['alertmanager:9093']
+
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['prometheus:9090']
+  - job_name: 'grafana'
+    static_configs:
+      - targets: ['grafana:3000']
+  - job_name: 'alertmanager'
+    static_configs:
+      - targets: ['alertmanager:9093']
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: ['cadvisor:8080']
+EOF
+
+# Alertmanager
+cat > config/alertmanager.yml <<'EOF'
+global:
+  resolve_timeout: 5m
+route:
+  receiver: 'default'
+receivers:
+  - name: 'default'
+EOF
+
+# Loki
+cat > config/loki.yml <<'EOF'
+auth_enabled: false
+server:
+  http_listen_port: 3100
+common:
+  path_prefix: /loki
+  storage:
+    filesystem:
+      chunks_directory: /loki/chunks
+      rules_directory: /loki/rules
+  replication_factor: 1
+  ring:
+    kvstore:
+      store: inmemory
+schema_config:
+  configs:
+    - from: 2023-01-01
+      store: boltdb-shipper
+      object_store: filesystem
+      schema: v11
+      index:
+        prefix: index_
+        period: 24h
+ruler:
+  alertmanager_url: http://alertmanager:9093
+limits_config:
+  retention_period: 168h
+compactor:
+  working_directory: /loki/compactor
+  shared_store: filesystem
+  retention_enabled: true
+EOF
+
+# Tempo
+cat > config/tempo.yml <<'EOF'
+server:
+  http_listen_port: 3200
+
+distributor:
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+          endpoint: 0.0.0.0:4317
+        http:
+          endpoint: 0.0.0.0:4318
+    jaeger:
+      protocols:
+        thrift_http:
+          endpoint: 0.0.0.0:14268
+
+ingester:
+  max_block_duration: 5m
+
+compactor:
+  compaction:
+    block_retention: 168h
+
+storage:
+  trace:
+    backend: local
+    local:
+      path: /tmp/tempo/traces
+EOF
+
+# Grafana datasources
+cat > grafana/provisioning/datasources/datasources.yml <<'EOF'
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+  - name: Loki
+    type: loki
+    access: proxy
+    url: http://loki:3100
+  - name: Tempo
+    type: tempo
+    access: proxy
+    url: http://tempo:3200
+EOF
+
+# Grafana dashboards provider
+cat > grafana/provisioning/dashboards/dashboard.yaml <<'EOF'
+apiVersion: 1
+providers:
+  - name: 'Default'
+    orgId: 1
+    folder: ''
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 10
+    options:
+      path: /etc/grafana/provisioning/dashboards
+      foldersFromFilesStructure: true
+EOF
+
+# Mensaje de marca TRIAL (6 meses)
+cat > TRIAL.txt <<'EOF'
+RHINOMETRIC — Trial de 6 meses (180 días)
+Fecha de instalación: $(date)
+Este paquete es para evaluación. Retención de datos: 7 días.
+Servicios: Grafana, Prometheus, Loki, Tempo, Alertmanager, PostgreSQL, Redis, Node Exporter, cAdvisor.
+EOF
+
+# Arranque
+echo "\n📥 Descargando imágenes…"
+docker compose pull
+
+echo "\n🚀 Iniciando servicios…"
+docker compose up -d
+
+sleep 8
+
+echo "\n════════════════════════════════════════════════════════"
+echo "  ✅ Rhinometric Trial desplegado"
+echo "════════════════════════════════════════════════════════"
+echo "URLs:"
+echo "  • Grafana:       http://localhost:3000   (admin / admin123)"
+echo "  • Prometheus:    http://localhost:9090"
+echo "  • Alertmanager:  http://localhost:9093"
+echo "  • Loki:          http://localhost:3100"
+echo "  • Tempo:         http://localhost:3200"
+echo "\nDirectorio: $HOME/rhinometric"
+echo "\nComandos útiles:"
+echo "  cd ~/rhinometric"
+echo "  docker compose ps"
+echo "  docker compose logs -f"
+echo "  docker compose restart"
+echo "  docker compose down -v"
+
+RHINO_TRIAL

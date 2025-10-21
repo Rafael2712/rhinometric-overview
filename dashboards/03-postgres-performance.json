@@ -1,0 +1,247 @@
+{
+  "dashboard": {
+    "title": "🗄️ Postgres - Database Performance",
+    "tags": ["postgres", "database", "performance", "enterprise"],
+    "timezone": "browser",
+    "schemaVersion": 38,
+    "version": 1,
+    "refresh": "30s",
+    "panels": [
+      {
+        "id": 1,
+        "title": "📊 Database Size",
+        "type": "stat",
+        "gridPos": {"h": 6, "w": 6, "x": 0, "y": 0},
+        "datasource": {"type": "prometheus", "uid": "ff1lws6mz39xcc"},
+        "targets": [
+          {
+            "expr": "sum(pg_database_size_bytes)",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "bytes",
+            "color": {"mode": "thresholds"},
+            "thresholds": {
+              "steps": [
+                {"value": 0, "color": "green"},
+                {"value": 1073741824, "color": "yellow"},
+                {"value": 10737418240, "color": "red"}
+              ]
+            }
+          }
+        },
+        "options": {"graphMode": "area", "colorMode": "value", "textMode": "value_and_name"}
+      },
+      {
+        "id": 2,
+        "title": "🔒 Active Locks",
+        "type": "stat",
+        "gridPos": {"h": 6, "w": 6, "x": 6, "y": 0},
+        "datasource": {"type": "prometheus", "uid": "ff1lws6mz39xcc"},
+        "targets": [
+          {
+            "expr": "sum(pg_locks_count)",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "color": {"mode": "thresholds"},
+            "thresholds": {
+              "steps": [
+                {"value": 0, "color": "green"},
+                {"value": 50, "color": "yellow"},
+                {"value": 100, "color": "red"}
+              ]
+            }
+          }
+        },
+        "options": {"graphMode": "area", "colorMode": "value", "textMode": "value_and_name"}
+      },
+      {
+        "id": 3,
+        "title": "⚡ Is Replica",
+        "type": "stat",
+        "gridPos": {"h": 6, "w": 6, "x": 12, "y": 0},
+        "datasource": {"type": "prometheus", "uid": "ff1lws6mz39xcc"},
+        "targets": [
+          {
+            "expr": "pg_replication_is_replica",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "mappings": [
+              {"type": "value", "value": 0, "text": "PRIMARY", "color": "green"},
+              {"type": "value", "value": 1, "text": "REPLICA", "color": "blue"}
+            ],
+            "color": {"mode": "thresholds"}
+          }
+        },
+        "options": {"graphMode": "none", "colorMode": "background", "textMode": "value"}
+      },
+      {
+        "id": 4,
+        "title": "⏱️ Replication Lag",
+        "type": "stat",
+        "gridPos": {"h": 6, "w": 6, "x": 18, "y": 0},
+        "datasource": {"type": "prometheus", "uid": "ff1lws6mz39xcc"},
+        "targets": [
+          {
+            "expr": "pg_replication_lag_seconds",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "s",
+            "color": {"mode": "thresholds"},
+            "thresholds": {
+              "steps": [
+                {"value": 0, "color": "green"},
+                {"value": 5, "color": "yellow"},
+                {"value": 30, "color": "red"}
+              ]
+            }
+          }
+        },
+        "options": {"graphMode": "area", "colorMode": "value", "textMode": "value_and_name"}
+      },
+      {
+        "id": 5,
+        "title": "📈 Database Size Over Time",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 6},
+        "datasource": {"type": "prometheus", "uid": "ff1lws6mz39xcc"},
+        "targets": [
+          {
+            "expr": "pg_database_size_bytes",
+            "legendFormat": "{{datname}}",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "bytes",
+            "custom": {"drawStyle": "line", "lineInterpolation": "smooth", "fillOpacity": 20}
+          }
+        }
+      },
+      {
+        "id": 6,
+        "title": "🔒 Locks by Mode",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 6},
+        "datasource": {"type": "prometheus", "uid": "ff1lws6mz39xcc"},
+        "targets": [
+          {
+            "expr": "pg_locks_count",
+            "legendFormat": "{{mode}} - {{datname}}",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "custom": {"drawStyle": "line", "lineInterpolation": "smooth", "fillOpacity": 10, "stacking": {"mode": "normal"}}
+          }
+        }
+      },
+      {
+        "id": 7,
+        "title": "📊 Exporter Health",
+        "type": "stat",
+        "gridPos": {"h": 6, "w": 6, "x": 0, "y": 14},
+        "datasource": {"type": "prometheus", "uid": "ff1lws6mz39xcc"},
+        "targets": [
+          {
+            "expr": "pg_exporter_last_scrape_error",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "mappings": [
+              {"type": "value", "value": 0, "text": "HEALTHY", "color": "green"},
+              {"type": "value", "value": 1, "text": "ERROR", "color": "red"}
+            ],
+            "color": {"mode": "thresholds"}
+          }
+        },
+        "options": {"graphMode": "none", "colorMode": "background", "textMode": "value"}
+      },
+      {
+        "id": 8,
+        "title": "⏱️ Scrape Duration",
+        "type": "stat",
+        "gridPos": {"h": 6, "w": 6, "x": 6, "y": 14},
+        "datasource": {"type": "prometheus", "uid": "ff1lws6mz39xcc"},
+        "targets": [
+          {
+            "expr": "pg_exporter_last_scrape_duration_seconds",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "s",
+            "color": {"mode": "palette-classic"}
+          }
+        },
+        "options": {"graphMode": "area", "colorMode": "value", "textMode": "value_and_name"}
+      },
+      {
+        "id": 9,
+        "title": "🔄 Total Scrapes",
+        "type": "stat",
+        "gridPos": {"h": 6, "w": 6, "x": 12, "y": 14},
+        "datasource": {"type": "prometheus", "uid": "ff1lws6mz39xcc"},
+        "targets": [
+          {
+            "expr": "pg_exporter_scrapes_total",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "color": {"mode": "palette-classic"}
+          }
+        },
+        "options": {"graphMode": "area", "colorMode": "value", "textMode": "value_and_name"}
+      },
+      {
+        "id": 10,
+        "title": "📊 Connection Limits",
+        "type": "bargauge",
+        "gridPos": {"h": 6, "w": 6, "x": 18, "y": 14},
+        "datasource": {"type": "prometheus", "uid": "ff1lws6mz39xcc"},
+        "targets": [
+          {
+            "expr": "pg_database_connection_limit",
+            "legendFormat": "{{datname}}",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "color": {"mode": "palette-classic"}
+          }
+        },
+        "options": {
+          "orientation": "horizontal",
+          "displayMode": "gradient"
+        }
+      }
+    ]
+  },
+  "overwrite": true,
+  "folderId": 0,
+  "folderUid": ""
+}

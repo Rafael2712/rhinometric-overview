@@ -17,7 +17,7 @@ def generate_license(license_type, customer_name, days=None):
     }
     
     if license_type == "trial":
-        expire_date = now + timedelta(days=days or 30)
+        expire_date = now + timedelta(days=days or 180)
         license_data["expires"] = expire_date.isoformat()
         license_data["features"] = ["monitoring", "alerting", "dashboards"]
         

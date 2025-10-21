@@ -35,7 +35,7 @@ def generate_license():
     if not client_name or not hardware_id:
         return jsonify({"error": "Missing required fields"}), 400
 
-    expires_at = datetime.now() + timedelta(days=30 if license_type == 'trial' else 365 if license_type == 'annual' else 9999)
+    expires_at = datetime.now() + timedelta(days=180 if license_type == 'trial' else 365 if license_type == 'annual' else 9999)
 
     payload = {
         'client_name': client_name,

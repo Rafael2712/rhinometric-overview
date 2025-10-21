@@ -1,0 +1,223 @@
+# RHINOMETRIC - Stack mínimo para testing (sin licensing por Docker Hub caído)
+# Compatible con Docker Compose v2+
+
+services:
+  # Base de datos
+  postgres:
+    image: postgres:15
+    container_name: rhinometric-postgres
+    environment:
+      POSTGRES_DB: rhinometric_trial
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: trial_rhinometric_2024
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db:/docker-entrypoint-initdb.d
+    networks:
+      - rhinometric_network
+    restart: unless-stopped
+
+  redis:
+    image: redis:alpine
+    container_name: rhinometric-redis
+    command: redis-server --appendonly yes --maxmemory 256mb
+    volumes:
+      - redis_data:/data
+    networks:
+      - rhinometric_network
+    restart: unless-stopped
+
+  # Observabilidad core
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: rhinometric-prometheus
+    volumes:
+      - ./config/prometheus-saas.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=7d'
+    networks:
+      - rhinometric_network
+    ports:
+      - "9090:9090"
+    restart: unless-stopped
+
+  loki:
+    image: grafana/loki:latest
+    container_name: rhinometric-loki
+    volumes:
+      - ./config/loki-saas.yml:/etc/loki/local-config.yaml:ro
+      - loki_data:/loki
+    command: -config.file=/etc/loki/local-config.yaml
+    networks:
+      - rhinometric_network
+    ports:
+      - "3100:3100"
+    restart: unless-stopped
+
+  tempo:
+    image: grafana/tempo:latest
+    container_name: rhinometric-tempo
+    volumes:
+      - ./config/tempo-saas.yml:/etc/tempo/tempo.yaml:ro
+      - tempo_data:/tmp/tempo
+    command: -config.file=/etc/tempo/tempo.yaml
+    networks:
+      - rhinometric_network
+    ports:
+      - "3200:3200"
+      - "14268:14268"
+      - "4317:4317"
+      - "4318:4318"
+    restart: unless-stopped
+
+  # Generador de trazas para testear Tempo
+  telemetrygen:
+    image: ghcr.io/open-telemetry/opentelemetry-collector-contrib/telemetrygen:latest
+    container_name: rhinometric-telemetrygen
+    command: 
+      - traces
+      - --otlp-endpoint=tempo:4317
+      - --otlp-insecure
+      - --rate=10
+      - --duration=inf
+    depends_on:
+      - tempo
+    networks:
+      - rhinometric_network
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:11.4.0
+    container_name: rhinometric-grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin_trial_2024
+      GF_SERVER_ROOT_URL: http://localhost:3000
+      GF_INSTALL_PLUGINS: ""
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+    depends_on:
+      - prometheus
+      - loki
+      - tempo
+    networks:
+      - rhinometric_network
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+
+  alertmanager:
+    image: prom/alertmanager:latest
+    container_name: rhinometric-alertmanager
+    volumes:
+      - ./config/alertmanager-saas.yml:/etc/alertmanager/alertmanager.yml:ro
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+    networks:
+      - rhinometric_network
+    ports:
+      - "9093:9093"
+    restart: unless-stopped
+
+  # Exporters
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: rhinometric-node-exporter
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--path.rootfs=/host'
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/host:ro
+    networks:
+      - rhinometric_network
+    restart: unless-stopped
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    container_name: rhinometric-cadvisor
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    networks:
+      - rhinometric_network
+    restart: unless-stopped
+
+  blackbox-exporter:
+    image: prom/blackbox-exporter:latest
+    container_name: rhinometric-blackbox-exporter
+    networks:
+      - rhinometric_network
+    volumes:
+      - ./config/blackbox.yml:/etc/blackbox_exporter/config.yml:ro
+    restart: unless-stopped
+
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:latest
+    container_name: rhinometric-postgres-exporter
+    environment:
+      - DATA_SOURCE_NAME=postgresql://postgres:trial_rhinometric_2024@postgres:5432/rhinometric_trial?sslmode=disable
+    networks:
+      - rhinometric_network
+    depends_on:
+      - postgres
+    restart: unless-stopped
+
+  redis-exporter:
+    image: oliver006/redis_exporter:latest
+    container_name: rhinometric-redis-exporter
+    environment:
+      - REDIS_ADDR=redis:6379
+    networks:
+      - rhinometric_network
+    depends_on:
+      - redis
+    restart: unless-stopped
+
+  promtail:
+    image: grafana/promtail:latest
+    container_name: rhinometric-promtail
+    command: -config.file=/etc/promtail/config.yml
+    volumes:
+      - ./config/promtail-config.yml:/etc/promtail/config.yml:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - rhinometric_network
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:alpine
+    container_name: rhinometric-nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./config/nginx-trial.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - grafana
+      - prometheus
+    networks:
+      - rhinometric_network
+    restart: unless-stopped
+
+networks:
+  rhinometric_network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
+  prometheus_data:
+  grafana_data:
+  loki_data:
+  tempo_data:
