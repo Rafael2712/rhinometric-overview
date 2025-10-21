@@ -1,0 +1,84 @@
+{
+  "name": "rhinometric-trial-installer",
+  "version": "1.0.0",
+  "description": "🦏 Rhinometric Trial - Instalador Windows",
+  "main": "installer.js",
+  "author": "Rhinometric",
+  "license": "Proprietary",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder",
+    "build:win": "electron-builder --win --x64",
+    "build:all": "electron-builder --win --x64 --ia32"
+  },
+  "build": {
+    "appId": "com.rhinometric.trial",
+    "productName": "Rhinometric Trial",
+    "copyright": "© 2025 Rhinometric. All rights reserved.",
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64",
+            "ia32"
+          ]
+        }
+      ],
+      "icon": "build/icon.ico",
+      "publish": null
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "installerHeaderIcon": "build/icon.ico",
+      "license": "../../LICENSE.txt",
+      "warningsAsErrors": false
+    },
+    "directories": {
+      "buildResources": "build",
+      "output": "dist"
+    },
+    "files": [
+      "installer.js",
+      "ui/**/*",
+      "scripts/**/*",
+      "../../*.yml",
+      "../../config/**/*",
+      "../../dashboards/**/*",
+      "../../grafana/**/*",
+      "../../licensing/**/*",
+      "../../prometheus/**/*",
+      "../../loki/**/*",
+      "../../tempo/**/*",
+      "../../nginx/**/*",
+      "../../README.md",
+      "../../LICENSE.txt",
+      "../../THIRD_PARTY_LICENSES.txt"
+    ],
+    "extraResources": [
+      {
+        "from": "../../",
+        "to": "trial-package",
+        "filter": [
+          "**/*",
+          "!node_modules/**/*",
+          "!installers/**/*"
+        ]
+      }
+    ]
+  },
+  "dependencies": {
+    "axios": "^1.6.0",
+    "electron-log": "^5.0.0",
+    "electron-store": "^8.1.0"
+  },
+  "devDependencies": {
+    "electron": "^27.0.0",
+    "electron-builder": "^24.6.0"
+  }
+}
