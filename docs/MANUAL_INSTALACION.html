@@ -402,6 +402,41 @@
             background: var(--light);
         }
         
+        /* Print styles */
+        @media print {
+            body {
+                font-size: 11pt;
+            }
+            .sidebar {
+                display: none;
+            }
+            .main-content {
+                margin-left: 0;
+                max-width: 100%;
+            }
+            .no-print {
+                display: none !important;
+            }
+            .section {
+                page-break-inside: avoid;
+            }
+            h2, h3, h4 {
+                page-break-after: avoid;
+            }
+            .step {
+                page-break-inside: avoid;
+            }
+        }
+        
+        /* Print button */
+        .print-btn {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            z-index: 1000;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        
         /* Responsive */
         @media (max-width: 768px) {
             .sidebar {
@@ -430,6 +465,11 @@
                 padding: 10px 15px;
                 border-radius: 8px;
                 cursor: pointer;
+            }
+            
+            .print-btn {
+                bottom: 20px;
+                right: 20px;
             }
         }
         
@@ -483,8 +523,14 @@
         <p>De cero a observabilidad completa en menos de 5 minutos</p>
         <p style="margin-top: 20px;">
             <a href="#instalacion" class="btn">Comenzar Instalación</a>
+            <button onclick="window.print()" class="btn btn-secondary no-print" style="margin-left: 10px;">📥 Descargar como PDF</button>
         </p>
     </div>
+    
+    <!-- Floating Print Button -->
+    <button onclick="window.print()" class="btn print-btn no-print" title="Descargar como PDF">
+        📥 PDF
+    </button>
 
     <!-- Requisitos del Sistema -->
     <section class="section" id="requisitos">
@@ -1335,6 +1381,11 @@ grafana-cli admin reset-admin-password nueva_contraseña_aqui</pre>
 </main>
 
 <script>
+// Print to PDF function
+function printToPDF() {
+    window.print();
+}
+
 // Smooth scroll
 document.querySelectorAll('a[href^="#"]').forEach(anchor => {
     anchor.addEventListener('click', function (e) {
