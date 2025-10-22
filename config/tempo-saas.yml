@@ -25,7 +25,7 @@ ingester:
 
 compactor:
   compaction:
-    block_retention: 168h  # 7 días para trial
+    block_retention: 24h  # 1 día para trial optimizado
 
 metrics_generator:
   registry:
@@ -47,9 +47,9 @@ storage:
       path: /tmp/tempo/blocks
 
 querier:
-  max_concurrent_queries: 20
+  max_concurrent_queries: 10  # Reducido de 20 a 10
 
 query_frontend:
   search:
-    max_duration: 168h  # 7 días
-    default_result_limit: 20
+    max_duration: 48h  # 2 días máximo
+    default_result_limit: 10  # Reducido de 20 a 10

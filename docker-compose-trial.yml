@@ -50,13 +50,13 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '1.0'
-          memory: 2G
+          cpus: '0.3'
+          memory: 512M
 
   redis:
     image: redis:alpine
     container_name: rhinometric-redis
-    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    command: redis-server --appendonly yes --maxmemory 128mb --maxmemory-policy allkeys-lru
     volumes:
       - redis_data:/data
     networks:
@@ -65,8 +65,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.2'
-          memory: 256M
+          cpus: '0.1'
+          memory: 128M
 
   # =================================
   # TIER 3: OBSERVABILIDAD CORE
@@ -84,7 +84,8 @@ services:
       - '--web.console.libraries=/usr/share/prometheus/console_libraries'
       - '--web.console.templates=/usr/share/prometheus/consoles'
       - '--web.enable-lifecycle'
-      - '--storage.tsdb.retention.time=7d'  # Trial: 7 días retención
+      - '--storage.tsdb.retention.time=1d'  # Trial: 1 día retención
+      - '--storage.tsdb.retention.size=2GB'  # Límite 2GB
     depends_on:
       license-server:
         condition: service_healthy
@@ -96,8 +97,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '1.0'
-          memory: 2G
+          cpus: '0.5'
+          memory: 1G
 
   loki:
     image: grafana/loki:latest
@@ -117,8 +118,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.5'
-          memory: 1G
+          cpus: '0.3'
+          memory: 512M
 
   tempo:
     image: grafana/tempo:latest
@@ -141,19 +142,19 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.5'
-          memory: 512M
+          cpus: '0.3'
+          memory: 256M
 
-  # Simple OpenTelemetry trace generator to validate Tempo ingestion
-  telemetrygen:
-    image: ghcr.io/open-telemetry/opentelemetry-collector-contrib/telemetrygen:latest
-    container_name: rhinometric-telemetrygen
-    command: ["--otlp-endpoint=tempo:4317", "--otlp-insecure=true", "--traces", "--rate=2", "--duration=0s"]
-    depends_on:
-      - tempo
-    networks:
-      - rhinometric_network
-    restart: unless-stopped
+  # TELEMETRYGEN DESHABILITADO PARA AHORRAR RECURSOS
+  # telemetrygen:
+  #   image: ghcr.io/open-telemetry/opentelemetry-collector-contrib/telemetrygen:latest
+  #   container_name: rhinometric-telemetrygen
+  #   command: ["--otlp-endpoint=tempo:4317", "--otlp-insecure=true", "--traces", "--rate=2", "--duration=0s"]
+  #   depends_on:
+  #     - tempo
+  #   networks:
+  #     - rhinometric_network
+  #   restart: unless-stopped
 
   grafana:
     image: grafana/grafana:latest
@@ -196,8 +197,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.8'
-          memory: 1G
+          cpus: '0.4'
+          memory: 512M
 
   # =================================
   # TIER 4: ALERTING
