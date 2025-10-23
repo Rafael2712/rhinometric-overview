@@ -10,30 +10,29 @@ clients:
   - url: http://loki:3100/loki/api/v1/push
 
 scrape_configs:
-  # Discover all Docker containers via the Docker API (works in Docker Desktop on macOS/Windows/Linux)
-  - job_name: docker
-    docker_sd_configs:
-      - host: unix:///var/run/docker.sock
-        refresh_interval: 5s
-    relabel_configs:
-      # Only keep containers that actually have log files
-      - source_labels: [__meta_docker_container_log_path]
-        regex: 
-        action: drop
-      # Set the path to the discovered container log
-      - source_labels: [__meta_docker_container_log_path]
-        target_label: __path__
-      # Useful labels for querying in Grafana
-      - source_labels: [__meta_docker_container_name]
-        regex: '/(.*)'
-        target_label: container
-      - source_labels: [__meta_docker_container_id]
-        target_label: container_id
-      - source_labels: [__meta_docker_container_label_com_docker_compose_service]
-        target_label: service
-      - source_labels: [__meta_docker_container_label_com_docker_compose_project]
-        target_label: project
-      - source_labels: [__meta_docker_container_label_com_docker_compose_container_number]
-        target_label: compose_container_number
+  # Static configuration for Docker container logs (compatible with Windows/WSL2)
+  - job_name: docker_containers
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: docker_logs
+          __path__: /var/lib/docker/containers/*/*.log
     pipeline_stages:
-      - docker: {}
+      - json:
+          expressions:
+            output: log
+            stream: stream
+            attrs:
+      - json:
+          expressions:
+            tag:
+          source: attrs
+      - regex:
+          expression: '^(?P<container_id>[^-]+)'
+          source: tag
+      - labels:
+          container_id:
+          stream:
+      - output:
+          source: output

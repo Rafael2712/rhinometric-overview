@@ -50,13 +50,13 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '1.0'
-          memory: 2G
+          cpus: '0.3'
+          memory: 512M
 
   redis:
     image: redis:alpine
     container_name: rhinometric-redis
-    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    command: redis-server --appendonly yes --maxmemory 128mb --maxmemory-policy allkeys-lru
     volumes:
       - redis_data:/data
     networks:
@@ -65,8 +65,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.2'
-          memory: 256M
+          cpus: '0.1'
+          memory: 128M
 
   # =================================
   # TIER 3: OBSERVABILIDAD CORE
@@ -77,7 +77,6 @@ services:
     container_name: rhinometric-prometheus
     volumes:
       - ./config/prometheus-saas.yml:/etc/prometheus/prometheus.yml:ro
-      - ./config/rules:/etc/prometheus/rules:ro
       - prometheus_data:/prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
@@ -85,7 +84,8 @@ services:
       - '--web.console.libraries=/usr/share/prometheus/console_libraries'
       - '--web.console.templates=/usr/share/prometheus/consoles'
       - '--web.enable-lifecycle'
-      - '--storage.tsdb.retention.time=7d'  # Trial: 7 días retención
+      - '--storage.tsdb.retention.time=1d'  # Trial: 1 día retención
+      - '--storage.tsdb.retention.size=2GB'  # Límite 2GB
     depends_on:
       license-server:
         condition: service_healthy
@@ -97,8 +97,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '1.0'
-          memory: 2G
+          cpus: '0.5'
+          memory: 1G
 
   loki:
     image: grafana/loki:latest
@@ -118,8 +118,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.5'
-          memory: 1G
+          cpus: '0.3'
+          memory: 512M
 
   tempo:
     image: grafana/tempo:latest
@@ -143,137 +143,31 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.5'
-          memory: 512M
-
-  # Simple OpenTelemetry trace generator to validate Tempo ingestion
-  telemetrygen:
-    image: ghcr.io/open-telemetry/opentelemetry-collector-contrib/telemetrygen:latest
-    container_name: rhinometric-telemetrygen
-    command:
-      - traces
-      - --otlp-endpoint
-      - tempo:4317
-      - --otlp-insecure
-      - --rate
-      - "5"
-      - --duration
-      - "inf"
-      - --workers
-      - "3"
-      - --service
-      - "rhinometric-demo-service"
-    depends_on:
-      - tempo
-    networks:
-      - rhinometric_network
-    restart: unless-stopped
-
-  grafana:
-    image: grafana/grafana:latest
-    container_name: rhinometric-grafana
-    environment:
-      # Configuración básica
-      GF_SECURITY_ADMIN_USER: ${GRAFANA_USER:-admin}
-      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin_trial_2024}
-      GF_SERVER_ROOT_URL: ${GRAFANA_URL:-http://localhost:3000}
-      
-      # Configuración trial
-      GF_INSTALL_PLUGINS: ""
-      GF_ANALYTICS_REPORTING_ENABLED: "false"
-      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
-      
-      # Limits para trial
-      GF_USERS_DEFAULT_THEME: dark
-      GF_USERS_ALLOW_SIGN_UP: "false"
-      GF_USERS_ALLOW_ORG_CREATE: "false"
-      
-      # Watermark trial
-      GF_BRANDING_HEADER_LOGO: ""
-    volumes:
-      - grafana_data:/var/lib/grafana
-      - ./grafana/provisioning:/etc/grafana/provisioning
-    depends_on:
-      prometheus:
-        condition: service_started
-      loki:
-        condition: service_started
-      tempo:
-        condition: service_started
-      license-server:
-        condition: service_healthy
-    networks:
-      - rhinometric_network
-    ports:
-      - "3000:3000"
-    restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          cpus: '0.8'
-          memory: 1G
-
-  # =================================
-  # TIER 4: ALERTING
-  # =================================
-  
-  alertmanager:
-    image: prom/alertmanager:latest
-    container_name: rhinometric-alertmanager
-    volumes:
-      - ./config/alertmanager-saas.yml:/etc/alertmanager/alertmanager.yml:ro
-    command:
-      - '--config.file=/etc/alertmanager/alertmanager.yml'
-      - '--storage.path=/alertmanager'
-    depends_on:
-      license-server:
-        condition: service_healthy
-    networks:
-      - rhinometric_network
-    ports:
-      - "9093:9093"
-    restart: unless-stopped
-    deploy:
-      resources:
-        limits:
           cpus: '0.3'
-          memory: 512M
+          memory: 256M
 
-  # =================================
-  # TIER 5: EXPORTERS (BÁSICOS)
-  # =================================
-  
-  node-exporter:
-    image: prom/node-exporter:latest
-    container_name: rhinometric-node-exporter
-    command:
-      - '--path.procfs=/host/proc'
-      - '--path.sysfs=/host/sys'
-      - '--path.rootfs=/host'
-      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+  # TELEMETRYGEN DESHABILITADO PARA AHORRAR RECURSOS
+  # telemetrygen:
+  #   image: ghcr.io/open-telemetry/opentelemetry-collector-contrib/telemetrygen:latest
+  #   container_name: rhinometric-telemetrygen
+  tempo:
+    image: grafana/tempo:latest
+    container_name: rhinometric-tempo
+    user: "0:0"
     volumes:
-      - /proc:/host/proc:ro
-      - /sys:/host/sys:ro
-      - /:/host:ro
+      - ./config/tempo-saas.yml:/etc/tempo/tempo.yaml:ro
+      - tempo_data:/tmp/tempo
+    command: -config.file=/etc/tempo/tempo.yaml
+    depends_on:
+      license-server:
+        condition: service_healthy
     networks:
       - rhinometric_network
-    restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          cpus: '0.2'
-          memory: 128M
-
-  cadvisor:
-    image: gcr.io/cadvisor/cadvisor:latest
-    container_name: rhinometric-cadvisor
-    volumes:
-      - /:/rootfs:ro
-      - /var/run:/var/run:ro
-      - /sys:/sys:ro
-      - /var/lib/docker/:/var/lib/docker:ro
-    networks:
-      - rhinometric_network
+    ports:
+      - "3200:3200"   # Tempo HTTP
+      - "14268:14268" # Jaeger HTTP
+      - "4317:4317"   # OTLP gRPC
+      - "4318:4318"   # OTLP HTTP
     restart: unless-stopped
     deploy:
       resources:

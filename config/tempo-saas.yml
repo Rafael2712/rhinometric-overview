@@ -20,6 +20,14 @@ distributor:
         grpc:
           endpoint: 0.0.0.0:4317
 
+overrides:
+  defaults:
+    metrics_generator:
+      processors:
+        - service-graphs
+        - span-metrics
+        - local-blocks
+
 ingester:
   max_block_duration: 5m
 
@@ -37,6 +45,26 @@ metrics_generator:
     remote_write:
       - url: http://prometheus:9090/api/v1/write
         send_exemplars: true
+  traces_storage:
+    path: /tmp/tempo/generator/traces
+  processor:
+    service_graphs:
+      dimensions:
+        - name
+        - service_name
+      max_items: 10000
+      wait: 10s
+    span_metrics:
+      dimensions:
+        - name
+        - service_name
+      enable_target_info: true
+    local_blocks:
+      max_live_traces: 10000
+      max_block_duration: 5m
+      max_block_bytes: 100000000
+      flush_check_period: 10s
+      complete_block_timeout: 1m
 
 storage:
   trace:

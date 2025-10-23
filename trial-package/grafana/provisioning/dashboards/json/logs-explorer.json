@@ -25,7 +25,7 @@
       },
       "targets": [
         {
-          "expr": "{job=~\"$job\"}  |~ \"$search\"",
+          "expr": "{job=\"docker_logs\"} |~ \"$search\"",
           "refId": "A"
         }
       ],
@@ -63,7 +63,7 @@
       },
       "targets": [
         {
-          "expr": "sum by (level) (count_over_time({job=~\"$job\"} | json | __error__=\"\" [$__interval]))",
+          "expr": "sum by (level) (count_over_time({job=\"docker_logs\"} | json | __error__=\"\" [$__interval]))",
           "legendFormat": "{{level}}",
           "refId": "A"
         }
@@ -131,7 +131,7 @@
       },
       "targets": [
         {
-          "expr": "sum by (job) (rate({job=~\"$job\"}[$__rate_interval]))",
+          "expr": "sum by (job) (rate({job=\"docker_logs\"}[$__rate_interval]))",
           "legendFormat": "{{job}}",
           "refId": "A"
         }
@@ -162,7 +162,7 @@
       },
       "targets": [
         {
-          "expr": "{job=~\"$job\"} |~ \"(?i)(error|exception|fail|fatal)\" | json",
+          "expr": "{job=\"docker_logs\"} |~ \"(?i)(error|exception|fail|fatal)\" | json",
           "refId": "A"
         }
       ],
@@ -200,7 +200,7 @@
       "options": {"colorMode": "value", "graphMode": "area"},
       "targets": [
         {
-          "expr": "sum(count_over_time({job=~\"$job\"} |~ \"(?i)error\" [5m]))",
+          "expr": "sum(count_over_time({job=\"docker_logs\"} |~ \"(?i)error\" [5m]))",
           "instant": true,
           "refId": "A"
         }
@@ -227,7 +227,7 @@
       "options": {"colorMode": "value", "graphMode": "area"},
       "targets": [
         {
-          "expr": "sum(count_over_time({job=~\"$job\"} |~ \"(?i)warn\" [5m]))",
+          "expr": "sum(count_over_time({job=\"docker_logs\"} |~ \"(?i)warn\" [5m]))",
           "instant": true,
           "refId": "A"
         }
@@ -252,7 +252,7 @@
       "options": {"colorMode": "value", "graphMode": "area"},
       "targets": [
         {
-          "expr": "sum(count_over_time({job=~\"$job\"} |~ \"(?i)info\" [5m]))",
+          "expr": "sum(count_over_time({job=\"docker_logs\"} |~ \"(?i)info\" [5m]))",
           "instant": true,
           "refId": "A"
         }
@@ -278,7 +278,7 @@
       "options": {"colorMode": "value", "graphMode": "area"},
       "targets": [
         {
-          "expr": "sum(count_over_time({job=~\"$job\"}[5m]))",
+          "expr": "sum(count_over_time({job=\"docker_logs\"}[5m]))",
           "instant": true,
           "refId": "A"
         }
