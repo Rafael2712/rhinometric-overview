@@ -1,0 +1,40 @@
+global:
+  smtp_smarthost: 'localhost:587'
+  smtp_from: 'alerts@rhinometric.com'
+
+route:
+  group_by: ['alertname', 'tenant']
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 12h
+  receiver: 'web.hook'
+  routes:
+  - match:
+      tenant: client1
+    receiver: 'client1-webhook'
+  - match:
+      tenant: client2  
+    receiver: 'client2-webhook'
+
+receivers:
+- name: 'web.hook'
+  webhook_configs:
+  - url: 'http://license-server:5000/alerts/webhook'
+    send_resolved: true
+
+- name: 'client1-webhook'
+  webhook_configs:
+  - url: 'http://license-server:5000/alerts/webhook/client1'
+    send_resolved: true
+
+- name: 'client2-webhook'
+  webhook_configs:
+  - url: 'http://license-server:5000/alerts/webhook/client2'
+    send_resolved: true
+
+inhibit_rules:
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['alertname', 'dev', 'instance']

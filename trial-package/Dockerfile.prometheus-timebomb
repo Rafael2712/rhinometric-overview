@@ -1,0 +1,23 @@
+FROM prom/prometheus:latest
+
+USER root
+
+# Instalar bash, curl y jq para el validator
+RUN apk add --no-cache bash curl jq
+
+# Copiar scripts
+COPY licensing/timebomb_validator.sh /opt/timebomb_validator.sh
+COPY prometheus/entrypoint-timebomb.sh /opt/entrypoint-timebomb.sh
+
+# Permisos
+RUN chmod +x /opt/timebomb_validator.sh && \
+    chmod +x /opt/entrypoint-timebomb.sh
+
+# Crear directorios
+RUN mkdir -p /data && chmod 777 /data
+RUN touch /var/log/timebomb.log && chmod 666 /var/log/timebomb.log
+
+USER nobody
+
+ENTRYPOINT ["/opt/entrypoint-timebomb.sh"]
+CMD []

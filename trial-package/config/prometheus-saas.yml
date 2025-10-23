@@ -1,0 +1,113 @@
+global:
+  scrape_interval: 30s  # Aumentado de 15s a 30s para reducir carga
+  evaluation_interval: 30s  # Aumentado de 15s a 30s
+  scrape_timeout: 10s  # Timeout explícito
+
+rule_files:
+  - "rules/*.yml"
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - alertmanager:9093
+
+scrape_configs:
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: tenant
+        replacement: 'system'
+
+  # Grafana monitoring
+  - job_name: 'grafana'
+    static_configs:
+      - targets: ['grafana:3000']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: tenant
+        replacement: 'system'
+
+  # License server monitoring
+  - job_name: 'license-server'
+    static_configs:
+      - targets: ['license-server:5000']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: tenant
+        replacement: 'system'
+
+  # PostgreSQL monitoring
+  - job_name: 'postgres-exporter'
+    static_configs:
+      - targets: ['postgres-exporter:9187']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: tenant
+        replacement: 'system'
+
+  # Redis monitoring
+  - job_name: 'redis-exporter'
+    static_configs:
+      - targets: ['redis-exporter:9121']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: tenant
+        replacement: 'system'
+
+  # Node exporter
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: tenant
+        replacement: 'system'
+
+  # cAdvisor
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: ['cadvisor:8080']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: tenant
+        replacement: 'system'
+
+  # Tempo metrics generator exemplars (Prometheus remote_write endpoint is used by Tempo)
+  - job_name: 'tempo'
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['tempo:3200']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: tenant
+        replacement: 'system'
+
+  # Promtail
+  - job_name: 'promtail'
+    static_configs:
+      - targets: ['promtail:9080']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: tenant
+        replacement: 'system'
+
+  # Blackbox exporter
+  - job_name: 'blackbox'
+    metrics_path: /probe
+    params:
+      module: [http_2xx]
+      target: [http://nginx:80]
+    static_configs:
+      - targets: ['blackbox-exporter:9115']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __address__
+        replacement: blackbox-exporter:9115
+      - source_labels: [__param_module]
+        target_label: module
+      - source_labels: [__param_target]
+        target_label: instance
