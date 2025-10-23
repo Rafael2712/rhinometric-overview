@@ -19,20 +19,50 @@ scrape_configs:
           job: docker_logs
           __path__: /var/lib/docker/containers/*/*.log
     pipeline_stages:
+      # Parse Docker JSON log format
       - json:
           expressions:
             output: log
             stream: stream
+            time: time
             attrs:
+      
+      # Extract container ID from attrs.tag if available
       - json:
           expressions:
             tag:
           source: attrs
+      
+      # Extract container ID from tag (first part before hyphen)
       - regex:
-          expression: '^(?P<container_id>[^-]+)'
+          expression: '^(?P<container_id>[a-f0-9]{12})'
           source: tag
+      
+      # Try to extract container name from log path
+      - regex:
+          expression: '/var/lib/docker/containers/(?P<full_container_id>[a-f0-9]+)/'
+          source: filename
+      
+      # Set labels for querying
       - labels:
           container_id:
           stream:
+          full_container_id:
+      
+      # Output the actual log message
       - output:
           source: output
+      
+      # Add timestamp if available
+      - timestamp:
+          source: time
+          format: RFC3339Nano
+
+  # Optional: System logs (if you want to add host logs later)
+  # - job_name: system_logs
+  #   static_configs:
+  #     - targets:
+  #         - localhost
+  #       labels:
+  #         job: system_logs
+  #         __path__: /var/log/*.log

@@ -109,8 +109,63 @@
       "type": "timeseries"
     },
     {
+      "datasource": {"type": "tempo", "uid": "tempo"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {"fillOpacity": 20},
+          "unit": "reqps"
+        }
+      },
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 32},
+      "id": 6,
+      "options": {
+        "legend": {"displayMode": "table", "placement": "bottom", "showLegend": true}
+      },
+      "targets": [
+        {
+          "datasource": {"type": "tempo", "uid": "tempo"},
+          "query": "{resource.service.name != nil} | rate() by(resource.service.name)",
+          "queryType": "traceql",
+          "refId": "A",
+          "tableType": "time-series"
+        }
+      ],
+      "title": "📊 Request Rate by Service (TraceQL Metrics)",
+      "type": "timeseries"
+    },
+    {
       "datasource": {"type": "prometheus", "uid": "prometheus"},
-      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 32},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {"fillOpacity": 20},
+          "unit": "s"
+        }
+      },
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 32},
+      "id": 7,
+      "options": {
+        "legend": {"displayMode": "table", "placement": "bottom", "showLegend": true}
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.99, sum(rate(traces_spanmetrics_latency_bucket[5m])) by (le, service_name))",
+          "legendFormat": "p99 - {{service_name}}",
+          "refId": "A"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(traces_spanmetrics_latency_bucket[5m])) by (le, service_name))",
+          "legendFormat": "p95 - {{service_name}}",
+          "refId": "B"
+        }
+      ],
+      "title": "⏱️ Service Latency (p95/p99)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 40},
       "id": 5,
       "options": {
         "code": {
@@ -131,7 +186,7 @@
   "style": "dark",
   "tags": ["rhinometric", "traces", "tempo"],
   "templating": {"list": []},
-  "time": {"from": "now-1h", "to": "now"},
+  "time": {"from": "now-5m", "to": "now"},
   "timezone": "",
   "title": "🔎️ Rhinometric - Distributed Tracing",
   "uid": "rhinometric-tracing",
