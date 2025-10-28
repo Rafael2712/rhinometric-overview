@@ -1,0 +1,22 @@
+#!/bin/bash
+echo "=== METRICAS 100% PORTABLES (Linux/Windows/Mac) ==="
+echo ""
+echo "[1] Métricas de Contenedores (cAdvisor) - UNIVERSAL:"
+curl -s "http://localhost:9090/api/v1/query?query=up" | python3 -m json.tool | grep '"job"' | sort -u | head -10
+echo ""
+echo "[2] Métricas de Aplicaciones - UNIVERSAL:"
+echo "  - up (todos los targets)"
+echo "  - prometheus_* (Prometheus interno)"
+echo "  - loki_* (Loki interno)"
+echo "  - tempo_* (Tempo interno)"
+echo "  - grafana_* (Grafana interno)"
+echo "  - alertmanager_* (Alertmanager interno)"
+echo ""
+echo "[3] Métricas de Contenedores - UNIVERSAL:"
+echo "  - container_cpu_usage_seconds_total"
+echo "  - container_memory_usage_bytes"
+echo "  - container_network_receive_bytes_total"
+echo "  - container_network_transmit_bytes_total"
+echo ""
+echo "[4] Test Final - Contar métricas disponibles:"
+curl -s "http://localhost:9090/api/v1/label/__name__/values" | python3 -m json.tool | grep -E "(container_|tempo_|loki_|grafana_|prometheus_|alertmanager_)" | wc -l

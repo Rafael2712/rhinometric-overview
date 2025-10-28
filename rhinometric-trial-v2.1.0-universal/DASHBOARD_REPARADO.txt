@@ -1,0 +1,42 @@
+✅ DASHBOARD "EXTERNAL APIs MONITORING" - REPARADO
+
+PROBLEMA IDENTIFICADO:
+- Dashboard estaba provisionado correctamente
+- Error 404 era por URL incorrecta
+- URL esperada: /d/external-apis (no funcionaba)
+- URL real: /d/external-apis/f09f8c90-external-apis-monitoring
+
+SOLUCIÓN APLICADA:
+1. ✅ Dashboard copiado a config/grafana/dashboards/
+2. ✅ Grafana reiniciado
+3. ✅ Dashboard provisionado correctamente en carpeta "Rhinometric"
+4. ✅ URLs actualizadas en documentación
+
+ACCESO AL DASHBOARD:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+URL: http://localhost:3000/d/external-apis/f09f8c90-external-apis-monitoring
+
+Credenciales:
+- Usuario: admin
+- Contraseña: admin123
+
+Desde el menú:
+1. Abre http://localhost:3000
+2. Login: admin / admin123
+3. Click ☰ → Dashboards → Rhinometric
+4. Click "��� External APIs Monitoring"
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+VERIFICACIÓN:
+✅ 38 métricas api_proxy_* disponibles en Prometheus
+✅ 3 APIs monitoreadas (openweather, github_status, coindesk_btc)
+✅ 2 APIs healthy, 1 unhealthy (esperado)
+✅ Logs disponibles del API Proxy
+✅ 14 paneles configurados correctamente
+
+ESTADO DE APIS:
+- ��� openweather: Healthy (0.25s response time)
+- ��� github_status: Healthy (0.29s response time)  
+- ��� coindesk_btc: Unhealthy (DNS error - esperado)
+
+El dashboard está 100% funcional y listo para demos.

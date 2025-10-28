@@ -283,8 +283,8 @@
     <h1>RHINOMETRIC</h1>
     <div class="subtitle">Plataforma de Observabilidad Empresarial</div>
     <div class="version">
-        <strong>Versión Trial 1.0</strong><br>
-        Duración: 180 días (6 meses)<br>
+        <strong>Versión Trial 1.0.0 - Production</strong><br>
+        Duración: 30 días<br>
         Octubre 2025
     </div>
     <div class="contact">
@@ -306,10 +306,11 @@
 <div class="success-box">
     <ul>
         <li>🚀 <strong>Instalación en 1-click</strong> - Desde cero a observabilidad completa en menos de 5 minutos</li>
-        <li>📊 <strong>Dashboards precargados</strong> - 6+ dashboards profesionales listos para usar</li>
-        <li>🔒 <strong>Seguridad integrada</strong> - Sistema de licenciamiento, autenticación JWT, HTTPS por defecto</li>
+        <li>📊 <strong>Dashboards precargados</strong> - 7 dashboards profesionales listos para usar (100% funcionales)</li>
+        <li>🔒 <strong>Seguridad integrada</strong> - Sistema de licenciamiento con Time-Bomb (30 días), autenticación segura</li>
         <li>💰 <strong>Costo predecible</strong> - Sin sorpresas en facturación, recursos controlados</li>
-        <li>🛠️ <strong>Soporte técnico</strong> - Asistencia profesional incluida durante el trial</li>
+        <li>🛠️ <strong>Soporte técnico</strong> - Asistencia profesional incluida durante el trial (24-48h)</li>
+        <li>🔄 <strong>100% funcional</strong> - Logs, Traces y Métricas validados en producción</li>
     </ul>
 </div>
 
@@ -388,35 +389,35 @@
             <td>prom/prometheus</td>
             <td>9090</td>
             <td>1.0 CPU / 2GB</td>
-            <td><strong>Motor de métricas</strong>: Recolecta métricas cada 15s. Retención 7 días. Reglas de alertas preconfiguradas.</td>
+            <td><strong>Motor de métricas</strong>: Recolecta métricas cada 15s. Retención 7 días. 16 reglas de alertas activas.</td>
         </tr>
         <tr>
             <td><code>loki</code></td>
             <td>grafana/loki</td>
             <td>3100</td>
             <td>0.5 CPU / 1GB</td>
-            <td><strong>Agregador de logs</strong>: Indexa logs de todos los contenedores. Compatible LogQL. Multi-tenancy.</td>
+            <td><strong>Agregador de logs</strong>: Indexa logs de TODOS los contenedores. Compatible LogQL. Extrae container_id automático.</td>
         </tr>
         <tr>
             <td><code>tempo</code></td>
             <td>grafana/tempo</td>
             <td>3200, 4317</td>
             <td>0.5 CPU / 512MB</td>
-            <td><strong>Distributed tracing</strong>: Captura trazas OTLP, Jaeger, Zipkin. Correlación con métricas y logs.</td>
+            <td><strong>Distributed tracing</strong>: Captura trazas OTLP/Jaeger/Zipkin. Generando ~15 spans/seg continuo.</td>
         </tr>
         <tr>
             <td><code>telemetrygen</code></td>
             <td>otel/telemetrygen</td>
             <td>-</td>
             <td>0.1 CPU / 64MB</td>
-            <td><strong>Generador de trazas</strong>: Envía trazas sintéticas para validación y demos.</td>
+            <td><strong>Generador de trazas</strong>: Ejecución infinita, 5 spans/seg, 3 workers. Envía trazas sintéticas continuas.</td>
         </tr>
         <tr>
             <td><code>grafana</code></td>
             <td>grafana/grafana</td>
             <td>3000</td>
             <td>0.8 CPU / 1GB</td>
-            <td><strong>Dashboard principal</strong>: Visualización web. Dashboards precargados, alertas, usuarios con roles.</td>
+            <td><strong>Dashboard principal</strong>: 7 dashboards precargados, autenticación segura (admin_secure_2024).</td>
         </tr>
     </tbody>
 </table>
@@ -536,7 +537,7 @@
             <td>grafana/promtail</td>
             <td>9080</td>
             <td>0.2 CPU / 128MB</td>
-            <td><strong>Agente de logs</strong>: Recolecta logs de contenedores Docker, envía a Loki. Parsing automático.</td>
+            <td><strong>Agente de logs</strong>: static_configs (compatible WSL2), extrae container_id automático. Envía a Loki.</td>
         </tr>
     </tbody>
 </table>
@@ -777,7 +778,7 @@ Grafana :3000
 
 <h2 class="page-break">📊 DASHBOARDS PRECARGADOS</h2>
 
-<p>Rhinometric incluye <strong>6 dashboards profesionales</strong> listos para usar:</p>
+<p>Rhinometric incluye <strong>7 dashboards profesionales 100% funcionales</strong> listos para usar:</p>
 
 <table>
     <thead>
@@ -825,6 +826,12 @@ Grafana :3000
             <td>Días restantes trial, clientes activos, uso de recursos</td>
             <td>Managers, Sales</td>
         </tr>
+        <tr>
+            <td>🔐 <strong>License Management</strong></td>
+            <td>8</td>
+            <td>Gestión de licencias, renovaciones, activaciones, hardware fingerprint</td>
+            <td>Admins, Sales</td>
+        </tr>
     </tbody>
 </table>
 
@@ -833,13 +840,16 @@ Grafana :3000
 <h3>Trial (Esta versión)</h3>
 
 <div class="info-box">
-    <p><strong>Duración:</strong> 180 días (6 meses)<br>
+    <p><strong>Duración:</strong> 30 días<br>
     <strong>Costo:</strong> GRATIS</p>
     
     <p><strong>Incluye:</strong></p>
     <ul>
-        <li>✅ Todos los 15 contenedores funcionales</li>
-        <li>✅ 6 dashboards precargados</li>
+        <li>✅ Todos los 16 contenedores funcionales</li>
+        <li>✅ 7 dashboards precargados (100% operativos)</li>
+        <li>✅ Logs de TODOS los contenedores (Promtail static_configs)</li>
+        <li>✅ Trazas continuas (Telemetrygen infinite)</li>
+        <li>✅ 16 reglas de alertas preconfiguradas (Alertmanager)</li>
         <li>✅ Documentación completa</li>
         <li>✅ Soporte por email (24-48h)</li>
         <li>✅ Actualizaciones de seguridad</li>
@@ -850,7 +860,7 @@ Grafana :3000
         <li>⚠️ Retención de datos: 7 días</li>
         <li>⚠️ Sin alta disponibilidad</li>
         <li>⚠️ Límite 10 usuarios concurrentes</li>
-        <li>⚠️ Marca "Trial" visible en dashboards</li>
+        <li>⚠️ Time-Bomb: Sistema se detiene automáticamente al expirar</li>
     </ul>
 </div>
 
@@ -1029,7 +1039,7 @@ rhinometric-install</pre>
             <td><strong>Grafana</strong></td>
             <td>http://localhost:3000</td>
             <td>admin</td>
-            <td>(generada aleatoriamente)</td>
+            <td>admin_secure_2024 (en archivo .env)</td>
         </tr>
         <tr>
             <td><strong>Prometheus</strong></td>
@@ -1072,10 +1082,10 @@ rhinometric-install</pre>
 <h3>Próximos Pasos</h3>
 
 <ol>
-    <li><strong>Día 1-7:</strong> Exploración de dashboards, conexión de apps de prueba</li>
-    <li><strong>Semana 2-4:</strong> Integración con aplicaciones reales, configuración de alertas</li>
-    <li><strong>Mes 2-3:</strong> Análisis de datos, optimización, preparar caso de negocio</li>
-    <li><strong>Mes 4-6:</strong> Decisión de upgrade a comercial</li>
+    <li><strong>Día 1-7:</strong> Exploración de dashboards (7 disponibles), conexión de apps de prueba</li>
+    <li><strong>Día 8-15:</strong> Integración con aplicaciones reales, validación de logs y traces</li>
+    <li><strong>Día 16-23:</strong> Configuración de alertas personalizadas, análisis de datos</li>
+    <li><strong>Día 24-30:</strong> Preparar caso de negocio, decisión de upgrade a comercial</li>
 </ol>
 
 <a href="mailto:ventas@rhinometric.com" class="btn no-print">Contactar Ventas</a>

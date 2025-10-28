@@ -1,0 +1,139 @@
+# ═══════════════════════════════════════════════════════════════════════════
+#  PROMTAIL CONFIGURATION - RHINOMETRIC v2.1.0 ENTERPRISE
+# ═══════════════════════════════════════════════════════════════════════════
+#
+#  Enhanced log collection with:
+#  - Docker service discovery
+#  - Automatic labeling
+#  - JSON log parsing
+#  - Level extraction (info, warning, error)
+#
+# ═══════════════════════════════════════════════════════════════════════════
+
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+  log_level: info
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+    backoff_config:
+      min_period: 500ms
+      max_period: 5m
+      max_retries: 10
+    timeout: 10s
+
+scrape_configs:
+  # ═══════════════════════════════════════════════════════════════════════
+  #  DOCKER CONTAINERS LOG COLLECTION
+  # ═══════════════════════════════════════════════════════════════════════
+  
+  - job_name: docker_logs
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 5s
+        filters:
+          - name: label
+            values: ["com.docker.compose.project=rhinometric-trial-v210-universal"]
+    
+    relabel_configs:
+      # Container name
+      - source_labels: ['__meta_docker_container_name']
+        regex: '/(.*)'
+        target_label: 'container'
+      
+      # Container ID (short)
+      - source_labels: ['__meta_docker_container_id']
+        regex: '(.{12})'
+        target_label: 'container_id'
+      
+      # Service name from compose
+      - source_labels: ['__meta_docker_container_label_com_docker_compose_service']
+        target_label: 'service'
+      
+      # Project name
+      - source_labels: ['__meta_docker_container_label_com_docker_compose_project']
+        target_label: 'project'
+      
+      # Image name
+      - source_labels: ['__meta_docker_container_label_com_docker_compose_image']
+        target_label: 'image'
+      
+      # Log stream (stdout/stderr)
+      - source_labels: ['__meta_docker_container_log_stream']
+        target_label: 'stream'
+      
+      # Environment
+      - replacement: 'trial'
+        target_label: 'environment'
+      
+      # Version
+      - replacement: '2.1.0'
+        target_label: 'version'
+    
+    pipeline_stages:
+      # Parse JSON logs
+      - json:
+          expressions:
+            level: level
+            logger: logger
+            message: msg
+            timestamp: time
+            trace_id: trace_id
+            span_id: span_id
+            error: error
+      
+      # Extract log level (fallback to pattern matching)
+      - regex:
+          expression: '(?i)(?P<extracted_level>(error|err|fatal|warn|warning|info|debug|trace))'
+          source: message
+      
+      # Set level label
+      - labels:
+          level:
+          extracted_level:
+          logger:
+          stream:
+          container:
+          service:
+          project:
+      
+      # Parse timestamp if available
+      - timestamp:
+          source: timestamp
+          format: RFC3339Nano
+          fallback_formats:
+            - RFC3339
+            - "2006-01-02 15:04:05"
+      
+      # Add trace context if available
+      - labels:
+          trace_id:
+          span_id:
+      
+      # Output formatting
+      - output:
+          source: message
+
+  # ═══════════════════════════════════════════════════════════════════════
+  #  SYSTEM LOGS (Optional - requires host access)
+  # ═══════════════════════════════════════════════════════════════════════
+  
+  # - job_name: system_logs
+  #   static_configs:
+  #     - targets:
+  #         - localhost
+  #       labels:
+  #         job: varlogs
+  #         host: rhinometric-host
+  #         __path__: /var/log/*.log
+
+limits_config:
+  readline_rate: 10000
+  readline_burst: 20000
+  max_streams: 10000
+  max_line_size: 256kb
+  max_line_size_truncate: true

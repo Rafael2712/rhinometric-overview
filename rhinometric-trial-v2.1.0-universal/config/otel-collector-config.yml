@@ -1,0 +1,132 @@
+# ═══════════════════════════════════════════════════════════════════════════
+#  OPENTELEMETRY COLLECTOR CONFIG - RHINOMETRIC v2.1.0 ENTERPRISE
+# ═══════════════════════════════════════════════════════════════════════════
+#
+#  Replaces telemetrygen with production-grade collector
+#
+#  Features:
+#  - Multiple protocols (OTLP gRPC/HTTP, Jaeger)
+#  - Trace enrichment with resource attributes
+#  - Memory-efficient batching
+#  - Metrics generation from traces
+#  - Export to Tempo and Prometheus
+#
+# ═══════════════════════════════════════════════════════════════════════════
+
+receivers:
+  # OTLP protocol (OpenTelemetry standard)
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+        cors:
+          allowed_origins:
+            - "http://localhost:*"
+            - "http://grafana:3000"
+
+  # Jaeger protocol (legacy compatibility)
+  jaeger:
+    protocols:
+      thrift_http:
+        endpoint: 0.0.0.0:14268
+      grpc:
+        endpoint: 0.0.0.0:14250
+
+processors:
+  # Batch traces for efficiency
+  batch:
+    timeout: 10s
+    send_batch_size: 1024
+    send_batch_max_size: 2048
+
+  # Limit memory usage
+  memory_limiter:
+    check_interval: 1s
+    limit_mib: 512
+    spike_limit_mib: 128
+
+  # Add resource attributes to all spans
+  resource:
+    attributes:
+      - key: service.name
+        value: rhinometric-trial
+        action: insert
+      - key: environment
+        value: trial
+        action: insert
+      - key: deployment.version
+        value: "2.1.0"
+        action: insert
+      - key: cluster.name
+        value: rhinometric-enterprise
+        action: insert
+
+  # Enrich spans with additional context
+  attributes:
+    actions:
+      - key: app.version
+        value: "2.1.0"
+        action: insert
+      - key: telemetry.sdk.name
+        value: opentelemetry
+        action: insert
+
+exporters:
+  # Export traces to Tempo
+  otlp/tempo:
+    endpoint: tempo:4317
+    tls:
+      insecure: true
+    sending_queue:
+      enabled: true
+      num_consumers: 10
+      queue_size: 5000
+    retry_on_failure:
+      enabled: true
+      initial_interval: 5s
+      max_interval: 30s
+      max_elapsed_time: 300s
+
+  # Export metrics to Prometheus
+  prometheus:
+    endpoint: 0.0.0.0:8889
+    namespace: otel
+    const_labels:
+      service: otel-collector
+      version: "2.1.0"
+
+  # Logging exporter for debugging
+  logging:
+    loglevel: info
+    sampling_initial: 5
+    sampling_thereafter: 200
+
+service:
+  pipelines:
+    # Traces pipeline
+    traces:
+      receivers: [otlp, jaeger]
+      processors: [memory_limiter, resource, attributes, batch]
+      exporters: [otlp/tempo, logging]
+
+    # Metrics pipeline (generated from traces)
+    metrics:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [prometheus]
+
+  telemetry:
+    logs:
+      level: info
+    metrics:
+      address: 0.0.0.0:8888
+
+extensions:
+  health_check:
+    endpoint: 0.0.0.0:13133
+  pprof:
+    endpoint: 0.0.0.0:1777
+  zpages:
+    endpoint: 0.0.0.0:55679

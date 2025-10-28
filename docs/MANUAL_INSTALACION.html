@@ -519,8 +519,9 @@
 
     <!-- Hero Section -->
     <div class="hero" id="inicio">
-        <h2>🦏 Rhinometric Trial</h2>
+        <h2>🦏 Rhinometric Trial v1.0.0</h2>
         <p>De cero a observabilidad completa en menos de 5 minutos</p>
+        <p><strong>16 contenedores | 7 dashboards | Logs + Métricas + Traces | 30 días trial</strong></p>
         <p style="margin-top: 20px;">
             <a href="#instalacion" class="btn">Comenzar Instalación</a>
             <button onclick="window.print()" class="btn btn-secondary no-print" style="margin-left: 10px;">📥 Descargar como PDF</button>
@@ -593,198 +594,167 @@
             
             <div class="steps">
                 <div class="step">
-                    <h4>Descargar el Instalador</h4>
-                    <p>Descarga <code>RhinometricInstaller.exe</code> desde:</p>
-                    <p><a href="https://rhinometric.com/downloads/windows" class="btn">Descargar para Windows</a></p>
-                    <div class="alert alert-warning">
-                        <strong>⚠️ Advertencia de SmartScreen:</strong> Windows puede mostrar una advertencia porque el instalador no está firmado digitalmente (MVP). Haz clic en "Más información" y luego "Ejecutar de todas formas".
-                    </div>
-                </div>
-                
-                <div class="step">
-                    <h4>Ejecutar el Instalador</h4>
-                    <p>Haz doble clic en <code>RhinometricInstaller.exe</code></p>
-                    <p>Si Windows UAC pide permisos de administrador, haz clic en "Sí"</p>
-                    <div class="screenshot">Screenshot: Ventana de bienvenida del instalador</div>
-                </div>
-                
-                <div class="step">
-                    <h4>Paso 1: Bienvenida</h4>
-                    <p>Lee la información de bienvenida y las características de Rhinometric</p>
+                    <h4>Descargar el Paquete Trial</h4>
+                    <p>Descarga <code>rhinometric-trial-v1.0.0-production.zip</code> desde:</p>
                     <ul>
-                        <li>✅ 15 contenedores de observabilidad</li>
-                        <li>✅ 6 dashboards precargados</li>
-                        <li>✅ Trial de 180 días (6 meses)</li>
-                        <li>✅ Métricas + Logs + Trazas distribuidas</li>
+                        <li>📍 Tu proveedor (email, USB, Google Drive, etc.)</li>
+                        <li>🔗 O desde: <a href="https://rhinometric.com/downloads/trial">rhinometric.com/downloads/trial</a></li>
                     </ul>
-                    <p><button class="btn">Siguiente →</button></p>
+                    <p><strong>Tamaño:</strong> ~41 KB (muy ligero)</p>
                 </div>
                 
                 <div class="step">
-                    <h4>Paso 2: Verificación de Requisitos</h4>
-                    <p>El instalador verifica automáticamente:</p>
-                    <ul>
-                        <li><strong>RAM:</strong> Mínimo 8 GB</li>
-                        <li><strong>Docker Desktop:</strong> Instalado y corriendo</li>
-                        <li><strong>WSL2:</strong> Habilitado (requerido por Docker en Windows)</li>
-                    </ul>
-                    
-                    <div class="alert alert-info">
-                        <strong>🔍 Si Docker no está instalado:</strong> El instalador ofrece descargarlo e instalarlo automáticamente. Este proceso puede tardar 5-10 minutos y requiere reiniciar la computadora.
-                    </div>
-                    
-                    <div class="alert alert-info">
-                        <strong>🔍 Si WSL2 no está habilitado:</strong> El instalador puede habilitarlo automáticamente (requiere reinicio).
-                    </div>
-                    
-                    <p>Una vez que todos los checks estén en verde:</p>
-                    <p><button class="btn btn-success">✅ Requisitos OK - Continuar</button></p>
-                </div>
-                
-                <div class="step">
-                    <h4>Paso 3: Configuración</h4>
-                    <p>Configura los detalles de la instalación:</p>
-                    
-                    <table>
-                        <tr>
-                            <th>Campo</th>
-                            <th>Descripción</th>
-                            <th>Ejemplo</th>
-                        </tr>
-                        <tr>
-                            <td><strong>Nombre de Cliente</strong></td>
-                            <td>Tu empresa u organización</td>
-                            <td>Mi Empresa S.A.</td>
-                        </tr>
-                        <tr>
-                            <td><strong>Ruta de Instalación</strong></td>
-                            <td>Carpeta donde se instalarán los archivos</td>
-                            <td>C:\Rhinometric</td>
-                        </tr>
-                    </table>
-                    
-                    <p><strong>Opciones:</strong></p>
-                    <ul>
-                        <li>☑️ Crear acceso directo en el escritorio</li>
-                        <li>☑️ Acepto los términos de la licencia trial (requerido)</li>
-                    </ul>
-                    
-                    <p><button class="btn">Instalar →</button></p>
-                </div>
-                
-                <div class="step">
-                    <h4>Paso 4: Instalación</h4>
-                    <p>El proceso de instalación incluye:</p>
+                    <h4>Extraer el Archivo ZIP</h4>
+                    <p><strong>Ubicación recomendada:</strong> <code>C:\rhinometric-trial</code></p>
                     <ol>
-                        <li>📁 Copiar archivos del trial package (~2 GB)</li>
-                        <li>🔐 Generar contraseñas seguras para Grafana y PostgreSQL</li>
-                        <li>📜 Crear licencia trial de 180 días</li>
-                        <li>🐳 Descargar imágenes Docker (esto puede tardar 5-15 minutos)</li>
-                        <li>🚀 Iniciar 15 contenedores</li>
-                        <li>✅ Verificar que todos los servicios están corriendo</li>
+                        <li>Clic derecho en <code>rhinometric-trial-v1.0.0-production.zip</code></li>
+                        <li>Seleccionar "Extraer todo..."</li>
+                        <li>Cambiar ruta a <code>C:\rhinometric-trial</code></li>
+                        <li>Clic en "Extraer"</li>
                     </ol>
+                    <p>Deberías tener:</p>
+                    <pre>C:\rhinometric-trial\rhinometric-trial-v1.0.0-production\</pre>
+                </div>
+                
+                <div class="step">
+                    <h4>Abrir PowerShell en la Carpeta</h4>
+                    <ol>
+                        <li>Abre la carpeta <code>C:\rhinometric-trial\rhinometric-trial-v1.0.0-production</code></li>
+                        <li>En el explorador de archivos, haz clic en la barra de dirección</li>
+                        <li>Escribe <code>powershell</code> y presiona Enter</li>
+                    </ol>
+                    <p><strong>Alternativamente:</strong> Shift + Clic derecho en espacio vacío → "Abrir ventana de PowerShell aquí"</p>
+                </div>
+                
+                <div class="step">
+                    <h4>Iniciar Rhinometric</h4>
+                    <p>En la ventana de PowerShell, ejecuta:</p>
+                    <pre>docker compose up -d</pre>
                     
-                    <p>Verás una barra de progreso y un log en tiempo real:</p>
-                    <pre>[12:34:56] Copiando archivos...
-[12:35:10] Generando credenciales...
-[12:35:15] Creando licencia trial...
-[12:35:20] Descargando grafana/grafana:latest...
-[12:36:45] Descargando prom/prometheus:latest...
+                    <p>Verás algo como:</p>
+                    <pre>[+] Running 16/16
+ ✓ Container rhinometric-postgres     Started
+ ✓ Container rhinometric-redis        Started
+ ✓ Container rhinometric-prometheus   Started
+ ✓ Container rhinometric-loki         Started
+ ✓ Container rhinometric-tempo        Started
+ ✓ Container rhinometric-grafana      Started
 ...
-[12:42:30] ✅ Instalación completada exitosamente!</pre>
+✅ All containers started successfully!</pre>
                     
-                    <div class="alert alert-warning">
-                        <strong>⏱️ Tiempo estimado:</strong> 5-15 minutos (depende de tu conexión a internet).
+                    <p><strong>Tiempo estimado:</strong> 2-5 minutos (primera vez, descarga imágenes Docker)</p>
+                    
+                    <div class="alert alert-info">
+                        <strong>🔍 Verificar estado:</strong>
+                        <pre>docker ps</pre>
+                        <p>Deberías ver 16 contenedores con estado "Up"</p>
                     </div>
                 </div>
                 
                 <div class="step">
-                    <h4>Paso 5: ¡Instalación Completa!</h4>
-                    <p>🎉 Rhinometric está instalado y corriendo. Verás:</p>
+                    <h4>Abrir Grafana y Login</h4>
+                    <p>Una vez que todos los contenedores estén corriendo:</p>
+                    <ol>
+                        <li>Abre tu navegador</li>
+                        <li>Ve a: <code>http://localhost:3000</code></li>
+                        <li>Login con:</li>
+                    </ol>
                     
                     <div class="alert alert-success">
-                        <h4>Credenciales de Acceso</h4>
-                        <p><strong>Grafana:</strong> http://localhost:3000</p>
-                        <p><strong>Usuario:</strong> admin</p>
-                        <p><strong>Contraseña:</strong> [generada aleatoriamente, se muestra aquí]</p>
-                        <p><em>Estas credenciales también se guardan en: C:\Rhinometric\credentials.txt</em></p>
+                        <h4>🔑 Credenciales de Acceso</h4>
+                        <p><strong>Usuario:</strong> <code>admin</code></p>
+                        <p><strong>Contraseña:</strong> <code>admin_secure_2024</code></p>
+                        <p><em>Estas credenciales están en el archivo <code>.env</code> de la carpeta extraída</em></p>
                     </div>
                     
-                    <p><strong>Próximos pasos:</strong></p>
-                    <ol>
-                        <li>Haz clic en "Abrir Grafana" (o ve a http://localhost:3000)</li>
-                        <li>Inicia sesión con las credenciales mostradas</li>
-                        <li>Explora los 6 dashboards precargados</li>
-                        <li>Lee la <a href="#quickstart">Guía de Inicio Rápido</a></li>
-                    </ol>
+                    <p>🎉 <strong>¡Listo!</strong> Ya tienes Rhinometric corriendo. Explora los 7 dashboards precargados.</p>
                     
-                    <p><button class="btn btn-success">🌐 Abrir Grafana</button></p>
+                    <p><strong>Detener Rhinometric:</strong></p>
+                    <pre>docker compose down</pre>
                 </div>
             </div>
         </div>
         
         <!-- macOS Tab -->
         <div id="macos" class="tab-content">
-            <h3>Instalación en macOS (Intel y M1/M2)</h3>
+            <h3>Instalación en macOS (Intel y Apple Silicon M1/M2/M3)</h3>
             
             <div class="steps">
                 <div class="step">
-                    <h4>Descargar el Instalador</h4>
-                    <p>Descarga <code>Rhinometric.dmg</code> desde:</p>
-                    <p><a href="https://rhinometric.com/downloads/macos" class="btn">Descargar para macOS</a></p>
+                    <h4>Descargar el Paquete Trial</h4>
+                    <p>Descarga <code>rhinometric-trial-v1.0.0-production.zip</code> desde tu proveedor o:</p>
+                    <p><a href="https://rhinometric.com/downloads/trial">rhinometric.com/downloads/trial</a></p>
+                    <p><strong>Tamaño:</strong> ~41 KB</p>
                 </div>
                 
                 <div class="step">
-                    <h4>Instalar la Aplicación</h4>
+                    <h4>Extraer el Archivo</h4>
+                    <p><strong>Ubicación recomendada:</strong> <code>~/rhinometric-trial</code></p>
                     <ol>
-                        <li>Abre el archivo <code>Rhinometric.dmg</code></li>
-                        <li>Arrastra el ícono de Rhinometric a la carpeta "Aplicaciones"</li>
-                        <li>Cierra la ventana del DMG</li>
+                        <li>Doble clic en el archivo ZIP (se extrae automáticamente)</li>
+                        <li>O desde Terminal:</li>
                     </ol>
+                    <pre># Crear carpeta y extraer
+mkdir -p ~/rhinometric-trial
+unzip rhinometric-trial-v1.0.0-production.zip -d ~/rhinometric-trial
+cd ~/rhinometric-trial/rhinometric-trial-v1.0.0-production</pre>
                 </div>
                 
                 <div class="step">
-                    <h4>Ejecutar el Instalador</h4>
-                    <p>Abre <strong>Aplicaciones</strong> y busca <strong>Rhinometric</strong></p>
-                    <p>Haz doble clic para ejecutar</p>
+                    <h4>Verificar Docker Desktop</h4>
+                    <p>Asegúrate de que Docker Desktop esté corriendo:</p>
+                    <ol>
+                        <li>Busca el ícono de Docker en la barra de menú superior</li>
+                        <li>Debe decir "Docker Desktop is running"</li>
+                        <li>Si no está instalado, descárgalo de: <a href="https://www.docker.com/products/docker-desktop">docker.com/products/docker-desktop</a></li>
+                    </ol>
                     
                     <div class="alert alert-warning">
-                        <strong>⚠️ Gatekeeper:</strong> macOS puede mostrar "Rhinometric no puede abrirse porque es de un desarrollador no identificado". 
-                        <br><br>
-                        <strong>Solución:</strong>
-                        <ol>
-                            <li>Haz clic derecho (o Ctrl+clic) en Rhinometric</li>
-                            <li>Selecciona "Abrir"</li>
-                            <li>Haz clic en "Abrir" en el diálogo de confirmación</li>
-                        </ol>
+                        <strong>⚠️ Apple Silicon (M1/M2/M3):</strong> Asegúrate de instalar la versión "Apple Chip" de Docker Desktop.
                     </div>
                 </div>
                 
                 <div class="step">
-                    <h4>Seguir el Wizard</h4>
-                    <p>El proceso es idéntico a Windows:</p>
+                    <h4>Iniciar Rhinometric</h4>
+                    <p>Abre Terminal y ejecuta:</p>
+                    <pre>cd ~/rhinometric-trial/rhinometric-trial-v1.0.0-production
+docker compose up -d</pre>
+                    
+                    <p>Espera 2-5 minutos mientras se descargan e inician los 16 contenedores.</p>
+                    
+                    <p><strong>Verificar estado:</strong></p>
+                    <pre>docker ps | grep rhinometric</pre>
+                    <p>Deberías ver 16 líneas (todos los contenedores).</p>
+                </div>
+                
+                <div class="step">
+                    <h4>Abrir Grafana</h4>
                     <ol>
-                        <li><strong>Bienvenida:</strong> Lee las características</li>
-                        <li><strong>Requisitos:</strong> Verifica Docker Desktop</li>
-                        <li><strong>Configuración:</strong> Nombre de cliente y ruta</li>
-                        <li><strong>Instalación:</strong> Espera 5-15 minutos</li>
-                        <li><strong>Completado:</strong> Abre Grafana</li>
+                        <li>Abre Safari, Chrome o tu navegador favorito</li>
+                        <li>Ve a: <code>http://localhost:3000</code></li>
+                        <li>Login:</li>
                     </ol>
+                    
+                    <div class="alert alert-success">
+                        <p><strong>Usuario:</strong> <code>admin</code></p>
+                        <p><strong>Contraseña:</strong> <code>admin_secure_2024</code></p>
+                    </div>
+                    
+                    <p>🎉 <strong>¡Listo!</strong> Explora los 7 dashboards.</p>
+                    
+                    <p><strong>Detener:</strong></p>
+                    <pre>docker compose down</pre>
                 </div>
             </div>
             
             <h3>Instalación Alternativa: Script Bash</h3>
             
-            <p>Si prefieres instalar desde la terminal:</p>
+            <p>Si prefieres usar el script incluido:</p>
             
-            <pre># Descargar trial package
-git clone https://github.com/rhinometric/trial-package.git
-cd trial-package
-
-# Ejecutar script de instalación
-./start-trial.sh
-
-# Seguir instrucciones en pantalla</pre>
+            <pre># Desde la carpeta extraída
+cd ~/rhinometric-trial/rhinometric-trial-v1.0.0-production
+chmod +x start.sh
+./start.sh</pre>
         </div>
         
         <!-- Linux Tab -->
@@ -800,77 +770,120 @@ cd trial-package
             <div id="ubuntu" class="linux-tab active">
                 <h4>Ubuntu 20.04+ / Debian 11+</h4>
                 
-                <pre># Descargar paquete .deb
-wget https://rhinometric.com/downloads/rhinometric-trial_1.0.0_amd64.deb
+                <p><strong>Método 1: Desde ZIP (Recomendado)</strong></p>
+                <pre># Descargar ZIP (desde tu proveedor o email)
+wget https://rhinometric.com/downloads/rhinometric-trial-v1.0.0-production.zip
 
-# Instalar
-sudo dpkg -i rhinometric-trial_1.0.0_amd64.deb
+# O si ya lo tienes, extraer:
+unzip rhinometric-trial-v1.0.0-production.zip
+cd rhinometric-trial-v1.0.0-production
 
-# Si hay dependencias faltantes, ejecuta:
-sudo apt-get install -f
+# Verificar Docker instalado
+docker --version
+# Si no está instalado: sudo apt-get install docker.io docker-compose-plugin
 
-# Ejecutar instalador interactivo
-rhinometric-install</pre>
+# Iniciar Rhinometric
+docker compose up -d
 
-                <p>El comando <code>rhinometric-install</code> abrirá un wizard en terminal que te guiará paso a paso.</p>
+# Verificar estado
+docker ps | grep rhinometric
+
+# Abrir navegador en http://localhost:3000
+# Usuario: admin, Contraseña: admin_secure_2024</pre>
+
+                <p><strong>Método 2: Script automático</strong></p>
+                <pre># Desde la carpeta extraída
+cd rhinometric-trial-v1.0.0-production
+chmod +x start.sh
+./start.sh</pre>
+
+                <div class="alert alert-info">
+                    <strong>🔧 Instalar Docker en Ubuntu:</strong>
+                    <pre>sudo apt-get update
+sudo apt-get install docker.io docker-compose-plugin
+sudo systemctl start docker
+sudo systemctl enable docker
+sudo usermod -aG docker $USER  # Añadir tu usuario al grupo docker
+newgrp docker  # Aplicar cambio sin cerrar sesión</pre>
+                </div>
             </div>
             
             <div id="rhel" class="linux-tab">
                 <h4>RHEL 8+ / CentOS 8+ / Fedora</h4>
                 
-                <pre># Descargar paquete .rpm
-wget https://rhinometric.com/downloads/rhinometric-trial-1.0.0.x86_64.rpm
+                <p><strong>Método 1: Desde ZIP</strong></p>
+                <pre># Descargar y extraer
+wget https://rhinometric.com/downloads/rhinometric-trial-v1.0.0-production.zip
+unzip rhinometric-trial-v1.0.0-production.zip
+cd rhinometric-trial-v1.0.0-production
 
-# Instalar
-sudo rpm -i rhinometric-trial-1.0.0.x86_64.rpm
+# Instalar Docker si no está
+sudo dnf install docker docker-compose-plugin
+sudo systemctl start docker
+sudo systemctl enable docker
 
-# O usando dnf:
-sudo dnf install ./rhinometric-trial-1.0.0.x86_64.rpm
+# Iniciar Rhinometric
+docker compose up -d
 
-# Ejecutar instalador
-rhinometric-install</pre>
+# Abrir http://localhost:3000
+# Usuario: admin, Contraseña: admin_secure_2024</pre>
             </div>
             
             <div id="docker" class="linux-tab">
-                <h4>Instalación Manual con Docker Compose</h4>
+                <h4>Instalación Manual con Docker Compose (Cualquier Linux)</h4>
                 
-                <p>Si prefieres instalar manualmente:</p>
-                
-                <pre># 1. Clonar repositorio
-git clone https://github.com/rhinometric/trial-package.git
-cd trial-package
+                <p><strong>Prerrequisitos:</strong></p>
+                <pre># Verificar Docker instalado
+docker --version
+docker compose version
 
-# 2. Ejecutar script de instalación
-chmod +x start-trial.sh
-./start-trial.sh
+# Si no está, instalar:
+# Ubuntu/Debian: sudo apt-get install docker.io docker-compose-plugin
+# RHEL/Fedora: sudo dnf install docker docker-compose-plugin</pre>
 
-# El script te preguntará:
-# - Nombre de tu empresa
-# - Confirmación para iniciar
+                <p><strong>Instalación:</strong></p>
+                <pre># 1. Extraer ZIP
+unzip rhinometric-trial-v1.0.0-production.zip
+cd rhinometric-trial-v1.0.0-production
 
-# 3. Esperar a que descargue e inicie los contenedores (5-10 min)</pre>
+# 2. Verificar archivos
+ls -la
+# Deberías ver: docker-compose.yml, .env, config/, grafana/, etc.
 
-                <p><strong>Verificar instalación:</strong></p>
-                
-                <pre># Ver contenedores corriendo
+# 3. Iniciar todos los contenedores
+docker compose up -d
+
+# 4. Esperar 2-5 minutos (primera vez descarga imágenes)
+
+# 5. Verificar estado
 docker ps
+# Deberías ver 16 contenedores con estado "Up"</pre>
 
-# Deberías ver 15 contenedores:
-# - rhinometric-grafana
-# - rhinometric-prometheus
-# - rhinometric-loki
-# - rhinometric-tempo
-# - rhinometric-postgres
-# - rhinometric-redis
-# - rhinometric-alertmanager
-# - rhinometric-nginx
-# - rhinometric-promtail
-# - rhinometric-node-exporter
-# - rhinometric-cadvisor
-# - rhinometric-blackbox-exporter
-# - rhinometric-postgres-exporter
-# - rhinometric-license-server
-# - rhinometric-license-dashboard</pre>
+                <p><strong>Acceder a Grafana:</strong></p>
+                <pre># Desde el mismo servidor
+curl http://localhost:3000
+
+# Desde tu navegador local
+http://localhost:3000
+
+# Usuario: admin
+# Contraseña: admin_secure_2024 (en archivo .env)</pre>
+
+                <p><strong>Comandos útiles:</strong></p>
+                <pre># Ver logs de un contenedor
+docker logs rhinometric-grafana
+
+# Ver logs en tiempo real
+docker logs -f rhinometric-prometheus
+
+# Reiniciar un contenedor
+docker restart rhinometric-loki
+
+# Detener todo
+docker compose down
+
+# Reiniciar todo
+docker compose restart</pre>
             </div>
         </div>
     </section>
@@ -885,7 +898,12 @@ docker ps
             <div class="step">
                 <h4>Acceder a Grafana</h4>
                 <p>Abre tu navegador y ve a: <code>http://localhost:3000</code></p>
-                <p>Inicia sesión con las credenciales que obtuviste al finalizar la instalación (están en <code>credentials.txt</code>)</p>
+                <p>Inicia sesión con:</p>
+                <div class="alert alert-success">
+                    <p><strong>Usuario:</strong> <code>admin</code></p>
+                    <p><strong>Contraseña:</strong> <code>admin_secure_2024</code></p>
+                    <p><em>(Estas credenciales están en el archivo .env de tu instalación)</em></p>
+                </div>
             </div>
             
             <div class="step">
@@ -894,8 +912,8 @@ docker ps
                 <p>Este dashboard muestra:</p>
                 <ul>
                     <li>📊 Estado general del sistema (uptime, CPU, RAM)</li>
-                    <li>🐳 Contenedores Docker corriendo</li>
-                    <li>⚠️ Alertas activas</li>
+                    <li>🐳 16 contenedores Docker corriendo</li>
+                    <li>⚠️ Alertas activas (16 reglas configuradas)</li>
                     <li>📈 Gráficos de tendencias (últimas 24 horas)</li>
                 </ul>
             </div>
@@ -912,8 +930,10 @@ docker ps
                 </ul>
                 
                 <p><strong>Ejemplo de query:</strong></p>
-                <pre>{container_name="rhinometric-grafana"} |= "error"</pre>
-                <p>Esto muestra solo los logs del contenedor Grafana que contienen la palabra "error"</p>
+                <pre>{job="docker_logs"} |= "error"</pre>
+                <p>Esto muestra logs de TODOS los contenedores que contienen la palabra "error"</p>
+                <p><strong>Filtrar por contenedor específico:</strong></p>
+                <pre>{job="docker_logs", container_id=~".*grafana.*"} |= "error"</pre>
             </div>
             
             <div class="step">
@@ -944,10 +964,12 @@ docker ps
                 <h4>Próximos Pasos</h4>
                 <p>Ahora que conoces lo básico, puedes:</p>
                 <ul>
-                    <li>📚 Leer la sección <a href="#dashboards">Dashboards Detallados</a></li>
+                    <li>📚 Leer la sección <a href="#dashboards">Dashboards Detallados</a> (7 disponibles)</li>
                     <li>🔌 <a href="#integracion">Conectar tu primera aplicación</a></li>
                     <li>🎨 Crear dashboards personalizados</li>
                     <li>🔔 Configurar alertas (CPU > 80%, etc.)</li>
+                    <li>🔍 Explorar Logs Explorer (todos los contenedores)</li>
+                    <li>🔎 Ver Distributed Tracing (trazas continuas)</li>
                 </ul>
             </div>
         </div>
@@ -961,7 +983,7 @@ docker ps
     <section class="section" id="dashboards">
         <h2>📊 Dashboards Precargados - Guía Detallada</h2>
         
-        <p>Rhinometric incluye 6 dashboards profesionales listos para usar. Aquí te explicamos cada uno:</p>
+        <p>Rhinometric incluye <strong>7 dashboards profesionales 100% funcionales</strong> listos para usar. Aquí te explicamos cada uno:</p>
         
         <div class="cards">
             <div class="card">
@@ -972,8 +994,8 @@ docker ps
                 <ul>
                     <li>Uptime total del sistema</li>
                     <li>CPU, RAM, Disco usage</li>
-                    <li>Alertas activas</li>
-                    <li>Contenedores running</li>
+                    <li>Alertas activas (16 reglas)</li>
+                    <li>16 contenedores running</li>
                     <li>Gráficos de tendencia 24h</li>
                 </ul>
             </div>
@@ -984,7 +1006,7 @@ docker ps
                 <p><strong>Ideal para:</strong> SREs, SysAdmins</p>
                 <p><strong>Refresh:</strong> 15 segundos</p>
                 <ul>
-                    <li>CPU por core (%)  </li>
+                    <li>CPU por core (%)</li>
                     <li>RAM: used, free, cached</li>
                     <li>Disco I/O (MB/s)</li>
                     <li>Network throughput</li>
@@ -998,7 +1020,7 @@ docker ps
                 <p><strong>Ideal para:</strong> DevOps, Developers</p>
                 <p><strong>Refresh:</strong> 30 segundos</p>
                 <ul>
-                    <li>Lista de contenedores</li>
+                    <li>Lista de 16 contenedores</li>
                     <li>CPU/RAM por contenedor</li>
                     <li>Network I/O por contenedor</li>
                     <li>Restart count</li>
@@ -1012,11 +1034,11 @@ docker ps
                 <p><strong>Ideal para:</strong> Developers, Support</p>
                 <p><strong>Refresh:</strong> 10 segundos</p>
                 <ul>
-                    <li>Query builder visual</li>
-                    <li>Filtros por servicio</li>
+                    <li>Query builder visual (LogQL)</li>
+                    <li>Filtros por contenedor (docker_logs)</li>
                     <li>Búsqueda por texto</li>
                     <li>Logs en tiempo real</li>
-                    <li>Export a CSV/JSON</li>
+                    <li>Extracción container_id automática</li>
                 </ul>
             </div>
             
@@ -1026,11 +1048,11 @@ docker ps
                 <p><strong>Ideal para:</strong> Developers, Architects</p>
                 <p><strong>Refresh:</strong> 1 minuto</p>
                 <ul>
-                    <li>Mapa de servicios</li>
-                    <li>Búsqueda de traces</li>
+                    <li>Trazas continuas (~15 spans/seg)</li>
+                    <li>Búsqueda de traces (5 min window)</li>
                     <li>Latencia por endpoint</li>
-                    <li>Flame graphs</li>
-                    <li>Error rate</li>
+                    <li>Request Rate TraceQL</li>
+                    <li>Service Latency p95/p99</li>
                 </ul>
             </div>
             
@@ -1040,11 +1062,25 @@ docker ps
                 <p><strong>Ideal para:</strong> Managers, Sales</p>
                 <p><strong>Refresh:</strong> 5 minutos</p>
                 <ul>
-                    <li>Días restantes del trial</li>
+                    <li>Días restantes del trial (30)</li>
                     <li>Fecha de expiración</li>
                     <li>Clientes activos</li>
                     <li>Uso de recursos</li>
                     <li>Info de upgrade</li>
+                </ul>
+            </div>
+            
+            <div class="card">
+                <h4>🔐 License Management</h4>
+                <p><strong>Propósito:</strong> Gestión de licencias</p>
+                <p><strong>Ideal para:</strong> Admins, Sales</p>
+                <p><strong>Refresh:</strong> 5 minutos</p>
+                <ul>
+                    <li>Generación de licencias</li>
+                    <li>Renovaciones automáticas</li>
+                    <li>Hardware fingerprint</li>
+                    <li>Historial de activaciones</li>
+                    <li>Logs de licenciamiento</li>
                 </ul>
             </div>
         </div>
@@ -1055,7 +1091,7 @@ docker ps
         <ol>
             <li>Haz clic en el ícono de <strong>4 cuadrados</strong> (Dashboards)</li>
             <li>Verás la carpeta <strong>"Rhinometric"</strong></li>
-            <li>Expándela para ver los 6 dashboards</li>
+            <li>Expándela para ver los 7 dashboards</li>
             <li>Haz clic en cualquiera para abrirlo</li>
         </ol>
         
@@ -1302,13 +1338,19 @@ docker restart rhinometric-grafana</pre>
         <h3>❌ "Olvidé mi contraseña de Grafana"</h3>
         <p><strong>Solución:</strong></p>
         <ol>
-            <li>Las credenciales están en <code>credentials.txt</code> en la carpeta de instalación</li>
-            <li>Si perdiste el archivo, puedes resetear la contraseña:
+            <li>La contraseña por defecto es <code>admin_secure_2024</code> (definida en archivo <code>.env</code>)</li>
+            <li>Si cambiaste la contraseña y la olvidaste, puedes resetearla:
                 <pre># Entrar al contenedor de Grafana
 docker exec -it rhinometric-grafana /bin/bash
 
 # Resetear contraseña del admin
-grafana-cli admin reset-admin-password nueva_contraseña_aqui</pre>
+grafana-cli admin reset-admin-password nueva_contraseña_aqui
+
+# Salir del contenedor
+exit
+
+# Reiniciar Grafana
+docker restart rhinometric-grafana</pre>
             </li>
         </ol>
         

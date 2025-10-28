@@ -1,0 +1,94 @@
+═══════════════════════════════════════════════════════════════════════════
+  RHINOMETRIC v2.1.0 ENTERPRISE - INSTALLATION GUIDE
+═══════════════════════════════════════════════════════════════════════════
+
+PACKAGE INFORMATION
+-------------------
+File:     rhinometric-trial-v2.1.0-universal.tar.gz
+Version:  2.1.0
+SHA256:   195d642245f121638dc7fa6a79ab1a12b237cb6b849af6dcea791e7c96e42f3d
+Date:     Mon, Oct 27, 2025  6:34:40 PM
+
+SYSTEM REQUIREMENTS
+-------------------
+- Docker 20.10+ or Docker Desktop
+- Docker Compose v2.0+
+- 4 GB RAM minimum (6 GB recommended)
+- 4 CPU cores minimum
+- 20 GB disk space
+
+SUPPORTED PLATFORMS
+-------------------
+✓ macOS (Intel/Apple Silicon)
+✓ Linux (Ubuntu 20.04+, Debian 11+, CentOS 8+)
+✓ Windows WSL2 (Ubuntu 24.04)
+
+INSTALLATION STEPS
+------------------
+
+1. Extract Package
+   $ tar -xzf rhinometric-trial-v2.1.0-universal.tar.gz
+   $ cd rhinometric-trial-v2.1.0-universal
+
+2. Verify Checksums (Optional)
+   $ sha256sum -c CHECKSUMS.txt
+
+3. Run Universal Installer
+   $ ./install-v2.1.sh
+
+4. Validate Installation
+   $ ./validate-v2.1.sh
+
+ACCESS URLS
+-----------
+Grafana:         http://localhost:3000 (admin/admin)
+Prometheus:      http://localhost:9090
+License Server:  http://localhost:5000/api/docs
+API Proxy:       http://localhost:8090/health
+
+MANUAL INSTALLATION
+-------------------
+If the installer fails:
+
+1. Create environment file
+   $ cp .env.example .env
+
+2. Start services
+   $ docker compose -f docker-compose-v2.1.0.yml up -d
+
+3. Validate
+   $ ./validate-v2.1.sh
+
+TROUBLESHOOTING
+---------------
+
+Services not starting:
+  $ docker compose -f docker-compose-v2.1.0.yml logs -f
+
+Check container health:
+  $ docker ps --format "table {{.Names}}\t{{.Status}}"
+
+Restart services:
+  $ docker compose -f docker-compose-v2.1.0.yml restart
+
+Stop all services:
+  $ docker compose -f docker-compose-v2.1.0.yml down
+
+WHAT'S NEW IN v2.1.0
+--------------------
+✓ GUI-based API connectivity
+✓ 8 pre-loaded enterprise dashboards
+✓ OpenTelemetry Collector (replaces telemetrygen)
+✓ FastAPI License Server (replaces Flask)
+✓ One-command installation
+✓ 30% resource reduction vs v2.0.0
+✓ 100% healthchecks (16/16)
+
+DOCUMENTATION
+-------------
+Full documentation: README.md
+API Documentation: http://localhost:5000/api/docs
+
+═══════════════════════════════════════════════════════════════════════════
+  For support, check logs and documentation
+═══════════════════════════════════════════════════════════════════════════
