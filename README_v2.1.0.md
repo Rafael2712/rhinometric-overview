@@ -311,7 +311,7 @@ curl http://localhost:9090/api/v1/query?query=up
 ## 📝 Licencia
 
 **Trial**: 30 días gratuitos, todas las funcionalidades habilitadas  
-**Comercial**: Contactar support@rhinometric.io para licencia permanente
+**Comercial**: Contactar rafael.canelon@rhinometric.com para licencia permanente
 
 ---
 

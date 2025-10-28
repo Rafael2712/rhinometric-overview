@@ -245,7 +245,7 @@ Si algo no funciona:
 1. **Toma capturas de pantalla** de los errores que veas
 2. **Copia el mensaje de error completo**
 3. **Anota qué paso estabas haciendo**
-4. Envía esa información a: support@rhinometric.com
+4. Envía esa información a: rafael.canelon@rhinometric.com
 
 ---
 
@@ -290,4 +290,4 @@ Para aprender más sobre cómo usar Rhinometric:
 
 **Versión:** 1.0.0  
 **Fecha:** Octubre 2025  
-**Soporte:** support@rhinometric.com
+**Soporte:** rafael.canelon@rhinometric.com

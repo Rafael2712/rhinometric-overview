@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  license-management-ui:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: rhinometric-license-mgmt-ui
+    ports:
+      - "8092:8092"
+    environment:
+      - NODE_ENV=production
+      - VITE_API_URL=http://license-server-v2:8000
+    networks:
+      - rhinometric_network_v21
+    depends_on:
+      - license-server-v2
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8092"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  rhinometric_network_v21:
+    external: true

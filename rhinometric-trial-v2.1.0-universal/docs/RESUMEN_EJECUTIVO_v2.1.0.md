@@ -322,11 +322,9 @@ Credenciales default:
 
 ### **Versiones Comerciales** (Futuro)
 
-| Edición | Precio (USD/mes) | Características |
-|---------|------------------|-----------------|
-| **Startup** | $299 | 1 servidor, 50 servicios, soporte email |
-| **Business** | $999 | 5 servidores, 200 servicios, soporte 24/7, white-label |
-| **Enterprise** | Custom | Ilimitado, on-premise, SLA 99.9%, auditoría |
+**Precios disponibles a consultar**: rafael.canelon@rhinometric.com
+
+Rhinometric ofrece planes personalizados según el tamaño de tu infraestructura, número de servicios monitorizados y requerimientos de soporte. Contáctanos para una cotización específica para tu organización.
 
 ---
 
@@ -334,7 +332,7 @@ Credenciales default:
 
 | Característica | Rhinometric | DataDog | New Relic | Grafana Cloud |
 |----------------|-------------|---------|-----------|---------------|
-| **Precio (100GB datos/mes)** | $999 | $3,500+ | $4,000+ | $2,500+ |
+| **Precio (100GB datos/mes)** | A consultar | $3,500+ | $4,000+ | $2,500+ |
 | **On-Premise** | ✅ Sí | ❌ No | ❌ No | ⚠️ Limitado |
 | **API Monitoring** | ✅ Built-in | ✅ Sí | ✅ Sí | ⚠️ Manual |
 | **Auto-Updates** | ✅ Sí | N/A (SaaS) | N/A (SaaS) | N/A (SaaS) |
@@ -357,7 +355,7 @@ Credenciales default:
 
 ### **Comunidad**
 
-- 📧 **Email**: support@rhinometric.io (solo versión comercial)
+- 📧 **Email**: rafael.canelon@rhinometric.com
 - 💬 **Discord**: https://discord.gg/rhinometric (coming soon)
 - 📚 **Docs**: https://docs.rhinometric.io (coming soon)
 - 🐙 **GitHub**: https://github.com/Rafael2712/rhinometric-overview (público)

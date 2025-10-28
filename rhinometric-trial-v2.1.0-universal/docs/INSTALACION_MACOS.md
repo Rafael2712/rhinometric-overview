@@ -355,7 +355,7 @@ display notification "Rhinometric iniciado" with title "Observabilidad"
 
 - 📖 Docs: `docs/` directory
 - 🐙 GitHub: https://github.com/Rafael2712/mi-proyecto/issues
-- 📧 Email (comercial): support@rhinometric.io
+- 📧 Email (comercial): rafael.canelon@rhinometric.com
 
 ---
 
