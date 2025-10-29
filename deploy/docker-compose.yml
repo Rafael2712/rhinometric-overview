@@ -1,0 +1,574 @@
+# ═══════════════════════════════════════════════════════════════════════════
+#  RHINOMETRIC TRIAL v2.1.0 - ENTERPRISE EDITION
+# ═══════════════════════════════════════════════════════════════════════════
+#
+#  Complete observability stack with:
+#  ✓ GUI-based API connectivity (no YAML editing)
+#  ✓ Pre-loaded Enterprise dashboards
+#  ✓ OpenTelemetry Collector (replaces telemetrygen)
+#  ✓ FastAPI license server (replaces Flask)
+#  ✓ One-command installation
+#  ✓ Multi-platform support (macOS/Linux/Windows)
+#  ✓ Optimized resources (~3.5 vCPUs, ~6GB RAM)
+#
+#  New Components:
+#  - api-proxy: Universal API connector with Prometheus metrics
+#  - otel-collector: Production-grade telemetry collector
+#  - license-server-v2: FastAPI rewrite with async support
+#
+#  Installation:
+#    ./install-v2.1.sh
+#
+#  Manual Start:
+#    docker compose -f docker-compose-v2.1.0.yml up -d
+#
+# ═══════════════════════════════════════════════════════════════════════════
+
+version: '3.8'
+
+services:
+  # ═══════════════════════════════════════════════════════════════════════
+  #  TIER 1: LICENSE & DATA LAYER
+  # ═══════════════════════════════════════════════════════════════════════
+
+  license-server-v2:
+    build:
+      context: ./license-server-v2
+      dockerfile: Dockerfile
+    container_name: rhinometric-license-server-v2
+    environment:
+      DATABASE_URL: postgresql://rhinometric:${POSTGRES_PASSWORD:-rhinometric}@postgres:5432/rhinometric_trial
+      REDIS_URL: redis://:${REDIS_PASSWORD:-rhinometric}@redis:6379
+      PYTHONUNBUFFERED: 1
+      # Zoho Mail SMTP Configuration
+      SMTP_HOST: smtp.zoho.eu
+      SMTP_PORT: 465
+      SMTP_USER: rafael.canelon@rhinometric.com
+      SMTP_PASSWORD: 271211Rc$
+      SMTP_FROM: rafael.canelon@rhinometric.com
+    ports:
+      - "5000:5000"
+    volumes:
+      - ${HOME}/rhinometric_data_v2.1/license-server/logs:/app/logs
+    networks:
+      - rhinometric_network_v21
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/api/health"]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  license-ui:
+    image: rhinometric-license-ui:latest
+    container_name: rhinometric-license-ui
+    ports:
+      - "8092:8092"
+    networks:
+      - rhinometric_network_v21
+    depends_on:
+      - license-server-v2
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.4'
+          memory: 512M
+
+  postgres:
+    image: postgres:15.10-alpine
+    container_name: rhinometric-postgres
+    environment:
+      POSTGRES_USER: rhinometric
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-rhinometric}
+      POSTGRES_DB: rhinometric_trial
+    ports:
+      - "5432:5432"
+    volumes:
+      - ${HOME}/rhinometric_data_v2.1/postgres:/var/lib/postgresql/data
+      - ./init-db:/docker-entrypoint-initdb.d:ro
+    networks:
+      - rhinometric_network_v21
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rhinometric"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+    restart: unless-stopped
+
+  redis:
+    image: redis:7.2-alpine
+    container_name: rhinometric-redis
+    command: >
+      redis-server
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+      --appendonly yes
+      --requirepass ${REDIS_PASSWORD:-rhinometric}
+    ports:
+      - "6379:6379"
+    volumes:
+      - ${HOME}/rhinometric_data_v2.1/redis:/data
+    networks:
+      - rhinometric_network_v21
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-rhinometric}", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.2'
+          memory: 256M
+    restart: unless-stopped
+
+  # ═══════════════════════════════════════════════════════════════════════
+  #  TIER 2: API CONNECTIVITY (NEW v2.1.0)
+  # ═══════════════════════════════════════════════════════════════════════
+
+  api-proxy:
+    build:
+      context: ./api-proxy
+      dockerfile: Dockerfile
+    container_name: rhinometric-api-proxy
+    environment:
+      PORT: 8090
+      REDIS_URL: redis://:${REDIS_PASSWORD:-rhinometric}@redis:6379
+      LOG_LEVEL: info
+    ports:
+      - "8090:8090"
+    volumes:
+      - ${HOME}/rhinometric_data_v2.1/api-proxy/cache:/app/cache
+      - ${HOME}/rhinometric_data_v2.1/api-proxy/config:/app/config
+    networks:
+      - rhinometric_network_v21
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8090/health"]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.3'
+          memory: 256M
+    restart: unless-stopped
+
+  # ═══════════════════════════════════════════════════════════════════════
+  #  TIER 3: OBSERVABILITY CORE
+  # ═══════════════════════════════════════════════════════════════════════
+
+  prometheus:
+    image: prom/prometheus:v2.53.0
+    container_name: rhinometric-prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=7d'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--web.enable-lifecycle'
+      - '--web.enable-admin-api'
+    ports:
+      - "9090:9090"
+    volumes:
+      - ${HOME}/rhinometric_data_v2.1/prometheus:/prometheus
+      - ./config/prometheus-v2.1.yml:/etc/prometheus/prometheus.yml:ro
+      - ./config/rules:/etc/prometheus/rules:ro
+    networks:
+      - rhinometric_network_v21
+    depends_on:
+      - api-proxy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:9090/-/healthy"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.8'
+          memory: 1536M
+    restart: unless-stopped
+
+  loki:
+    image: grafana/loki:3.0.0
+    container_name: rhinometric-loki
+    command: -config.file=/etc/loki/loki.yml
+    ports:
+      - "3100:3100"
+    volumes:
+      - ${HOME}/rhinometric_data_v2.1/loki:/loki
+      - ./config/loki-v2.1.yml:/etc/loki/loki.yml:ro
+    networks:
+      - rhinometric_network_v21
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3100/ready"]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+    restart: unless-stopped
+
+  tempo:
+    image: grafana/tempo:2.6.0
+    container_name: rhinometric-tempo
+    command: -config.file=/etc/tempo/tempo.yml
+    ports:
+      - "3200:3200"
+      - "4317:4317"
+      - "4318:4318"
+      - "14268:14268"
+    volumes:
+      - ${HOME}/rhinometric_data_v2.1/tempo:/tmp/tempo
+      - ./config/tempo-v2.1.yml:/etc/tempo/tempo.yml:ro
+    networks:
+      - rhinometric_network_v21
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3200/ready"]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:10.4.0
+    container_name: rhinometric-grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+      GF_SERVER_ROOT_URL: http://localhost:3000
+      GF_INSTALL_PLUGINS: grafana-clock-panel,grafana-simple-json-datasource,grafana-piechart-panel
+      GF_FEATURE_TOGGLES_ENABLE: traceqlEditor
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /etc/grafana/provisioning/dashboards/json/overview.json
+    ports:
+      - "3000:3000"
+    volumes:
+      - ${HOME}/rhinometric_data_v2.1/grafana:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+    networks:
+      - rhinometric_network_v21
+    depends_on:
+      prometheus:
+        condition: service_healthy
+      loki:
+        condition: service_healthy
+      tempo:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/api/health"]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.6'
+          memory: 800M
+    restart: unless-stopped
+
+  # ═══════════════════════════════════════════════════════════════════════
+  #  TIER 4: TELEMETRY (NEW v2.1.0)
+  # ═══════════════════════════════════════════════════════════════════════
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.91.0
+    container_name: rhinometric-otel-collector
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    ports:
+      - "4319:4317"  # OTLP gRPC
+      - "4320:4318"  # OTLP HTTP
+      - "14250:14250"  # Jaeger gRPC
+      - "8889:8889"  # Prometheus metrics
+      - "13133:13133"  # Health check
+    volumes:
+      - ./config/otel-collector-config.yml:/etc/otel-collector-config.yaml:ro
+    networks:
+      - rhinometric_network_v21
+    depends_on:
+      tempo:
+        condition: service_healthy
+      prometheus:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:13133"]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.3'
+          memory: 512M
+    restart: unless-stopped
+
+  # ═══════════════════════════════════════════════════════════════════════
+  #  TIER 5: ALERTING & LOG COLLECTION
+  # ═══════════════════════════════════════════════════════════════════════
+
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    container_name: rhinometric-alertmanager
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+    ports:
+      - "9093:9093"
+    volumes:
+      - ${HOME}/rhinometric_data_v2.1/alertmanager:/alertmanager
+      - ./config/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    networks:
+      - rhinometric_network_v21
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:9093/-/healthy"]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.2'
+          memory: 256M
+    restart: unless-stopped
+
+  promtail:
+    image: grafana/promtail:3.0.0
+    container_name: rhinometric-promtail
+    command: -config.file=/etc/promtail/promtail.yml
+    ports:
+      - "9080:9080"
+    volumes:
+      - ./config/promtail-v2.1.yml:/etc/promtail/promtail.yml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+    networks:
+      - rhinometric_network_v21
+    depends_on:
+      loki:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:9080/ready"]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.2'
+          memory: 256M
+    restart: unless-stopped
+
+  # ═══════════════════════════════════════════════════════════════════════
+  #  TIER 6: EXPORTERS
+  # ═══════════════════════════════════════════════════════════════════════
+
+  node-exporter:
+    image: prom/node-exporter:v1.7.0
+    container_name: rhinometric-node-exporter
+    command:
+      - '--path.rootfs=/host'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    ports:
+      - "9100:9100"
+    volumes:
+      - /:/host:ro,rslave
+    networks:
+      - rhinometric_network_v21
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:9100/metrics"]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.1'
+          memory: 128M
+    restart: unless-stopped
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    container_name: rhinometric-cadvisor
+    ports:
+      - "8080:8080"
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    networks:
+      - rhinometric_network_v21
+    privileged: true
+    devices:
+      - /dev/kmsg
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/healthz"]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.3'
+          memory: 512M
+    restart: unless-stopped
+
+  blackbox-exporter:
+    image: prom/blackbox-exporter:v0.25.0
+    container_name: rhinometric-blackbox-exporter
+    command:
+      - '--config.file=/etc/blackbox/blackbox.yml'
+    ports:
+      - "9115:9115"
+    volumes:
+      - ./config/blackbox.yml:/etc/blackbox/blackbox.yml:ro
+    networks:
+      - rhinometric_network_v21
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:9115/health"]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.1'
+          memory: 128M
+    restart: unless-stopped
+
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:v0.15.0
+    container_name: rhinometric-postgres-exporter
+    environment:
+      DATA_SOURCE_NAME: postgresql://rhinometric:${POSTGRES_PASSWORD:-rhinometric}@postgres:5432/rhinometric_trial?sslmode=disable
+    ports:
+      - "9187:9187"
+    networks:
+      - rhinometric_network_v21
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:9187/metrics"]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.1'
+          memory: 128M
+    restart: unless-stopped
+
+  # ═══════════════════════════════════════════════════════════════════════
+  #  TIER 7: REVERSE PROXY
+  # ═══════════════════════════════════════════════════════════════════════
+
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: rhinometric-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ${HOME}/rhinometric_data_v2.1/nginx/logs:/var/log/nginx
+    networks:
+      - rhinometric_network_v21
+    depends_on:
+      grafana:
+        condition: service_healthy
+      license-server-v2:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:80/"]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.2'
+          memory: 256M
+    restart: unless-stopped
+
+networks:
+  rhinometric_network_v21:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.21.0.0/16
+
+# ═══════════════════════════════════════════════════════════════════════════
+#  RESOURCE SUMMARY - v2.1.0 ENTERPRISE
+# ═══════════════════════════════════════════════════════════════════════════
+#
+#  Total estimated resources:
+#    CPU:    ~3.5 vCPUs (30% reduction from v2.0.0: 4.9 vCPUs)
+#    Memory: ~6.0 GB RAM (32% reduction from v2.0.0: 8.8 GB)
+#
+#  Breakdown:
+#    License Server v2:    0.4 CPU / 512 MB
+#    Postgres:             0.5 CPU / 512 MB
+#    Redis:                0.2 CPU / 256 MB
+#    API Proxy (NEW):      0.3 CPU / 256 MB
+#    Prometheus:           0.8 CPU / 1536 MB
+#    Loki:                 0.5 CPU / 512 MB
+#    Tempo:                0.5 CPU / 512 MB
+#    Grafana:              0.6 CPU / 800 MB
+#    OTEL Collector (NEW): 0.3 CPU / 512 MB
+#    Alertmanager:         0.2 CPU / 256 MB
+#    Promtail:             0.2 CPU / 256 MB
+#    Node Exporter:        0.1 CPU / 128 MB
+#    cAdvisor:             0.3 CPU / 512 MB
+#    Blackbox Exporter:    0.1 CPU / 128 MB
+#    Postgres Exporter:    0.1 CPU / 128 MB
+#    Nginx:                0.2 CPU / 256 MB
+#
+#  Services: 16 total (3 new in v2.1.0)
+#  Healthchecks: 16/16 (100%)
+#  Networks: Custom bridge with static subnet
+#  Volumes: Bind mounts to ~/rhinometric_data_v2.1/
+#
+# ═══════════════════════════════════════════════════════════════════════════
