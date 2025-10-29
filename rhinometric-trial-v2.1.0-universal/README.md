@@ -114,7 +114,7 @@ docker compose -f docker-compose-v2.1.0.yml up -d
 
 | Service | URL | Credentials |
 |---------|-----|-------------|
-| **Grafana** | http://localhost:3000 | admin / admin |
+| **Grafana** | http://localhost:3000 | See `.env` file (`GRAFANA_USER` / `GRAFANA_PASSWORD`) |
 | **Prometheus** | http://localhost:9090 | - |
 | **License Server** | http://localhost:5000/api/docs | - |
 | **API Proxy** | http://localhost:8090/health | - |
@@ -122,6 +122,8 @@ docker compose -f docker-compose-v2.1.0.yml up -d
 | **Tempo** | http://localhost:3200 | - |
 | **Alertmanager** | http://localhost:9093 | - |
 | **Nginx** | http://localhost:80 | - |
+
+> ⚠️ **SECURITY**: Change all default passwords immediately after installation. Configure credentials in `.env` file.
 
 ---
 
@@ -379,12 +381,22 @@ curl -X POST http://localhost:9090/-/reload
 **Default Credentials (CHANGE IN PRODUCTION):**
 
 ```bash
-# Edit .env file
-POSTGRES_PASSWORD=your-secure-password
-REDIS_PASSWORD=your-secure-password
+# Copy .env.example to .env and configure your credentials
+cp .env.example .env
+
+# Edit .env file with your secure passwords
+POSTGRES_PASSWORD=your_secure_database_password_here
+REDIS_PASSWORD=your_secure_redis_password_here
 GRAFANA_USER=admin
-GRAFANA_PASSWORD=your-secure-password
+GRAFANA_PASSWORD=change_this_password_on_first_login
+
+# For email functionality (optional)
+SMTP_HOST=smtp.your-provider.com
+SMTP_USER=your_email@yourdomain.com
+SMTP_PASSWORD=your_app_password_here
 ```
+
+> ⚠️ **IMPORTANT**: Never commit `.env` with real credentials to version control
 
 **Network Security:**
 - All services run on `172.21.0.0/16` network

@@ -99,7 +99,7 @@ region           = "us-ashburn-1"                  # Tu región
 ssh_public_key_path = "~/.ssh/oci_rsa.pub"        # Tu SSH public key
 
 # CAMBIAR passwords por valores seguros
-grafana_admin_password = "TuPasswordSeguro123!"
+grafana_admin_password = "YourSecurePasswordHere"  # Change this to a strong password
 postgres_password      = "PostgresSeguro456!"
 redis_password         = "RedisSeguro789!"
 ```
