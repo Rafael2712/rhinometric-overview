@@ -1,4 +1,6 @@
-# íº€ Rhinometric - Enterprise Observability Platform
+# ğŸš€ Rhinometric - Enterprise Observability Platform
+
+> ğŸŒ **Languages:** [EspaÃ±ol](README.md) | [English](README_EN.md)
 
 ![Version](https://img.shields.io/badge/version-2.1.0-blue.svg)
 ![License](https://img.shields.io/badge/license-Proprietary-red.svg)
@@ -12,7 +14,7 @@ Rhinometric es una soluciÃ³n completa de monitoreo, mÃ©tricas, logs y trazas dis
 
 ---
 
-## í³‹ Tabla de Contenidos
+## ï¿½ï¿½ï¿½ Tabla de Contenidos
 
 - [Quick Start](#-quick-start)
 - [CaracterÃ­sticas](#-caracterÃ­sticas)
@@ -24,7 +26,7 @@ Rhinometric es una soluciÃ³n completa de monitoreo, mÃ©tricas, logs y trazas dis
 
 ---
 
-## íº€ Quick Start
+## ï¿½ï¿½ï¿½ Quick Start
 
 ### InstalaciÃ³n RÃ¡pida (Recomendada)
 
@@ -78,7 +80,7 @@ Una vez instalado (3-5 minutos):
 - **Prometheus**: http://localhost:9090
   - Queries y mÃ©tricas directas
 
-**Licencia Trial**: 15 dÃ­as automÃ¡ticos desde instalaciÃ³n
+**Licencia Trial**: 30 dÃ­as automÃ¡ticos desde instalaciÃ³n
 
 ---
 
@@ -86,10 +88,10 @@ Una vez instalado (3-5 minutos):
 
 ### Observabilidad Completa (3 Pilares)
 
-- **í³Š MÃ©tricas**: Prometheus + 15 Dashboards Grafana pre-configurados
-- **í³ Logs**: Loki + Promtail para agregaciÃ³n centralizada
-- **í´ Trazas**: Tempo para distributed tracing
-- **í´— CorrelaciÃ³n**: Drilldown automÃ¡tico mÃ©tricas â†’ logs â†’ traces
+- **ï¿½ï¿½ï¿½ MÃ©tricas**: Prometheus + 15 Dashboards Grafana pre-configurados
+- **ï¿½ï¿½ï¿½ Logs**: Loki + Promtail para agregaciÃ³n centralizada
+- **ï¿½ï¿½ï¿½ Trazas**: Tempo para distributed tracing
+- **ï¿½ï¿½ï¿½ CorrelaciÃ³n**: Drilldown automÃ¡tico mÃ©tricas â†’ logs â†’ traces
 
 ### Stack TecnolÃ³gico
 
@@ -119,7 +121,7 @@ Una vez instalado (3-5 minutos):
 
 ---
 
-## í³¦ Requisitos
+## ï¿½ï¿½ï¿½ Requisitos
 
 ### Hardware MÃ­nimo
 - **CPU**: 4 cores
@@ -150,7 +152,7 @@ Una vez instalado (3-5 minutos):
 
 ---
 
-## í´§ InstalaciÃ³n Detallada
+## ï¿½ï¿½ï¿½ InstalaciÃ³n Detallada
 
 ### 1. Clonar Repositorio (Desarrollo)
 
@@ -218,7 +220,7 @@ curl http://localhost:3000/api/health
 
 ---
 
-## í¿—ï¸ Arquitecturas Soportadas
+## ï¿½ï¿½ï¿½ï¸ Arquitecturas Soportadas
 
 ### 1ï¸âƒ£ On-Premise (100% Local)
 
@@ -245,7 +247,7 @@ curl http://localhost:3000/api/health
 
 **Uso**: ProducciÃ³n pequeÃ±a/mediana empresa
 
-í³– [GuÃ­a Completa Cloud Deployment](CLOUD_DEPLOYMENT_GUIDE.md)
+ï¿½ï¿½ï¿½ [GuÃ­a Completa Cloud Deployment](CLOUD_DEPLOYMENT_GUIDE.md)
 
 ### 3ï¸âƒ£ HÃ­brido (On-Prem + Cloud)
 
@@ -259,30 +261,34 @@ curl http://localhost:3000/api/health
 
 **Uso**: Multi-sede, alta disponibilidad, cumplimiento normativo
 
-í³– [GuÃ­a Arquitectura HÃ­brida](HYBRID_ARCHITECTURE_GUIDE.md)
+ï¿½ï¿½ï¿½ [GuÃ­a Arquitectura HÃ­brida](HYBRID_ARCHITECTURE_GUIDE.md)
 
 ---
 
-## í³š DocumentaciÃ³n
+## ï¿½ï¿½ï¿½ DocumentaciÃ³n
 
 ### GuÃ­as de InstalaciÃ³n por Sistema Operativo
-- [í³˜ Linux](INSTALACION_LINUX.md) - Ubuntu, Debian, RHEL, CentOS
-- [í³— macOS](INSTALACION_MACOS.md) - Intel y Apple Silicon (M1/M2)
-- [í³™ Windows](INSTALACION_WINDOWS.md) - Windows 10/11 Pro/Enterprise
+- [ğŸ“˜ Linux](INSTALACION_LINUX.md) - Ubuntu, Debian, RHEL, CentOS
+- [ğŸ“— macOS](INSTALACION_MACOS.md) - Intel y Apple Silicon (M1/M2)
+- [ğŸ“™ Windows](INSTALACION_WINDOWS.md) - Windows 10/11 Pro/Enterprise
+
+### GuÃ­as BilingÃ¼es (EspaÃ±ol/English)
+- [ğŸ“˜ GuÃ­a TÃ©cnica para Conectar Aplicaciones](docs/USER_GUIDE_CONNECT_APPS.md) - DevOps, Integradores, Administradores IT
+- [ğŸ“— GuÃ­a Institucional Sector PÃºblico](docs/GUIDE_PUBLIC_SECTOR.md) - Ayuntamientos, Empresas PÃºblicas, Instituciones
 
 ### GuÃ­as TÃ©cnicas
-- [í³– DocumentaciÃ³n Completa v2.1.0](README_v2.1.0.md)
+- [ğŸ“– DocumentaciÃ³n Completa v2.1.0](README_v2.1.0.md)
 - [â˜ï¸ Cloud Deployment (Oracle/AWS/Azure)](CLOUD_DEPLOYMENT_GUIDE.md)
-- [í´€ Arquitectura HÃ­brida](HYBRID_ARCHITECTURE_GUIDE.md)
-- [í´ Sistema de Licencias](LICENSE_SERVER_CLARIFICATION.md)
-- [í³Š Informe EjecuciÃ³n v2.1.0](EXECUTION-TEST-REPORT-v2.1.0.md)
+- [ï¿½ï¿½ï¿½ Arquitectura HÃ­brida](HYBRID_ARCHITECTURE_GUIDE.md)
+- [ï¿½ï¿½ï¿½ Sistema de Licencias](LICENSE_SERVER_CLARIFICATION.md)
+- [ï¿½ï¿½ï¿½ Informe EjecuciÃ³n v2.1.0](EXECUTION-TEST-REPORT-v2.1.0.md)
 
 ### Changelog
-- [í¶• Novedades v2.1.0](CHANGELOG-v2.1.md)
+- [ï¿½ï¿½ï¿½ Novedades v2.1.0](CHANGELOG-v2.1.md)
 
 ---
 
-## í²¼ Casos de Uso
+## ï¿½ï¿½ï¿½ Casos de Uso
 
 ### Desarrollo/Staging
 - Monitoreo de microservicios en desarrollo
@@ -301,25 +307,25 @@ curl http://localhost:3000/api/health
 
 ---
 
-## í¶˜ Soporte
+## ï¿½ï¿½ï¿½ Soporte
 
 ### Soporte TÃ©cnico
-- í³§ **Email**: rafael.canelon@rhinometric.com
+- ï¿½ï¿½ï¿½ **Email**: rafael.canelon@rhinometric.com
 - â° **Horario**: Lunes-Viernes, 9:00-18:00 CET
-- í°› **Reportar Issues**: [GitHub Issues](https://github.com/Rafael2712/rhinometric-overview/issues)
+- ï¿½ï¿½ï¿½ **Reportar Issues**: [GitHub Issues](https://github.com/Rafael2712/rhinometric-overview/issues)
 
 ### Licencias Comerciales
-- í²¼ **Ventas**: rafael.canelon@rhinometric.com
-- í³„ **Trial**: 15 dÃ­as automÃ¡ticos
-- í¿¢ **Empresas**: Licencias perpetuas/anuales disponibles
+- ğŸ’¼ **Ventas**: rafael.canelon@rhinometric.com
+- ğŸ“„ **Trial**: 30 dÃ­as automÃ¡ticos
+- ğŸ¢ **Empresas**: Licencias perpetuas/anuales disponibles
 
 ---
 
-## í³„ Licencia
+## ï¿½ï¿½ï¿½ Licencia
 
 **Propietaria** - RhinometricÂ® es una marca registrada.
 
-- âœ… **Trial**: 15 dÃ­as uso completo sin restricciones
+- âœ… **Trial**: 30 dÃ­as uso completo sin restricciones
 - âœ… **Desarrollo**: Permitido uso no comercial
 - âŒ **RedistribuciÃ³n**: Prohibida sin autorizaciÃ³n
 - âŒ **Comercial**: Requiere licencia de pago
@@ -328,13 +334,13 @@ Contactar: rafael.canelon@rhinometric.com
 
 ---
 
-## í´— Enlaces
+## ï¿½ï¿½ï¿½ Enlaces
 
-- [íº€ Quick Start](#-quick-start)
-- [í³¥ Descargar Ãšltima VersiÃ³n](https://github.com/Rafael2712/rhinometric-overview/releases/latest)
-- [í³š DocumentaciÃ³n Completa](README_v2.1.0.md)
+- [ï¿½ï¿½ï¿½ Quick Start](#-quick-start)
+- [ï¿½ï¿½ï¿½ Descargar Ãšltima VersiÃ³n](https://github.com/Rafael2712/rhinometric-overview/releases/latest)
+- [ï¿½ï¿½ï¿½ DocumentaciÃ³n Completa](README_v2.1.0.md)
 - [â˜ï¸ GuÃ­a Cloud](CLOUD_DEPLOYMENT_GUIDE.md)
-- [í°› Reportar Issues](https://github.com/Rafael2712/rhinometric-overview/issues)
+- [ï¿½ï¿½ï¿½ Reportar Issues](https://github.com/Rafael2712/rhinometric-overview/issues)
 
 ---
 
