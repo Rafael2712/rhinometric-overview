@@ -60,13 +60,12 @@
             </div>
 
             <div class="form-group">
-              <label class="form-label">Empresa *</label>
+              <label class="form-label">Empresa</label>
               <input 
                 v-model="formData.clientCompany" 
                 type="text" 
                 class="form-input"
-                placeholder="Acme Corp"
-                required
+                placeholder="Acme Corp (opcional)"
               >
             </div>
 
@@ -81,8 +80,8 @@
             </div>
 
             <div class="form-group">
-              <label class="form-label">País *</label>
-              <select v-model="formData.country" class="form-select" required>
+              <label class="form-label">País</label>
+              <select v-model="formData.country" class="form-select">
                 <option value="">Seleccionar...</option>
                 <option value="AR">Argentina</option>
                 <option value="CL">Chile</option>
@@ -288,9 +287,7 @@ const errorMessage = ref('')
 const isFormValid = computed(() => {
   return formData.licenseType && 
          formData.clientName && 
-         formData.clientEmail && 
-         formData.clientCompany &&
-         formData.country
+         formData.clientEmail
 })
 
 async function handleSubmit() {

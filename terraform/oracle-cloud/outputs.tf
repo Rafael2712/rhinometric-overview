@@ -69,6 +69,7 @@ output "region" {
 
 output "installation_instructions" {
   description = "Instrucciones post-instalación"
+  sensitive   = true
   value       = <<-EOT
   
   ========================================

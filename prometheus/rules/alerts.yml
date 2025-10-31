@@ -1,0 +1,140 @@
+# ═══════════════════════════════════════════════════════════════════════════
+#  PROMETHEUS ALERT RULES - RHINOMETRIC v2.2.0
+# ═══════════════════════════════════════════════════════════════════════════
+
+groups:
+  - name: rhinometric_system_alerts
+    interval: 30s
+    rules:
+      # High CPU Usage
+      - alert: HighCPUUsage
+        expr: 100 - (avg by(instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 5m
+        labels:
+          severity: warning
+          component: system
+        annotations:
+          summary: "High CPU usage detected on {{ $labels.instance }}"
+          description: "CPU usage is above 80% (current: {{ $value | humanize }}%)"
+
+      # High Memory Usage
+      - alert: HighMemoryUsage
+        expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+          component: system
+        annotations:
+          summary: "High memory usage on {{ $labels.instance }}"
+          description: "Memory usage is above 85% (current: {{ $value | humanize }}%)"
+
+      # Disk Space Low
+      - alert: DiskSpaceLow
+        expr: 100 - ((node_filesystem_avail_bytes{mountpoint=~"/mnt.*",fstype!="tmpfs"} * 100) / node_filesystem_size_bytes{mountpoint=~"/mnt.*",fstype!="tmpfs"}) > 80
+        for: 10m
+        labels:
+          severity: warning
+          component: storage
+        annotations:
+          summary: "Low disk space on {{ $labels.instance }}"
+          description: "Disk usage is above 80% on {{ $labels.mountpoint }} (current: {{ $value | humanize }}%)"
+
+  - name: rhinometric_container_alerts
+    interval: 30s
+    rules:
+      # Container Down
+      - alert: ContainerDown
+        expr: up == 0
+        for: 2m
+        labels:
+          severity: critical
+          component: container
+        annotations:
+          summary: "Container {{ $labels.job }} is down"
+          description: "Container {{ $labels.instance }} has been down for more than 2 minutes"
+
+      # Container Restarting
+      - alert: ContainerRestarting
+        expr: rate(container_last_seen{name!=""}[5m]) > 0
+        for: 5m
+        labels:
+          severity: warning
+          component: container
+        annotations:
+          summary: "Container {{ $labels.name }} is restarting"
+          description: "Container {{ $labels.name }} has restarted {{ $value }} times in the last 5 minutes"
+
+  - name: rhinometric_veriverde_alerts
+    interval: 30s
+    rules:
+      # High Energy Consumption
+      - alert: HighEnergyConsumption
+        expr: rhinometric_energy_kwh > 5.0
+        for: 10m
+        labels:
+          severity: warning
+          component: sustainability
+        annotations:
+          summary: "High energy consumption detected"
+          description: "Energy consumption is {{ $value | humanize }} kWh (threshold: 5.0 kWh)"
+
+      # Low Efficiency Score
+      - alert: LowEfficiencyScore
+        expr: rhinometric_efficiency_score < 60
+        for: 15m
+        labels:
+          severity: warning
+          component: sustainability
+        annotations:
+          summary: "Low energy efficiency score"
+          description: "Efficiency score is {{ $value | humanize }}/100 (threshold: 60)"
+
+      # High CO2 Emissions
+      - alert: HighCO2Emissions
+        expr: rhinometric_co2_emissions_kg > 2.0
+        for: 10m
+        labels:
+          severity: info
+          component: sustainability
+        annotations:
+          summary: "High CO2 emissions detected"
+          description: "CO2 emissions are {{ $value | humanize }} kg (threshold: 2.0 kg)"
+
+  - name: rhinometric_ai_alerts
+    interval: 60s
+    rules:
+      # High Anomaly Count
+      - alert: HighAnomalyCount
+        expr: increase(ai_anomalies_detected_total[10m]) > 5
+        for: 5m
+        labels:
+          severity: warning
+          component: ai-anomaly
+        annotations:
+          summary: "High number of anomalies detected"
+          description: "{{ $value }} anomalies detected in the last 10 minutes"
+
+  - name: rhinometric_database_alerts
+    interval: 30s
+    rules:
+      # PostgreSQL Down
+      - alert: PostgreSQLDown
+        expr: pg_up == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: database
+        annotations:
+          summary: "PostgreSQL is down"
+          description: "PostgreSQL database is not responding"
+
+      # High Database Connections
+      - alert: HighDatabaseConnections
+        expr: pg_stat_database_numbackends > 80
+        for: 5m
+        labels:
+          severity: warning
+          component: database
+        annotations:
+          summary: "High number of database connections"
+          description: "{{ $value }} active connections (threshold: 80)"

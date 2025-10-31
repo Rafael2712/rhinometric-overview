@@ -11,9 +11,16 @@
           <h1>Rhinometric License Management</h1>
         </div>
         <nav class="nav-menu">
-          <router-link to="/" class="nav-link">Dashboard</router-link>
+          <router-link to="/" class="nav-link">Home</router-link>
+          <router-link to="/dashboard" class="nav-link">Dashboard</router-link>
           <router-link to="/create" class="nav-link">Crear Licencia</router-link>
           <router-link to="/manage" class="nav-link">Gestionar</router-link>
+          <router-link to="/activations" class="nav-link">Activaciones</router-link>
+          <router-link to="/security" class="nav-link security-link">
+            Seguridad
+            <span v-if="securityAlertCount > 0" class="alert-badge">{{ securityAlertCount }}</span>
+          </router-link>
+          <router-link to="/validator" class="nav-link">Validar</router-link>
           <router-link to="/settings" class="nav-link">Configuración</router-link>
         </nav>
       </div>
@@ -30,14 +37,23 @@
 </template>
 
 <script setup>
-import { onMounted } from 'vue'
+import { onMounted, onUnmounted, computed } from 'vue'
 import { useLicenseStore } from './store'
 
 const licenseStore = useLicenseStore()
 
+const securityAlertCount = computed(() => licenseStore.securityAlertCount)
+
 onMounted(() => {
   // Load licenses on app mount
   licenseStore.fetchLicenses()
+  // Start security alert polling
+  licenseStore.startSecurityPolling()
+})
+
+onUnmounted(() => {
+  // Stop polling when app unmounts
+  licenseStore.stopSecurityPolling()
 })
 </script>
 
@@ -102,6 +118,38 @@ onMounted(() => {
 .nav-link.router-link-active {
   background: #667eea;
   color: white;
+}
+
+.security-link {
+  position: relative;
+}
+
+.alert-badge {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background: #dc3545;
+  color: white;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: bold;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.8;
+  }
 }
 
 .app-main {

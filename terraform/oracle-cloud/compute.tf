@@ -10,6 +10,19 @@ data "oci_identity_availability_domains" "ads" {
 }
 
 # ========================================
+# Data Source: Latest Ubuntu 22.04 Image
+# ========================================
+
+data "oci_core_images" "ubuntu_images" {
+  compartment_id           = var.tenancy_ocid
+  operating_system         = "Canonical Ubuntu"
+  operating_system_version = "22.04"
+  shape                    = var.instance_shape
+  sort_by                  = "TIMECREATED"
+  sort_order               = "DESC"
+}
+
+# ========================================
 # Compute Instance (VM)
 # ========================================
 
@@ -28,7 +41,7 @@ resource "oci_core_instance" "rhinometric_instance" {
   # Source (imagen del OS)
   source_details {
     source_type             = "image"
-    source_id               = var.instance_image_ocid[var.region]
+    source_id               = data.oci_core_images.ubuntu_images.images[0].id
     boot_volume_size_in_gbs = var.boot_volume_size_in_gbs
   }
   
@@ -42,7 +55,7 @@ resource "oci_core_instance" "rhinometric_instance" {
   
   # SSH key para acceso
   metadata = {
-    ssh_authorized_keys = file(var.ssh_public_key_path)
+    ssh_authorized_keys = file("C:/Users/canel/.ssh/oci_rsa.pub")
     user_data           = base64encode(templatefile("${path.module}/user-data.sh", {
       grafana_password  = var.grafana_admin_password
       postgres_password = var.postgres_password

@@ -39,10 +39,17 @@ services:
       REDIS_URL: redis://:rhinometric@redis:6379
       PYTHONUNBUFFERED: 1
       RHINOMETRIC_MODE: trial  # Security: Restricts license management endpoints in trial mode
+      # Zoho Mail SMTP Configuration
+      SMTP_HOST: smtp.zoho.com
+      SMTP_PORT: 587
+      SMTP_USER: rafael.canelon@rhinometric.com
+      SMTP_PASSWORD: ${ZOHO_PASSWORD:-}  # Configura ZOHO_PASSWORD en .env
+      SMTP_FROM: rafael.canelon@rhinometric.com
     ports:
       - "5000:5000"
     volumes:
       - ${HOME}/rhinometric_data_v2.1/license-server/logs:/app/logs
+      - ./docs:/app/docs:ro  # PDFs para adjuntar en emails (manual_usuario.pdf, guia_instalacion.pdf)
     networks:
       - rhinometric_network_v21
     depends_on:

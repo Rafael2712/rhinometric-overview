@@ -1,0 +1,258 @@
+# ═══════════════════════════════════════════════════════════════════════════
+#  PROMETHEUS CONFIGURATION - RHINOMETRIC v2.2.0 ENTERPRISE
+# ═══════════════════════════════════════════════════════════════════════════
+#
+#  Complete monitoring configuration with:
+#  ✓ External API scraping via API Proxy
+#  ✓ OpenTelemetry Collector integration
+#  ✓ VeriVerde sustainability monitoring (NEW v2.2.0)
+#  ✓ AI Anomaly Detection service (NEW v2.2.0)
+#  ✓ All core services and exporters
+#  ✓ Optimized 15s scrape interval
+#
+# ═══════════════════════════════════════════════════════════════════════════
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  scrape_timeout: 10s
+  external_labels:
+    environment: 'production'
+    version: '2.2.0'
+    cluster: 'rhinometric-enterprise'
+    replica: '1'
+
+rule_files:
+  - 'rules/*.yml'
+  - 'rules/alerts/*.yml'
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ['alertmanager:9093']
+      timeout: 10s
+      api_version: v2
+
+remote_write:
+  - url: http://tempo:3200/api/v1/push
+    queue_config:
+      capacity: 10000
+      max_shards: 10
+      min_shards: 1
+      max_samples_per_send: 5000
+      batch_send_deadline: 5s
+
+scrape_configs:
+  # ═══════════════════════════════════════════════════════════════════════
+  #  TIER 1: CORE MONITORING SERVICES
+  # ═══════════════════════════════════════════════════════════════════════
+
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+        labels:
+          tier: 'core'
+          service: 'prometheus'
+    relabel_configs:
+      - target_label: __metrics_path__
+        replacement: /metrics
+
+  - job_name: 'grafana'
+    static_configs:
+      - targets: ['grafana:3000']
+        labels:
+          tier: 'core'
+          service: 'grafana'
+    metrics_path: '/metrics'
+
+  - job_name: 'alertmanager'
+    static_configs:
+      - targets: ['alertmanager:9093']
+        labels:
+          tier: 'core'
+          service: 'alertmanager'
+
+  - job_name: 'loki'
+    static_configs:
+      - targets: ['loki:3100']
+        labels:
+          tier: 'core'
+          service: 'loki'
+    metrics_path: '/metrics'
+
+  - job_name: 'tempo'
+    static_configs:
+      - targets: ['tempo:3200']
+        labels:
+          tier: 'core'
+          service: 'tempo'
+    metrics_path: '/metrics'
+
+  # ═══════════════════════════════════════════════════════════════════════
+  #  TIER 2: APPLICATION SERVICES
+  # ═══════════════════════════════════════════════════════════════════════
+
+  - job_name: 'license-server-v2'
+    static_configs:
+      - targets: ['license-server-v2:5000']
+        labels:
+          tier: 'application'
+          service: 'license-server'
+          version: '2.2.0'
+    metrics_path: '/api/metrics'
+    scrape_interval: 10s
+
+  - job_name: 'postgres-exporter'
+    static_configs:
+      - targets: ['postgres-exporter:9187']
+        labels:
+          tier: 'database'
+          service: 'postgres'
+    scrape_interval: 30s
+
+  # ═══════════════════════════════════════════════════════════════════════
+  #  TIER 3: API CONNECTIVITY
+  # ═══════════════════════════════════════════════════════════════════════
+
+  - job_name: 'api-proxy'
+    static_configs:
+      - targets: ['api-proxy:8090']
+        labels:
+          tier: 'connectivity'
+          service: 'api-proxy'
+    metrics_path: '/api/metrics/prometheus'
+    scrape_interval: 15s
+
+  - job_name: 'external-apis'
+    static_configs:
+      - targets: ['api-proxy:8090']
+        labels:
+          tier: 'external'
+          api_type: 'public'
+    metrics_path: '/api/metrics/prometheus'
+    scrape_interval: 60s
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: proxy
+        replacement: 'api-proxy'
+
+  # ═══════════════════════════════════════════════════════════════════════
+  #  TIER 4: TELEMETRY
+  # ═══════════════════════════════════════════════════════════════════════
+
+  - job_name: 'otel-collector'
+    static_configs:
+      - targets: ['otel-collector:8889']
+        labels:
+          tier: 'telemetry'
+          service: 'otel-collector'
+    scrape_interval: 15s
+
+  # ═══════════════════════════════════════════════════════════════════════
+  #  TIER 5: NEW v2.2.0 SERVICES
+  # ═══════════════════════════════════════════════════════════════════════
+
+  - job_name: 'veriverde'
+    static_configs:
+      - targets: ['rhinometric-veriverde:9200']
+        labels:
+          tier: 'sustainability'
+          service: 'veriverde'
+          module: 'energy-monitoring'
+    scrape_interval: 30s
+    metrics_path: '/metrics'
+
+  - job_name: 'ai-anomaly'
+    static_configs:
+      - targets: ['rhinometric-ai-anomaly:8085']
+        labels:
+          tier: 'intelligence'
+          service: 'ai-anomaly'
+          module: 'ml-detection'
+    scrape_interval: 60s
+    metrics_path: '/metrics'
+
+  # ═══════════════════════════════════════════════════════════════════════
+  #  TIER 6: SYSTEM EXPORTERS
+  # ═══════════════════════════════════════════════════════════════════════
+
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
+        labels:
+          tier: 'system'
+          service: 'node-exporter'
+    scrape_interval: 30s
+
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: ['cadvisor:8080']
+        labels:
+          tier: 'system'
+          service: 'cadvisor'
+    scrape_interval: 30s
+    metric_relabel_configs:
+      - source_labels: [container_label_com_docker_compose_service]
+        target_label: service
+      - source_labels: [container_label_com_docker_compose_project]
+        target_label: project
+
+  - job_name: 'blackbox-exporter'
+    static_configs:
+      - targets: ['blackbox-exporter:9115']
+        labels:
+          tier: 'monitoring'
+          service: 'blackbox'
+
+  - job_name: 'promtail'
+    static_configs:
+      - targets: ['promtail:9080']
+        labels:
+          tier: 'logs'
+          service: 'promtail'
+
+  # ═══════════════════════════════════════════════════════════════════════
+  #  TIER 7: BLACKBOX PROBING
+  # ═══════════════════════════════════════════════════════════════════════
+
+  - job_name: 'blackbox-http'
+    metrics_path: /probe
+    params:
+      module: [http_2xx]
+    static_configs:
+      - targets:
+          - http://grafana:3000
+          - http://prometheus:9090
+          - http://loki:3100/ready
+          - http://tempo:3200/ready
+          - http://license-server-v2:5000/api/health
+          - http://api-proxy:8090/health
+          - http://rhinometric-veriverde:9200/health
+          - http://rhinometric-ai-anomaly:8085/health
+        labels:
+          tier: 'health'
+          probe_type: 'http'
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox-exporter:9115
+
+storage:
+  tsdb:
+    out_of_order_time_window: 30m
+
+# ═══════════════════════════════════════════════════════════════════════════
+#  SCRAPE TARGETS SUMMARY - v2.2.0
+# ═══════════════════════════════════════════════════════════════════════════
+#
+#  Total jobs: 17 (2 new in v2.2.0)
+#  New v2.2.0:
+#    - veriverde: Energy/CO2/temperature sustainability metrics
+#    - ai-anomaly: Anomaly detection service metrics
+#
+#  Health checks: 8 services via blackbox
+#
+# ═══════════════════════════════════════════════════════════════════════════

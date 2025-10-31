@@ -6,6 +6,9 @@ export const useLicenseStore = defineStore('license', () => {
   const licenses = ref([])
   const loading = ref(false)
   const error = ref(null)
+  const securityAlerts = ref(null)
+  const securityAlertCount = ref(0)
+  let securityPollingInterval = null
 
   // Computed
   const activeLicenses = computed(() => 
@@ -103,10 +106,41 @@ export const useLicenseStore = defineStore('license', () => {
     }
   }
 
+  async function fetchSecurityAlerts() {
+    try {
+      const alerts = await licenseService.getSecurityAlerts()
+      securityAlerts.value = alerts
+      
+      // Calculate total alert count
+      const suspiciousCount = alerts.suspicious_activations?.length || 0
+      const recentFailuresCount = alerts.recent_failures?.filter(f => f.is_suspicious).length || 0
+      securityAlertCount.value = suspiciousCount + recentFailuresCount
+    } catch (err) {
+      console.error('Failed to fetch security alerts:', err)
+    }
+  }
+
+  function startSecurityPolling() {
+    // Fetch immediately
+    fetchSecurityAlerts()
+    
+    // Poll every 30 seconds
+    securityPollingInterval = setInterval(fetchSecurityAlerts, 30000)
+  }
+
+  function stopSecurityPolling() {
+    if (securityPollingInterval) {
+      clearInterval(securityPollingInterval)
+      securityPollingInterval = null
+    }
+  }
+
   return {
     licenses,
     loading,
     error,
+    securityAlerts,
+    securityAlertCount,
     activeLicenses,
     expiringSoon,
     activeTrials,
@@ -115,6 +149,9 @@ export const useLicenseStore = defineStore('license', () => {
     createLicense,
     revokeLicense,
     extendLicense,
-    sendLicenseEmail
+    sendLicenseEmail,
+    fetchSecurityAlerts,
+    startSecurityPolling,
+    stopSecurityPolling
   }
 })

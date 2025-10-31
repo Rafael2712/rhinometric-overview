@@ -1,0 +1,304 @@
+#!/usr/bin/env python3
+"""
+RHINOMETRIC Control CLI - Backup and management tool
+"""
+import argparse
+import subprocess
+import sys
+import json
+import hashlib
+import tarfile
+from pathlib import Path
+from datetime import datetime, timedelta
+from typing import Dict, List, Optional
+
+VERSION = "2.2.0"
+BACKUP_BASE = Path.home() / "rhinometric_backups"
+DATA_BASE = Path.home() / "rhinometric_data_v2.2"
+
+# Component definitions
+COMPONENTS = {
+    "prometheus": {"path": DATA_BASE / "prometheus", "description": "Metrics data"},
+    "loki": {"path": DATA_BASE / "loki", "description": "Logs data"},
+    "tempo": {"path": DATA_BASE / "tempo", "description": "Traces data"},
+    "grafana": {"path": DATA_BASE / "grafana", "description": "Dashboards & config"},
+    "postgres": {"path": DATA_BASE / "postgres", "description": "License database"},
+    "redis": {"path": DATA_BASE / "redis", "description": "Cache data"}
+}
+
+COLORS = {
+    "red": "\033[91m",
+    "green": "\033[92m",
+    "yellow": "\033[93m",
+    "blue": "\033[94m",
+    "reset": "\033[0m"
+}
+
+
+def color_print(text: str, color: str):
+    """Print colored output"""
+    print(f"{COLORS.get(color, '')}{text}{COLORS['reset']}")
+
+
+def calculate_checksum(file_path: Path) -> str:
+    """Calculate SHA256 checksum"""
+    sha256 = hashlib.sha256()
+    with open(file_path, "rb") as f:
+        for block in iter(lambda: f.read(4096), b""):
+            sha256.update(block)
+    return sha256.hexdigest()
+
+
+def create_manifest(backup_path: Path, components: List[str]) -> Dict:
+    """Create backup manifest"""
+    manifest = {
+        "version": VERSION,
+        "timestamp": datetime.now().isoformat(),
+        "components": {},
+        "total_size_bytes": 0
+    }
+    
+    for comp in components:
+        tar_file = backup_path / f"{comp}.tar.gz"
+        if tar_file.exists():
+            size = tar_file.stat().st_size
+            manifest["components"][comp] = {
+                "file": tar_file.name,
+                "size_bytes": size,
+                "checksum": calculate_checksum(tar_file)
+            }
+            manifest["total_size_bytes"] += size
+    
+    return manifest
+
+
+def backup_component(component: str, backup_path: Path) -> bool:
+    """Backup a single component"""
+    if component not in COMPONENTS:
+        color_print(f"❌ Unknown component: {component}", "red")
+        return False
+    
+    comp_info = COMPONENTS[component]
+    source_path = comp_info["path"]
+    
+    if not source_path.exists():
+        color_print(f"⚠️  Path not found: {source_path}", "yellow")
+        return False
+    
+    tar_file = backup_path / f"{component}.tar.gz"
+    color_print(f"📦 Backing up {component}...", "blue")
+    
+    try:
+        with tarfile.open(tar_file, "w:gz") as tar:
+            tar.add(source_path, arcname=component)
+        
+        size_mb = tar_file.stat().st_size / (1024 * 1024)
+        color_print(f"✅ {component}: {size_mb:.2f} MB", "green")
+        return True
+    except Exception as e:
+        color_print(f"❌ Failed: {e}", "red")
+        return False
+
+
+def cmd_backup(args):
+    """Backup command handler"""
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    backup_path = BACKUP_BASE / f"backup_{timestamp}"
+    backup_path.mkdir(parents=True, exist_ok=True)
+    
+    components = args.component if args.component != ["all"] else list(COMPONENTS.keys())
+    
+    color_print(f"\n🚀 Starting backup to: {backup_path}\n", "blue")
+    
+    success_count = 0
+    for comp in components:
+        if backup_component(comp, backup_path):
+            success_count += 1
+    
+    # Create manifest
+    manifest = create_manifest(backup_path, components)
+    manifest_file = backup_path / "manifest.json"
+    with open(manifest_file, "w") as f:
+        json.dump(manifest, f, indent=2)
+    
+    total_mb = manifest["total_size_bytes"] / (1024 * 1024)
+    color_print(f"\n✅ Backup complete: {success_count}/{len(components)} components", "green")
+    color_print(f"📊 Total size: {total_mb:.2f} MB", "green")
+    color_print(f"📍 Location: {backup_path}\n", "blue")
+
+
+def cmd_restore(args):
+    """Restore command handler"""
+    backup_path = BACKUP_BASE / args.backup
+    
+    if not backup_path.exists():
+        color_print(f"❌ Backup not found: {backup_path}", "red")
+        return
+    
+    manifest_file = backup_path / "manifest.json"
+    if not manifest_file.exists():
+        color_print("❌ Manifest not found. Invalid backup.", "red")
+        return
+    
+    with open(manifest_file) as f:
+        manifest = json.load(f)
+    
+    components = args.component if args.component != ["all"] else list(manifest["components"].keys())
+    
+    color_print(f"\n⚠️  WARNING: This will overwrite current data!", "yellow")
+    color_print(f"Backup from: {manifest['timestamp']}", "blue")
+    color_print(f"Components: {', '.join(components)}\n", "blue")
+    
+    if not args.yes:
+        confirm = input("Continue? (yes/no): ")
+        if confirm.lower() != "yes":
+            color_print("Cancelled.", "yellow")
+            return
+    
+    color_print("\n🔄 Starting restore...\n", "blue")
+    
+    for comp in components:
+        if comp not in manifest["components"]:
+            color_print(f"⚠️  {comp} not in backup", "yellow")
+            continue
+        
+        tar_file = backup_path / manifest["components"][comp]["file"]
+        target_path = COMPONENTS[comp]["path"]
+        
+        color_print(f"📦 Restoring {comp}...", "blue")
+        
+        # Verify checksum
+        checksum = calculate_checksum(tar_file)
+        if checksum != manifest["components"][comp]["checksum"]:
+            color_print(f"❌ Checksum mismatch! Skipping {comp}", "red")
+            continue
+        
+        # Extract
+        try:
+            with tarfile.open(tar_file, "r:gz") as tar:
+                tar.extractall(target_path.parent)
+            color_print(f"✅ {comp} restored", "green")
+        except Exception as e:
+            color_print(f"❌ Failed: {e}", "red")
+    
+    color_print("\n✅ Restore complete\n", "green")
+
+
+def cmd_list(args):
+    """List backups command handler"""
+    if not BACKUP_BASE.exists():
+        color_print("No backups found.", "yellow")
+        return
+    
+    backups = sorted([d for d in BACKUP_BASE.iterdir() if d.is_dir() and d.name.startswith("backup_")])
+    
+    if not backups:
+        color_print("No backups found.", "yellow")
+        return
+    
+    color_print(f"\n📋 Available backups:\n", "blue")
+    
+    for backup in backups:
+        manifest_file = backup / "manifest.json"
+        if manifest_file.exists():
+            with open(manifest_file) as f:
+                manifest = json.load(f)
+            
+            size_mb = manifest["total_size_bytes"] / (1024 * 1024)
+            components = ", ".join(manifest["components"].keys())
+            color_print(f"  {backup.name}", "green")
+            color_print(f"    Date: {manifest['timestamp']}", "reset")
+            color_print(f"    Size: {size_mb:.2f} MB", "reset")
+            color_print(f"    Components: {components}\n", "reset")
+        else:
+            color_print(f"  {backup.name} (no manifest)", "yellow")
+
+
+def cmd_clean(args):
+    """Clean old backups"""
+    if not BACKUP_BASE.exists():
+        color_print("No backups to clean.", "yellow")
+        return
+    
+    cutoff_date = datetime.now() - timedelta(days=args.older_than)
+    backups = [d for d in BACKUP_BASE.iterdir() if d.is_dir() and d.name.startswith("backup_")]
+    
+    removed_count = 0
+    for backup in backups:
+        # Parse timestamp from backup name
+        try:
+            timestamp_str = backup.name.replace("backup_", "")
+            backup_date = datetime.strptime(timestamp_str, "%Y%m%d_%H%M%S")
+            
+            if backup_date < cutoff_date:
+                color_print(f"🗑️  Removing {backup.name}", "yellow")
+                subprocess.run(["rm", "-rf", str(backup)], check=True)
+                removed_count += 1
+        except ValueError:
+            continue
+    
+    color_print(f"\n✅ Removed {removed_count} old backups\n", "green")
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="RHINOMETRIC Control Tool - Backup and management",
+        formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    parser.add_argument("--version", action="version", version=f"rmetricctl {VERSION}")
+    
+    subparsers = parser.add_subparsers(dest="command", help="Commands")
+    
+    # Backup command
+    backup_parser = subparsers.add_parser("backup", help="Create backup")
+    backup_parser.add_argument(
+        "--component", "-c",
+        nargs="+",
+        choices=list(COMPONENTS.keys()) + ["all"],
+        default=["all"],
+        help="Components to backup"
+    )
+    
+    # Restore command
+    restore_parser = subparsers.add_parser("restore", help="Restore from backup")
+    restore_parser.add_argument("backup", help="Backup name (from list command)")
+    restore_parser.add_argument(
+        "--component", "-c",
+        nargs="+",
+        choices=list(COMPONENTS.keys()) + ["all"],
+        default=["all"],
+        help="Components to restore"
+    )
+    restore_parser.add_argument("--yes", "-y", action="store_true", help="Skip confirmation")
+    
+    # List command
+    subparsers.add_parser("list", help="List available backups")
+    
+    # Clean command
+    clean_parser = subparsers.add_parser("clean", help="Remove old backups")
+    clean_parser.add_argument(
+        "--older-than",
+        type=int,
+        default=30,
+        help="Remove backups older than N days (default: 30)"
+    )
+    
+    args = parser.parse_args()
+    
+    if not args.command:
+        parser.print_help()
+        return
+    
+    # Execute command
+    if args.command == "backup":
+        cmd_backup(args)
+    elif args.command == "restore":
+        cmd_restore(args)
+    elif args.command == "list":
+        cmd_list(args)
+    elif args.command == "clean":
+        cmd_clean(args)
+
+
+if __name__ == "__main__":
+    main()

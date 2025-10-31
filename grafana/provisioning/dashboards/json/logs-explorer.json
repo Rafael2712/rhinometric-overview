@@ -63,7 +63,7 @@
       },
       "targets": [
         {
-          "expr": "sum by (level) (count_over_time({job=\"docker_logs\"} | json | __error__=\"\" [$__interval]))",
+          "expr": "sum by (level) (count_over_time({job=\"docker_logs\"} | json | level!=\"\" [$__interval]))",
           "legendFormat": "{{level}}",
           "refId": "A"
         }
@@ -131,12 +131,12 @@
       },
       "targets": [
         {
-          "expr": "sum by (container_id) (rate({job=\"docker_logs\"}[$__rate_interval]))",
-          "legendFormat": "Container {{container_id}}",
+          "expr": "sum by (level) (rate({job=\"docker_logs\"} | json [$__rate_interval]))",
+          "legendFormat": "{{level}}",
           "refId": "A"
         }
       ],
-      "title": "📉 Log Rate per Container",
+      "title": "📉 Log Rate by Level",
       "type": "timeseries"
     },
     {

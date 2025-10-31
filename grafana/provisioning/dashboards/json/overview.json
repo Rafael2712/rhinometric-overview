@@ -832,7 +832,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "ALERTS{alertstate=\"firing\"}",
+          "expr": "count(ALERTS) by (alertname, severity) or vector(0)",
           "format": "table",
           "instant": true,
           "refId": "A"
