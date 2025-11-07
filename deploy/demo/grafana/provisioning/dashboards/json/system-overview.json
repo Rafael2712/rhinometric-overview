@@ -1,0 +1,84 @@
+{
+  "dashboard": {
+    "title": "System Overview",
+    "uid": "rhinometric-system-overview",
+    "timezone": "browser",
+    "schemaVersion": 30,
+    "version": 1,
+    "refresh": "30s",
+    "panels": [
+      {
+        "id": 1,
+        "gridPos": {"h": 6, "w": 12, "x": 0, "y": 0},
+        "type": "graph",
+        "title": "CPU Usage",
+        "targets": [{
+          "expr": "100 - (avg by(instance) (irate(node_cpu_seconds_total{mode=\"idle\"}[5m])) * 100)",
+          "refId": "A",
+          "legendFormat": "{{instance}}",
+          "datasource": {"uid": "prometheus"}
+        }],
+        "yaxes": [
+          {"format": "percent", "max": 100, "min": 0},
+          {"format": "short", "show": false}
+        ]
+      },
+      {
+        "id": 2,
+        "gridPos": {"h": 6, "w": 12, "x": 12, "y": 0},
+        "type": "graph",
+        "title": "Memory Usage",
+        "targets": [{
+          "expr": "100 * (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes))",
+          "refId": "A",
+          "legendFormat": "{{instance}}",
+          "datasource": {"uid": "prometheus"}
+        }],
+        "yaxes": [
+          {"format": "percent", "max": 100, "min": 0},
+          {"format": "short", "show": false}
+        ]
+      },
+      {
+        "id": 3,
+        "gridPos": {"h": 6, "w": 12, "x": 0, "y": 6},
+        "type": "graph",
+        "title": "Disk Usage",
+        "targets": [{
+          "expr": "100 - ((node_filesystem_avail_bytes{mountpoint=\"/\"} / node_filesystem_size_bytes{mountpoint=\"/\"}) * 100)",
+          "refId": "A",
+          "legendFormat": "{{instance}}",
+          "datasource": {"uid": "prometheus"}
+        }],
+        "yaxes": [
+          {"format": "percent", "max": 100, "min": 0},
+          {"format": "short", "show": false}
+        ]
+      },
+      {
+        "id": 4,
+        "gridPos": {"h": 6, "w": 12, "x": 12, "y": 6},
+        "type": "graph",
+        "title": "Network Traffic",
+        "targets": [
+          {
+            "expr": "irate(node_network_receive_bytes_total{device!~\"lo|docker.*|veth.*\"}[5m])",
+            "refId": "A",
+            "legendFormat": "RX {{device}}",
+            "datasource": {"uid": "prometheus"}
+          },
+          {
+            "expr": "irate(node_network_transmit_bytes_total{device!~\"lo|docker.*|veth.*\"}[5m])",
+            "refId": "B",
+            "legendFormat": "TX {{device}}",
+            "datasource": {"uid": "prometheus"}
+          }
+        ],
+        "yaxes": [
+          {"format": "Bps"},
+          {"format": "short", "show": false}
+        ]
+      }
+    ]
+  }
+}

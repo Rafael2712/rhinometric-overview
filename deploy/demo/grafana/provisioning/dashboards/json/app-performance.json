@@ -1,0 +1,117 @@
+{
+  "dashboard": {
+    "title": "App Performance",
+    "uid": "rhinometric-app-performance",
+    "timezone": "browser",
+    "schemaVersion": 30,
+    "version": 1,
+    "refresh": "10s",
+    "panels": [
+      {
+        "id": 1,
+        "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
+        "type": "stat",
+        "title": "Requests/sec",
+        "targets": [{
+          "expr": "sum(rate(http_requests_total[5m]))",
+          "refId": "A",
+          "datasource": {"uid": "prometheus"}
+        }],
+        "options": {
+          "colorMode": "value",
+          "graphMode": "area"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "reqps"
+          }
+        }
+      },
+      {
+        "id": 2,
+        "gridPos": {"h": 4, "w": 6, "x": 6, "y": 0},
+        "type": "stat",
+        "title": "Error Rate",
+        "targets": [{
+          "expr": "sum(rate(http_requests_total{status=~\"5..\"}[5m])) / sum(rate(http_requests_total[5m])) * 100",
+          "refId": "A",
+          "datasource": {"uid": "prometheus"}
+        }],
+        "options": {
+          "colorMode": "value"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "green"},
+                {"value": 1, "color": "yellow"},
+                {"value": 5, "color": "red"}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 3,
+        "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0},
+        "type": "stat",
+        "title": "Avg Latency",
+        "targets": [{
+          "expr": "avg(http_request_duration_seconds)",
+          "refId": "A",
+          "datasource": {"uid": "prometheus"}
+        }],
+        "options": {
+          "colorMode": "value"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "s",
+            "decimals": 3,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "green"},
+                {"value": 0.5, "color": "yellow"},
+                {"value": 1, "color": "red"}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 4,
+        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 4},
+        "type": "graph",
+        "title": "Response Time Percentiles",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.50, rate(http_request_duration_seconds_bucket[5m]))",
+            "refId": "A",
+            "legendFormat": "p50",
+            "datasource": {"uid": "prometheus"}
+          },
+          {
+            "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m]))",
+            "refId": "B",
+            "legendFormat": "p95",
+            "datasource": {"uid": "prometheus"}
+          },
+          {
+            "expr": "histogram_quantile(0.99, rate(http_request_duration_seconds_bucket[5m]))",
+            "refId": "C",
+            "legendFormat": "p99",
+            "datasource": {"uid": "prometheus"}
+          }
+        ],
+        "yaxes": [
+          {"format": "s"},
+          {"format": "short", "show": false}
+        ]
+      }
+    ]
+  }
+}
