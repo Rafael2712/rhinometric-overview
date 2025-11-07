@@ -24,7 +24,7 @@ ingester:
 
 compactor:
   compaction:
-    block_retention: 168h
+    block_retention: 72h  # 3 días - Estándar Enterprise para traces
 
 storage:
   trace:

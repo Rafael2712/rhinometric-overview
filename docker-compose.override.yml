@@ -1,0 +1,123 @@
+version: '3.8'
+
+# ============================================
+# POLÍTICAS DE RETENCIÓN ENTERPRISE
+# ESTÁNDAR ON-PREMISE PARA VENTA A CLIENTES
+# ============================================
+#
+# LÍMITES CONFIGURADOS:
+# - Métricas (Prometheus): 15 días o 10GB máximo
+# - Logs (Loki): 7 días o 5GB máximo  
+# - Traces (Tempo): 3 días o 2GB máximo
+# - Logs contenedores: 30MB por contenedor (10MB x 3 archivos)
+#
+# TOTAL ESPERADO: ~30GB máximo
+#
+# ============================================
+
+x-logging: &default-logging
+  driver: "json-file"
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  # PROMETHEUS - Métricas con retención de 15 días
+  rhinometric-prometheus:
+    logging: *default-logging
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=15d'
+      - '--storage.tsdb.retention.size=10GB'
+      - '--storage.tsdb.wal-compression'
+      - '--web.enable-lifecycle'
+  
+  # LOKI - Logs con retención de 7 días
+  rhinometric-loki:
+    logging: *default-logging
+    command:
+      - '-config.file=/etc/loki/config.yml'
+      - '-config.expand-env=true'
+    environment:
+      - LOKI_RETENTION_PERIOD=168h
+      - LOKI_RETENTION_SIZE=5GB
+  
+  # TEMPO - Traces con retención de 3 días
+  rhinometric-tempo:
+    logging: *default-logging
+    command:
+      - '-config.file=/etc/tempo/tempo.yml'
+    environment:
+      - TEMPO_RETENTION_PERIOD=72h
+      - TEMPO_RETENTION_SIZE=2GB
+  
+  # SERVICIOS CON LÍMITES DE LOGGING
+  rhinometric-grafana:
+    logging: *default-logging
+  
+  rhinometric-promtail:
+    logging: *default-logging
+  
+  rhinometric-alertmanager:
+    logging: *default-logging
+  
+  rhinometric-otel-collector:
+    logging: *default-logging
+  
+  rhinometric-node-exporter:
+    logging: *default-logging
+  
+  rhinometric-cadvisor:
+    logging: *default-logging
+  
+  rhinometric-blackbox-exporter:
+    logging: *default-logging
+  
+  rhinometric-ai-anomaly:
+    logging: *default-logging
+  
+  rhinometric-postgres:
+    logging: *default-logging
+  
+  rhinometric-redis:
+    logging: *default-logging
+  
+  rhinometric-nginx:
+    logging: *default-logging
+  
+  rhinometric-backend:
+    logging: *default-logging
+  
+  rhinometric-frontend:
+    logging: *default-logging
+  
+  rhinometric-license-server-v2:
+    logging: *default-logging
+  
+  rhinometric-license-ui:
+    logging: *default-logging
+  
+  rhinometric-license-monitor:
+    logging: *default-logging
+  
+  rhinometric-dashboard-builder:
+    logging: *default-logging
+  
+  rhinometric-api-connector:
+    logging: *default-logging
+  
+  rhinometric-api-proxy:
+    logging: *default-logging
+  
+  rhinometric-report:
+    logging: *default-logging
+  
+  rhinometric-backup:
+    logging: *default-logging
+  
+  rhinometric-veriverde:
+    logging: *default-logging
+  
+  rhinometric-postgres-exporter:
+    logging: *default-logging
