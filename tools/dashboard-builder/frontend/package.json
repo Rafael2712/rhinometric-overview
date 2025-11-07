@@ -1,0 +1,11 @@
+{
+  "name": "rhinometric-dashboard-builder-frontend",
+  "version": "2.5.0",
+  "description": "Dashboard Builder UI - React standalone",
+  "scripts": {
+    "start": "npx serve -p 3001 -s ."
+  },
+  "devDependencies": {
+    "serve": "^14.2.1"
+  }
+}
