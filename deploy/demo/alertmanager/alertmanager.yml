@@ -1,0 +1,40 @@
+global:
+  resolve_timeout: 5m
+
+route:
+  receiver: 'demo-null'
+  group_by: ['alertname', 'instance']
+  group_wait: 10s
+  group_interval: 10s
+  repeat_interval: 1h
+
+receivers:
+  - name: 'demo-null'
+
+  - name: 'demo-email'
+    email_configs:
+      - to: 'admin@rhinometric-demo.local'
+        from: 'alerts@rhinometric-demo.local'
+        smarthost: 'smtp.example.com:587'
+        require_tls: false
+        html: |
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <style>
+              body { font-family: Arial, sans-serif; }
+              .alert { background-color: #f44336; color: white; padding: 15px; }
+              .warning { background-color: #ff9800; color: white; padding: 15px; }
+              .info { background-color: #2196F3; color: white; padding: 15px; }
+            </style>
+          </head>
+          <body>
+            <div class="alert">
+              <h2>íº¨ Rhinometric Alert</h2>
+              <p><strong>Alert:</strong> {{ .GroupLabels.alertname }}</p>
+              <p><strong>Instance:</strong> {{ .GroupLabels.instance }}</p>
+              <p><strong>Severity:</strong> {{ .CommonLabels.severity }}</p>
+              <p><strong>Description:</strong> {{ .CommonAnnotations.description }}</p>
+            </div>
+          </body>
+          </html>

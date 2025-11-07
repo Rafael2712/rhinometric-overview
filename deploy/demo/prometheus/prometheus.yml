@@ -1,0 +1,39 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  - job_name: 'grafana'
+    static_configs:
+      - targets: ['grafana:3000']
+
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
+
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: ['cadvisor:8080']
+
+  - job_name: 'blackbox'
+    static_configs:
+      - targets: ['blackbox-exporter:9115']
+
+  - job_name: 'rhinometric-ai-anomaly'
+    static_configs:
+      - targets: ['rhinometric-ai-anomaly:8085']
+    metrics_path: /metrics
+
+  - job_name: 'rhinometric-report-generator'
+    static_configs:
+      - targets: ['rhinometric-report-generator:8086']
+    metrics_path: /metrics
+
+  - job_name: 'rhinometric-dashboard-builder'
+    static_configs:
+      - targets: ['rhinometric-dashboard-builder:8001']
+    metrics_path: /metrics

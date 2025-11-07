@@ -1,0 +1,188 @@
+version: '3.9'
+
+services:
+  traefik:
+    image: traefik:v2.10
+    container_name: rhinometric-traefik-demo
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./traefik/traefik.yml:/etc/traefik/traefik.yml:ro
+      - ./traefik/certs:/etc/traefik/certs:ro
+    networks:
+      - rhinometric
+
+  grafana:
+    image: grafana/grafana:10.2.2
+    container_name: rhinometric-grafana-demo
+    restart: always
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=rhinometric_demo
+      - GF_PATHS_PROVISIONING=/etc/grafana/provisioning
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+    ports:
+      - "3000:3000"
+    networks:
+      - rhinometric
+
+  prometheus:
+    image: prom/prometheus:v2.48.0
+    container_name: rhinometric-prometheus-demo
+    restart: always
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.retention.time=3d'
+      - '--storage.tsdb.retention.size=5GB'
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    ports:
+      - "9090:9090"
+    networks:
+      - rhinometric
+
+  alertmanager:
+    image: prom/alertmanager:v0.26.0
+    container_name: rhinometric-alertmanager-demo
+    restart: always
+    volumes:
+      - ./alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    ports:
+      - "9093:9093"
+    networks:
+      - rhinometric
+
+  loki:
+    image: grafana/loki:2.9.3
+    container_name: rhinometric-loki-demo
+    restart: always
+    command: -config.file=/etc/loki/config.yml
+    volumes:
+      - ./loki/config.yml:/etc/loki/config.yml:ro
+      - loki-data:/loki
+    ports:
+      - "3100:3100"
+    networks:
+      - rhinometric
+
+  tempo:
+    image: grafana/tempo:2.3.1
+    container_name: rhinometric-tempo-demo
+    restart: always
+    command: ["-config.file=/etc/tempo.yml"]
+    volumes:
+      - ./tempo/tempo.yml:/etc/tempo.yml:ro
+      - tempo-data:/tmp/tempo
+    ports:
+      - "3200:3200"
+    networks:
+      - rhinometric
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: rhinometric-postgres-demo
+    restart: always
+    environment:
+      - POSTGRES_USER=rhinometric
+      - POSTGRES_PASSWORD=rhinometric_demo_db
+      - POSTGRES_DB=rhinometric_demo
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - rhinometric
+
+  redis:
+    image: redis:7-alpine
+    container_name: rhinometric-redis-demo
+    restart: always
+    command: redis-server --requirepass rhinometric_demo_redis
+    volumes:
+      - redis-data:/data
+    networks:
+      - rhinometric
+
+  rhinometric-ai-anomaly:
+    image: rhinometric/ai-anomaly:v2.5.0
+    container_name: rhinometric-ai-anomaly-demo
+    restart: always
+    environment:
+      - PROMETHEUS_URL=http://prometheus:9090
+    ports:
+      - "8085:8085"
+    networks:
+      - rhinometric
+
+  rhinometric-report-generator:
+    image: rhinometric/report-generator:v2.5.0
+    container_name: rhinometric-report-generator-demo
+    restart: always
+    ports:
+      - "8086:8086"
+    networks:
+      - rhinometric
+
+  rhinometric-dashboard-builder:
+    image: rhinometric/dashboard-builder:v2.5.0
+    container_name: rhinometric-dashboard-builder-demo
+    restart: always
+    environment:
+      - GRAFANA_URL=http://grafana:3000
+      - GRAFANA_USER=admin
+      - GRAFANA_PASSWORD=rhinometric_demo
+    ports:
+      - "8001:8001"
+    networks:
+      - rhinometric
+
+  node-exporter:
+    image: prom/node-exporter:v1.7.0
+    container_name: rhinometric-node-exporter-demo
+    restart: always
+    ports:
+      - "9100:9100"
+    networks:
+      - rhinometric
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.47.2
+    container_name: rhinometric-cadvisor-demo
+    restart: always
+    privileged: true
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker:/var/lib/docker:ro
+    ports:
+      - "8080:8080"
+    networks:
+      - rhinometric
+
+  blackbox-exporter:
+    image: prom/blackbox-exporter:v0.24.0
+    container_name: rhinometric-blackbox-demo
+    restart: always
+    volumes:
+      - ./blackbox/blackbox.yml:/etc/blackbox/blackbox.yml:ro
+    ports:
+      - "9115:9115"
+    networks:
+      - rhinometric
+
+networks:
+  rhinometric:
+    driver: bridge
+
+volumes:
+  grafana-data:
+  prometheus-data:
+  loki-data:
+  tempo-data:
+  postgres-data:
+  redis-data:
