@@ -94,6 +94,13 @@ services:
   
   rhinometric-license-server-v2:
     logging: *default-logging
+    environment:
+      # SMTP Configuration for License Email Delivery
+      - SMTP_HOST=${SMTP_HOST:-smtp.gmail.com}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASSWORD=${SMTP_PASSWORD:-}
+      - SMTP_FROM=${SMTP_FROM:-licenses@rhinometric.io}
   
   rhinometric-license-ui:
     logging: *default-logging
