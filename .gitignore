@@ -98,3 +98,8 @@ venv/
 __pycache__
 *.egg-info
 *.dist-info
+.tmp.driveupload/
+.tmp.driveupload/
+.tmp.drivedownload/
+venv/
+rhinometric-license/generator/venv/

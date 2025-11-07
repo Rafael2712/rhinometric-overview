@@ -1,0 +1,145 @@
+{
+  "variables": {
+    "vm_name": "rhinometric-demo",
+    "cpus": "4",
+    "memory": "8192",
+    "disk_size": "61440",
+    "iso_url": "https://releases.ubuntu.com/22.04/ubuntu-22.04.3-live-server-amd64.iso",
+    "iso_checksum": "sha256:a4acfda10b18da50e2ec50ccaf860d7f20b389df8765611142305c0e911d16fd"
+  },
+  "builders": [
+    {
+      "type": "virtualbox-iso",
+      "guest_os_type": "Ubuntu_64",
+      "vm_name": "{{user `vm_name`}}",
+      "cpus": "{{user `cpus`}}",
+      "memory": "{{user `memory`}}",
+      "disk_size": "{{user `disk_size`}}",
+      "iso_url": "{{user `iso_url`}}",
+      "iso_checksum": "{{user `iso_checksum`}}",
+      "http_directory": "http",
+      "boot_wait": "5s",
+      "boot_command": [
+        "<esc><wait>",
+        "<esc><wait>",
+        "<enter><wait>",
+        "/casper/vmlinuz ",
+        "root=/dev/sr0 ",
+        "initrd=/casper/initrd ",
+        "autoinstall ",
+        "ds=nocloud-net;s=http://{{ .HTTPIP }}:{{ .HTTPPort }}/ ",
+        "<enter>"
+      ],
+      "ssh_username": "rhinouser",
+      "ssh_password": "rhinometric",
+      "ssh_timeout": "30m",
+      "shutdown_command": "echo 'rhinometric' | sudo -S shutdown -P now",
+      "export_opts": [
+        "--manifest",
+        "--vsys", "0",
+        "--description", "RhinoMetric v2.5.0 Demo Appliance - https://rhinometric.io",
+        "--version", "2.5.0"
+      ],
+      "format": "ova",
+      "vboxmanage": [
+        ["modifyvm", "{{.Name}}", "--nat-localhostreachable1", "on"],
+        ["modifyvm", "{{.Name}}", "--vram", "16"],
+        ["modifyvm", "{{.Name}}", "--graphicscontroller", "vmsvga"],
+        ["modifyvm", "{{.Name}}", "--audio", "none"]
+      ]
+    },
+    {
+      "type": "vmware-iso",
+      "guest_os_type": "ubuntu-64",
+      "vm_name": "{{user `vm_name`}}",
+      "cpus": "{{user `cpus`}}",
+      "memory": "{{user `memory`}}",
+      "disk_size": "{{user `disk_size`}}",
+      "disk_type_id": "0",
+      "iso_url": "{{user `iso_url`}}",
+      "iso_checksum": "{{user `iso_checksum`}}",
+      "http_directory": "http",
+      "boot_wait": "5s",
+      "boot_command": [
+        "<esc><wait>",
+        "<esc><wait>",
+        "<enter><wait>",
+        "/casper/vmlinuz ",
+        "root=/dev/sr0 ",
+        "initrd=/casper/initrd ",
+        "autoinstall ",
+        "ds=nocloud-net;s=http://{{ .HTTPIP }}:{{ .HTTPPort }}/ ",
+        "<enter>"
+      ],
+      "ssh_username": "rhinouser",
+      "ssh_password": "rhinometric",
+      "ssh_timeout": "30m",
+      "shutdown_command": "echo 'rhinometric' | sudo -S shutdown -P now",
+      "vmx_data": {
+        "ethernet0.pciSlotNumber": "32"
+      }
+    }
+  ],
+  "provisioners": [
+    {
+      "type": "shell",
+      "inline": [
+        "sudo apt-get update",
+        "sudo apt-get install -y curl ca-certificates gnupg lsb-release",
+        "sudo mkdir -p /etc/apt/keyrings",
+        "curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg",
+        "echo \"deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable\" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null",
+        "sudo apt-get update",
+        "sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin",
+        "sudo usermod -aG docker rhinouser",
+        "sudo systemctl enable docker"
+      ]
+    },
+    {
+      "type": "shell",
+      "inline": [
+        "sudo apt-get install -y ufw net-tools jq wget git",
+        "sudo ufw --force enable",
+        "sudo ufw allow 80/tcp",
+        "sudo ufw allow 443/tcp",
+        "sudo ufw allow 22/tcp comment 'SSH (optional, can disable later)'"
+      ]
+    },
+    {
+      "type": "file",
+      "source": "../deploy/demo/",
+      "destination": "/tmp/rhinometric-demo"
+    },
+    {
+      "type": "shell",
+      "inline": [
+        "sudo mkdir -p /opt/rhinometric",
+        "sudo mv /tmp/rhinometric-demo/* /opt/rhinometric/",
+        "sudo chown -R rhinouser:rhinouser /opt/rhinometric",
+        "sudo chmod +x /opt/rhinometric/scripts/*.sh"
+      ]
+    },
+    {
+      "type": "file",
+      "source": "files/rhinometric-firstboot.service",
+      "destination": "/tmp/rhinometric-firstboot.service"
+    },
+    {
+      "type": "shell",
+      "inline": [
+        "sudo mv /tmp/rhinometric-firstboot.service /etc/systemd/system/",
+        "sudo systemctl enable rhinometric-firstboot.service"
+      ]
+    },
+    {
+      "type": "shell",
+      "inline": [
+        "sudo apt-get clean",
+        "sudo rm -rf /var/lib/apt/lists/*",
+        "sudo rm -rf /tmp/*",
+        "sudo rm -rf /var/tmp/*",
+        "history -c"
+      ]
+    }
+  ]
+}
