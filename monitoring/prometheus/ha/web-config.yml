@@ -1,0 +1,6 @@
+tls_server_config:
+  cert_file: /etc/prometheus/certs/server.pem
+  key_file: /etc/prometheus/certs/server.pem
+  client_auth_type: RequestClientCert
+  client_ca_file: /etc/prometheus/certs/ca.crt
+  min_version: TLS12
