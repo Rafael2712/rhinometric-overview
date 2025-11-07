@@ -1,0 +1,159 @@
+# ============================================
+# Prometheus Alert Rules - Rhinometric v2.5.0
+# ============================================
+
+groups:
+  - name: rhinometric_services
+    interval: 30s
+    rules:
+      # Service Down
+      - alert: ServiceDown
+        expr: up == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Service {{ $labels.job }} is down"
+          description: "{{ $labels.job }} on {{ $labels.instance }} has been down for more than 2 minutes."
+
+      # High Response Time
+      - alert: HighResponseTime
+        expr: http_request_duration_seconds{quantile="0.99"} > 5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High response time on {{ $labels.service }}"
+          description: "P99 latency is {{ $value }}s on {{ $labels.service }}"
+
+      # API Error Rate
+      - alert: HighErrorRate
+        expr: rate(http_requests_total{status=~"5.."}[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High error rate on {{ $labels.service }}"
+          description: "{{ $labels.service }} has {{ $value | humanizePercentage }} error rate"
+
+  - name: rhinometric_resources
+    interval: 30s
+    rules:
+      # Disk Usage Warning
+      - alert: DiskUsageWarning
+        expr: (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) * 100 < 20
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Disk usage warning"
+          description: "Disk usage is above 80% ({{ $value | humanize }}% free)"
+
+      # Disk Usage Critical
+      - alert: DiskUsageCritical
+        expr: (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) * 100 < 10
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Disk usage critical"
+          description: "Disk usage is above 90% ({{ $value | humanize }}% free)"
+
+      # Memory Usage Warning
+      - alert: MemoryUsageWarning
+        expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Memory usage warning"
+          description: "Memory usage is above 85% ({{ $value | humanizePercentage }})"
+
+      # Memory Usage Critical
+      - alert: MemoryUsageCritical
+        expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 95
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Memory usage critical"
+          description: "Memory usage is above 95% ({{ $value | humanizePercentage }})"
+
+      # CPU Usage Warning
+      - alert: HighCPUUsage
+        expr: 100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU usage"
+          description: "CPU usage is above 80% ({{ $value | humanizePercentage }})"
+
+      # Container Memory Limit
+      - alert: ContainerMemoryNearLimit
+        expr: (container_memory_usage_bytes / container_spec_memory_limit_bytes) * 100 > 90
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Container {{ $labels.name }} near memory limit"
+          description: "Container using {{ $value | humanizePercentage }} of memory limit"
+
+  - name: rhinometric_data
+    interval: 60s
+    rules:
+      # Prometheus Storage Near Limit
+      - alert: PrometheusStorageNearLimit
+        expr: prometheus_tsdb_storage_blocks_bytes / 10737418240 * 100 > 90
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Prometheus storage near 10GB limit"
+          description: "Prometheus using {{ $value | humanizePercentage }} of 10GB retention size"
+
+      # Loki Storage
+      - alert: LokiHighIngestionRate
+        expr: rate(loki_ingester_bytes_received_total[5m]) > 10485760
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Loki high ingestion rate"
+          description: "Loki ingesting {{ $value | humanize }}B/s (>10MB/s)"
+
+  - name: rhinometric_postgres
+    interval: 30s
+    rules:
+      # PostgreSQL Down
+      - alert: PostgreSQLDown
+        expr: pg_up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "PostgreSQL is down"
+          description: "PostgreSQL database is not responding"
+
+      # Too Many Connections
+      - alert: PostgreSQLTooManyConnections
+        expr: sum(pg_stat_activity_count) > 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "PostgreSQL too many connections"
+          description: "{{ $value }} connections active (limit 100)"
+
+  - name: rhinometric_blackbox
+    interval: 30s
+    rules:
+      # HTTP Probe Failed
+      - alert: HTTPProbeFailed
+        expr: probe_success == 0
+        for: 3m
+        labels:
+          severity: critical
+        annotations:
+          summary: "HTTP probe failed for {{ $labels.instance }}"
+          description: "Endpoint {{ $labels.instance }} is not responding"

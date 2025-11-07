@@ -1,0 +1,75 @@
+# ============================================
+# Grafana Datasources Provisioning
+# ============================================
+
+apiVersion: 1
+
+datasources:
+  # Prometheus
+  - name: Prometheus
+    type: prometheus
+    uid: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: false
+    jsonData:
+      timeInterval: 30s
+      queryTimeout: 60s
+      httpMethod: POST
+    version: 1
+
+  # Loki
+  - name: Loki
+    type: loki
+    uid: loki
+    access: proxy
+    url: http://loki:3100
+    editable: false
+    jsonData:
+      maxLines: 1000
+      derivedFields:
+        - datasourceUid: tempo
+          matcherRegex: "traceID=(\\w+)"
+          name: TraceID
+          url: "$${__value.raw}"
+    version: 1
+
+  # Tempo
+  - name: Tempo
+    type: tempo
+    uid: tempo
+    access: proxy
+    url: http://tempo:3200
+    editable: false
+    jsonData:
+      tracesToLogs:
+        datasourceUid: loki
+        tags: ['job', 'instance', 'pod', 'namespace']
+        mappedTags: [{ key: 'service.name', value: 'service' }]
+        mapTagNamesEnabled: true
+        spanStartTimeShift: '-1h'
+        spanEndTimeShift: '1h'
+      serviceMap:
+        datasourceUid: prometheus
+      nodeGraph:
+        enabled: true
+    version: 1
+
+  # PostgreSQL (for Grafana's own database)
+  - name: PostgreSQL
+    type: postgres
+    uid: postgres
+    access: proxy
+    url: postgres:5432
+    database: ${POSTGRES_DB}
+    user: ${POSTGRES_USER}
+    editable: false
+    secureJsonData:
+      password: ${POSTGRES_PASSWORD}
+    jsonData:
+      sslmode: disable
+      maxOpenConns: 10
+      maxIdleConns: 5
+      connMaxLifetime: 14400
+    version: 1

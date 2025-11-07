@@ -1,0 +1,205 @@
+# ============================================
+# Alertmanager v0.27.0 - Production Configuration
+# ============================================
+
+global:
+  resolve_timeout: 5m
+  smtp_from: '${SMTP_FROM}'
+  smtp_smarthost: '${SMTP_HOST}:${SMTP_PORT}'
+  smtp_auth_username: '${SMTP_USER}'
+  smtp_auth_password: '${SMTP_PASSWORD}'
+  smtp_require_tls: true
+
+# Templates
+templates:
+  - '/etc/alertmanager/templates/*.tmpl'
+
+# Routing
+route:
+  receiver: 'default'
+  group_by: ['alertname', 'cluster', 'service']
+  group_wait: 10s
+  group_interval: 5m
+  repeat_interval: 4h
+
+  routes:
+    # Critical alerts
+    - match:
+        severity: critical
+      receiver: 'critical-team'
+      continue: true
+
+    # Warning alerts
+    - match:
+        severity: warning
+      receiver: 'ops-team'
+
+# Inhibition rules
+inhibit_rules:
+  # Inhibit warning if critical firing
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['alertname', 'instance']
+
+# Receivers
+receivers:
+  - name: 'default'
+    email_configs:
+      - to: '${ALERT_EMAIL_DEFAULT}'
+        send_resolved: true
+        headers:
+          Subject: '[Rhinometric] {{ .GroupLabels.alertname }}'
+        html: |
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <style>
+              body { font-family: Arial, sans-serif; }
+              .alert { padding: 20px; border-left: 4px solid #ff9800; background: #fff3cd; }
+              .critical { border-color: #dc3545; background: #f8d7da; }
+              .resolved { border-color: #28a745; background: #d4edda; }
+              .label { display: inline-block; padding: 2px 8px; background: #e9ecef; border-radius: 3px; margin: 2px; }
+            </style>
+          </head>
+          <body>
+            <div class="alert {{ if eq .Status "resolved" }}resolved{{ else if eq .CommonLabels.severity "critical" }}critical{{ end }}">
+              <h2>{{ .GroupLabels.alertname }}</h2>
+              <p><strong>Status:</strong> {{ .Status | toUpper }}</p>
+              <p><strong>Severity:</strong> {{ .CommonLabels.severity | toUpper }}</p>
+              <p><strong>Environment:</strong> {{ .CommonLabels.environment }}</p>
+              <hr>
+              {{ range .Alerts }}
+              <div style="margin-bottom: 15px;">
+                <p><strong>{{ .Annotations.summary }}</strong></p>
+                <p>{{ .Annotations.description }}</p>
+                <div>
+                  {{ range .Labels.SortedPairs }}
+                  <span class="label">{{ .Name }}: {{ .Value }}</span>
+                  {{ end }}
+                </div>
+                <p style="color: #6c757d; font-size: 12px;">
+                  Started: {{ .StartsAt.Format "2006-01-02 15:04:05 MST" }}
+                </p>
+              </div>
+              {{ end }}
+            </div>
+          </body>
+          </html>
+
+  - name: 'critical-team'
+    email_configs:
+      - to: '${ALERT_EMAIL_CRITICAL}'
+        send_resolved: true
+        headers:
+          Subject: '🚨 [CRITICAL] Rhinometric - {{ .GroupLabels.alertname }}'
+        html: |
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <style>
+              body { font-family: Arial, sans-serif; background: #f8f9fa; padding: 20px; }
+              .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+              .header { background: #dc3545; color: white; padding: 20px; text-align: center; }
+              .content { padding: 20px; }
+              .alert-box { background: #f8d7da; border-left: 4px solid #dc3545; padding: 15px; margin: 10px 0; border-radius: 4px; }
+              .label { display: inline-block; padding: 4px 8px; background: #e9ecef; border-radius: 3px; margin: 2px; font-size: 12px; }
+              .footer { background: #f8f9fa; padding: 15px; text-align: center; font-size: 12px; color: #6c757d; }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <div class="header">
+                <h1>🚨 CRITICAL ALERT</h1>
+                <h2>{{ .GroupLabels.alertname }}</h2>
+              </div>
+              <div class="content">
+                <p><strong>Status:</strong> <span style="color: #dc3545;">{{ .Status | toUpper }}</span></p>
+                <p><strong>Environment:</strong> Production</p>
+                <p><strong>Time:</strong> {{ now.Format "2006-01-02 15:04:05 MST" }}</p>
+                <hr>
+                {{ range .Alerts }}
+                <div class="alert-box">
+                  <h3>{{ .Annotations.summary }}</h3>
+                  <p>{{ .Annotations.description }}</p>
+                  <div>
+                    {{ range .Labels.SortedPairs }}
+                    <span class="label">{{ .Name }}: {{ .Value }}</span>
+                    {{ end }}
+                  </div>
+                  <p style="margin-top: 10px; color: #6c757d; font-size: 12px;">
+                    Started: {{ .StartsAt.Format "2006-01-02 15:04:05 MST" }}
+                  </p>
+                </div>
+                {{ end }}
+                <p style="margin-top: 20px; padding: 15px; background: #fff3cd; border-radius: 4px;">
+                  ⚠️ <strong>Action Required:</strong> Please investigate immediately and update the incident in the operations channel.
+                </p>
+              </div>
+              <div class="footer">
+                <p>Rhinometric v2.5.0 Production Monitoring</p>
+                <p>This is an automated alert from Alertmanager</p>
+              </div>
+            </div>
+          </body>
+          </html>
+
+  - name: 'ops-team'
+    email_configs:
+      - to: '${ALERT_EMAIL_OPS}'
+        send_resolved: true
+        headers:
+          Subject: '⚠️ [WARNING] Rhinometric - {{ .GroupLabels.alertname }}'
+        html: |
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <style>
+              body { font-family: Arial, sans-serif; background: #f8f9fa; padding: 20px; }
+              .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+              .header { background: #ff9800; color: white; padding: 20px; text-align: center; }
+              .content { padding: 20px; }
+              .alert-box { background: #fff3cd; border-left: 4px solid #ff9800; padding: 15px; margin: 10px 0; border-radius: 4px; }
+              .label { display: inline-block; padding: 4px 8px; background: #e9ecef; border-radius: 3px; margin: 2px; font-size: 12px; }
+              .footer { background: #f8f9fa; padding: 15px; text-align: center; font-size: 12px; color: #6c757d; }
+              .resolved { background: #d4edda; border-left-color: #28a745; }
+              .resolved .header { background: #28a745; }
+            </style>
+          </head>
+          <body>
+            <div class="container {{ if eq .Status "resolved" }}resolved{{ end }}">
+              <div class="header">
+                <h1>{{ if eq .Status "resolved" }}✅ RESOLVED{{ else }}⚠️ WARNING{{ end }}</h1>
+                <h2>{{ .GroupLabels.alertname }}</h2>
+              </div>
+              <div class="content">
+                <p><strong>Status:</strong> {{ .Status | toUpper }}</p>
+                <p><strong>Environment:</strong> Production</p>
+                <p><strong>Time:</strong> {{ now.Format "2006-01-02 15:04:05 MST" }}</p>
+                <hr>
+                {{ range .Alerts }}
+                <div class="alert-box">
+                  <h3>{{ .Annotations.summary }}</h3>
+                  <p>{{ .Annotations.description }}</p>
+                  <div>
+                    {{ range .Labels.SortedPairs }}
+                    <span class="label">{{ .Name }}: {{ .Value }}</span>
+                    {{ end }}
+                  </div>
+                  <p style="margin-top: 10px; color: #6c757d; font-size: 12px;">
+                    Started: {{ .StartsAt.Format "2006-01-02 15:04:05 MST" }}
+                    {{ if eq .Status "resolved" }}
+                    <br>Resolved: {{ .EndsAt.Format "2006-01-02 15:04:05 MST" }}
+                    {{ end }}
+                  </p>
+                </div>
+                {{ end }}
+              </div>
+              <div class="footer">
+                <p>Rhinometric v2.5.0 Production Monitoring</p>
+                <p>This is an automated alert from Alertmanager</p>
+              </div>
+            </div>
+          </body>
+          </html>
