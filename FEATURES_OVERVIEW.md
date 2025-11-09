@@ -293,9 +293,9 @@
 
 ## í³ž Contact
 
-**Sales**: sales@rhinometric.com  
-**Licenses**: licenses@rhinometric.com  
-**Support**: support@rhinometric.com  
+**Sales**: rafael.canelon@rhinometric.com  
+**Licenses**: rafael.canelon@rhinometric.com  
+**Support**: rafael.canelon@rhinometric.com  
 
 **Documentation**: https://docs.rhinometric.com  
 **GitHub**: https://github.com/Rafael2712/rhinometric-overview

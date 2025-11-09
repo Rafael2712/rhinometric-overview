@@ -99,7 +99,7 @@ docker compose up -d
 
 - ‚úÖ **Trial**: 30 d√≠as gratuitos
 - Ì≤º **Comercial**: Licencias por n√∫mero de hosts
-- Ì≥ß **Contacto**: licenses@rhinometric.com
+- Ì≥ß **Contacto**: rafael.canelon@rhinometric.com
 
 ---
 
@@ -138,7 +138,7 @@ docker compose up -d
 
 | Canal | Disponibilidad | SLA |
 |-------|----------------|-----|
-| **Email** | support@rhinometric.com | <4h |
+| **Email** | rafael.canelon@rhinometric.com | <4h |
 | **GitHub Issues** | 24/7 | Community |
 | **Tel√©fono** (Enterprise) | +34 900 123 456 | <15min |
 
@@ -213,7 +213,7 @@ Ver documentaci√≥n completa en:
 Este es un proyecto propietario. Para solicitudes de features o reportar bugs:
 
 1. Abrir issue en GitHub: https://github.com/Rafael2712/rhinometric-overview/issues
-2. Contactar soporte: support@rhinometric.com
+2. Contactar soporte: rafael.canelon@rhinometric.com
 3. Unirse a la comunidad: https://community.rhinometric.com
 
 ---
@@ -261,7 +261,7 @@ Este es un proyecto propietario. Para solicitudes de features o reportar bugs:
 
 Rhinometric Enterprise es software propietario. El uso de este software est√° sujeto a los t√©rminos de la licencia comercial. No est√° permitida la redistribuci√≥n, modificaci√≥n o uso comercial sin autorizaci√≥n expresa.
 
-Para licencias comerciales, contactar: **licenses@rhinometric.com**
+Para licencias comerciales, contactar: **rafael.canelon@rhinometric.com**
 
 ---
 
@@ -271,7 +271,7 @@ Para licencias comerciales, contactar: **licenses@rhinometric.com**
   <a href="https://rhinometric.com">Website</a> ‚Ä¢
   <a href="https://docs.rhinometric.com">Documentaci√≥n</a> ‚Ä¢
   <a href="https://community.rhinometric.com">Comunidad</a> ‚Ä¢
-  <a href="mailto:sales@rhinometric.com">Contacto Comercial</a>
+  <a href="mailto:rafael.canelon@rhinometric.com">Contacto Comercial</a>
 </p>
 
 ---
