@@ -186,3 +186,27 @@ volumes:
   tempo-data:
   postgres-data:
   redis-data:
+
+  rhinometric-nginx:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    container_name: rhinometric-nginx-demo
+    restart: always
+    volumes:
+      - ./branding/html:/usr/share/nginx/html:ro
+      - ../../docs:/usr/share/nginx/html/docs:ro
+    networks:
+      - rhinometric
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.landing.rule=Host(`${RHINO_DOMAIN:-localhost}`) && PathPrefix(`/`)"
+      - "traefik.http.routers.landing.entrypoints=websecure"
+      - "traefik.http.routers.landing.tls=true"
+      - "traefik.http.routers.landing.priority=1"
+      - "traefik.http.services.landing.loadbalancer.server.port=80"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3

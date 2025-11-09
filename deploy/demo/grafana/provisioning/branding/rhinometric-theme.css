@@ -1,0 +1,97 @@
+/* Rhinometric Enterprise - Custom Grafana Theme */
+/* Inject via reverse proxy or custom plugin */
+
+:root {
+  --rhino-primary: #1e5a7d;
+  --rhino-accent: #2d8ab8;
+  --rhino-success: #28a745;
+  --rhino-warning: #ffc107;
+  --rhino-danger: #dc3545;
+  --rhino-dark: #0f1419;
+  --rhino-light: #f5f7fa;
+}
+
+/* Sidebar branding */
+.sidemenu__logo {
+  background-image: url('/public/img/rhinometric-logo.svg') !important;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+/* Top navbar */
+.navbar {
+  background: linear-gradient(90deg, var(--rhino-dark) 0%, var(--rhino-primary) 100%);
+  border-bottom: 2px solid var(--rhino-accent);
+}
+
+/* Login page */
+.login-branding {
+  background: var(--rhino-primary);
+}
+
+.login-branding::before {
+  content: 'Rhinometric Enterprise';
+  display: block;
+  font-size: 2rem;
+  font-weight: 700;
+  color: white;
+  text-align: center;
+  margin-bottom: 1rem;
+}
+
+/* Dashboard titles */
+.panel-title-text {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+/* Custom footer */
+.footer {
+  background: var(--rhino-dark);
+  color: var(--rhino-light);
+  padding: 1rem;
+  text-align: center;
+  font-size: 0.875rem;
+}
+
+.footer::after {
+  content: 'Rhinometric Enterprise v2.5.0 – Observabilidad On-Premise';
+  display: block;
+  margin-top: 0.5rem;
+  opacity: 0.7;
+}
+
+/* Alert colors */
+.alert-state-critical {
+  background-color: var(--rhino-danger) !important;
+}
+
+.alert-state-warning {
+  background-color: var(--rhino-warning) !important;
+}
+
+.alert-state-ok {
+  background-color: var(--rhino-success) !important;
+}
+
+/* Home dashboard banner */
+.home-dashboard-banner {
+  background: linear-gradient(135deg, var(--rhino-primary) 0%, var(--rhino-accent) 100%);
+  color: white;
+  padding: 2rem;
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
+.home-dashboard-banner h1 {
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin: 0 0 0.5rem 0;
+}
+
+.home-dashboard-banner p {
+  font-size: 1.125rem;
+  opacity: 0.9;
+  margin: 0;
+}

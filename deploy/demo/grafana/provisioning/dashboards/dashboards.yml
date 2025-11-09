@@ -1,11 +1,45 @@
+# Rhinometric Enterprise - Dashboard Provisioning
+# Organizes dashboards into branded folders
+
 apiVersion: 1
 
 providers:
-  - name: 'Demo Dashboards'
+  - name: 'Rhinometric Overview'
     orgId: 1
-    folder: 'Demo'
+    folder: 'RHINOMETRIC'
     type: file
     disableDeletion: false
-    editable: true
+    updateIntervalSeconds: 30
+    allowUiUpdates: true
     options:
-      path: /etc/grafana/provisioning/dashboards/json
+      path: /var/lib/grafana/dashboards/overview
+
+  - name: 'Rhinometric Applications'
+    orgId: 1
+    folder: 'RHINOMETRIC / Applications'
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: true
+    options:
+      path: /var/lib/grafana/dashboards/applications
+
+  - name: 'Rhinometric Infrastructure'
+    orgId: 1
+    folder: 'RHINOMETRIC / Infrastructure'
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: true
+    options:
+      path: /var/lib/grafana/dashboards/infrastructure
+
+  - name: 'Rhinometric AI & Anomalies'
+    orgId: 1
+    folder: 'RHINOMETRIC / AI & Anomalies'
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: true
+    options:
+      path: /var/lib/grafana/dashboards/ai

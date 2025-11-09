@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rhinometric - Alerta de Plataforma</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f5f7fa;">
+    <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f5f7fa; padding: 20px;">
+        <tr>
+            <td align="center">
+                <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+                    <!-- Header con branding -->
+                    <tr>
+                        <td style="background: linear-gradient(90deg, #0f1419 0%, #1e5a7d 100%); padding: 30px; text-align: center;">
+                            <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700;">
+                                RHINOMETRIC ENTERPRISE
+                            </h1>
+                            <p style="margin: 10px 0 0 0; color: rgba(255,255,255,0.8); font-size: 14px;">
+                                Plataforma de Observabilidad On-Premise
+                            </p>
+                        </td>
+                    </tr>
+                    
+                    <!-- Alert badge -->
+                    <tr>
+                        <td style="padding: 30px; text-align: center;">
+                            <div style="display: inline-block; background-color: {{ if eq .Status "firing" }}#dc3545{{ else }}#28a745{{ end }}; color: white; padding: 10px 20px; border-radius: 20px; font-weight: 600; font-size: 14px; text-transform: uppercase;">
+                                {{ if eq .Status "firing" }}í´´ ALERTA ACTIVA{{ else }}âœ… ALERTA RESUELTA{{ end }}
+                            </div>
+                        </td>
+                    </tr>
+                    
+                    <!-- Content -->
+                    <tr>
+                        <td style="padding: 0 30px 30px 30px;">
+                            <h2 style="color: #0f1419; font-size: 20px; margin: 0 0 20px 0;">
+                                {{ .GroupLabels.alertname }}
+                            </h2>
+                            
+                            <table width="100%" cellpadding="10" cellspacing="0" style="background-color: #f8f9fa; border-radius: 6px; margin-bottom: 20px;">
+                                <tr>
+                                    <td style="border-bottom: 1px solid #e9ecef;"><strong>Severidad:</strong></td>
+                                    <td style="border-bottom: 1px solid #e9ecef;">
+                                        <span style="background-color: {{ if eq .CommonLabels.severity "critical" }}#dc3545{{ else if eq .CommonLabels.severity "warning" }}#ffc107{{ else }}#17a2b8{{ end }}; color: white; padding: 3px 10px; border-radius: 3px; font-size: 12px; font-weight: 600;">
+                                            {{ .CommonLabels.severity | toUpper }}
+                                        </span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="border-bottom: 1px solid #e9ecef;"><strong>Instancia:</strong></td>
+                                    <td style="border-bottom: 1px solid #e9ecef;">{{ .CommonLabels.instance }}</td>
+                                </tr>
+                                <tr>
+                                    <td style="border-bottom: 1px solid #e9ecef;"><strong>Job:</strong></td>
+                                    <td style="border-bottom: 1px solid #e9ecef;">{{ .CommonLabels.job }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Timestamp:</strong></td>
+                                    <td>{{ .StartsAt.Format "2006-01-02 15:04:05 MST" }}</td>
+                                </tr>
+                            </table>
+                            
+                            {{ range .Alerts }}
+                            <div style="background-color: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin-bottom: 15px; border-radius: 4px;">
+                                <p style="margin: 0 0 10px 0; font-weight: 600; color: #856404;">
+                                    {{ .Annotations.summary }}
+                                </p>
+                                <p style="margin: 0; color: #856404; font-size: 14px;">
+                                    {{ .Annotations.description }}
+                                </p>
+                            </div>
+                            {{ end }}
+                            
+                            <div style="text-align: center; margin-top: 30px;">
+                                <a href="https://{{ .ExternalURL }}" style="display: inline-block; background: linear-gradient(90deg, #2d8ab8 0%, #4fa3c7 100%); color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: 600;">
+                                    Ver en Grafana
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    
+                    <!-- Footer -->
+                    <tr>
+                        <td style="background-color: #0f1419; padding: 20px; text-align: center;">
+                            <p style="margin: 0 0 10px 0; color: rgba(255,255,255,0.8); font-size: 12px;">
+                                Este mensaje fue generado automÃ¡ticamente por <strong>Rhinometric Enterprise Demo</strong>
+                            </p>
+                            <p style="margin: 0; color: rgba(255,255,255,0.5); font-size: 11px;">
+                                Rhinometric Enterprise v2.5.0 â€“ Observabilidad On-Premise<br>
+                                Para soporte, visite: <a href="https://github.com/Rafael2712/mi-proyecto" style="color: #4fa3c7;">GitHub</a>
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>

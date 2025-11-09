@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rhinometric Enterprise Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #0f1419 0%, #1e5a7d 100%);
+            color: #ffffff;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 800px;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 3rem;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .logo {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .logo-text {
+            font-size: 3rem;
+            font-weight: 700;
+            background: linear-gradient(90deg, #2d8ab8 0%, #4fa3c7 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 0.5rem;
+        }
+
+        .subtitle {
+            font-size: 1.25rem;
+            color: rgba(255, 255, 255, 0.8);
+            text-align: center;
+            margin-bottom: 3rem;
+            font-weight: 300;
+        }
+
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 3rem;
+        }
+
+        .feature {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 1.5rem;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .feature:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .feature-icon {
+            font-size: 2rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .feature-title {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .feature-desc {
+            font-size: 0.875rem;
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .actions {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 1rem 2rem;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+
+        .btn-primary {
+            background: linear-gradient(90deg, #2d8ab8 0%, #4fa3c7 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(45, 138, 184, 0.3);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            border-color: rgba(255, 255, 255, 0.3);
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.5);
+        }
+
+        .footer {
+            margin-top: 3rem;
+            text-align: center;
+            font-size: 0.875rem;
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .credentials {
+            background: rgba(255, 193, 7, 0.1);
+            border: 1px solid rgba(255, 193, 7, 0.3);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin: 2rem 0;
+        }
+
+        .credentials h3 {
+            color: #ffc107;
+            margin-bottom: 0.75rem;
+            font-size: 1rem;
+        }
+
+        .credentials code {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">
+            <div class="logo-text">RHINOMETRIC</div>
+            <div class="subtitle">Plataforma de Observabilidad On-Premise con IA Local</div>
+        </div>
+
+        <div class="features">
+            <div class="feature">
+                <div class="feature-icon">Ì≥ä</div>
+                <div class="feature-title">M√©tricas en Tiempo Real</div>
+                <div class="feature-desc">Prometheus + Grafana con 8+ datasources</div>
+            </div>
+            <div class="feature">
+                <div class="feature-icon">Ì¥ñ</div>
+                <div class="feature-title">Detecci√≥n de Anomal√≠as</div>
+                <div class="feature-desc">Machine Learning local sin nube</div>
+            </div>
+            <div class="feature">
+                <div class="feature-icon">Ì¥ç</div>
+                <div class="feature-title">Trazas Distribuidas</div>
+                <div class="feature-desc">OpenTelemetry + Tempo integrado</div>
+            </div>
+            <div class="feature">
+                <div class="feature-icon">Ì≥ù</div>
+                <div class="feature-title">Logs Centralizados</div>
+                <div class="feature-desc">Loki con retenci√≥n de 7 d√≠as</div>
+            </div>
+        </div>
+
+        <div class="credentials">
+            <h3>Ì¥ë Credenciales de Acceso Demo</h3>
+            <p><strong>Usuario:</strong> <code>admin</code></p>
+            <p><strong>Contrase√±a:</strong> <code>rhinometric_demo</code></p>
+        </div>
+
+        <div class="actions">
+            <a href="/grafana" class="btn btn-primary">Ì∫Ä Entrar a la Consola</a>
+            <a href="/docs" class="btn btn-secondary">Ì≥ö Documentaci√≥n</a>
+            <a href="/builder" class="btn btn-secondary">Ìæ® Dashboard Builder</a>
+        </div>
+
+        <div class="footer">
+            <p><strong>Rhinometric Enterprise v2.5.0</strong></p>
+            <p>Demo Appliance ‚Äì Observabilidad profesional sin dependencias cloud</p>
+            <p style="margin-top: 1rem; font-size: 0.75rem;">
+                Proyecto: <code>/opt/rhinometric</code> | 
+                Verificar salud: <code>bash scripts/smoke-test.sh</code>
+            </p>
+        </div>
+    </div>
+</body>
+</html>

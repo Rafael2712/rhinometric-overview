@@ -242,3 +242,75 @@ See LICENSE file in `/opt/rhinometric/`
 ---
 
 **🎉 Ready to demo! Access `https://<your-vm-ip>` and explore.**
+
+---
+
+## ��� BRANDING RHINOMETRIC
+
+### Experiencia Visual
+
+Al arrancar la OVA, experimentarás:
+
+1. **Consola VM (SSH/Terminal):**
+   - Banner ASCII "RHINOMETRIC ENTERPRISE" al login
+   - Información de acceso con IP dinámica
+   - Comandos útiles pre-configurados
+
+2. **Landing Web (https://\<IP\>):**
+   - Página de bienvenida branded con gradientes corporativos
+   - Credenciales demo visibles
+   - Links directos a Grafana, Dashboard Builder, Docs
+   - Colores: Azul petróleo (#1e5a7d) + Azul acento (#2d8ab8)
+
+3. **Grafana:**
+   - Título de instancia: "Rhinometric Enterprise"
+   - Dashboards organizados en carpetas:
+     - `RHINOMETRIC / Overview`
+     - `RHINOMETRIC / Applications`
+     - `RHINOMETRIC / Infrastructure`
+     - `RHINOMETRIC / AI & Anomalies`
+   - Tema dark con headers branded
+   - Footer: "Rhinometric Enterprise v2.5.0"
+
+### URLs de Acceso
+
+```
+https://<IP>              → Landing page Rhinometric
+https://<IP>/grafana      → Consola Grafana (branded)
+http://<IP>:3001          → Dashboard Builder
+http://<IP>:9090          → Prometheus
+http://<IP>:8085          → AI Anomaly API
+```
+
+### Credenciales Demo
+
+- **Grafana:** `admin` / `rhinometric_demo`
+- **SSH VM:** `rhinouser` / `rhinometric`
+
+### Personalización
+
+Para cambiar el dominio/IP en branding:
+
+```bash
+cd /opt/rhinometric/deploy/demo
+nano .env.demo
+
+# Editar:
+RHINO_DOMAIN=tu-dominio.local
+
+# Reiniciar servicios:
+docker compose down && docker compose up -d
+```
+
+### Logo Corporativo
+
+El sistema busca logos en:
+- `/opt/rhinometric/branding/logos/rhinometric-logo.svg`
+- Placeholder: Texto "RHINOMETRIC" en gradiente CSS
+
+Para usar tu propio logo:
+```bash
+sudo cp your-logo.svg /opt/rhinometric/branding/logos/rhinometric-logo.svg
+docker compose restart grafana traefik nginx
+```
+

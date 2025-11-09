@@ -1,0 +1,109 @@
+# Rhinometric Enterprise - Traefik Dynamic Configuration
+# Routes, middlewares, and services
+
+http:
+  routers:
+    # Landing page (root)
+    landing:
+      rule: "Host(`${RHINO_DOMAIN:-localhost}`) && PathPrefix(`/`)"
+      service: landing
+      priority: 1
+      middlewares:
+        - rhinometric-headers
+
+    # Grafana
+    grafana:
+      rule: "Host(`${RHINO_DOMAIN:-localhost}`) && PathPrefix(`/grafana`)"
+      service: grafana
+      priority: 10
+      middlewares:
+        - rhinometric-headers
+        - grafana-stripprefix
+
+    # Dashboard Builder
+    builder:
+      rule: "Host(`${RHINO_DOMAIN:-localhost}`) && PathPrefix(`/builder`)"
+      service: builder
+      priority: 10
+      middlewares:
+        - rhinometric-headers
+        - builder-stripprefix
+
+    # Prometheus
+    prometheus:
+      rule: "Host(`${RHINO_DOMAIN:-localhost}`) && PathPrefix(`/prometheus`)"
+      service: prometheus
+      priority: 10
+      middlewares:
+        - rhinometric-headers
+
+    # Docs (static files)
+    docs:
+      rule: "Host(`${RHINO_DOMAIN:-localhost}`) && PathPrefix(`/docs`)"
+      service: docs
+      priority: 10
+      middlewares:
+        - rhinometric-headers
+
+  services:
+    landing:
+      loadBalancer:
+        servers:
+          - url: "http://rhinometric-nginx:80"
+
+    grafana:
+      loadBalancer:
+        servers:
+          - url: "http://rhinometric-grafana:3000"
+
+    builder:
+      loadBalancer:
+        servers:
+          - url: "http://rhinometric-dashboard-builder:3001"
+
+    prometheus:
+      loadBalancer:
+        servers:
+          - url: "http://rhinometric-prometheus:9090"
+
+    docs:
+      loadBalancer:
+        servers:
+          - url: "http://rhinometric-nginx:80"
+
+  middlewares:
+    rhinometric-headers:
+      headers:
+        customResponseHeaders:
+          X-Powered-By: "Rhinometric Enterprise v2.5.0"
+          X-Frame-Options: "SAMEORIGIN"
+          X-Content-Type-Options: "nosniff"
+        sslRedirect: true
+        stsSeconds: 31536000
+        stsIncludeSubdomains: true
+
+    grafana-stripprefix:
+      stripPrefix:
+        prefixes:
+          - "/grafana"
+
+    builder-stripprefix:
+      stripPrefix:
+        prefixes:
+          - "/builder"
+
+# Error pages
+http:
+  middlewares:
+    error-pages:
+      errors:
+        status:
+          - "500-599"
+        service: error-service
+        query: "/{status}.html"
+
+  services:
+    error-service:
+      loadBalancer:
+        servers:
+          - url: "http://rhinometric-nginx:80"

@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Servicio No Disponible - Rhinometric</title>
+    <style>
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #0f1419 0%, #1e5a7d 100%);
+            color: #ffffff;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0;
+            padding: 2rem;
+        }
+        .error-container {
+            text-align: center;
+            max-width: 600px;
+        }
+        .error-code {
+            font-size: 6rem;
+            font-weight: 700;
+            color: #ffc107;
+            margin-bottom: 1rem;
+        }
+        .error-title {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+        }
+        .error-message {
+            font-size: 1.125rem;
+            color: rgba(255, 255, 255, 0.8);
+            margin-bottom: 2rem;
+        }
+        .btn {
+            display: inline-block;
+            padding: 1rem 2rem;
+            background: linear-gradient(90deg, #2d8ab8 0%, #4fa3c7 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: transform 0.3s ease;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+        .footer {
+            margin-top: 3rem;
+            font-size: 0.875rem;
+            color: rgba(255, 255, 255, 0.5);
+        }
+    </style>
+</head>
+<body>
+    <div class="error-container">
+        <div class="error-code">502</div>
+        <h1 class="error-title">Rhinometric – Servicio Temporalmente No Disponible</h1>
+        <p class="error-message">
+            El backend está iniciando o reiniciando. Por favor, espere unos segundos y recargue la página.
+        </p>
+        <a href="/" class="btn">↻ Volver al Inicio</a>
+        <div class="footer">
+            <p><strong>Rhinometric Enterprise v2.5.0</strong></p>
+            <p>Si el problema persiste, ejecute: <code>bash /opt/rhinometric/deploy/demo/scripts/smoke-test.sh</code></p>
+        </div>
+    </div>
+</body>
+</html>
