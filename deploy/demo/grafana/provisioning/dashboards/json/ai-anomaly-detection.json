@@ -1,116 +1,160 @@
 {
   "dashboard": {
     "title": "AI Anomaly Detection",
-    "uid": "rhinometric-ai-anomaly",
+    "uid": "rhinometric-ai-anomalies",
+    "tags": ["rhinometric", "ai", "anomaly"],
     "timezone": "browser",
-    "schemaVersion": 30,
-    "version": 1,
-    "refresh": "10s",
+    "schemaVersion": 16,
+    "version": 0,
+    "refresh": "30s",
     "panels": [
       {
         "id": 1,
-        "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
+        "gridPos": { "x": 0, "y": 0, "w": 6, "h": 4 },
         "type": "stat",
-        "title": "Anomalías Detectadas (24h)",
-        "targets": [{
-          "expr": "increase(rhinometric_anomaly_detections_total[24h])",
-          "refId": "A",
-          "datasource": {"uid": "prometheus"}
-        }],
-        "options": {
-          "reduceOptions": {"calcs": ["last"]},
-          "colorMode": "value",
-          "graphMode": "area",
-          "textMode": "auto"
-        },
+        "title": "Total Detectadas (24h)",
+        "targets": [
+          {
+            "expr": "increase(rhinometric_anomaly_detections_total[24h])",
+            "refId": "A",
+            "datasource": { "uid": "prometheus" }
+          }
+        ],
         "fieldConfig": {
           "defaults": {
-            "unit": "short",
+            "color": { "mode": "thresholds" },
             "thresholds": {
               "mode": "absolute",
               "steps": [
-                {"value": 0, "color": "green"},
-                {"value": 50, "color": "yellow"},
-                {"value": 100, "color": "red"}
+                { "value": 0, "color": "green" },
+                { "value": 10, "color": "yellow" },
+                { "value": 50, "color": "red" }
               ]
-            }
+            },
+            "unit": "short"
           }
         }
       },
       {
         "id": 2,
-        "gridPos": {"h": 4, "w": 6, "x": 6, "y": 0},
+        "gridPos": { "x": 6, "y": 0, "w": 6, "h": 4 },
         "type": "stat",
         "title": "Anomalías Activas",
-        "targets": [{
-          "expr": "rhinometric_anomaly_active_count",
-          "refId": "A",
-          "datasource": {"uid": "prometheus"}
-        }],
-        "options": {
-          "reduceOptions": {"calcs": ["last"]},
-          "colorMode": "value",
-          "textMode": "auto"
-        },
+        "targets": [
+          {
+            "expr": "rhinometric_anomaly_active_count",
+            "refId": "A",
+            "datasource": { "uid": "prometheus" }
+          }
+        ],
         "fieldConfig": {
           "defaults": {
-            "unit": "short",
+            "color": { "mode": "thresholds" },
             "thresholds": {
               "mode": "absolute",
               "steps": [
-                {"value": 0, "color": "green"},
-                {"value": 5, "color": "orange"},
-                {"value": 10, "color": "red"}
+                { "value": 0, "color": "green" },
+                { "value": 1, "color": "yellow" },
+                { "value": 5, "color": "red" }
               ]
-            }
+            },
+            "unit": "short"
           }
         }
       },
       {
         "id": 3,
-        "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0},
+        "gridPos": { "x": 12, "y": 0, "w": 6, "h": 4 },
         "type": "stat",
-        "title": "Modelos Entrenados",
-        "targets": [{
-          "expr": "rhinometric_anomaly_models_trained",
-          "refId": "A",
-          "datasource": {"uid": "prometheus"}
-        }],
-        "options": {
-          "reduceOptions": {"calcs": ["last"]},
-          "colorMode": "value",
-          "textMode": "auto"
-        },
+        "title": "Modelos ML Entrenados",
+        "targets": [
+          {
+            "expr": "rhinometric_anomaly_models_trained",
+            "refId": "A",
+            "datasource": { "uid": "prometheus" }
+          }
+        ],
         "fieldConfig": {
           "defaults": {
-            "unit": "short",
-            "color": {"mode": "palette-classic"}
+            "color": { "mode": "palette-classic" },
+            "unit": "short"
           }
         }
       },
       {
         "id": 4,
-        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 4},
-        "type": "graph",
-        "title": "Detecciones en Tiempo Real",
-        "targets": [{
-          "expr": "rate(rhinometric_anomaly_detections_total[5m])",
-          "refId": "A",
-          "legendFormat": "{{metric_name}}",
-          "datasource": {"uid": "prometheus"}
-        }],
-        "yaxes": [
-          {"format": "short", "label": "Anomalías/seg"},
-          {"format": "short", "show": false}
+        "gridPos": { "x": 18, "y": 0, "w": 6, "h": 4 },
+        "type": "stat",
+        "title": "Tasa de Detección (5m)",
+        "targets": [
+          {
+            "expr": "rate(rhinometric_anomaly_detections_total[5m])",
+            "refId": "A",
+            "datasource": { "uid": "prometheus" }
+          }
         ],
-        "legend": {
-          "show": true,
-          "alignAsTable": true,
-          "avg": true,
-          "max": true,
-          "current": true
+        "fieldConfig": {
+          "defaults": {
+            "color": { "mode": "palette-classic" },
+            "unit": "ops",
+            "decimals": 2
+          }
+        }
+      },
+      {
+        "id": 5,
+        "gridPos": { "x": 0, "y": 4, "w": 12, "h": 8 },
+        "type": "timeseries",
+        "title": "Detecciones en el Tiempo",
+        "targets": [
+          {
+            "expr": "rate(rhinometric_anomaly_detections_total[1m])",
+            "refId": "A",
+            "legendFormat": "Tasa de Detección",
+            "datasource": { "uid": "prometheus" }
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": { "mode": "palette-classic" },
+            "custom": {
+              "axisPlacement": "auto",
+              "drawStyle": "line",
+              "fillOpacity": 10,
+              "showPoints": "auto"
+            },
+            "unit": "ops"
+          }
+        }
+      },
+      {
+        "id": 6,
+        "gridPos": { "x": 12, "y": 4, "w": 12, "h": 8 },
+        "type": "timeseries",
+        "title": "Anomalías Activas por Tipo",
+        "targets": [
+          {
+            "expr": "rhinometric_anomaly_active_count by (anomaly_type)",
+            "refId": "A",
+            "legendFormat": "{{anomaly_type}}",
+            "datasource": { "uid": "prometheus" }
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": { "mode": "palette-classic" },
+            "custom": {
+              "axisPlacement": "auto",
+              "drawStyle": "line",
+              "fillOpacity": 20,
+              "showPoints": "auto",
+              "stacking": { "mode": "normal" }
+            },
+            "unit": "short"
+          }
         }
       }
     ]
-  }
+  },
+  "overwrite": true
 }
