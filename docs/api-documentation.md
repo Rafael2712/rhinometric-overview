@@ -659,7 +659,7 @@ Al migrar a una nueva versión de API:
 
 ### Contacto
 
-- 📧 **API Support**: api-support@rhinometric.com
+- 📧 **API Support**: rafael.canelon@rhinometric.com
 - 📚 **Documentation**: GitHub Wiki
 - 🐛 **Bug Reports**: GitHub Issues
 - 💬 **Community**: Slack #api-help
