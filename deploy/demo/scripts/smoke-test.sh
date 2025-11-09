@@ -1,10 +1,11 @@
 #!/bin/bash
-# smoke-test.sh - Validación completa del stack demo
+# smoke-test.sh - Enhanced con validación AI metrics >0 en 5 min
+# Rhinometric v2.5.0
 
 set -euo pipefail
 
-GREEN='\033[0;32m'
 RED='\033[0;31m'
+GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m'
 
@@ -19,79 +20,96 @@ check() {
     fi
 }
 
-echo "�� Rhinometric Demo - Smoke Test"
+echo -e "\n${GREEN}��� Rhinometric Demo - Enhanced Smoke Test${NC}"
 echo "=================================="
 
-# 1. Containers Health
-echo -e "\n${YELLOW}[1/8]${NC} Verificando contenedores..."
-docker ps --filter "name=rhinometric-" --format "{{.Names}} {{.Status}}" | grep -q "healthy"
+# [1/9] Docker containers
+echo -e "\n${YELLOW}[1/9]${NC} Verificando contenedores..."
+UNHEALTHY=$(docker ps --format "table {{.Names}}\t{{.Status}}" | grep -c "unhealthy" || true)
+[ "$UNHEALTHY" -eq 0 ]
 check "Todos los contenedores healthy"
 
-# 2. HTTP Endpoints
-echo -e "\n${YELLOW}[2/8]${NC} Verificando endpoints HTTP..."
-curl -sf http://localhost:3000/api/health > /dev/null
-check "Grafana :3000"
+# [2/9] HTTP Endpoints
+echo -e "\n${YELLOW}[2/9]${NC} Verificando endpoints HTTP..."
+for SERVICE in "Grafana:3000" "Prometheus:9090" "Loki:3100" "AI:8085" "Builder:8001"; do
+    NAME="${SERVICE%%:*}"
+    PORT="${SERVICE##*:}"
+    curl -sf "http://localhost:$PORT" -o /dev/null
+    check "$NAME :$PORT"
+done
 
-curl -sf http://localhost:9090/-/healthy > /dev/null
-check "Prometheus :9090"
+# [3/9] Prometheus Targets
+echo -e "\n${YELLOW}[3/9]${NC} Verificando Prometheus targets..."
+TARGETS_DOWN=$(curl -s http://localhost:9090/api/v1/targets | jq -r '.data.activeTargets[] | select(.health!="up") | .scrapePool' | wc -l)
+[ "$TARGETS_DOWN" -eq 0 ]
+check "Todos los targets UP ($TARGETS_DOWN DOWN)"
 
-curl -sf http://localhost:3100/ready > /dev/null
-check "Loki :3100"
+# [4/9] Grafana Datasources
+echo -e "\n${YELLOW}[4/9]${NC} Verificando datasources Grafana..."
+curl -s -u admin:rhinometric_demo http://localhost:3000/api/datasources/uid/prometheus | jq -e '.uid == "prometheus"' > /dev/null
+check "Datasource Prometheus (UID: prometheus)"
 
-curl -sf http://localhost:8085/health > /dev/null
-check "AI Anomaly :8085"
+# [5/9] AI Metrics - ENHANCED: Wait for detections >0
+echo -e "\n${YELLOW}[5/9]${NC} Verificando métricas AI (espera max 5 min para detecciones >0)..."
 
-# 3. Prometheus Targets
-echo -e "\n${YELLOW}[3/8]${NC} Verificando Prometheus targets..."
-TARGETS=$(curl -s http://localhost:9090/api/v1/targets | jq -r '.data.activeTargets[] | select(.health!="up") | .scrapePool')
-if [ -z "$TARGETS" ]; then
-    check "Todos los targets UP"
-else
-    echo -e "${RED}✗${NC} Targets DOWN: $TARGETS"
-    ((ERRORS++))
-fi
-
-# 4. Grafana Datasources
-echo -e "\n${YELLOW}[4/8]${NC} Verificando datasources Grafana..."
-DS_CHECK=$(curl -s -u admin:rhinometric_demo http://localhost:3000/api/datasources/uid/prometheus | jq -r '.name')
-if [ "$DS_CHECK" == "Prometheus" ]; then
-    check "Datasource Prometheus (UID: prometheus)"
-else
-    echo -e "${RED}✗${NC} Datasource Prometheus no encontrado"
-    ((ERRORS++))
-fi
-
-# 5. AI Metrics
-echo -e "\n${YELLOW}[5/8]${NC} Verificando métricas AI..."
+# Check metrics exist
 curl -s http://localhost:8085/metrics | grep -q "rhinometric_anomaly"
 check "Métricas AI presentes"
 
-# 6. Disk Space
-echo -e "\n${YELLOW}[6/8]${NC} Verificando espacio en disco..."
+# NEW: Wait for actual detections
+MAX_WAIT=300  # 5 minutos
+WAIT_INTERVAL=10
+ELAPSED=0
+DETECTIONS=0
+
+while [ $ELAPSED -lt $MAX_WAIT ]; do
+    DETECTIONS=$(curl -s http://localhost:8085/metrics 2>/dev/null | grep "^rhinometric_anomaly_detections_total" | awk '{print $2}' | head -1 || echo "0")
+    
+    if (( $(echo "$DETECTIONS > 0" | bc -l 2>/dev/null || echo 0) )); then
+        break
+    fi
+    
+    echo -e "  ${YELLOW}⏳${NC} Esperando detecciones... (${ELAPSED}s / ${MAX_WAIT}s)"
+    sleep $WAIT_INTERVAL
+    ELAPSED=$((ELAPSED + WAIT_INTERVAL))
+done
+
+[ "$(echo "$DETECTIONS > 0" | bc -l)" -eq 1 ]
+check "AI Anomaly Detections >0 (actual: $DETECTIONS) en ${ELAPSED}s"
+
+# [6/9] Disk Space
+echo -e "\n${YELLOW}[6/9]${NC} Verificando espacio en disco..."
 DISK_USAGE=$(df / | tail -1 | awk '{print $5}' | sed 's/%//')
-if [ "$DISK_USAGE" -lt 80 ]; then
-    check "Disco <80% (actual: ${DISK_USAGE}%)"
-else
-    echo -e "${RED}✗${NC} Disco al ${DISK_USAGE}% (>80%)"
-    ((ERRORS++))
-fi
+[ "$DISK_USAGE" -lt 80 ]
+check "Disco <80% (actual: ${DISK_USAGE}%)"
 
-# 7. Volumes
-echo -e "\n${YELLOW}[7/8]${NC} Verificando volúmenes..."
-docker volume ls | grep -q "demo_grafana-data"
-check "Volúmenes creados"
+# [7/9] Docker Volumes
+echo -e "\n${YELLOW}[7/9]${NC} Verificando volúmenes..."
+VOLUMES=$(docker volume ls --filter "name=demo_" --format "{{.Name}}" | wc -l)
+[ "$VOLUMES" -gt 0 ]
+check "Volúmenes creados (total: $VOLUMES)"
 
-# 8. Network
-echo -e "\n${YELLOW}[8/8]${NC} Verificando red..."
+# [8/9] Network
+echo -e "\n${YELLOW}[8/9]${NC} Verificando red..."
 docker network inspect demo_rhinometric > /dev/null 2>&1
 check "Red rhinometric activa"
 
-echo ""
-echo "=================================="
+# [9/9] Anomaly Seed Process
+echo -e "\n${YELLOW}[9/9]${NC} Verificando anomaly-seed..."
+if ps aux | grep -q "[a]nomaly-seed.sh"; then
+    check "Proceso anomaly-seed.sh activo"
+else
+    echo -e "${YELLOW}⚠${NC}  anomaly-seed.sh no detectado (puede estar detenido)"
+    echo "   Para iniciarlo: nohup bash /opt/rhinometric/deploy/demo/scripts/anomaly-seed.sh > /tmp/seed.log 2>&1 &"
+fi
+
+# Summary
+echo -e "\n=================================="
 if [ $ERRORS -eq 0 ]; then
     echo -e "${GREEN}✓ Smoke test PASSED${NC} - Stack funcional"
+    echo -e "${GREEN}��� DEMO READY${NC}"
     exit 0
 else
-    echo -e "${RED}✗ Smoke test FAILED${NC} - $ERRORS errores encontrados"
+    echo -e "${RED}✗ Smoke test FAILED${NC} - $ERRORS error(es)"
     exit 1
 fi

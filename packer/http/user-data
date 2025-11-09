@@ -1,0 +1,35 @@
+#cloud-config
+autoinstall:
+  version: 1
+  locale: en_US.UTF-8
+  keyboard:
+    layout: us
+  network:
+    network:
+      version: 2
+      ethernets:
+        eth0:
+          dhcp4: true
+  storage:
+    layout:
+      name: lvm
+  identity:
+    hostname: rhinometric-demo
+    username: rhinouser
+    password: '$6$rounds=4096$saltsalt$YhFVIa7C3w8JcqfKlnDcE8c4VYI9c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7'
+  ssh:
+    install-server: true
+    allow-pw: true
+  packages:
+    - curl
+    - wget
+    - git
+    - vim
+    - htop
+    - net-tools
+    - ca-certificates
+    - gnupg
+    - lsb-release
+  late-commands:
+    - echo 'rhinouser ALL=(ALL) NOPASSWD:ALL' > /target/etc/sudoers.d/rhinouser
+    - chmod 440 /target/etc/sudoers.d/rhinouser

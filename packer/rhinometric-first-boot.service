@@ -1,0 +1,18 @@
+[Unit]
+Description=Rhinometric Demo Appliance First Boot Setup
+After=network-online.target docker.service
+Wants=network-online.target
+ConditionPathExists=!/var/lib/rhinometric/.first-boot-completed
+
+[Service]
+Type=oneshot
+User=root
+ExecStart=/opt/rhinometric/deploy/demo/scripts/first-boot.sh
+ExecStartPost=/bin/touch /var/lib/rhinometric/.first-boot-completed
+RemainAfterExit=yes
+StandardOutput=journal
+StandardError=journal
+TimeoutStartSec=600
+
+[Install]
+WantedBy=multi-user.target
