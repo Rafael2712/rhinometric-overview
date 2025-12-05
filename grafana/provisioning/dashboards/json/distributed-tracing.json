@@ -1,0 +1,253 @@
+{
+  "annotations": {"list": []},
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": null},
+              {"color": "yellow", "value": 1000},
+              {"color": "red", "value": 5000}
+            ]
+          },
+          "unit": "short"
+        }
+      },
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+      "id": 1,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum(traces_spanmetrics_calls_total)",
+          "refId": "A"
+        }
+      ],
+      "title": "📊 Total Spans Recorded",
+      "type": "stat"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "fillOpacity": 80,
+            "gradientMode": "none",
+            "hideFrom": {"tooltip": false, "viz": false, "legend": false},
+            "lineWidth": 1,
+            "scaleDistribution": {"type": "linear"}
+          },
+          "mappings": [],
+          "unit": "short"
+        }
+      },
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+      "id": 9,
+      "options": {
+        "barRadius": 0,
+        "barWidth": 0.97,
+        "groupWidth": 0.7,
+        "legend": {"displayMode": "list", "placement": "bottom", "showLegend": true},
+        "orientation": "auto",
+        "showValue": "auto",
+        "stacking": "none",
+        "xTickLabelRotation": 0,
+        "xTickLabelSpacing": 0
+      },
+      "targets": [
+        {
+          "expr": "sum by (service) (traces_spanmetrics_calls_total)",
+          "legendFormat": "{{service}}",
+          "refId": "A"
+        }
+      ],
+      "title": "📊 Traces by Service",
+      "type": "barchart"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {"fillOpacity": 20},
+          "unit": "short"
+        }
+      },
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16},
+      "id": 2,
+      "options": {
+        "legend": {"displayMode": "table", "placement": "bottom", "showLegend": true}
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(tempo_distributor_spans_received_total[5m]))",
+          "legendFormat": "Spans/sec",
+          "refId": "A"
+        }
+      ],
+      "title": "📊 Span Ingestion Rate",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "mappings": [],
+          "thresholds": {
+            "steps": [
+              {"color": "green", "value": null}
+            ]
+          },
+          "unit": "short"
+        }
+      },
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16},
+      "id": 3,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "orientation": "horizontal"
+      },
+      "targets": [
+        {
+          "expr": "sum(tempo_ingester_traces_created_total)",
+          "instant": true,
+          "refId": "A"
+        }
+      ],
+      "title": "📈 Total Traces Created",
+      "type": "stat"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {"fillOpacity": 20},
+          "unit": "bytes"
+        }
+      },
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 24},
+      "id": 4,
+      "options": {
+        "legend": {"displayMode": "table", "placement": "bottom", "showLegend": true}
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(tempo_distributor_bytes_received_total[5m]))",
+          "legendFormat": "Bytes/sec",
+          "refId": "A"
+        }
+      ],
+      "title": "💾 Data Ingestion Rate",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "tempo", "uid": "tempo"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {"fillOpacity": 20},
+          "unit": "reqps"
+        }
+      },
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 32},
+      "id": 6,
+      "options": {
+        "legend": {"displayMode": "table", "placement": "bottom", "showLegend": true}
+      },
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "sum by (service, span_name) (rate(traces_spanmetrics_calls_total[5m]))",
+          "legendFormat": "{{service}} - {{span_name}}",
+          "refId": "A"
+        }
+      ],
+      "title": "📊 Span Operations Rate by Service",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {"fillOpacity": 20},
+          "unit": "s"
+        }
+      },
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 32},
+      "id": 7,
+      "options": {
+        "legend": {"displayMode": "table", "placement": "bottom", "showLegend": true}
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.99, sum(rate(traces_spanmetrics_latency_bucket[5m])) by (le, service))",
+          "legendFormat": "p99 - {{service}}",
+          "refId": "A"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(traces_spanmetrics_latency_bucket[5m])) by (le, service))",
+          "legendFormat": "p95 - {{service}}",
+          "refId": "B"
+        }
+      ],
+      "title": "⏱️ Service Latency (p95/p99)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 40},
+      "id": 5,
+      "options": {
+        "code": {
+          "language": "plaintext",
+          "showLineNumbers": false,
+          "showMiniMap": false
+        },
+        "content": "# 🔍 How to Use Distributed Tracing\n\n## Search Traces\nThe table above shows the **20 most recent traces** ingested by Tempo.\n\n### View Trace Details\n1. Click on any **Trace ID** to view the full trace waterfall\n2. See span details, duration, and service dependencies\n\n### Search with Explore\nFor advanced trace queries:\n1. Go to **Explore** → Select **Tempo** datasource\n2. Use TraceQL queries: `{resource.service.name=\"demo-rhinometric\"}`\n3. Filter by tags, duration, status, etc.\n\n### Send Test Traces\nGenerate sample traces with:\n```bash\ncurl -X POST http://localhost:4318/v1/traces \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"resourceSpans\":[...]}'\n```\n\n---\n\n📚 **Learn More:** https://grafana.com/docs/tempo/latest/traceql/",
+        "mode": "markdown"
+      },
+      "pluginVersion": "10.0.0",
+      "title": "📖 Tracing Guide",
+      "type": "text"
+    }
+  ],
+  "refresh": "10s",
+  "schemaVersion": 38,
+  "style": "dark",
+  "tags": ["rhinometric", "traces", "tempo"],
+  "templating": {"list": []},
+  "time": {"from": "now-5m", "to": "now"},
+  "timezone": "",
+  "title": "🔎️ Rhinometric - Distributed Tracing",
+  "uid": "rhinometric-tracing",
+  "version": 1
+}

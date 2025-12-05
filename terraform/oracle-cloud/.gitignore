@@ -1,0 +1,39 @@
+# Terraform
+.terraform/
+.terraform.lock.hcl
+terraform.tfstate
+terraform.tfstate.backup
+*.tfstate
+*.tfstate.*
+
+# Credentials (NUNCA hacer commit de estos archivos)
+terraform.tfvars
+*.auto.tfvars
+*.auto.tfvars.json
+
+# SSH Keys
+*.pem
+*.key
+id_rsa*
+oci_rsa*
+
+# Oracle Cloud config
+.oci/
+
+# Crash logs
+crash.log
+crash.*.log
+
+# Override files
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# CLI config files
+.terraformrc
+terraform.rc
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RHINOMETRIC Report - {{ report_date }}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            padding: 40px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .header {
+            border-bottom: 3px solid #2c3e50;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+        .header h1 {
+            color: #2c3e50;
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+        .header .subtitle {
+            color: #7f8c8d;
+            font-size: 16px;
+        }
+        .summary {
+            background: #ecf0f1;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+        }
+        .summary h2 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-size: 24px;
+        }
+        .summary p {
+            margin-bottom: 10px;
+            line-height: 1.8;
+        }
+        .metric-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .metric-card {
+            background: #fff;
+            border: 2px solid #ecf0f1;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+        }
+        .metric-card.good {
+            border-color: #27ae60;
+        }
+        .metric-card.warning {
+            border-color: #f39c12;
+        }
+        .metric-card.critical {
+            border-color: #e74c3c;
+        }
+        .metric-card .value {
+            font-size: 36px;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        .metric-card.good .value {
+            color: #27ae60;
+        }
+        .metric-card.warning .value {
+            color: #f39c12;
+        }
+        .metric-card.critical .value {
+            color: #e74c3c;
+        }
+        .metric-card .label {
+            color: #7f8c8d;
+            font-size: 14px;
+            text-transform: uppercase;
+        }
+        .section {
+            margin-bottom: 30px;
+        }
+        .section h2 {
+            color: #2c3e50;
+            border-bottom: 2px solid #ecf0f1;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+            font-size: 22px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        table th, table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ecf0f1;
+        }
+        table th {
+            background: #2c3e50;
+            color: white;
+            font-weight: 600;
+        }
+        table tr:hover {
+            background: #f8f9fa;
+        }
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        .status-badge.healthy {
+            background: #d4edda;
+            color: #155724;
+        }
+        .status-badge.warning {
+            background: #fff3cd;
+            color: #856404;
+        }
+        .status-badge.critical {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .anomaly-list {
+            background: #fff3cd;
+            border-left: 4px solid #f39c12;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        .anomaly-item {
+            margin-bottom: 10px;
+            padding: 10px;
+            background: white;
+            border-radius: 4px;
+        }
+        .footer {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 2px solid #ecf0f1;
+            text-align: center;
+            color: #7f8c8d;
+            font-size: 14px;
+        }
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">RHINOMETRIC</div>
+            <h1>Informe Ejecutivo de Observabilidad</h1>
+            <div class="subtitle">{{ report_date }} | Período: {{ period }}</div>
+        </div>
+
+        <div class="summary">
+            <h2>Resumen Ejecutivo</h2>
+            <p>{{ executive_summary }}</p>
+        </div>
+
+        <div class="metric-grid">
+            <div class="metric-card {{ services_status }}">
+                <div class="label">Servicios Activos</div>
+                <div class="value">{{ services_count }}</div>
+            </div>
+            <div class="metric-card {{ alerts_status }}">
+                <div class="label">Alertas Activas</div>
+                <div class="value">{{ alerts_count }}</div>
+            </div>
+            <div class="metric-card {{ availability_status }}">
+                <div class="label">Disponibilidad</div>
+                <div class="value">{{ availability }}%</div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Estado de Servicios</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Servicio</th>
+                        <th>Estado</th>
+                        <th>Uso CPU</th>
+                        <th>Uso Memoria</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for service in services %}
+                    <tr>
+                        <td>{{ service.name }}</td>
+                        <td><span class="status-badge {{ service.status_class }}">{{ service.status }}</span></td>
+                        <td>{{ service.cpu }}%</td>
+                        <td>{{ service.memory }}%</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if anomalies %}
+        <div class="section">
+            <h2>Anomalías Detectadas (IA)</h2>
+            <div class="anomaly-list">
+                {% for anomaly in anomalies %}
+                <div class="anomaly-item">
+                    <strong>{{ anomaly.metric }}</strong> - {{ anomaly.severity }}<br>
+                    <small>{{ anomaly.message }}</small><br>
+                    <small style="color: #7f8c8d;">{{ anomaly.timestamp }}</small>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="section">
+            <h2>Recomendaciones</h2>
+            <ul style="padding-left: 20px;">
+                {% for recommendation in recommendations %}
+                <li style="margin-bottom: 10px;">{{ recommendation }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+
+        <div class="footer">
+            <p><strong>RHINOMETRIC v2.2.0 Enterprise Edition</strong></p>
+            <p>Plataforma de Observabilidad On-Premise | Cumplimiento RGPD/ENS</p>
+            <p>Este informe ha sido generado automáticamente</p>
+        </div>
+    </div>
+</body>
+</html>

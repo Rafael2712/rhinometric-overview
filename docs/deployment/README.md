@@ -170,7 +170,7 @@ STAGING_JWT_SECRET
 ### Prometheus + Grafana
 
 - **Prometheus**: `http://localhost:9090`
-- **Grafana**: `http://localhost:3000` (admin/admin)
+- **Grafana**: `http://localhost:3000` (see `.env` for credentials)
 
 ### Health Checks
 

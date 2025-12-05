@@ -1,0 +1,32 @@
+FROM grafana/grafana:11.3.0-ubuntu
+
+# Cambiar a usuario root temporalmente para instalaciones
+USER root
+
+# Instalar dependencias para Time-Bomb (Ubuntu base ya tiene bash)
+RUN apt-get update && \
+    apt-get install -y curl jq && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Copiar scripts de Time-Bomb
+COPY licensing/timebomb_validator.sh /opt/timebomb_validator.sh
+COPY grafana/entrypoint-timebomb.sh /opt/entrypoint-timebomb.sh
+
+# Dar permisos de ejecución
+RUN chmod +x /opt/timebomb_validator.sh && \
+    chmod +x /opt/entrypoint-timebomb.sh
+
+# Crear directorio para license key (el usuario grafana ya existe en la imagen base)
+RUN mkdir -p /data && \
+    chmod 777 /data
+
+# Crear log file para timebomb
+RUN touch /var/log/timebomb.log && \
+    chmod 666 /var/log/timebomb.log
+
+# Volver a usuario grafana
+USER grafana
+
+# Usar entrypoint custom
+ENTRYPOINT ["/opt/entrypoint-timebomb.sh"]
+CMD []

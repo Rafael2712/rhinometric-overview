@@ -1,0 +1,20 @@
+{
+  "dashboard": {
+    "title": "📡 Promtail - Log Collection",
+    "tags": ["promtail", "logs", "collection", "enterprise"],
+    "timezone": "browser",
+    "schemaVersion": 38,
+    "version": 1,
+    "refresh": "30s",
+    "panels": [
+      {"id": 1, "title": "📦 Docker Targets", "type": "stat", "gridPos": {"h": 6, "w": 6, "x": 0, "y": 0}, "datasource": {"type": "prometheus", "uid": "ff1lws6mz39xcc"}, "targets": [{"expr": "sum(promtail_docker_target_entries_total)", "refId": "A"}], "fieldConfig": {"defaults": {"unit": "short", "color": {"mode": "palette-classic"}}}, "options": {"graphMode": "area", "colorMode": "value"}},
+      {"id": 2, "title": "📈 Entries Sent", "type": "stat", "gridPos": {"h": 6, "w": 6, "x": 6, "y": 0}, "datasource": {"type": "prometheus", "uid": "ff1lws6mz39xcc"}, "targets": [{"expr": "sum(rate(promtail_sent_entries_total[5m]))", "refId": "A"}], "fieldConfig": {"defaults": {"unit": "logs/s", "color": {"mode": "palette-classic"}}}, "options": {"graphMode": "area", "colorMode": "value"}},
+      {"id": 3, "title": "⚠️ Docker Parse Errors", "type": "stat", "gridPos": {"h": 6, "w": 6, "x": 12, "y": 0}, "datasource": {"type": "prometheus", "uid": "ff1lws6mz39xcc"}, "targets": [{"expr": "sum(rate(promtail_docker_target_parsing_errors_total[5m]))", "refId": "A"}], "fieldConfig": {"defaults": {"unit": "errors/s", "color": {"mode": "thresholds"}, "thresholds": {"steps": [{"value": 0, "color": "green"}, {"value": 0.1, "color": "yellow"}, {"value": 1, "color": "red"}]}}}, "options": {"graphMode": "area", "colorMode": "value"}},
+      {"id": 4, "title": "💾 Bytes Sent", "type": "stat", "gridPos": {"h": 6, "w": 6, "x": 18, "y": 0}, "datasource": {"type": "prometheus", "uid": "ff1lws6mz39xcc"}, "targets": [{"expr": "sum(rate(promtail_sent_bytes_total[5m]))", "refId": "A"}], "fieldConfig": {"defaults": {"unit": "Bps", "color": {"mode": "palette-classic"}}}, "options": {"graphMode": "area", "colorMode": "value"}},
+      {"id": 5, "title": "📊 Sent Entries Over Time", "type": "timeseries", "gridPos": {"h": 8, "w": 12, "x": 0, "y": 6}, "datasource": {"type": "prometheus", "uid": "ff1lws6mz39xcc"}, "targets": [{"expr": "sum by (job) (rate(promtail_sent_entries_total[5m]))", "legendFormat": "{{job}}", "refId": "A"}], "fieldConfig": {"defaults": {"unit": "logs/s", "custom": {"drawStyle": "line", "lineInterpolation": "smooth", "fillOpacity": 10, "stacking": {"mode": "normal"}}}}},
+      {"id": 6, "title": "💾 Bytes Sent to Loki", "type": "timeseries", "gridPos": {"h": 8, "w": 12, "x": 12, "y": 6}, "datasource": {"type": "prometheus", "uid": "ff1lws6mz39xcc"}, "targets": [{"expr": "sum by (job) (rate(promtail_sent_bytes_total[5m]))", "legendFormat": "{{job}}", "refId": "A"}], "fieldConfig": {"defaults": {"unit": "Bps", "custom": {"drawStyle": "line", "lineInterpolation": "smooth", "fillOpacity": 20}}}},
+      {"id": 7, "title": "📦 Docker Entries", "type": "timeseries", "gridPos": {"h": 8, "w": 12, "x": 0, "y": 14}, "datasource": {"type": "prometheus", "uid": "ff1lws6mz39xcc"}, "targets": [{"expr": "sum(rate(promtail_docker_target_entries_total[5m]))", "legendFormat": "Docker Entries/s", "refId": "A"}], "fieldConfig": {"defaults": {"unit": "short", "custom": {"drawStyle": "line", "lineInterpolation": "smooth", "fillOpacity": 30}}}}
+    ]
+  },
+  "overwrite": true
+}

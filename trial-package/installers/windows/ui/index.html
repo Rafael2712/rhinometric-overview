@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🦏 Rhinometric Trial - Instalador</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="logo">🦏</div>
+            <h1>Rhinometric Trial</h1>
+            <p class="subtitle">Plataforma de Observabilidad Unificada</p>
+        </header>
+
+        <!-- Wizard Steps -->
+        <div class="wizard-steps">
+            <div class="step active" data-step="1">
+                <div class="step-number">1</div>
+                <div class="step-label">Bienvenida</div>
+            </div>
+            <div class="step" data-step="2">
+                <div class="step-number">2</div>
+                <div class="step-label">Requisitos</div>
+            </div>
+            <div class="step" data-step="3">
+                <div class="step-number">3</div>
+                <div class="step-label">Configuración</div>
+            </div>
+            <div class="step" data-step="4">
+                <div class="step-number">4</div>
+                <div class="step-label">Instalación</div>
+            </div>
+            <div class="step" data-step="5">
+                <div class="step-number">5</div>
+                <div class="step-label">Completado</div>
+            </div>
+        </div>
+
+        <!-- Content Area -->
+        <div class="content">
+            <!-- Step 1: Welcome -->
+            <div id="step-1" class="step-content active">
+                <h2>¡Bienvenido a Rhinometric Trial!</h2>
+                <p>Este asistente te guiará en la instalación de Rhinometric, la plataforma completa de observabilidad.</p>
+                
+                <div class="feature-list">
+                    <div class="feature">
+                        <span class="icon">📊</span>
+                        <div>
+                            <strong>Métricas con Prometheus</strong>
+                            <p>Monitoreo en tiempo real de todos tus sistemas</p>
+                        </div>
+                    </div>
+                    <div class="feature">
+                        <span class="icon">📝</span>
+                        <div>
+                            <strong>Logs con Loki</strong>
+                            <p>Agregación y búsqueda centralizada de logs</p>
+                        </div>
+                    </div>
+                    <div class="feature">
+                        <span class="icon">🔍</span>
+                        <div>
+                            <strong>Trazas con Tempo</strong>
+                            <p>Trazabilidad distribuida de tus aplicaciones</p>
+                        </div>
+                    </div>
+                    <div class="feature">
+                        <span class="icon">📈</span>
+                        <div>
+                            <strong>Visualización con Grafana</strong>
+                            <p>Dashboards interactivos y alertas inteligentes</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="info-box">
+                    <strong>Versión Trial:</strong> 180 días (6 meses)<br>
+                    <strong>Contenido:</strong> 15 servicios integrados<br>
+                    <strong>Soporte:</strong> soporte@rhinometric.com
+                </div>
+            </div>
+
+            <!-- Step 2: Requirements Check -->
+            <div id="step-2" class="step-content">
+                <h2>Verificación de Requisitos</h2>
+                <p>Comprobando que tu sistema cumple los requisitos mínimos...</p>
+                
+                <div id="requirements-list" class="requirements-list">
+                    <div class="requirement" id="req-ram">
+                        <div class="req-icon loading">⏳</div>
+                        <div class="req-info">
+                            <strong>Memoria RAM</strong>
+                            <p id="ram-details">Verificando...</p>
+                        </div>
+                    </div>
+                    <div class="requirement" id="req-docker">
+                        <div class="req-icon loading">⏳</div>
+                        <div class="req-info">
+                            <strong>Docker Desktop</strong>
+                            <p id="docker-details">Verificando...</p>
+                        </div>
+                    </div>
+                    <div class="requirement" id="req-wsl">
+                        <div class="req-icon loading">⏳</div>
+                        <div class="req-info">
+                            <strong>WSL2 (Windows Subsystem for Linux)</strong>
+                            <p id="wsl-details">Verificando...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="docker-install-section" class="hidden">
+                    <div class="warning-box">
+                        <strong>⚠️ Docker Desktop no detectado</strong>
+                        <p>Docker Desktop es necesario para ejecutar Rhinometric. ¿Deseas instalarlo automáticamente?</p>
+                        <button id="install-docker-btn" class="btn btn-primary">Instalar Docker Desktop</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 3: Configuration -->
+            <div id="step-3" class="step-content">
+                <h2>Configuración de Instalación</h2>
+                
+                <div class="form-group">
+                    <label for="customer-name">Nombre de tu Empresa u Organización *</label>
+                    <input type="text" id="customer-name" placeholder="Ej: Ayuntamiento de Madrid" required>
+                    <small>Este nombre aparecerá en tu licencia trial</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="install-path">Carpeta de Instalación *</label>
+                    <div class="input-with-button">
+                        <input type="text" id="install-path" readonly>
+                        <button id="browse-btn" class="btn btn-secondary">Examinar...</button>
+                    </div>
+                    <small>Se instalarán aproximadamente 2GB de datos</small>
+                </div>
+
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="create-desktop-shortcut" checked>
+                        Crear acceso directo en el escritorio
+                    </label>
+                </div>
+
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="accept-license" required>
+                        Acepto los <a href="#" id="view-license">términos de la licencia trial</a>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Step 4: Installation -->
+            <div id="step-4" class="step-content">
+                <h2>Instalando Rhinometric...</h2>
+                
+                <div class="progress-container">
+                    <div class="progress-bar">
+                        <div id="progress-fill" class="progress-fill"></div>
+                    </div>
+                    <div id="progress-text" class="progress-text">Preparando instalación...</div>
+                    <div id="progress-percentage" class="progress-percentage">0%</div>
+                </div>
+
+                <div id="installation-log" class="installation-log">
+                    <div class="log-entry">🚀 Iniciando instalación...</div>
+                </div>
+
+                <div class="info-box">
+                    <strong>Nota:</strong> La primera instalación puede tomar 10-15 minutos mientras se descargan las imágenes Docker.
+                </div>
+            </div>
+
+            <!-- Step 5: Completion -->
+            <div id="step-5" class="step-content">
+                <div class="success-container">
+                    <div class="success-icon">🎉</div>
+                    <h2>¡Instalación Completada!</h2>
+                    <p>Rhinometric Trial está listo para usar.</p>
+                </div>
+
+                <div class="credentials-box">
+                    <h3>Credenciales de Acceso</h3>
+                    <div class="credential-item">
+                        <strong>URL de Grafana:</strong>
+                        <code>http://localhost:3000</code>
+                    </div>
+                    <div class="credential-item">
+                        <strong>Usuario:</strong>
+                        <code id="username">trial</code>
+                    </div>
+                    <div class="credential-item">
+                        <strong>Contraseña:</strong>
+                        <code id="password">rhino2025trial</code>
+                    </div>
+                    <small>💾 Estas credenciales también se han guardado en: <span id="credentials-path"></span></small>
+                </div>
+
+                <div class="next-steps">
+                    <h3>Próximos Pasos</h3>
+                    <ol>
+                        <li>Haz clic en "Abrir Grafana" para empezar</li>
+                        <li>Explora los dashboards precargados</li>
+                        <li>Consulta la documentación en la carpeta de instalación</li>
+                        <li>Contacta con soporte si necesitas ayuda: <strong>soporte@rhinometric.com</strong></li>
+                    </ol>
+                </div>
+
+                <button id="open-grafana-btn" class="btn btn-primary btn-large">🌐 Abrir Grafana</button>
+            </div>
+        </div>
+
+        <!-- Footer with Navigation -->
+        <footer class="footer">
+            <button id="back-btn" class="btn btn-secondary" disabled>← Atrás</button>
+            <button id="next-btn" class="btn btn-primary">Siguiente →</button>
+            <button id="cancel-btn" class="btn btn-danger">Cancelar</button>
+        </footer>
+
+        <!-- Copyright -->
+        <div class="copyright">
+            © 2025 Rhinometric. Todos los derechos reservados.
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

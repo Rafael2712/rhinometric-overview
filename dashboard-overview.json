@@ -1,0 +1,342 @@
+{
+  "dashboard": {
+    "title": "Rhinometric - Observability Overview",
+    "tags": ["rhinometric", "overview", "observability"],
+    "timezone": "browser",
+    "schemaVersion": 38,
+    "version": 1,
+    "refresh": "30s",
+    "panels": [
+      {
+        "id": 1,
+        "title": "📊 System Metrics - CPU Usage",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+        "datasource": {"type": "prometheus", "uid": "ff1lws6mz39xcc"},
+        "targets": [
+          {
+            "expr": "100 - (avg by (instance) (rate(node_cpu_seconds_total{mode=\"idle\"}[5m])) * 100)",
+            "legendFormat": "{{instance}} CPU",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "min": 0,
+            "max": 100,
+            "color": {"mode": "palette-classic"},
+            "custom": {
+              "drawStyle": "line",
+              "lineInterpolation": "smooth",
+              "fillOpacity": 20
+            }
+          }
+        }
+      },
+      {
+        "id": 2,
+        "title": "💾 Memory Usage",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+        "datasource": {"type": "prometheus", "uid": "ff1lws6mz39xcc"},
+        "targets": [
+          {
+            "expr": "(1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100",
+            "legendFormat": "Memory Usage %",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "min": 0,
+            "max": 100,
+            "color": {"mode": "thresholds"},
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "green"},
+                {"value": 70, "color": "yellow"},
+                {"value": 90, "color": "red"}
+              ]
+            },
+            "custom": {
+              "drawStyle": "line",
+              "lineInterpolation": "smooth",
+              "fillOpacity": 30
+            }
+          }
+        }
+      },
+      {
+        "id": 3,
+        "title": "🔍 Recent Traces by Service",
+        "type": "table",
+        "gridPos": {"h": 10, "w": 24, "x": 0, "y": 8},
+        "datasource": {"type": "tempo", "uid": "cf1m5g6s0xvy8f"},
+        "description": "Recent distributed traces from all services",
+        "targets": [
+          {
+            "queryType": "traceql",
+            "query": "{}",
+            "limit": 20,
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "displayMode": "auto",
+              "filterable": true
+            }
+          },
+          "overrides": [
+            {
+              "matcher": {"id": "byName", "options": "Trace ID"},
+              "properties": [
+                {
+                  "id": "links",
+                  "value": [
+                    {
+                      "title": "View Trace",
+                      "url": "/explore?left={\"datasource\":\"tempo\",\"queries\":[{\"query\":\"${__value.raw}\",\"queryType\":\"traceql\"}]}"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "transformations": [
+          {
+            "id": "organize",
+            "options": {
+              "excludeByName": {},
+              "indexByName": {},
+              "renameByName": {
+                "traceID": "Trace ID",
+                "rootServiceName": "Service",
+                "rootTraceName": "Operation",
+                "startTimeUnixNano": "Timestamp",
+                "durationMs": "Duration (ms)"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "id": 4,
+        "title": "📝 Application Logs Stream",
+        "type": "logs",
+        "gridPos": {"h": 10, "w": 24, "x": 0, "y": 18},
+        "datasource": {"type": "loki", "uid": "df1lwsdy0ecqof"},
+        "description": "Real-time application logs from all services",
+        "targets": [
+          {
+            "expr": "{service_name=~\".+\"}",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "showTime": true,
+          "showLabels": true,
+          "showCommonLabels": false,
+          "wrapLogMessage": true,
+          "prettifyLogMessage": false,
+          "enableLogDetails": true,
+          "dedupStrategy": "none",
+          "sortOrder": "Descending"
+        }
+      },
+      {
+        "id": 5,
+        "title": "🚀 Request Rate (RPS)",
+        "type": "stat",
+        "gridPos": {"h": 6, "w": 6, "x": 0, "y": 28},
+        "datasource": {"type": "prometheus", "uid": "ff1lws6mz39xcc"},
+        "targets": [
+          {
+            "expr": "sum(rate(tempo_request_message_bytes_count{route=~\".+\"}[5m]))",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "reqps",
+            "color": {"mode": "thresholds"},
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "blue"},
+                {"value": 50, "color": "green"},
+                {"value": 100, "color": "yellow"}
+              ]
+            }
+          }
+        },
+        "options": {
+          "graphMode": "area",
+          "colorMode": "value",
+          "textMode": "value_and_name"
+        }
+      },
+      {
+        "id": 6,
+        "title": "📊 Total Traces Stored",
+        "type": "stat",
+        "gridPos": {"h": 6, "w": 6, "x": 6, "y": 28},
+        "datasource": {"type": "prometheus", "uid": "ff1lws6mz39xcc"},
+        "targets": [
+          {
+            "expr": "sum(tempodb_backend_objects_total)",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "color": {"mode": "thresholds"},
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "green"},
+                {"value": 10000, "color": "blue"},
+                {"value": 50000, "color": "purple"}
+              ]
+            }
+          }
+        },
+        "options": {
+          "graphMode": "area",
+          "colorMode": "value",
+          "textMode": "value_and_name"
+        }
+      },
+      {
+        "id": 7,
+        "title": "🗄️ Postgres Connections",
+        "type": "stat",
+        "gridPos": {"h": 6, "w": 6, "x": 12, "y": 28},
+        "datasource": {"type": "prometheus", "uid": "ff1lws6mz39xcc"},
+        "targets": [
+          {
+            "expr": "sum(pg_locks_count)",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "color": {"mode": "thresholds"},
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "green"},
+                {"value": 50, "color": "yellow"},
+                {"value": 90, "color": "red"}
+              ]
+            }
+          }
+        },
+        "options": {
+          "graphMode": "area",
+          "colorMode": "value",
+          "textMode": "value_and_name"
+        }
+      },
+      {
+        "id": 8,
+        "title": "⚡ Redis Operations/sec",
+        "type": "stat",
+        "gridPos": {"h": 6, "w": 6, "x": 18, "y": 28},
+        "datasource": {"type": "prometheus", "uid": "ff1lws6mz39xcc"},
+        "targets": [
+          {
+            "expr": "sum(rate(redis_commands_processed_total[5m]))",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "ops",
+            "color": {"mode": "thresholds"},
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "green"},
+                {"value": 1000, "color": "blue"}
+              ]
+            }
+          }
+        },
+        "options": {
+          "graphMode": "area",
+          "colorMode": "value",
+          "textMode": "value_and_name"
+        }
+      },
+      {
+        "id": 9,
+        "title": "🌐 Nginx Uptime",
+        "type": "stat",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 34},
+        "datasource": {"type": "prometheus", "uid": "ff1lws6mz39xcc"},
+        "targets": [
+          {
+            "expr": "up{job=\"blackbox\"}",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "mappings": [
+              {"type": "value", "value": 0, "text": "DOWN", "color": "red"},
+              {"type": "value", "value": 1, "text": "UP", "color": "green"}
+            ],
+            "color": {"mode": "thresholds"},
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "red"},
+                {"value": 1, "color": "green"}
+              ]
+            }
+          }
+        },
+        "options": {
+          "graphMode": "none",
+          "colorMode": "background",
+          "textMode": "value"
+        }
+      },
+      {
+        "id": 10,
+        "title": "⚠️ Error Traces",
+        "type": "table",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 34},
+        "datasource": {"type": "tempo", "uid": "cf1m5g6s0xvy8f"},
+        "description": "Traces with error status",
+        "targets": [
+          {
+            "queryType": "traceql",
+            "query": "{status=error}",
+            "limit": 10,
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "displayMode": "color-background"
+            }
+          }
+        }
+      }
+    ]
+  },
+  "overwrite": true,
+  "folderId": 0,
+  "folderUid": ""
+}

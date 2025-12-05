@@ -1,0 +1,219 @@
+THIRD-PARTY OPEN SOURCE LICENSES
+
+Rhinometric Observability Platform - Trial Version
+
+════════════════════════════════════════════════════════════════
+
+This software incorporates the following open source components.
+Rhinometric thanks the open source community for these excellent tools.
+
+════════════════════════════════════════════════════════════════
+
+1. GRAFANA
+   Version: 10.2.3
+   License: Apache License 2.0
+   Website: https://grafana.com/oss/grafana/
+   Copyright: © Grafana Labs
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at:
+   
+   http://www.apache.org/licenses/LICENSE-2.0
+
+════════════════════════════════════════════════════════════════
+
+2. PROMETHEUS
+   Version: 2.48.0
+   License: Apache License 2.0
+   Website: https://prometheus.io/
+   Copyright: © The Prometheus Authors
+
+   Licensed under the Apache License, Version 2.0.
+   See: https://github.com/prometheus/prometheus/blob/main/LICENSE
+
+════════════════════════════════════════════════════════════════
+
+3. LOKI
+   Version: 2.9.3
+   License: Apache License 2.0
+   Website: https://grafana.com/oss/loki/
+   Copyright: © Grafana Labs
+
+   Licensed under the Apache License, Version 2.0.
+   See: https://github.com/grafana/loki/blob/main/LICENSE
+
+════════════════════════════════════════════════════════════════
+
+4. TEMPO
+   Version: 2.3.1
+   License: Apache License 2.0
+   Website: https://grafana.com/oss/tempo/
+   Copyright: © Grafana Labs
+
+   Licensed under the Apache License, Version 2.0.
+   See: https://github.com/grafana/tempo/blob/main/LICENSE
+
+════════════════════════════════════════════════════════════════
+
+5. POSTGRESQL
+   Version: 15-alpine
+   License: PostgreSQL License
+   Website: https://www.postgresql.org/
+   Copyright: © PostgreSQL Global Development Group
+
+   PostgreSQL Database Management System
+   Portions Copyright © 1996-2023, PostgreSQL Global Development Group
+   Portions Copyright © 1994, The Regents of the University of California
+
+   Permission to use, copy, modify, and distribute this software and its
+   documentation for any purpose, without fee, and without a written
+   agreement is hereby granted.
+
+   See: https://www.postgresql.org/about/licence/
+
+════════════════════════════════════════════════════════════════
+
+6. REDIS
+   Version: 7-alpine
+   License: BSD 3-Clause License
+   Website: https://redis.io/
+   Copyright: © Redis Ltd.
+
+   Redistribution and use in source and binary forms, with or without
+   modification, are permitted provided that conditions are met.
+
+   See: https://redis.io/docs/about/license/
+
+════════════════════════════════════════════════════════════════
+
+7. ALERTMANAGER
+   Version: 0.26.0
+   License: Apache License 2.0
+   Website: https://prometheus.io/docs/alerting/latest/alertmanager/
+   Copyright: © The Prometheus Authors
+
+   Licensed under the Apache License, Version 2.0.
+   See: https://github.com/prometheus/alertmanager/blob/main/LICENSE
+
+════════════════════════════════════════════════════════════════
+
+8. NODE EXPORTER
+   Version: 1.7.0
+   License: Apache License 2.0
+   Website: https://github.com/prometheus/node_exporter
+   Copyright: © The Prometheus Authors
+
+   Licensed under the Apache License, Version 2.0.
+
+════════════════════════════════════════════════════════════════
+
+9. CADVISOR
+   Version: 0.47.2
+   License: Apache License 2.0
+   Website: https://github.com/google/cadvisor
+   Copyright: © Google Inc.
+
+   Licensed under the Apache License, Version 2.0.
+   See: https://github.com/google/cadvisor/blob/master/LICENSE
+
+════════════════════════════════════════════════════════════════
+
+10. NGINX
+    Version: 1.25-alpine
+    License: BSD 2-Clause License
+    Website: https://nginx.org/
+    Copyright: © Igor Sysoev, © Nginx, Inc.
+
+    Redistribution and use in source and binary forms are permitted.
+    See: http://nginx.org/LICENSE
+
+════════════════════════════════════════════════════════════════
+
+11. PYTHON
+    Version: 3.9-slim
+    License: PSF License Agreement
+    Website: https://www.python.org/
+    Copyright: © Python Software Foundation
+
+    See: https://docs.python.org/3/license.html
+
+════════════════════════════════════════════════════════════════
+
+PYTHON PACKAGES:
+
+- Flask (BSD License)
+- PyJWT (MIT License)
+- Flask-CORS (MIT License)
+
+════════════════════════════════════════════════════════════════
+
+RHINOMETRIC PROPRIETARY COMPONENTS:
+
+The following components are proprietary to Rhinometric and are
+NOT covered by the above open source licenses:
+
+✓ Custom integration layer
+✓ Rhinometric dashboard configurations
+✓ License management system (license-server)
+✓ License monitoring dashboard
+✓ Custom provisioning scripts
+✓ Rhinometric branding and documentation
+✓ Installation and deployment scripts
+
+These proprietary components are licensed under the Rhinometric
+Trial License Agreement. See LICENSE.txt for details.
+
+════════════════════════════════════════════════════════════════
+
+FULL LICENSE TEXTS:
+
+Apache License 2.0:
+https://www.apache.org/licenses/LICENSE-2.0
+
+BSD 3-Clause License:
+https://opensource.org/licenses/BSD-3-Clause
+
+BSD 2-Clause License:
+https://opensource.org/licenses/BSD-2-Clause
+
+MIT License:
+https://opensource.org/licenses/MIT
+
+PostgreSQL License:
+https://www.postgresql.org/about/licence/
+
+════════════════════════════════════════════════════════════════
+
+MODIFICATIONS:
+
+Rhinometric has NOT modified the source code of any open source
+components. All customizations are implemented through:
+
+- Configuration files
+- External scripts
+- Docker Compose orchestration
+- Grafana provisioning (dashboards and datasources)
+
+════════════════════════════════════════════════════════════════
+
+ATTRIBUTION:
+
+Rhinometric acknowledges and thanks all contributors to the open
+source projects listed above. Without the open source community,
+this platform would not be possible.
+
+════════════════════════════════════════════════════════════════
+
+QUESTIONS:
+
+For questions about licensing, contact:
+
+Email: info@rhinometric.com
+Legal: legal@rhinometric.com
+
+════════════════════════════════════════════════════════════════
+
+LAST UPDATED: October 21, 2025
+
+© 2025 Rhinometric. All rights reserved.

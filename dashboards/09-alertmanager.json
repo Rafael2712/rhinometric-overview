@@ -1,0 +1,20 @@
+{
+  "dashboard": {
+    "title": "🔔 Alertmanager - Alerts Dashboard",
+    "tags": ["alertmanager", "alerts", "notifications", "enterprise"],
+    "timezone": "browser",
+    "schemaVersion": 38,
+    "version": 1,
+    "refresh": "30s",
+    "panels": [
+      {"id": 1, "title": "⚠️ Grafana Alerts", "type": "stat", "gridPos": {"h": 6, "w": 6, "x": 0, "y": 0}, "datasource": {"type": "prometheus", "uid": "ff1lws6mz39xcc"}, "targets": [{"expr": "grafana_alerting_alertmanager_alerts", "refId": "A"}], "fieldConfig": {"defaults": {"unit": "short", "color": {"mode": "thresholds"}, "thresholds": {"steps": [{"value": 0, "color": "green"}, {"value": 1, "color": "yellow"}, {"value": 5, "color": "red"}]}}}, "options": {"graphMode": "area", "colorMode": "value"}},
+      {"id": 2, "title": "� Alertmanager Config Size", "type": "stat", "gridPos": {"h": 6, "w": 6, "x": 6, "y": 0}, "datasource": {"type": "prometheus", "uid": "ff1lws6mz39xcc"}, "targets": [{"expr": "grafana_alerting_alertmanager_config_size_bytes", "refId": "A"}], "fieldConfig": {"defaults": {"unit": "bytes", "color": {"mode": "palette-classic"}}}, "options": {"graphMode": "area", "colorMode": "value"}},
+      {"id": 3, "title": "� Alertmanager Integrations", "type": "stat", "gridPos": {"h": 6, "w": 6, "x": 12, "y": 0}, "datasource": {"type": "prometheus", "uid": "ff1lws6mz39xcc"}, "targets": [{"expr": "grafana_alerting_alertmanager_integrations", "refId": "A"}], "fieldConfig": {"defaults": {"unit": "short", "color": {"mode": "palette-classic"}}}, "options": {"graphMode": "area", "colorMode": "value"}},
+      {"id": 4, "title": "� Alertmanager Receivers", "type": "stat", "gridPos": {"h": 6, "w": 6, "x": 18, "y": 0}, "datasource": {"type": "prometheus", "uid": "ff1lws6mz39xcc"}, "targets": [{"expr": "grafana_alerting_alertmanager_receivers", "refId": "A"}], "fieldConfig": {"defaults": {"unit": "short", "color": {"mode": "palette-classic"}}}, "options": {"graphMode": "area", "colorMode": "value"}},
+      {"id": 5, "title": "📊 Grafana Alerts Over Time", "type": "timeseries", "gridPos": {"h": 8, "w": 12, "x": 0, "y": 6}, "datasource": {"type": "prometheus", "uid": "ff1lws6mz39xcc"}, "targets": [{"expr": "grafana_alerting_alertmanager_alerts", "legendFormat": "Active Alerts", "refId": "A"}], "fieldConfig": {"defaults": {"unit": "short", "custom": {"drawStyle": "line", "lineInterpolation": "smooth", "fillOpacity": 30}}}},
+      {"id": 6, "title": "� Config Hash", "type": "timeseries", "gridPos": {"h": 8, "w": 12, "x": 12, "y": 6}, "datasource": {"type": "prometheus", "uid": "ff1lws6mz39xcc"}, "targets": [{"expr": "grafana_alerting_alertmanager_config_hash", "legendFormat": "Config Hash", "refId": "A"}], "fieldConfig": {"defaults": {"unit": "short", "custom": {"drawStyle": "line", "lineInterpolation": "stepAfter", "fillOpacity": 20}}}},
+      {"id": 7, "title": "📋 Inhibition Rules", "type": "gauge", "gridPos": {"h": 8, "w": 12, "x": 0, "y": 14}, "datasource": {"type": "prometheus", "uid": "ff1lws6mz39xcc"}, "targets": [{"expr": "grafana_alerting_alertmanager_inhibition_rules", "legendFormat": "Rules", "refId": "A"}], "fieldConfig": {"defaults": {"unit": "short", "min": 0, "max": 10, "color": {"mode": "palette-classic"}}, "overrides": []}, "options": {"showThresholdLabels": false, "showThresholdMarkers": true}}
+    ]
+  },
+  "overwrite": true
+}

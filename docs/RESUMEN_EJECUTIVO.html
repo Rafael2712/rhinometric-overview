@@ -1,0 +1,1120 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rhinometric - Resumen Ejecutivo</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+        
+        :root {
+            --primary-color: #667eea;
+            --secondary-color: #764ba2;
+            --accent-color: #f093fb;
+            --text-dark: #1a202c;
+            --text-light: #4a5568;
+            --bg-light: #f7fafc;
+            --border-color: #e2e8f0;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: var(--text-dark);
+            background: white;
+        }
+        
+        /* Print styles */
+        @media print {
+            body {
+                font-size: 11pt;
+            }
+            .page-break {
+                page-break-before: always;
+            }
+            .no-print {
+                display: none;
+            }
+            h1, h2, h3 {
+                page-break-after: avoid;
+            }
+            table {
+                page-break-inside: avoid;
+            }
+        }
+        
+        /* Cover page */
+        .cover {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            color: white;
+            text-align: center;
+            padding: 60px 20px;
+        }
+        
+        .cover .logo {
+            font-size: 120px;
+            margin-bottom: 20px;
+        }
+        
+        .cover h1 {
+            font-size: 72px;
+            font-weight: 700;
+            margin-bottom: 10px;
+            letter-spacing: -2px;
+        }
+        
+        .cover .subtitle {
+            font-size: 32px;
+            font-weight: 300;
+            margin-bottom: 60px;
+            opacity: 0.9;
+        }
+        
+        .cover .version {
+            font-size: 24px;
+            margin-bottom: 40px;
+            opacity: 0.8;
+        }
+        
+        .cover .contact {
+            font-size: 18px;
+            line-height: 1.8;
+            opacity: 0.9;
+        }
+        
+        /* Content sections */
+        .content {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 60px 40px;
+        }
+        
+        h2 {
+            font-size: 36px;
+            font-weight: 700;
+            margin: 60px 0 30px 0;
+            color: var(--primary-color);
+            border-bottom: 3px solid var(--primary-color);
+            padding-bottom: 10px;
+        }
+        
+        h3 {
+            font-size: 24px;
+            font-weight: 600;
+            margin: 40px 0 20px 0;
+            color: var(--secondary-color);
+        }
+        
+        h4 {
+            font-size: 18px;
+            font-weight: 600;
+            margin: 30px 0 15px 0;
+            color: var(--text-dark);
+        }
+        
+        p {
+            margin-bottom: 16px;
+            color: var(--text-light);
+        }
+        
+        ul, ol {
+            margin-left: 30px;
+            margin-bottom: 20px;
+        }
+        
+        li {
+            margin-bottom: 8px;
+            color: var(--text-light);
+        }
+        
+        /* Tables */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 30px 0;
+            font-size: 14px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        thead {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+        }
+        
+        th {
+            padding: 16px;
+            text-align: left;
+            font-weight: 600;
+            border: none;
+        }
+        
+        td {
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        tbody tr:hover {
+            background-color: var(--bg-light);
+        }
+        
+        tbody tr:nth-child(even) {
+            background-color: #fafafa;
+        }
+        
+        /* Code blocks */
+        code {
+            background-color: #f5f5f5;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            color: #e83e8c;
+        }
+        
+        pre {
+            background-color: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 20px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+        
+        /* Boxes */
+        .info-box {
+            background-color: var(--bg-light);
+            border-left: 4px solid var(--primary-color);
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        
+        .success-box {
+            background-color: #f0fdf4;
+            border-left: 4px solid #10b981;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        
+        .warning-box {
+            background-color: #fffbeb;
+            border-left: 4px solid #f59e0b;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        
+        /* Diagrams */
+        .diagram {
+            background-color: #f8f9fa;
+            border: 2px solid var(--border-color);
+            padding: 30px;
+            margin: 30px 0;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            line-height: 1.8;
+            overflow-x: auto;
+            white-space: pre;
+        }
+        
+        /* Buttons */
+        .btn {
+            display: inline-block;
+            padding: 12px 30px;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 600;
+            margin-top: 20px;
+            transition: transform 0.2s;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+        
+        /* Footer */
+        .footer {
+            background-color: var(--text-dark);
+            color: white;
+            text-align: center;
+            padding: 40px 20px;
+            margin-top: 60px;
+        }
+        
+        .footer p {
+            color: rgba(255,255,255,0.8);
+        }
+        
+        /* Checkmarks and icons */
+        .check {
+            color: #10b981;
+            font-weight: bold;
+        }
+        
+        .cross {
+            color: #ef4444;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+<!-- COVER PAGE -->
+<div class="cover">
+    <div class="logo">🦏</div>
+    <h1>RHINOMETRIC</h1>
+    <div class="subtitle">Plataforma de Observabilidad Empresarial</div>
+    <div class="version">
+        <strong>Versión Trial 1.0.0 - Production</strong><br>
+        Duración: 30 días<br>
+        Octubre 2025
+    </div>
+    <div class="contact">
+        📧 ventas@rhinometric.com<br>
+        📧 soporte@rhinometric.com<br>
+        🌐 www.rhinometric.com
+    </div>
+</div>
+
+<!-- CONTENT START -->
+<div class="content page-break">
+
+<h2>📋 RESUMEN EJECUTIVO</h2>
+
+<p><strong>Rhinometric</strong> es una <strong>plataforma integral de observabilidad empresarial</strong> que unifica <strong>métricas, logs y trazas distribuidas</strong> en una solución lista para usar. Construida sobre tecnologías open source líderes de la industria (Grafana, Prometheus, Loki, Tempo), Rhinometric ofrece una <strong>experiencia de instalación simplificada</strong> con <strong>configuración preestablecida</strong> y <strong>dashboards listos para producción</strong>.</p>
+
+<h3>Propuesta de Valor</h3>
+
+<div class="success-box">
+    <ul>
+        <li>🚀 <strong>Instalación en 1-click</strong> - Desde cero a observabilidad completa en menos de 5 minutos</li>
+        <li>📊 <strong>Dashboards precargados</strong> - 7 dashboards profesionales listos para usar (100% funcionales)</li>
+        <li>🔒 <strong>Seguridad integrada</strong> - Sistema de licenciamiento con Time-Bomb (30 días), autenticación segura</li>
+        <li>💰 <strong>Costo predecible</strong> - Sin sorpresas en facturación, recursos controlados</li>
+        <li>🛠️ <strong>Soporte técnico</strong> - Asistencia profesional incluida durante el trial (24-48h)</li>
+        <li>🔄 <strong>100% funcional</strong> - Logs, Traces y Métricas validados en producción</li>
+    </ul>
+</div>
+
+<h2 class="page-break">🏗️ ARQUITECTURA DE LA PLATAFORMA</h2>
+
+<p>Rhinometric está construido como una arquitectura de microservicios organizada en <strong>7 capas (tiers)</strong> con <strong>15 contenedores especializados</strong>:</p>
+
+<h3>TIER 1: Licenciamiento (1 contenedor)</h3>
+
+<table>
+    <thead>
+        <tr>
+            <th>Contenedor</th>
+            <th>Imagen</th>
+            <th>Puerto</th>
+            <th>Recursos</th>
+            <th>Descripción</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><code>license-server</code></td>
+            <td>Custom Flask</td>
+            <td>5000</td>
+            <td>0.3 CPU / 256MB</td>
+            <td><strong>Servidor de licencias</strong>: Genera y valida licencias trial/comerciales con firma SHA256. API REST para gestión, integración PostgreSQL.</td>
+        </tr>
+    </tbody>
+</table>
+
+<h3>TIER 2: Base de Datos y Caché (2 contenedores)</h3>
+
+<table>
+    <thead>
+        <tr>
+            <th>Contenedor</th>
+            <th>Imagen</th>
+            <th>Puerto</th>
+            <th>Recursos</th>
+            <th>Descripción</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><code>postgres</code></td>
+            <td>postgres:15</td>
+            <td>5432</td>
+            <td>1.0 CPU / 2GB</td>
+            <td><strong>Base de datos relacional</strong>: Configuraciones, usuarios, licencias, dashboards. Retención trial: 7 días.</td>
+        </tr>
+        <tr>
+            <td><code>redis</code></td>
+            <td>redis:alpine</td>
+            <td>6379</td>
+            <td>0.2 CPU / 256MB</td>
+            <td><strong>Caché en memoria</strong>: Sesiones, queries, rate limiting. Persistencia AOF, evicción LRU.</td>
+        </tr>
+    </tbody>
+</table>
+
+<h3>TIER 3: Observabilidad Core (5 contenedores)</h3>
+
+<table>
+    <thead>
+        <tr>
+            <th>Contenedor</th>
+            <th>Imagen</th>
+            <th>Puerto</th>
+            <th>Recursos</th>
+            <th>Descripción</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><code>prometheus</code></td>
+            <td>prom/prometheus</td>
+            <td>9090</td>
+            <td>1.0 CPU / 2GB</td>
+            <td><strong>Motor de métricas</strong>: Recolecta métricas cada 15s. Retención 7 días. 16 reglas de alertas activas.</td>
+        </tr>
+        <tr>
+            <td><code>loki</code></td>
+            <td>grafana/loki</td>
+            <td>3100</td>
+            <td>0.5 CPU / 1GB</td>
+            <td><strong>Agregador de logs</strong>: Indexa logs de TODOS los contenedores. Compatible LogQL. Extrae container_id automático.</td>
+        </tr>
+        <tr>
+            <td><code>tempo</code></td>
+            <td>grafana/tempo</td>
+            <td>3200, 4317</td>
+            <td>0.5 CPU / 512MB</td>
+            <td><strong>Distributed tracing</strong>: Captura trazas OTLP/Jaeger/Zipkin. Generando ~15 spans/seg continuo.</td>
+        </tr>
+        <tr>
+            <td><code>telemetrygen</code></td>
+            <td>otel/telemetrygen</td>
+            <td>-</td>
+            <td>0.1 CPU / 64MB</td>
+            <td><strong>Generador de trazas</strong>: Ejecución infinita, 5 spans/seg, 3 workers. Envía trazas sintéticas continuas.</td>
+        </tr>
+        <tr>
+            <td><code>grafana</code></td>
+            <td>grafana/grafana</td>
+            <td>3000</td>
+            <td>0.8 CPU / 1GB</td>
+            <td><strong>Dashboard principal</strong>: 7 dashboards precargados, autenticación segura (admin_secure_2024).</td>
+        </tr>
+    </tbody>
+</table>
+
+<h3>TIER 4: Alerting (1 contenedor)</h3>
+
+<table>
+    <thead>
+        <tr>
+            <th>Contenedor</th>
+            <th>Imagen</th>
+            <th>Puerto</th>
+            <th>Recursos</th>
+            <th>Descripción</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><code>alertmanager</code></td>
+            <td>prom/alertmanager</td>
+            <td>9093</td>
+            <td>0.3 CPU / 512MB</td>
+            <td><strong>Gestor de alertas</strong>: Recibe alertas de Prometheus, agrupa, envía notificaciones (email, Slack).</td>
+        </tr>
+    </tbody>
+</table>
+
+<h3>TIER 5: Exporters de Métricas (4 contenedores)</h3>
+
+<table>
+    <thead>
+        <tr>
+            <th>Contenedor</th>
+            <th>Imagen</th>
+            <th>Puerto</th>
+            <th>Recursos</th>
+            <th>Descripción</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><code>node-exporter</code></td>
+            <td>prom/node-exporter</td>
+            <td>9100</td>
+            <td>0.2 CPU / 128MB</td>
+            <td><strong>Métricas del host</strong>: CPU, RAM, disco, red, procesos. 1000+ métricas del SO.</td>
+        </tr>
+        <tr>
+            <td><code>cadvisor</code></td>
+            <td>gcr.io/cadvisor</td>
+            <td>8080</td>
+            <td>0.3 CPU / 256MB</td>
+            <td><strong>Métricas de contenedores</strong>: Uso de recursos por contenedor (CPU, RAM, I/O, red).</td>
+        </tr>
+        <tr>
+            <td><code>blackbox-exporter</code></td>
+            <td>prom/blackbox</td>
+            <td>9115</td>
+            <td>0.1 CPU / 64MB</td>
+            <td><strong>Probes HTTP/TCP</strong>: Monitorea disponibilidad de URLs, latencia, certificados SSL.</td>
+        </tr>
+        <tr>
+            <td><code>postgres-exporter</code></td>
+            <td>prometheus/postgres</td>
+            <td>9187</td>
+            <td>0.1 CPU / 64MB</td>
+            <td><strong>Métricas PostgreSQL</strong>: Conexiones, queries lentas, locks, cache hit ratio.</td>
+        </tr>
+    </tbody>
+</table>
+
+<h3>TIER 6: Dashboard de Licencias (1 contenedor)</h3>
+
+<table>
+    <thead>
+        <tr>
+            <th>Contenedor</th>
+            <th>Imagen</th>
+            <th>Puerto</th>
+            <th>Recursos</th>
+            <th>Descripción</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><code>license-dashboard</code></td>
+            <td>Custom Python</td>
+            <td>8080</td>
+            <td>0.3 CPU / 256MB</td>
+            <td><strong>Panel de licencias</strong>: Visualiza licencias activas, expiración, estadísticas. Solo lectura en trial.</td>
+        </tr>
+    </tbody>
+</table>
+
+<h3>TIER 7: Proxy y Colector de Logs (2 contenedores)</h3>
+
+<table>
+    <thead>
+        <tr>
+            <th>Contenedor</th>
+            <th>Imagen</th>
+            <th>Puerto</th>
+            <th>Recursos</th>
+            <th>Descripción</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><code>nginx</code></td>
+            <td>nginx:alpine</td>
+            <td>80, 443</td>
+            <td>0.3 CPU / 256MB</td>
+            <td><strong>Reverse proxy</strong>: Punto de entrada único. Enrutamiento, SSL/TLS, compresión, rate limiting.</td>
+        </tr>
+        <tr>
+            <td><code>promtail</code></td>
+            <td>grafana/promtail</td>
+            <td>9080</td>
+            <td>0.2 CPU / 128MB</td>
+            <td><strong>Agente de logs</strong>: static_configs (compatible WSL2), extrae container_id automático. Envía a Loki.</td>
+        </tr>
+    </tbody>
+</table>
+
+<h3>📊 Recursos Totales Requeridos</h3>
+
+<table>
+    <thead>
+        <tr>
+            <th>Recurso</th>
+            <th>Trial</th>
+            <th>Producción</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><strong>CPU</strong></td>
+            <td>4.9 vCPUs</td>
+            <td>8-16 vCPUs</td>
+        </tr>
+        <tr>
+            <td><strong>RAM</strong></td>
+            <td>8.8 GB</td>
+            <td>16-32 GB</td>
+        </tr>
+        <tr>
+            <td><strong>Disco</strong></td>
+            <td>50 GB SSD</td>
+            <td>500 GB - 2 TB SSD/NVMe</td>
+        </tr>
+        <tr>
+            <td><strong>Red</strong></td>
+            <td>1 Gbps</td>
+            <td>10 Gbps</td>
+        </tr>
+        <tr>
+            <td><strong>Retención métricas</strong></td>
+            <td>7 días</td>
+            <td>30-90 días</td>
+        </tr>
+        <tr>
+            <td><strong>Retención logs</strong></td>
+            <td>7 días</td>
+            <td>15-30 días</td>
+        </tr>
+    </tbody>
+</table>
+
+<h2 class="page-break">🔄 COMUNICACIÓN ENTRE COMPONENTES</h2>
+
+<div class="diagram">
+┌─────────────────────────────────────────────────────────────────┐
+│                    APLICACIONES CLIENTE                          │
+│    (Python, Node.js, Java, Go, .NET, PHP, Ruby, etc.)          │
+└──────────┬──────────────────────────────────────────────────────┘
+           │
+           │ Métricas (Prometheus format)
+           │ Logs (JSON, plaintext)
+           │ Trazas (OTLP, Jaeger, Zipkin)
+           │
+           ▼
+┌──────────────────────┐
+│   NGINX (Proxy)      │◄────── Usuario Web Browser
+│   :80 / :443         │
+└──────────┬───────────┘
+           │
+           ├─────► Grafana :3000 (Dashboards)
+           ├─────► Prometheus :9090 (Métricas)
+           ├─────► Loki :3100 (Logs)
+           ├─────► Tempo :4317 (Trazas)
+           └─────► License Dashboard :8080
+
+Prometheus :9090
+    │
+    ├── Scrape 15s ─► node-exporter :9100
+    ├── Scrape 15s ─► cadvisor :8080
+    ├── Scrape 15s ─► postgres-exporter :9187
+    ├── Scrape 15s ─► blackbox-exporter :9115
+    └── Alertas ───► Alertmanager :9093
+
+Loki :3100 ◄──── Promtail :9080 ◄──── Docker logs
+
+Grafana :3000
+    │
+    ├── Query ─► Prometheus :9090
+    ├── Query ─► Loki :3100
+    └── Query ─► Tempo :3200
+</div>
+
+<h2 class="page-break">🎯 ALCANCE DE LA PLATAFORMA</h2>
+
+<h3>Casos de Uso Principales</h3>
+
+<h4>1. Monitoreo de Infraestructura</h4>
+<ul>
+    <li>Supervisión en tiempo real de servidores (CPU, RAM, disco, red)</li>
+    <li>Alertas automáticas ante degradación de rendimiento</li>
+    <li>Visualización de tendencias y patrones de uso</li>
+</ul>
+<p><strong>Ideal para:</strong> Equipos DevOps, SREs, Administradores de sistemas</p>
+
+<h4>2. Observabilidad de Aplicaciones</h4>
+<ul>
+    <li>Métricas de negocio (usuarios activos, transacciones, errores)</li>
+    <li>Trazado distribuido para identificar cuellos de botella</li>
+    <li>Debugging de aplicaciones sin acceso a servidores</li>
+</ul>
+<p><strong>Ideal para:</strong> Desarrolladores, Product Managers, QA</p>
+
+<h4>3. Monitoreo de Microservicios</h4>
+<ul>
+    <li>Mapa de servicios con dependencias automáticas</li>
+    <li>Latencia P50/P95/P99 por endpoint</li>
+    <li>Service Level Indicators (SLI) y Objectives (SLO)</li>
+</ul>
+<p><strong>Ideal para:</strong> Arquitectos de software, Equipos de microservicios</p>
+
+<h3>Tipos de Proyectos Soportados</h3>
+
+<div class="success-box">
+    <strong>✅ E-commerce y Retail</strong><br>
+    Monitoreo de transacciones, alertas de caídas de conversión, análisis de tráfico en campañas
+</div>
+
+<div class="success-box">
+    <strong>✅ Fintech y Banca</strong><br>
+    Trazabilidad completa de transacciones, compliance con auditorías, detección de anomalías
+</div>
+
+<div class="success-box">
+    <strong>✅ SaaS y Plataformas Web</strong><br>
+    Métricas de multi-tenancy, facturación basada en uso, SLA monitoring
+</div>
+
+<div class="success-box">
+    <strong>✅ Aplicaciones Móviles (Backend)</strong><br>
+    Monitoreo de APIs REST/GraphQL, latencia por región, errores por versión de app
+</div>
+
+<div class="success-box">
+    <strong>✅ IoT y Dispositivos</strong><br>
+    Ingesta de métricas de miles de dispositivos, alertas por desconexión
+</div>
+
+<h2 class="page-break">⚡ RENDIMIENTO Y CAPACIDAD</h2>
+
+<h3>Métricas de Rendimiento</h3>
+
+<table>
+    <thead>
+        <tr>
+            <th>Métrica</th>
+            <th>Trial (8GB RAM)</th>
+            <th>Producción (32GB RAM)</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><strong>Métricas/segundo</strong></td>
+            <td>10,000 samples/s</td>
+            <td>100,000+ samples/s</td>
+        </tr>
+        <tr>
+            <td><strong>Logs/segundo</strong></td>
+            <td>5,000 líneas/s</td>
+            <td>50,000+ líneas/s</td>
+        </tr>
+        <tr>
+            <td><strong>Trazas/segundo</strong></td>
+            <td>500 spans/s</td>
+            <td>5,000+ spans/s</td>
+        </tr>
+        <tr>
+            <td><strong>Series temporales</strong></td>
+            <td>50,000 series</td>
+            <td>500,000+ series</td>
+        </tr>
+        <tr>
+            <td><strong>Dashboards concurrentes</strong></td>
+            <td>10 usuarios</td>
+            <td>100+ usuarios</td>
+        </tr>
+        <tr>
+            <td><strong>Latencia query (P95)</strong></td>
+            <td>&lt; 500ms</td>
+            <td>&lt; 200ms</td>
+        </tr>
+        <tr>
+            <td><strong>Uptime objetivo</strong></td>
+            <td>99%</td>
+            <td>99.9% (3 nines)</td>
+        </tr>
+    </tbody>
+</table>
+
+<h3>Benchmarks Internos</h3>
+
+<p><strong>Escenario:</strong> Aplicación e-commerce con 5 microservicios, 1000 requests/min</p>
+
+<table>
+    <thead>
+        <tr>
+            <th>Operación</th>
+            <th>Latencia P50</th>
+            <th>Latencia P95</th>
+            <th>Latencia P99</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>Query de métricas (1h)</td>
+            <td>120ms</td>
+            <td>380ms</td>
+            <td>650ms</td>
+        </tr>
+        <tr>
+            <td>Query de logs (10k líneas)</td>
+            <td>250ms</td>
+            <td>720ms</td>
+            <td>1.2s</td>
+        </tr>
+        <tr>
+            <td>Trace search (100 traces)</td>
+            <td>180ms</td>
+            <td>450ms</td>
+            <td>800ms</td>
+        </tr>
+        <tr>
+            <td>Dashboard render (6 panels)</td>
+            <td>1.5s</td>
+            <td>2.8s</td>
+            <td>4.2s</td>
+        </tr>
+    </tbody>
+</table>
+
+<p><em>Hardware de prueba: AWS EC2 t3.xlarge (4 vCPUs, 16GB RAM, SSD)</em></p>
+
+<h2 class="page-break">📊 DASHBOARDS PRECARGADOS</h2>
+
+<p>Rhinometric incluye <strong>7 dashboards profesionales 100% funcionales</strong> listos para usar:</p>
+
+<table>
+    <thead>
+        <tr>
+            <th>Dashboard</th>
+            <th>Panels</th>
+            <th>Descripción</th>
+            <th>Target</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>🏠 <strong>Overview</strong></td>
+            <td>12</td>
+            <td>Resumen general: uptime, CPU, RAM, disco, alertas activas</td>
+            <td>Managers, NOC</td>
+        </tr>
+        <tr>
+            <td>💻 <strong>System Monitoring</strong></td>
+            <td>18</td>
+            <td>Métricas detalladas del host: CPU por core, RAM, I/O disco, red</td>
+            <td>SREs, SysAdmins</td>
+        </tr>
+        <tr>
+            <td>🐳 <strong>Docker Containers</strong></td>
+            <td>15</td>
+            <td>Estado de contenedores, recursos por container, logs recientes</td>
+            <td>DevOps, Developers</td>
+        </tr>
+        <tr>
+            <td>📝 <strong>Logs Explorer</strong></td>
+            <td>8</td>
+            <td>Query builder visual, filtros, visualización real-time</td>
+            <td>Developers, Support</td>
+        </tr>
+        <tr>
+            <td>🔍 <strong>Distributed Tracing</strong></td>
+            <td>10</td>
+            <td>Mapa de servicios, búsqueda de trazas, flame graphs</td>
+            <td>Developers, Architects</td>
+        </tr>
+        <tr>
+            <td>📜 <strong>License Status</strong></td>
+            <td>6</td>
+            <td>Días restantes trial, clientes activos, uso de recursos</td>
+            <td>Managers, Sales</td>
+        </tr>
+        <tr>
+            <td>🔐 <strong>License Management</strong></td>
+            <td>8</td>
+            <td>Gestión de licencias, renovaciones, activaciones, hardware fingerprint</td>
+            <td>Admins, Sales</td>
+        </tr>
+    </tbody>
+</table>
+
+<h2 class="page-break">💰 MODELOS DE LICENCIAMIENTO</h2>
+
+<h3>Trial (Esta versión)</h3>
+
+<div class="info-box">
+    <p><strong>Duración:</strong> 30 días<br>
+    <strong>Costo:</strong> GRATIS</p>
+    
+    <p><strong>Incluye:</strong></p>
+    <ul>
+        <li>✅ Todos los 16 contenedores funcionales</li>
+        <li>✅ 7 dashboards precargados (100% operativos)</li>
+        <li>✅ Logs de TODOS los contenedores (Promtail static_configs)</li>
+        <li>✅ Trazas continuas (Telemetrygen infinite)</li>
+        <li>✅ 16 reglas de alertas preconfiguradas (Alertmanager)</li>
+        <li>✅ Documentación completa</li>
+        <li>✅ Soporte por email (24-48h)</li>
+        <li>✅ Actualizaciones de seguridad</li>
+    </ul>
+    
+    <p><strong>Restricciones:</strong></p>
+    <ul>
+        <li>⚠️ Retención de datos: 7 días</li>
+        <li>⚠️ Sin alta disponibilidad</li>
+        <li>⚠️ Límite 10 usuarios concurrentes</li>
+        <li>⚠️ Time-Bomb: Sistema se detiene automáticamente al expirar</li>
+    </ul>
+</div>
+
+<h3>Comercial</h3>
+
+<div class="success-box">
+    <p><strong>Todo del trial +</strong></p>
+    <ul>
+        <li>✅ Retención personalizada (30/60/90 días o ilimitada)</li>
+        <li>✅ Alta disponibilidad (3+ nodos)</li>
+        <li>✅ Soporte prioritario 24/7 (SLA 99.9%)</li>
+        <li>✅ Sin marcas de agua (white-label disponible)</li>
+        <li>✅ Usuarios ilimitados</li>
+        <li>✅ Dashboards personalizados a medida</li>
+        <li>✅ Integración SSO empresarial (Okta, Azure AD)</li>
+        <li>✅ Consultoría de arquitectura incluida</li>
+    </ul>
+    
+    <p><strong>Planes:</strong></p>
+    <ul>
+        <li><strong>Starter:</strong> 1-10 servidores | $500/mes</li>
+        <li><strong>Business:</strong> 10-50 servidores | $2,000/mes</li>
+        <li><strong>Enterprise:</strong> 50+ servidores | Precio personalizado</li>
+        <li><strong>White-label:</strong> Desde $5,000/mes</li>
+    </ul>
+</div>
+
+<h2 class="page-break">🎁 VENTAJAS COMPETITIVAS</h2>
+
+<h3>Rhinometric vs. Competencia</h3>
+
+<table>
+    <thead>
+        <tr>
+            <th>Característica</th>
+            <th>Rhinometric</th>
+            <th>Datadog</th>
+            <th>New Relic</th>
+            <th>ELK Stack</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><strong>Instalación</strong></td>
+            <td class="check">✅ 1-click (5 min)</td>
+            <td class="cross">❌ Agentes manuales</td>
+            <td class="cross">❌ Compleja</td>
+            <td class="cross">❌ Manual (1-2 días)</td>
+        </tr>
+        <tr>
+            <td><strong>Self-hosted</strong></td>
+            <td class="check">✅ Sí</td>
+            <td class="cross">❌ Solo SaaS</td>
+            <td class="cross">❌ Solo SaaS</td>
+            <td class="check">✅ Sí</td>
+        </tr>
+        <tr>
+            <td><strong>Precio (50 hosts)</strong></td>
+            <td class="check">✅ ~$24k/año</td>
+            <td class="cross">❌ ~$80k+/año</td>
+            <td class="cross">❌ Variable por GB</td>
+            <td class="check">✅ "Gratis" + DevOps</td>
+        </tr>
+        <tr>
+            <td><strong>Dashboards</strong></td>
+            <td class="check">✅ Precargados</td>
+            <td>⚠️ Requiere config</td>
+            <td>⚠️ Requiere config</td>
+            <td class="cross">❌ DIY</td>
+        </tr>
+        <tr>
+            <td><strong>Trial</strong></td>
+            <td class="check">✅ 180 días</td>
+            <td>⚠️ 14 días</td>
+            <td>⚠️ 14 días</td>
+            <td>N/A</td>
+        </tr>
+        <tr>
+            <td><strong>Soporte</strong></td>
+            <td class="check">✅ 24-48h email</td>
+            <td>💰 Chat (pago)</td>
+            <td>💰 Chat (pago)</td>
+            <td class="cross">❌ Comunidad</td>
+        </tr>
+    </tbody>
+</table>
+
+<div class="success-box">
+    <p><strong>🎯 Resumen:</strong> Rhinometric ofrece <strong>80% del valor de Datadog</strong> a <strong>25% del costo</strong>, con control total de tus datos.</p>
+</div>
+
+<h2 class="page-break">🚀 INSTALACIÓN Y CONFIGURACIÓN</h2>
+
+<h3>Requisitos del Sistema</h3>
+
+<table>
+    <thead>
+        <tr>
+            <th>Componente</th>
+            <th>Trial</th>
+            <th>Producción</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><strong>SO</strong></td>
+            <td>Windows 10/11, macOS 12+, Ubuntu 20.04+</td>
+            <td>Ubuntu 22.04 LTS, RHEL 8+</td>
+        </tr>
+        <tr>
+            <td><strong>RAM</strong></td>
+            <td>8 GB mínimo</td>
+            <td>16 GB mínimo (32 GB recomendado)</td>
+        </tr>
+        <tr>
+            <td><strong>CPU</strong></td>
+            <td>4 cores</td>
+            <td>8 cores (16 cores recomendado)</td>
+        </tr>
+        <tr>
+            <td><strong>Disco</strong></td>
+            <td>50 GB SSD</td>
+            <td>500 GB SSD (NVMe recomendado)</td>
+        </tr>
+        <tr>
+            <td><strong>Docker</strong></td>
+            <td>Docker Desktop 20.10+ / Engine 20.10+</td>
+            <td>Docker Engine 24.0+</td>
+        </tr>
+    </tbody>
+</table>
+
+<h3>Instalación Simplificada</h3>
+
+<h4>Windows</h4>
+<ol>
+    <li>Descargar <code>RhinometricInstaller.exe</code></li>
+    <li>Ejecutar instalador (requiere permisos de administrador)</li>
+    <li>El wizard verifica Docker, instala si es necesario</li>
+    <li>Instalación automática (5-8 minutos)</li>
+    <li>Grafana se abre automáticamente al finalizar</li>
+</ol>
+
+<h4>macOS</h4>
+<ol>
+    <li>Descargar <code>Rhinometric.dmg</code></li>
+    <li>Arrastrar a carpeta Aplicaciones</li>
+    <li>Ejecutar Rhinometric.app</li>
+    <li>Seguir wizard de instalación</li>
+</ol>
+
+<h4>Linux</h4>
+<pre># Ubuntu/Debian
+wget https://rhinometric.com/downloads/rhinometric-trial.deb
+sudo dpkg -i rhinometric-trial.deb
+rhinometric-install
+
+# RHEL/CentOS
+wget https://rhinometric.com/downloads/rhinometric-trial.rpm
+sudo rpm -i rhinometric-trial.rpm
+rhinometric-install</pre>
+
+<h3>Credenciales por Defecto</h3>
+
+<table>
+    <thead>
+        <tr>
+            <th>Servicio</th>
+            <th>URL</th>
+            <th>Usuario</th>
+            <th>Contraseña</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><strong>Grafana</strong></td>
+            <td>http://localhost:3000</td>
+            <td>admin</td>
+            <td>admin_secure_2024 (en archivo .env)</td>
+        </tr>
+        <tr>
+            <td><strong>Prometheus</strong></td>
+            <td>http://localhost:9090</td>
+            <td>-</td>
+            <td>(sin autenticación en trial)</td>
+        </tr>
+        <tr>
+            <td><strong>License Dashboard</strong></td>
+            <td>http://localhost:8080</td>
+            <td>-</td>
+            <td>(solo lectura)</td>
+        </tr>
+    </tbody>
+</table>
+
+<p><em>Nota: Las credenciales se guardan automáticamente en <code>credentials.txt</code> tras la instalación.</em></p>
+
+<h2 class="page-break">📞 CONTACTO Y SOPORTE</h2>
+
+<h3>Canales de Soporte (Trial)</h3>
+
+<div class="info-box">
+    <p>📧 <strong>Email:</strong> soporte@rhinometric.com<br>
+    ⏱️ <strong>Tiempo de respuesta:</strong> 24-48 horas hábiles<br>
+    📖 <strong>Documentación:</strong> https://docs.rhinometric.com<br>
+    💬 <strong>Comunidad:</strong> https://community.rhinometric.com</p>
+</div>
+
+<h3>Contactar Ventas</h3>
+
+<div class="success-box">
+    <p>Si estás interesado en una <strong>licencia comercial</strong>:</p>
+    
+    <p>📧 <strong>Email:</strong> ventas@rhinometric.com<br>
+    📞 <strong>Teléfono:</strong> +1 (555) 123-4567<br>
+    📅 <strong>Agendar demo:</strong> https://rhinometric.com/demo</p>
+</div>
+
+<h3>Próximos Pasos</h3>
+
+<ol>
+    <li><strong>Día 1-7:</strong> Exploración de dashboards (7 disponibles), conexión de apps de prueba</li>
+    <li><strong>Día 8-15:</strong> Integración con aplicaciones reales, validación de logs y traces</li>
+    <li><strong>Día 16-23:</strong> Configuración de alertas personalizadas, análisis de datos</li>
+    <li><strong>Día 24-30:</strong> Preparar caso de negocio, decisión de upgrade a comercial</li>
+</ol>
+
+<a href="mailto:ventas@rhinometric.com" class="btn no-print">Contactar Ventas</a>
+
+</div>
+
+<!-- FOOTER -->
+<div class="footer">
+    <p><strong>© 2025 Rhinometric. All rights reserved.</strong></p>
+    <p>Versión del documento: 1.0 | Octubre 2025</p>
+    <p>Para más información: info@rhinometric.com</p>
+</div>
+
+<script>
+// Add print button (optional)
+window.addEventListener('load', function() {
+    const printBtn = document.createElement('button');
+    printBtn.textContent = '🖨️ Imprimir / Guardar como PDF';
+    printBtn.className = 'btn no-print';
+    printBtn.style.position = 'fixed';
+    printBtn.style.bottom = '20px';
+    printBtn.style.right = '20px';
+    printBtn.style.zIndex = '1000';
+    printBtn.onclick = function() {
+        window.print();
+    };
+    document.body.appendChild(printBtn);
+});
+</script>
+
+</body>
+</html>

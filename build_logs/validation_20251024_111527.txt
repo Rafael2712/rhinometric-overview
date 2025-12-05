@@ -1,0 +1,158 @@
+═══════════════════════════════════════════════════════════════
+VALIDACIÓN DE PAQUETES RHINOMETRIC TRIAL v2.0.0
+Fecha: Fri, Oct 24, 2025 11:15:41 AM
+═══════════════════════════════════════════════════════════════
+
+✅ rhinometric-trial-v2.0.0-windows.zip - 52K
+✅ rhinometric-trial-v2.0.0-mac.zip - 48K
+✅ rhinometric-trial-v2.0.0-linux.zip - 52K
+
+────────────────────────────────────────────────────────
+CONTENIDO: rhinometric-trial-v2.0.0-windows.zip
+────────────────────────────────────────────────────────
+Archive:  build/rhinometric-trial-v2.0.0-windows.zip
+  Length      Date    Time    Name
+---------  ---------- -----   ----
+        0  2025-10-24 11:15   rhinometric-trial-v2.0.0-windows\certs\
+        0  2025-10-24 11:15   rhinometric-trial-v2.0.0-windows\grafana\
+      718  2025-10-24 11:15   rhinometric-trial-v2.0.0-windows\.env
+    10949  2025-10-24 11:15   rhinometric-trial-v2.0.0-windows\docker-compose.yml
+     2161  2025-10-24 11:15   rhinometric-trial-v2.0.0-windows\README.md
+     2408  2025-10-24 11:15   rhinometric-trial-v2.0.0-windows\start.bat
+      850  2025-10-24 11:15   rhinometric-trial-v2.0.0-windows\stop.bat
+     1185  2025-10-24 11:15   rhinometric-trial-v2.0.0-windows\validate.bat
+     2080  2025-10-24 11:15   rhinometric-trial-v2.0.0-windows\config\alertmanager-saas.yml
+      107  2025-10-24 11:15   rhinometric-trial-v2.0.0-windows\config\blackbox.yml
+     1501  2025-10-24 11:15   rhinometric-trial-v2.0.0-windows\config\loki-saas.yml
+     4401  2025-10-24 11:15   rhinometric-trial-v2.0.0-windows\config\nginx-trial.conf
+     3033  2025-10-24 11:15   rhinometric-trial-v2.0.0-windows\config\prometheus-saas.yml
+     1778  2025-10-24 11:15   rhinometric-trial-v2.0.0-windows\config\promtail-config.yml
+     1770  2025-10-24 11:15   rhinometric-trial-v2.0.0-windows\config\tempo-saas.yml
+     5886  2025-10-24 11:15   rhinometric-trial-v2.0.0-windows\config\rules\alerts.yml
+        0  2025-10-24 11:15   rhinometric-trial-v2.0.0-windows\grafana\provisioning\
+      316  2025-10-24 11:15   rhinometric-trial-v2.0.0-windows\grafana\provisioning\dashboards\dashboards.yml
+     6385  2025-10-24 11:15   rhinometric-trial-v2.0.0-windows\grafana\provisioning\dashboards\json\distributed-tracing.json
+    10856  2025-10-24 11:15   rhinometric-trial-v2.0.0-windows\grafana\provisioning\dashboards\json\distributed-tracing.json.bak
+     9227  2025-10-24 11:15   rhinometric-trial-v2.0.0-windows\grafana\provisioning\dashboards\json\docker-containers.json
+     4888  2025-10-24 11:15   rhinometric-trial-v2.0.0-windows\grafana\provisioning\dashboards\json\license-status.json
+    12018  2025-10-24 11:15   rhinometric-trial-v2.0.0-windows\grafana\provisioning\dashboards\json\license-status.json.bak
+     9204  2025-10-24 11:15   rhinometric-trial-v2.0.0-windows\grafana\provisioning\dashboards\json\logs-explorer.json
+    21624  2025-10-24 11:15   rhinometric-trial-v2.0.0-windows\grafana\provisioning\dashboards\json\overview.json
+     7763  2025-10-24 11:15   rhinometric-trial-v2.0.0-windows\grafana\provisioning\dashboards\json\system-monitoring.json
+      586  2025-10-24 11:15   rhinometric-trial-v2.0.0-windows\grafana\provisioning\datasources\datasources.yml
+     1951  2025-10-24 11:15   rhinometric-trial-v2.0.0-windows\init-db\01-init-saas.sh
+     8917  2025-10-24 11:15   rhinometric-trial-v2.0.0-windows\license-dashboard\app.py
+      564  2025-10-24 11:15   rhinometric-trial-v2.0.0-windows\license-dashboard\Dockerfile
+    15724  2025-10-24 11:15   rhinometric-trial-v2.0.0-windows\license-dashboard\templates\index.html
+      243  2025-10-24 11:15   rhinometric-trial-v2.0.0-windows\licenses\license.key
+    16384  2025-10-24 11:15   rhinometric-trial-v2.0.0-windows\licenses\licenses.db
+      948  2025-10-24 11:15   rhinometric-trial-v2.0.0-windows\licensing\Dockerfile
+    17542  2025-10-24 11:15   rhinometric-trial-v2.0.0-windows\licensing\license_server.py
+      149  2025-10-24 11:15   rhinometric-trial-v2.0.0-windows\licensing\scripts\.env.license
+     1029  2025-10-24 11:15   rhinometric-trial-v2.0.0-windows\licensing\scripts\install-secure.sh
+      384  2025-10-24 11:15   rhinometric-trial-v2.0.0-windows\licensing\scripts\license_Ayuntamiento_Test_trial.lic
+     2025  2025-10-24 11:15   rhinometric-trial-v2.0.0-windows\licensing\scripts\license_generator.py
+       35  2025-10-24 11:15   rhinometric-trial-v2.0.0-windows\licensing\scripts\license_pedrezuela_trial.lic
+     2226  2025-10-24 11:15   rhinometric-trial-v2.0.0-windows\licensing\scripts\license_validator.py
+---------                     -------
+   189815                     41 files
+
+────────────────────────────────────────────────────────
+CONTENIDO: rhinometric-trial-v2.0.0-mac.zip
+────────────────────────────────────────────────────────
+Archive:  build/rhinometric-trial-v2.0.0-mac.zip
+  Length      Date    Time    Name
+---------  ---------- -----   ----
+        0  2025-10-24 11:15   rhinometric-trial-v2.0.0-mac\certs\
+        0  2025-10-24 11:15   rhinometric-trial-v2.0.0-mac\grafana\
+      718  2025-10-24 11:15   rhinometric-trial-v2.0.0-mac\.env
+    10949  2025-10-24 11:15   rhinometric-trial-v2.0.0-mac\docker-compose.yml
+     2768  2025-10-24 11:15   rhinometric-trial-v2.0.0-mac\README.md
+     2613  2025-10-24 11:15   rhinometric-trial-v2.0.0-mac\start.sh
+      862  2025-10-24 11:15   rhinometric-trial-v2.0.0-mac\stop.sh
+     1194  2025-10-24 11:15   rhinometric-trial-v2.0.0-mac\validate.sh
+     2080  2025-10-24 11:15   rhinometric-trial-v2.0.0-mac\config\alertmanager-saas.yml
+      107  2025-10-24 11:15   rhinometric-trial-v2.0.0-mac\config\blackbox.yml
+     1501  2025-10-24 11:15   rhinometric-trial-v2.0.0-mac\config\loki-saas.yml
+     4401  2025-10-24 11:15   rhinometric-trial-v2.0.0-mac\config\nginx-trial.conf
+     3033  2025-10-24 11:15   rhinometric-trial-v2.0.0-mac\config\prometheus-saas.yml
+     1778  2025-10-24 11:15   rhinometric-trial-v2.0.0-mac\config\promtail-config.yml
+     1770  2025-10-24 11:15   rhinometric-trial-v2.0.0-mac\config\tempo-saas.yml
+     5886  2025-10-24 11:15   rhinometric-trial-v2.0.0-mac\config\rules\alerts.yml
+        0  2025-10-24 11:15   rhinometric-trial-v2.0.0-mac\grafana\provisioning\
+      316  2025-10-24 11:15   rhinometric-trial-v2.0.0-mac\grafana\provisioning\dashboards\dashboards.yml
+     6385  2025-10-24 11:15   rhinometric-trial-v2.0.0-mac\grafana\provisioning\dashboards\json\distributed-tracing.json
+    10856  2025-10-24 11:15   rhinometric-trial-v2.0.0-mac\grafana\provisioning\dashboards\json\distributed-tracing.json.bak
+     9227  2025-10-24 11:15   rhinometric-trial-v2.0.0-mac\grafana\provisioning\dashboards\json\docker-containers.json
+     4888  2025-10-24 11:15   rhinometric-trial-v2.0.0-mac\grafana\provisioning\dashboards\json\license-status.json
+    12018  2025-10-24 11:15   rhinometric-trial-v2.0.0-mac\grafana\provisioning\dashboards\json\license-status.json.bak
+     9204  2025-10-24 11:15   rhinometric-trial-v2.0.0-mac\grafana\provisioning\dashboards\json\logs-explorer.json
+    21624  2025-10-24 11:15   rhinometric-trial-v2.0.0-mac\grafana\provisioning\dashboards\json\overview.json
+     7763  2025-10-24 11:15   rhinometric-trial-v2.0.0-mac\grafana\provisioning\dashboards\json\system-monitoring.json
+      586  2025-10-24 11:15   rhinometric-trial-v2.0.0-mac\grafana\provisioning\datasources\datasources.yml
+     1951  2025-10-24 11:15   rhinometric-trial-v2.0.0-mac\init-db\01-init-saas.sh
+     8917  2025-10-24 11:15   rhinometric-trial-v2.0.0-mac\license-dashboard\app.py
+      564  2025-10-24 11:15   rhinometric-trial-v2.0.0-mac\license-dashboard\Dockerfile
+    15724  2025-10-24 11:15   rhinometric-trial-v2.0.0-mac\license-dashboard\templates\index.html
+      243  2025-10-24 11:15   rhinometric-trial-v2.0.0-mac\licenses\license.key
+    16384  2025-10-24 11:15   rhinometric-trial-v2.0.0-mac\licenses\licenses.db
+      948  2025-10-24 11:15   rhinometric-trial-v2.0.0-mac\licensing\Dockerfile
+    17542  2025-10-24 11:15   rhinometric-trial-v2.0.0-mac\licensing\license_server.py
+      149  2025-10-24 11:15   rhinometric-trial-v2.0.0-mac\licensing\scripts\.env.license
+     1029  2025-10-24 11:15   rhinometric-trial-v2.0.0-mac\licensing\scripts\install-secure.sh
+      384  2025-10-24 11:15   rhinometric-trial-v2.0.0-mac\licensing\scripts\license_Ayuntamiento_Test_trial.lic
+     2025  2025-10-24 11:15   rhinometric-trial-v2.0.0-mac\licensing\scripts\license_generator.py
+       35  2025-10-24 11:15   rhinometric-trial-v2.0.0-mac\licensing\scripts\license_pedrezuela_trial.lic
+     2226  2025-10-24 11:15   rhinometric-trial-v2.0.0-mac\licensing\scripts\license_validator.py
+---------                     -------
+   190648                     41 files
+
+────────────────────────────────────────────────────────
+CONTENIDO: rhinometric-trial-v2.0.0-linux.zip
+────────────────────────────────────────────────────────
+Archive:  build/rhinometric-trial-v2.0.0-linux.zip
+  Length      Date    Time    Name
+---------  ---------- -----   ----
+        0  2025-10-24 11:15   rhinometric-trial-v2.0.0-linux\certs\
+        0  2025-10-24 11:15   rhinometric-trial-v2.0.0-linux\grafana\
+      718  2025-10-24 11:15   rhinometric-trial-v2.0.0-linux\.env
+    10949  2025-10-24 11:15   rhinometric-trial-v2.0.0-linux\docker-compose.yml
+     3851  2025-10-24 11:15   rhinometric-trial-v2.0.0-linux\README.md
+     2703  2025-10-24 11:15   rhinometric-trial-v2.0.0-linux\start.sh
+      962  2025-10-24 11:15   rhinometric-trial-v2.0.0-linux\stop.sh
+     1194  2025-10-24 11:15   rhinometric-trial-v2.0.0-linux\validate.sh
+     2080  2025-10-24 11:15   rhinometric-trial-v2.0.0-linux\config\alertmanager-saas.yml
+      107  2025-10-24 11:15   rhinometric-trial-v2.0.0-linux\config\blackbox.yml
+     1501  2025-10-24 11:15   rhinometric-trial-v2.0.0-linux\config\loki-saas.yml
+     4401  2025-10-24 11:15   rhinometric-trial-v2.0.0-linux\config\nginx-trial.conf
+     3033  2025-10-24 11:15   rhinometric-trial-v2.0.0-linux\config\prometheus-saas.yml
+     1778  2025-10-24 11:15   rhinometric-trial-v2.0.0-linux\config\promtail-config.yml
+     1770  2025-10-24 11:15   rhinometric-trial-v2.0.0-linux\config\tempo-saas.yml
+     5886  2025-10-24 11:15   rhinometric-trial-v2.0.0-linux\config\rules\alerts.yml
+        0  2025-10-24 11:15   rhinometric-trial-v2.0.0-linux\grafana\provisioning\
+      316  2025-10-24 11:15   rhinometric-trial-v2.0.0-linux\grafana\provisioning\dashboards\dashboards.yml
+     6385  2025-10-24 11:15   rhinometric-trial-v2.0.0-linux\grafana\provisioning\dashboards\json\distributed-tracing.json
+    10856  2025-10-24 11:15   rhinometric-trial-v2.0.0-linux\grafana\provisioning\dashboards\json\distributed-tracing.json.bak
+     9227  2025-10-24 11:15   rhinometric-trial-v2.0.0-linux\grafana\provisioning\dashboards\json\docker-containers.json
+     4888  2025-10-24 11:15   rhinometric-trial-v2.0.0-linux\grafana\provisioning\dashboards\json\license-status.json
+    12018  2025-10-24 11:15   rhinometric-trial-v2.0.0-linux\grafana\provisioning\dashboards\json\license-status.json.bak
+     9204  2025-10-24 11:15   rhinometric-trial-v2.0.0-linux\grafana\provisioning\dashboards\json\logs-explorer.json
+    21624  2025-10-24 11:15   rhinometric-trial-v2.0.0-linux\grafana\provisioning\dashboards\json\overview.json
+     7763  2025-10-24 11:15   rhinometric-trial-v2.0.0-linux\grafana\provisioning\dashboards\json\system-monitoring.json
+      586  2025-10-24 11:15   rhinometric-trial-v2.0.0-linux\grafana\provisioning\datasources\datasources.yml
+     1951  2025-10-24 11:15   rhinometric-trial-v2.0.0-linux\init-db\01-init-saas.sh
+     8917  2025-10-24 11:15   rhinometric-trial-v2.0.0-linux\license-dashboard\app.py
+      564  2025-10-24 11:15   rhinometric-trial-v2.0.0-linux\license-dashboard\Dockerfile
+    15724  2025-10-24 11:15   rhinometric-trial-v2.0.0-linux\license-dashboard\templates\index.html
+      243  2025-10-24 11:15   rhinometric-trial-v2.0.0-linux\licenses\license.key
+    16384  2025-10-24 11:15   rhinometric-trial-v2.0.0-linux\licenses\licenses.db
+      948  2025-10-24 11:15   rhinometric-trial-v2.0.0-linux\licensing\Dockerfile
+    17542  2025-10-24 11:15   rhinometric-trial-v2.0.0-linux\licensing\license_server.py
+      149  2025-10-24 11:15   rhinometric-trial-v2.0.0-linux\licensing\scripts\.env.license
+     1029  2025-10-24 11:15   rhinometric-trial-v2.0.0-linux\licensing\scripts\install-secure.sh
+      384  2025-10-24 11:15   rhinometric-trial-v2.0.0-linux\licensing\scripts\license_Ayuntamiento_Test_trial.lic
+     2025  2025-10-24 11:15   rhinometric-trial-v2.0.0-linux\licensing\scripts\license_generator.py
+       35  2025-10-24 11:15   rhinometric-trial-v2.0.0-linux\licensing\scripts\license_pedrezuela_trial.lic
+     2226  2025-10-24 11:15   rhinometric-trial-v2.0.0-linux\licensing\scripts\license_validator.py
+---------                     -------
+   191921                     41 files

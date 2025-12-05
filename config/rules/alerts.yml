@@ -1,0 +1,175 @@
+groups:
+  - name: container_alerts
+    interval: 30s
+    rules:
+      - alert: ContainerDown
+        expr: up{job=~"docker.*"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: infrastructure
+        annotations:
+          summary: "Container {{ $labels.instance }} is down"
+          description: "Container {{ $labels.job }} on {{ $labels.instance }} has been down for more than 1 minute."
+
+      - alert: HighMemoryUsage
+        expr: (container_memory_usage_bytes / container_spec_memory_limit_bytes) * 100 > 85
+        for: 2m
+        labels:
+          severity: warning
+          component: resources
+        annotations:
+          summary: "High memory usage detected"
+          description: "Container {{ $labels.name }} is using {{ $value | humanize }}% of available memory."
+
+      - alert: HighCPUUsage
+        expr: rate(container_cpu_usage_seconds_total[1m]) * 100 > 80
+        for: 3m
+        labels:
+          severity: warning
+          component: resources
+        annotations:
+          summary: "High CPU usage detected"
+          description: "Container {{ $labels.name }} CPU usage is {{ $value | humanize }}%."
+
+  - name: license_alerts
+    interval: 1h
+    rules:
+      - alert: LicenseExpiringSoon
+        expr: (license_expires_at - time()) / 86400 < 7
+        for: 5m
+        labels:
+          severity: warning
+          component: licensing
+        annotations:
+          summary: "License expiring in less than 7 days"
+          description: "License for {{ $labels.client_name }} will expire in {{ $value | humanize }} days."
+
+      - alert: LicenseExpired
+        expr: license_expires_at < time()
+        for: 1m
+        labels:
+          severity: critical
+          component: licensing
+        annotations:
+          summary: "License has expired"
+          description: "License for {{ $labels.client_name }} has expired."
+
+      - alert: LicenseValidationFailed
+        expr: rate(license_validation_failures_total[5m]) > 0
+        for: 2m
+        labels:
+          severity: critical
+          component: licensing
+        annotations:
+          summary: "License validation failures detected"
+          description: "License validation is failing for {{ $labels.client_name }}."
+
+  - name: observability_stack_alerts
+    interval: 30s
+    rules:
+      - alert: PrometheusDown
+        expr: up{job="prometheus"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: monitoring
+        annotations:
+          summary: "Prometheus is down"
+          description: "Prometheus has been down for more than 1 minute. Monitoring is unavailable."
+
+      - alert: GrafanaDown
+        expr: up{job="grafana"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          component: monitoring
+        annotations:
+          summary: "Grafana is down"
+          description: "Grafana has been down for more than 2 minutes. Dashboards are unavailable."
+
+      - alert: LokiDown
+        expr: up{job="loki"} == 0
+        for: 2m
+        labels:
+          severity: warning
+          component: logging
+        annotations:
+          summary: "Loki is down"
+          description: "Loki has been down for more than 2 minutes. Log ingestion is unavailable."
+
+      - alert: TempoDown
+        expr: up{job="tempo"} == 0
+        for: 2m
+        labels:
+          severity: warning
+          component: tracing
+        annotations:
+          summary: "Tempo is down"
+          description: "Tempo has been down for more than 2 minutes. Trace ingestion is unavailable."
+
+      - alert: HighPrometheusScrapeErrors
+        expr: rate(prometheus_target_scrapes_exceeded_sample_limit_total[5m]) > 0
+        for: 3m
+        labels:
+          severity: warning
+          component: monitoring
+        annotations:
+          summary: "High Prometheus scrape errors"
+          description: "Prometheus is experiencing scrape errors: {{ $value | humanize }} errors/sec."
+
+  - name: database_alerts
+    interval: 30s
+    rules:
+      - alert: PostgresDown
+        expr: up{job="postgres"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: database
+        annotations:
+          summary: "PostgreSQL is down"
+          description: "PostgreSQL database has been down for more than 1 minute."
+
+      - alert: RedisDown
+        expr: up{job="redis"} == 0
+        for: 1m
+        labels:
+          severity: warning
+          component: cache
+        annotations:
+          summary: "Redis is down"
+          description: "Redis cache has been down for more than 1 minute."
+
+      - alert: HighDatabaseConnections
+        expr: pg_stat_database_numbackends > 80
+        for: 5m
+        labels:
+          severity: warning
+          component: database
+        annotations:
+          summary: "High number of database connections"
+          description: "PostgreSQL has {{ $value }} active connections."
+
+  - name: api_alerts
+    interval: 30s
+    rules:
+      - alert: HighAPIErrorRate
+        expr: rate(http_requests_total{status=~"5.."}[5m]) / rate(http_requests_total[5m]) * 100 > 5
+        for: 3m
+        labels:
+          severity: warning
+          component: api
+        annotations:
+          summary: "High API error rate"
+          description: "API error rate is {{ $value | humanize }}% over the last 5 minutes."
+
+      - alert: APIHighLatency
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 2
+        for: 5m
+        labels:
+          severity: warning
+          component: api
+        annotations:
+          summary: "API high latency detected"
+          description: "95th percentile API latency is {{ $value | humanize }}s."

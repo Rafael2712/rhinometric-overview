@@ -1,0 +1,19 @@
+{
+  "dashboard": {
+    "title": "🐳 cAdvisor - Container Metrics",
+    "tags": ["cadvisor", "containers", "docker", "enterprise"],
+    "timezone": "browser",
+    "schemaVersion": 38,
+    "version": 1,
+    "refresh": "30s",
+    "panels": [
+      {"id": 1, "title": "📊 CPU Usage by Container", "type": "timeseries", "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0}, "datasource": {"type": "prometheus", "uid": "ff1lws6mz39xcc"}, "targets": [{"expr": "sum(rate(container_cpu_usage_seconds_total{name=~\".+\"}[5m])) by (name) * 100", "legendFormat": "{{name}}", "refId": "A"}], "fieldConfig": {"defaults": {"unit": "percent", "custom": {"drawStyle": "line", "lineInterpolation": "smooth", "fillOpacity": 10, "stacking": {"mode": "normal"}}}}},
+      {"id": 2, "title": "💾 Memory Usage by Container", "type": "timeseries", "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0}, "datasource": {"type": "prometheus", "uid": "ff1lws6mz39xcc"}, "targets": [{"expr": "container_memory_usage_bytes{name=~\".+\"}", "legendFormat": "{{name}}", "refId": "A"}], "fieldConfig": {"defaults": {"unit": "bytes", "custom": {"drawStyle": "line", "lineInterpolation": "smooth", "fillOpacity": 10, "stacking": {"mode": "normal"}}}}},
+      {"id": 3, "title": "🌐 Network I/O by Container", "type": "timeseries", "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8}, "datasource": {"type": "prometheus", "uid": "ff1lws6mz39xcc"}, "targets": [{"expr": "sum(rate(container_network_receive_bytes_total{name=~\".+\"}[5m])) by (name)", "legendFormat": "RX {{name}}", "refId": "A"}, {"expr": "sum(rate(container_network_transmit_bytes_total{name=~\".+\"}[5m])) by (name)", "legendFormat": "TX {{name}}", "refId": "B"}], "fieldConfig": {"defaults": {"unit": "Bps", "custom": {"drawStyle": "line", "lineInterpolation": "smooth", "fillOpacity": 20}}}},
+      {"id": 4, "title": "💿 Filesystem I/O by Container", "type": "timeseries", "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8}, "datasource": {"type": "prometheus", "uid": "ff1lws6mz39xcc"}, "targets": [{"expr": "sum(rate(container_fs_reads_bytes_total{name=~\".+\"}[5m])) by (name)", "legendFormat": "Read {{name}}", "refId": "A"}, {"expr": "sum(rate(container_fs_writes_bytes_total{name=~\".+\"}[5m])) by (name)", "legendFormat": "Write {{name}}", "refId": "B"}], "fieldConfig": {"defaults": {"unit": "Bps", "custom": {"drawStyle": "line", "lineInterpolation": "smooth", "fillOpacity": 20}}}},
+      {"id": 5, "title": "🔄 Container Restarts", "type": "stat", "gridPos": {"h": 6, "w": 12, "x": 0, "y": 16}, "datasource": {"type": "prometheus", "uid": "ff1lws6mz39xcc"}, "targets": [{"expr": "sum(container_spec_cpu_quota{name=~\".+\"})", "refId": "A"}], "fieldConfig": {"defaults": {"unit": "short", "color": {"mode": "palette-classic"}}}, "options": {"graphMode": "area", "colorMode": "value"}},
+      {"id": 6, "title": "📊 Top Memory Consumers", "type": "bargauge", "gridPos": {"h": 6, "w": 12, "x": 12, "y": 16}, "datasource": {"type": "prometheus", "uid": "ff1lws6mz39xcc"}, "targets": [{"expr": "topk(10, container_memory_usage_bytes{name=~\".+\"})", "legendFormat": "{{name}}", "refId": "A"}], "fieldConfig": {"defaults": {"unit": "bytes", "color": {"mode": "palette-classic"}}}, "options": {"orientation": "horizontal", "displayMode": "gradient"}}
+    ]
+  },
+  "overwrite": true
+}

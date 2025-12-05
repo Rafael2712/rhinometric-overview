@@ -1,0 +1,320 @@
+# RHINOMETRIC TRIAL VERSION - 6 MONTHS (180 days)
+# Stack de observabilidad completo: Grafana + Prometheus + Loki + Tempo
+# Compatible con Docker Compose v2+ (atributo 'version' removido)
+
+services:
+  # =================================
+  # TIER 1: LICENCIAMIENTO (PRIMERO)
+  # =================================
+  
+  license-server:
+    build:
+      context: ./licensing
+      dockerfile: Dockerfile
+    container_name: rhinometric-license-server
+    environment:
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-trial_rhinometric_2024}@postgres:5432/rhinometric_trial
+      JWT_SECRET: ${JWT_SECRET:-trial_jwt_secret_change_this_in_production}
+      LICENSE_DURATION_DAYS: 180
+      FLASK_ENV: production
+    volumes:
+      - ./licenses:/app/licenses:ro
+      - license_data:/data
+    networks:
+      - rhinometric_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # =================================
+  # TIER 2: BASE DE DATOS Y CACHE
+  # =================================
+  
+  postgres:
+    image: postgres:15
+    container_name: rhinometric-postgres
+    environment:
+      POSTGRES_DB: rhinometric_trial
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-trial_rhinometric_2024}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db:/docker-entrypoint-initdb.d
+    networks:
+      - rhinometric_network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.3'
+          memory: 512M
+
+  redis:
+    image: redis:alpine
+    container_name: rhinometric-redis
+    command: redis-server --appendonly yes --maxmemory 128mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    networks:
+      - rhinometric_network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.1'
+          memory: 128M
+
+  # =================================
+  # TIER 3: OBSERVABILIDAD CORE
+  # =================================
+  
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: rhinometric-prometheus
+    volumes:
+      - ./config/prometheus-saas.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--web.enable-lifecycle'
+      - '--storage.tsdb.retention.time=1d'  # Trial: 1 día retención
+      - '--storage.tsdb.retention.size=2GB'  # Límite 2GB
+    depends_on:
+      license-server:
+        condition: service_healthy
+    networks:
+      - rhinometric_network
+    ports:
+      - "9090:9090"
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 1G
+
+  loki:
+    image: grafana/loki:latest
+    container_name: rhinometric-loki
+    volumes:
+      - ./config/loki-saas.yml:/etc/loki/local-config.yaml:ro
+      - loki_data:/loki
+    command: -config.file=/etc/loki/local-config.yaml
+    depends_on:
+      license-server:
+        condition: service_healthy
+    networks:
+      - rhinometric_network
+    ports:
+      - "3100:3100"
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.3'
+          memory: 512M
+
+  tempo:
+    image: grafana/tempo:latest
+    container_name: rhinometric-tempo
+    user: "0:0"
+    volumes:
+      - ./config/tempo-saas.yml:/etc/tempo/tempo.yaml:ro
+      - tempo_data:/tmp/tempo
+    command: -config.file=/etc/tempo/tempo.yaml
+    depends_on:
+      license-server:
+        condition: service_healthy
+    networks:
+      - rhinometric_network
+    ports:
+      - "3200:3200"   # Tempo HTTP
+      - "14268:14268" # Jaeger HTTP
+      - "4317:4317"   # OTLP gRPC
+      - "4318:4318"   # OTLP HTTP
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.3'
+          memory: 256M
+
+  # TELEMETRYGEN DESHABILITADO PARA AHORRAR RECURSOS
+  # telemetrygen:
+  #   image: ghcr.io/open-telemetry/opentelemetry-collector-contrib/telemetrygen:latest
+  #   container_name: rhinometric-telemetrygen
+  tempo:
+    image: grafana/tempo:latest
+    container_name: rhinometric-tempo
+    user: "0:0"
+    volumes:
+      - ./config/tempo-saas.yml:/etc/tempo/tempo.yaml:ro
+      - tempo_data:/tmp/tempo
+    command: -config.file=/etc/tempo/tempo.yaml
+    depends_on:
+      license-server:
+        condition: service_healthy
+    networks:
+      - rhinometric_network
+    ports:
+      - "3200:3200"   # Tempo HTTP
+      - "14268:14268" # Jaeger HTTP
+      - "4317:4317"   # OTLP gRPC
+      - "4318:4318"   # OTLP HTTP
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.3'
+          memory: 256M
+
+  blackbox-exporter:
+    image: prom/blackbox-exporter:latest
+    container_name: rhinometric-blackbox-exporter
+    networks:
+      - rhinometric_network
+    volumes:
+      - ./config/blackbox.yml:/etc/blackbox_exporter/config.yml:ro
+    command:
+      - --config.file=/etc/blackbox_exporter/config.yml
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.1'
+          memory: 64M
+
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:latest
+    container_name: rhinometric-postgres-exporter
+    environment:
+      - DATA_SOURCE_NAME=postgresql://postgres:${POSTGRES_PASSWORD:-trial_rhinometric_2024}@postgres:5432/rhinometric_trial?sslmode=disable
+    networks:
+      - rhinometric_network
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.1'
+          memory: 64M
+
+  # =================================
+  # TIER 6: LICENSE DASHBOARD
+  # =================================
+  
+  license-dashboard:
+    build:
+      context: ./license-dashboard
+      dockerfile: Dockerfile
+    container_name: rhinometric-license-dashboard
+    environment:
+      LICENSE_DB_PATH: /data/licenses.db
+      DASHBOARD_PORT: 8080
+      DEBUG: "false"
+    volumes:
+      - license_data:/data:ro  # Solo lectura
+    depends_on:
+      license-server:
+        condition: service_healthy
+    networks:
+      - rhinometric_network
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.3'
+          memory: 256M
+
+  # =================================
+  # TIER 7: REVERSE PROXY
+  # =================================
+  
+  nginx:
+    image: nginx:alpine
+    container_name: rhinometric-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./config/nginx-trial.conf:/etc/nginx/nginx.conf:ro
+      - ./certs:/etc/nginx/certs:ro
+    depends_on:
+      - grafana
+      - prometheus
+      - loki
+      - tempo
+      - alertmanager
+      - license-dashboard
+    networks:
+      - rhinometric_network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.3'
+          memory: 256M
+
+  promtail:
+    image: grafana/promtail:latest
+    container_name: rhinometric-promtail
+    command: -config.file=/etc/promtail/config.yml
+    volumes:
+      - ./config/promtail-config.yml:/etc/promtail/config.yml:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - rhinometric_network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.2'
+          memory: 128M
+
+# =================================
+# NETWORKS
+# =================================
+
+networks:
+  rhinometric_network:
+    driver: bridge
+
+# =================================
+# VOLUMES
+# =================================
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+  loki_data:
+    driver: local
+  tempo_data:
+    driver: local
+  license_data:
+    driver: local
+
+# =================================
+# RECURSOS TOTALES TRIAL:
+# CPU: ~4.9 vCPUs
+# RAM: ~8.8 GB
+# Retención: 7 días
+# Duración: 180 días (6 meses)
+# Servicios: 11 contenedores
+# =================================

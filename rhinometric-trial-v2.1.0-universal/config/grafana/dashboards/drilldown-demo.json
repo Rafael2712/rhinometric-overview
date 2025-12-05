@@ -1,0 +1,126 @@
+{
+  "uid": "rhinometric-drilldown-demo",
+  "title": "[DRILLDOWN] Metrics - Logs - Traces",
+  "tags": [
+    "rhinometric",
+    "drilldown",
+    "demo"
+  ],
+  "timezone": "browser",
+  "editable": true,
+  "graphTooltip": 1,
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "panels": [
+    {
+      "gridPos": {
+        "h": 6,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "title": "[GUIDE] Como usar el Drilldown",
+      "type": "text",
+      "options": {
+        "mode": "markdown",
+        "content": "# Drilldown: Navegacion entre Metricas, Logs y Traces\n\nRhinometric v2.1.0 incluye **drilldown completo** entre las 3 pilares de observabilidad:\n\n---\n\n## 1. Metrics -> Traces (Prometheus Exemplars)\n\n**Donde?** En cualquier grafico de Prometheus que muestre metricas con exemplars.\n\n**Como funciona?**\n- Haz hover sobre un punto en el grafico\n- Si ves un **circulo azul** junto al valor, haz click\n- Te llevara directamente a la trace en Tempo\n\n**Ejemplo:** Ve al dashboard \"Prometheus Monitoring\" -> panel \"Query Rate\" -> busca circulos azules\n\n---\n\n## 2. Logs -> Traces (Loki Derived Fields)\n\n**Donde?** En el dashboard \"Loki Logs Explorer\" o en Explore -> Loki.\n\n**Como funciona?**\n- Los logs que contengan `trace_id=XXXXX` mostraran un boton **\"Tempo\"**\n- Haz click en el boton para ver la trace completa\n- Funciona con cualquier formato: `trace_id=abc123` o `\"trace_id\": \"abc123\"`\n\n**Ejemplo:** \n1. Ve a **Explore** (icono de brujula en el menu izquierdo)\n2. Selecciona datasource **Loki**\n3. Query: `{container=\"rhinometric-api-proxy\"} |= \"trace_id\"`\n4. Busca el boton **\"Tempo\"** junto a cada log\n\n---\n\n## 3. Traces -> Logs (Tempo TracesToLogs)\n\n**Donde?** En el dashboard \"Distributed Tracing\" o en Explore -> Tempo.\n\n**Como funciona?**\n- Abre cualquier trace en Tempo\n- Haz click en un **span** (rectangulo en el timeline)\n- En el panel lateral, veras un boton **\"Logs for this span\"**\n- Te llevara a Loki con los logs filtrados por ese servicio y tiempo\n\n**Ejemplo:**\n1. Ve a **Explore** -> **Tempo**\n2. Selecciona la ultima trace disponible\n3. Click en cualquier span\n4. Busca el boton **\"Logs for this span\"** en la barra superior del panel de detalles\n\n---\n\n## 4. Traces -> Metrics (Tempo TracesToMetrics)\n\n**Donde?** En Explore -> Tempo.\n\n**Como funciona?**\n- Abre cualquier trace\n- Haz click en la pestana **\"Metrics\"** (junto a \"Logs\")\n- Veras automaticamente las metricas de Prometheus relacionadas con ese servicio\n\n---\n\n## Tips\n\n- **Para probar el drilldown completo**, necesitas:\n  1. Metricas con exemplars (Prometheus)\n  2. Logs con `trace_id` (Loki)\n  3. Traces activas (Tempo)\n\n- **El trace generator** ya esta enviando traces. Para ver logs con trace_id, ejecuta:\n  ```bash\n  docker logs rhinometric-api-proxy | grep trace_id\n  ```\n\n- **Los datasources ya estan configurados**, solo navega y explora!\n\n---\n\n## Rutas de Drilldown Disponibles\n\n| Desde | Hacia | Metodo | Estado |\n|-------|-------|--------|--------|\n| **Prometheus** | Tempo | Exemplars (circulos azules) | Configurado |\n| **Loki** | Tempo | Boton \"Tempo\" en logs | Configurado |\n| **Tempo** | Loki | Boton \"Logs for this span\" | Configurado |\n| **Tempo** | Prometheus | Pestana \"Metrics\" | Configurado |\n"
+      }
+    },
+    {
+      "gridPos": {
+        "h": 10,
+        "w": 12,
+        "x": 0,
+        "y": 6
+      },
+      "id": 2,
+      "title": "[DEMO] Metricas con Exemplars",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(prometheus_http_requests_total[5m])",
+          "refId": "A",
+          "legendFormat": "{{handler}}"
+        }
+      ],
+      "options": {
+        "tooltip": {
+          "mode": "multi"
+        },
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10
+          },
+          "color": {
+            "mode": "palette-classic"
+          }
+        }
+      }
+    },
+    {
+      "gridPos": {
+        "h": 10,
+        "w": 12,
+        "x": 12,
+        "y": 6
+      },
+      "id": 3,
+      "title": "[DEMO] Logs con TraceID",
+      "type": "logs",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "expr": "{container=~\"rhinometric-.+\"} |= \"trace\"",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "showLabels": false,
+        "showCommonLabels": false,
+        "wrapLogMessage": true,
+        "sortOrder": "Descending"
+      }
+    },
+    {
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 16
+      },
+      "id": 4,
+      "title": "[QUICK ACCESS] Herramientas",
+      "type": "text",
+      "options": {
+        "mode": "markdown",
+        "content": "## Enlaces Directos\n\n| Herramienta | URL | Descripcion |\n|-------------|-----|-------------|\n| **Explore** | http://localhost:3000/explore | Interfaz para consultas ad-hoc |\n| **Prometheus** | http://localhost:9090 | Query directo a metricas |\n| **Loki** | http://localhost:3100 | API de logs |\n| **Tempo** | http://localhost:3200 | API de traces |\n| **API Connector** | http://localhost:8091 | Nueva UI para conectar APIs |\n\n---\n\n### Comandos de Prueba\n\n```bash\n# Ver logs con trace_id\ndocker logs rhinometric-api-proxy | grep -i trace\n\n# Ver traces en Tempo\ncurl http://localhost:3200/api/search?limit=10\n\n# Ver metricas del API Proxy\ncurl http://localhost:8090/api/metrics/prometheus\n```\n"
+      }
+    }
+  ]
+}

@@ -1,0 +1,288 @@
+{
+  "dashboard": {
+    "title": "🔍 Tempo - Distributed Tracing",
+    "tags": ["tempo", "tracing", "distributed", "enterprise"],
+    "timezone": "browser",
+    "schemaVersion": 38,
+    "version": 1,
+    "refresh": "30s",
+    "panels": [
+      {
+        "id": 1,
+        "title": "📊 RED Metrics - Request Rate",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 8, "x": 0, "y": 0},
+        "datasource": {"type": "prometheus", "uid": "ff1lws6mz39xcc"},
+        "targets": [
+          {
+            "expr": "sum(rate(tempo_request_message_bytes_count[5m])) by (route)",
+            "legendFormat": "{{route}}",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "reqps",
+            "custom": {"drawStyle": "line", "lineInterpolation": "smooth", "fillOpacity": 20}
+          }
+        }
+      },
+      {
+        "id": 2,
+        "title": "❌ RED Metrics - Error Rate",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 8, "x": 8, "y": 0},
+        "datasource": {"type": "prometheus", "uid": "ff1lws6mz39xcc"},
+        "targets": [
+          {
+            "expr": "sum(rate(tempo_request_message_bytes_count{status_code!=\"200\"}[5m])) by (route)",
+            "legendFormat": "{{route}} errors",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "reqps",
+            "color": {"mode": "thresholds"},
+            "thresholds": {
+              "steps": [
+                {"value": 0, "color": "green"},
+                {"value": 0.1, "color": "yellow"},
+                {"value": 1, "color": "red"}
+              ]
+            },
+            "custom": {"drawStyle": "line", "lineInterpolation": "smooth", "fillOpacity": 20}
+          }
+        }
+      },
+      {
+        "id": 3,
+        "title": "⏱️ RED Metrics - Duration (Latency)",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 8, "x": 16, "y": 0},
+        "datasource": {"type": "prometheus", "uid": "ff1lws6mz39xcc"},
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.50, sum(rate(tempo_request_duration_seconds_bucket[5m])) by (le, route))",
+            "legendFormat": "p50 - {{route}}",
+            "refId": "A"
+          },
+          {
+            "expr": "histogram_quantile(0.95, sum(rate(tempo_request_duration_seconds_bucket[5m])) by (le, route))",
+            "legendFormat": "p95 - {{route}}",
+            "refId": "B"
+          },
+          {
+            "expr": "histogram_quantile(0.99, sum(rate(tempo_request_duration_seconds_bucket[5m])) by (le, route))",
+            "legendFormat": "p99 - {{route}}",
+            "refId": "C"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "s",
+            "custom": {"drawStyle": "line", "lineInterpolation": "smooth", "fillOpacity": 10}
+          }
+        }
+      },
+      {
+        "id": 4,
+        "title": "🗂️ Total Traces Stored",
+        "type": "stat",
+        "gridPos": {"h": 6, "w": 6, "x": 0, "y": 8},
+        "datasource": {"type": "prometheus", "uid": "ff1lws6mz39xcc"},
+        "targets": [
+          {
+            "expr": "sum(tempodb_backend_objects_total)",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "color": {"mode": "thresholds"},
+            "thresholds": {
+              "steps": [
+                {"value": 0, "color": "green"},
+                {"value": 10000, "color": "blue"},
+                {"value": 50000, "color": "purple"}
+              ]
+            }
+          }
+        },
+        "options": {"graphMode": "area", "colorMode": "value", "textMode": "value_and_name"}
+      },
+      {
+        "id": 5,
+        "title": "📈 Ingestion Rate",
+        "type": "stat",
+        "gridPos": {"h": 6, "w": 6, "x": 6, "y": 8},
+        "datasource": {"type": "prometheus", "uid": "ff1lws6mz39xcc"},
+        "targets": [
+          {
+            "expr": "sum(rate(tempo_ingester_bytes_received_total[5m]))",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "Bps",
+            "color": {"mode": "thresholds"},
+            "thresholds": {
+              "steps": [
+                {"value": 0, "color": "green"},
+                {"value": 1000000, "color": "yellow"}
+              ]
+            }
+          }
+        },
+        "options": {"graphMode": "area", "colorMode": "value", "textMode": "value_and_name"}
+      },
+      {
+        "id": 6,
+        "title": "💾 Storage Usage",
+        "type": "stat",
+        "gridPos": {"h": 6, "w": 6, "x": 12, "y": 8},
+        "datasource": {"type": "prometheus", "uid": "ff1lws6mz39xcc"},
+        "targets": [
+          {
+            "expr": "sum(tempodb_backend_bytes_total)",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "bytes",
+            "color": {"mode": "thresholds"},
+            "thresholds": {
+              "steps": [
+                {"value": 0, "color": "green"},
+                {"value": 1073741824, "color": "yellow"},
+                {"value": 10737418240, "color": "red"}
+              ]
+            }
+          }
+        },
+        "options": {"graphMode": "area", "colorMode": "value", "textMode": "value_and_name"}
+      },
+      {
+        "id": 7,
+        "title": "🔄 Compaction Blocks",
+        "type": "stat",
+        "gridPos": {"h": 6, "w": 6, "x": 18, "y": 8},
+        "datasource": {"type": "prometheus", "uid": "ff1lws6mz39xcc"},
+        "targets": [
+          {
+            "expr": "sum(tempodb_compaction_blocks_total)",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "color": {"mode": "palette-classic"}
+          }
+        },
+        "options": {"graphMode": "area", "colorMode": "value", "textMode": "value_and_name"}
+      },
+      {
+        "id": 8,
+        "title": "🔍 All Traces (Last 1h)",
+        "type": "table",
+        "gridPos": {"h": 12, "w": 24, "x": 0, "y": 14},
+        "datasource": {"type": "tempo", "uid": "cf1m5g6s0xvy8f"},
+        "targets": [
+          {
+            "queryType": "traceql",
+            "query": "{}",
+            "limit": 50,
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "custom": {"displayMode": "auto", "filterable": true}
+          }
+        },
+        "transformations": [
+          {
+            "id": "organize",
+            "options": {
+              "renameByName": {
+                "traceID": "Trace ID",
+                "rootServiceName": "Service",
+                "rootTraceName": "Operation",
+                "durationMs": "Duration (ms)"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "id": 9,
+        "title": "⚠️ Error Traces",
+        "type": "table",
+        "gridPos": {"h": 10, "w": 24, "x": 0, "y": 26},
+        "datasource": {"type": "tempo", "uid": "cf1m5g6s0xvy8f"},
+        "targets": [
+          {
+            "queryType": "traceql",
+            "query": "{status=error}",
+            "limit": 30,
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "custom": {"displayMode": "color-background"}
+          }
+        }
+      },
+      {
+        "id": 10,
+        "title": "📊 Traces by Service",
+        "type": "piechart",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 36},
+        "datasource": {"type": "prometheus", "uid": "ff1lws6mz39xcc"},
+        "targets": [
+          {
+            "expr": "sum by (service_name) (tempodb_backend_objects_total)",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "legend": {"displayMode": "table", "placement": "right", "values": ["value", "percent"]},
+          "pieType": "donut"
+        }
+      },
+      {
+        "id": 11,
+        "title": "⏱️ Query Queue Duration",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 36},
+        "datasource": {"type": "prometheus", "uid": "ff1lws6mz39xcc"},
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.99, sum(rate(tempo_query_frontend_queue_duration_seconds_bucket[5m])) by (le))",
+            "legendFormat": "p99 queue duration",
+            "refId": "A"
+          },
+          {
+            "expr": "histogram_quantile(0.50, sum(rate(tempo_query_frontend_queue_duration_seconds_bucket[5m])) by (le))",
+            "legendFormat": "p50 queue duration",
+            "refId": "B"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "s",
+            "custom": {"drawStyle": "line", "lineInterpolation": "smooth", "fillOpacity": 20}
+          }
+        }
+      }
+    ]
+  },
+  "overwrite": true,
+  "folderId": 0,
+  "folderUid": ""
+}

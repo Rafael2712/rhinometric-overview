@@ -1,0 +1,110 @@
+# Terraform Variables - Oracle Cloud
+# Rhinometric v2.1.0 Deployment
+#
+# INSTRUCCIONES:
+# 1. Copiar este archivo: cp terraform.tfvars.example terraform.tfvars
+# 2. Completar con tus credenciales de Oracle Cloud
+# 3. NUNCA hacer commit de terraform.tfvars (está en .gitignore)
+
+# ========================================
+# Oracle Cloud Credentials
+# ========================================
+
+# OCID del tenancy
+# Obtener en: https://cloud.oracle.com/ → Profile → Tenancy → OCID
+tenancy_ocid = "ocid1.tenancy.oc1..aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+
+# OCID del usuario
+# Obtener en: https://cloud.oracle.com/ → Profile → User Settings → OCID
+user_ocid = "ocid1.user.oc1..aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+
+# Fingerprint de la API key
+# Obtener en: https://cloud.oracle.com/ → Profile → API Keys → Add API Key
+# El fingerprint se muestra después de agregar la key
+fingerprint = "aa:bb:cc:dd:ee:ff:00:11:22:33:44:55:66:77:88:99"
+
+# Ruta a la private key
+# Descargada al crear la API Key
+private_key_path = "~/.oci/oci_api_key.pem"
+
+# Región de Oracle Cloud
+# Opciones: us-ashburn-1, us-phoenix-1, eu-frankfurt-1, uk-london-1, ap-tokyo-1
+region = "us-ashburn-1"
+
+# ========================================
+# Compute Configuration
+# ========================================
+
+# Shape de la instancia (tipo de VM)
+# VM.Standard.E4.Flex permite configurar CPU/RAM flexible
+instance_shape = "VM.Standard.E4.Flex"
+
+# OCPUs (Oracle CPUs)
+# Rhinometric necesita mínimo 4, recomendado 4-8
+instance_ocpus = 4
+
+# RAM en GB
+# Rhinometric necesita mínimo 8 GB, recomendado 16 GB
+instance_memory_in_gbs = 16
+
+# Nombre de la instancia
+instance_display_name = "rhinometric-v2-1-0-trial"
+
+# ========================================
+# Storage
+# ========================================
+
+# Tamaño del disco boot en GB
+# Rhinometric necesita mínimo 50 GB, recomendado 100-200 GB
+boot_volume_size_in_gbs = 100
+
+# ========================================
+# Network Security
+# ========================================
+
+# CIDR permitido para SSH
+# RECOMENDADO: Cambiar a tu IP pública para mayor seguridad
+# Ejemplo: "203.0.113.5/32"
+# Para obtener tu IP: curl ifconfig.me
+allowed_ssh_cidr = "0.0.0.0/0"
+
+# CIDR permitido para HTTP/HTTPS (Grafana)
+# Para acceso público, dejar "0.0.0.0/0"
+# Para restringir, usar tu IP: "203.0.113.5/32"
+allowed_http_cidr = "0.0.0.0/0"
+
+# ========================================
+# SSH Key
+# ========================================
+
+# Ruta a la SSH public key
+# Generar con: ssh-keygen -t rsa -b 4096 -C "rhinometric@oracle"
+ssh_public_key_path = "~/.ssh/id_rsa.pub"
+
+# ========================================
+# Rhinometric Passwords
+# ========================================
+
+# Password de Grafana admin
+# CAMBIAR por un password seguro
+grafana_admin_password = "RhinometricSecure2025!"
+
+# Password de PostgreSQL
+# CAMBIAR por un password seguro
+postgres_password = "PostgresSecure2025!"
+
+# Password de Redis
+# CAMBIAR por un password seguro
+redis_password = "RedisSecure2025!"
+
+# ========================================
+# Tags
+# ========================================
+
+tags = {
+  Environment = "trial"
+  Project     = "rhinometric"
+  Version     = "2.1.0"
+  ManagedBy   = "terraform"
+  Owner       = "tu-nombre"
+}

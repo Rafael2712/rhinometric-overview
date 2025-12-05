@@ -1,0 +1,19 @@
+{
+  "dashboard": {
+    "title": "🖥️ Node Exporter - System Resources",
+    "tags": ["node-exporter", "system", "resources", "enterprise"],
+    "timezone": "browser",
+    "schemaVersion": 38,
+    "version": 1,
+    "refresh": "30s",
+    "panels": [
+      {"id": 1, "title": "💻 CPU Usage by Core", "type": "timeseries", "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0}, "datasource": {"type": "prometheus", "uid": "ff1lws6mz39xcc"}, "targets": [{"expr": "100 - (avg by (cpu) (rate(node_cpu_seconds_total{mode=\"idle\"}[5m])) * 100)", "legendFormat": "CPU {{cpu}}", "refId": "A"}], "fieldConfig": {"defaults": {"unit": "percent", "min": 0, "max": 100, "custom": {"drawStyle": "line", "lineInterpolation": "smooth", "fillOpacity": 20, "stacking": {"mode": "none"}}}}},
+      {"id": 2, "title": "💾 Memory Details", "type": "timeseries", "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0}, "datasource": {"type": "prometheus", "uid": "ff1lws6mz39xcc"}, "targets": [{"expr": "node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes", "legendFormat": "Used", "refId": "A"}, {"expr": "node_memory_Cached_bytes", "legendFormat": "Cached", "refId": "B"}, {"expr": "node_memory_Buffers_bytes", "legendFormat": "Buffers", "refId": "C"}, {"expr": "node_memory_SwapTotal_bytes - node_memory_SwapFree_bytes", "legendFormat": "Swap Used", "refId": "D"}], "fieldConfig": {"defaults": {"unit": "bytes", "custom": {"drawStyle": "line", "lineInterpolation": "smooth", "fillOpacity": 10, "stacking": {"mode": "normal"}}}}},
+      {"id": 3, "title": "💿 Disk I/O", "type": "timeseries", "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8}, "datasource": {"type": "prometheus", "uid": "ff1lws6mz39xcc"}, "targets": [{"expr": "rate(node_disk_read_bytes_total[5m])", "legendFormat": "Read {{device}}", "refId": "A"}, {"expr": "rate(node_disk_written_bytes_total[5m])", "legendFormat": "Write {{device}}", "refId": "B"}], "fieldConfig": {"defaults": {"unit": "Bps", "custom": {"drawStyle": "line", "lineInterpolation": "smooth", "fillOpacity": 20}}}},
+      {"id": 4, "title": "🌐 Network Traffic", "type": "timeseries", "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8}, "datasource": {"type": "prometheus", "uid": "ff1lws6mz39xcc"}, "targets": [{"expr": "rate(node_network_receive_bytes_total{device!=\"lo\"}[5m])", "legendFormat": "RX {{device}}", "refId": "A"}, {"expr": "rate(node_network_transmit_bytes_total{device!=\"lo\"}[5m])", "legendFormat": "TX {{device}}", "refId": "B"}], "fieldConfig": {"defaults": {"unit": "Bps", "custom": {"drawStyle": "line", "lineInterpolation": "smooth", "fillOpacity": 20}}}},
+      {"id": 5, "title": "📂 Filesystem Usage", "type": "bargauge", "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16}, "datasource": {"type": "prometheus", "uid": "ff1lws6mz39xcc"}, "targets": [{"expr": "(1 - (node_filesystem_avail_bytes{fstype!=\"tmpfs\"} / node_filesystem_size_bytes{fstype!=\"tmpfs\"})) * 100", "legendFormat": "{{mountpoint}}", "refId": "A"}], "fieldConfig": {"defaults": {"unit": "percent", "min": 0, "max": 100, "color": {"mode": "thresholds"}, "thresholds": {"steps": [{"value": 0, "color": "green"}, {"value": 70, "color": "yellow"}, {"value": 90, "color": "red"}]}}}, "options": {"orientation": "horizontal", "displayMode": "gradient"}},
+      {"id": 6, "title": "⚖️ Load Average", "type": "timeseries", "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16}, "datasource": {"type": "prometheus", "uid": "ff1lws6mz39xcc"}, "targets": [{"expr": "node_load1", "legendFormat": "1m", "refId": "A"}, {"expr": "node_load5", "legendFormat": "5m", "refId": "B"}, {"expr": "node_load15", "legendFormat": "15m", "refId": "C"}], "fieldConfig": {"defaults": {"unit": "short", "custom": {"drawStyle": "line", "lineInterpolation": "smooth", "fillOpacity": 10}}}}
+    ]
+  },
+  "overwrite": true
+}

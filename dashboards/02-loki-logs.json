@@ -1,0 +1,171 @@
+{
+  "dashboard": {
+    "title": "📝 Loki - Logs Analysis",
+    "tags": ["loki", "logs", "analysis", "enterprise"],
+    "timezone": "browser",
+    "schemaVersion": 38,
+    "version": 1,
+    "refresh": "30s",
+    "panels": [
+      {
+        "id": 1,
+        "title": "📊 Log Volume by Service",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+        "datasource": {"type": "loki", "uid": "df1lwsdy0ecqof"},
+        "targets": [
+          {
+            "expr": "sum by (service_name) (rate({service_name=~\".+\"}[5m]))",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "logs/s",
+            "custom": {"drawStyle": "line", "lineInterpolation": "smooth", "fillOpacity": 30, "stacking": {"mode": "normal"}}
+          }
+        }
+      },
+      {
+        "id": 2,
+        "title": "🔢 Total Log Entries",
+        "type": "stat",
+        "gridPos": {"h": 8, "w": 6, "x": 12, "y": 0},
+        "datasource": {"type": "loki", "uid": "df1lwsdy0ecqof"},
+        "targets": [
+          {
+            "expr": "sum(count_over_time({service_name=~\".+\"}[1h]))",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "color": {"mode": "thresholds"},
+            "thresholds": {
+              "steps": [
+                {"value": 0, "color": "green"},
+                {"value": 10000, "color": "blue"},
+                {"value": 100000, "color": "purple"}
+              ]
+            }
+          }
+        },
+        "options": {"graphMode": "area", "colorMode": "value", "textMode": "value_and_name"}
+      },
+      {
+        "id": 3,
+        "title": "⚠️ Error Rate",
+        "type": "stat",
+        "gridPos": {"h": 8, "w": 6, "x": 18, "y": 0},
+        "datasource": {"type": "loki", "uid": "df1lwsdy0ecqof"},
+        "targets": [
+          {
+            "expr": "sum(rate({service_name=~\".+\"} |~ \"(?i)(error|exception|fail)\" [5m]))",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "logs/s",
+            "color": {"mode": "thresholds"},
+            "thresholds": {
+              "steps": [
+                {"value": 0, "color": "green"},
+                {"value": 0.1, "color": "yellow"},
+                {"value": 1, "color": "red"}
+              ]
+            }
+          }
+        },
+        "options": {"graphMode": "area", "colorMode": "value", "textMode": "value_and_name"}
+      },
+      {
+        "id": 4,
+        "title": "📝 Live Logs Stream",
+        "type": "logs",
+        "gridPos": {"h": 14, "w": 24, "x": 0, "y": 8},
+        "datasource": {"type": "loki", "uid": "df1lwsdy0ecqof"},
+        "targets": [
+          {
+            "expr": "{service_name=~\".+\"}",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "showTime": true,
+          "showLabels": true,
+          "showCommonLabels": false,
+          "wrapLogMessage": true,
+          "prettifyLogMessage": false,
+          "enableLogDetails": true,
+          "dedupStrategy": "none",
+          "sortOrder": "Descending"
+        }
+      },
+      {
+        "id": 5,
+        "title": "❌ Error Logs",
+        "type": "logs",
+        "gridPos": {"h": 12, "w": 24, "x": 0, "y": 22},
+        "datasource": {"type": "loki", "uid": "df1lwsdy0ecqof"},
+        "targets": [
+          {
+            "expr": "{service_name=~\".+\"} |~ \"(?i)(error|exception|fail|critical)\"",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "showTime": true,
+          "showLabels": true,
+          "wrapLogMessage": true,
+          "enableLogDetails": true,
+          "sortOrder": "Descending"
+        }
+      },
+      {
+        "id": 6,
+        "title": "📊 Log Severity Distribution",
+        "type": "piechart",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 34},
+        "datasource": {"type": "loki", "uid": "df1lwsdy0ecqof"},
+        "targets": [
+          {
+            "expr": "sum by (level) (count_over_time({service_name=~\".+\"} | json | __error__=\"\" [1h]))",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "legend": {"displayMode": "table", "placement": "right", "values": ["value", "percent"]},
+          "pieType": "donut"
+        }
+      },
+      {
+        "id": 7,
+        "title": "🔍 Top Log Sources",
+        "type": "bargauge",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 34},
+        "datasource": {"type": "loki", "uid": "df1lwsdy0ecqof"},
+        "targets": [
+          {
+            "expr": "topk(10, sum by (service_name) (count_over_time({service_name=~\".+\"}[1h])))",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "color": {"mode": "palette-classic"}
+          }
+        },
+        "options": {
+          "orientation": "horizontal",
+          "displayMode": "gradient"
+        }
+      }
+    ]
+  },
+  "overwrite": true,
+  "folderId": 0,
+  "folderUid": ""
+}

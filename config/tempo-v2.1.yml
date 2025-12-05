@@ -1,0 +1,119 @@
+# ═══════════════════════════════════════════════════════════════════════════
+#  TEMPO CONFIGURATION - RHINOMETRIC v2.1.0 ENTERPRISE
+# ═══════════════════════════════════════════════════════════════════════════
+#
+#  Enhanced distributed tracing with:
+#  - Multiple protocol receivers (OTLP, Jaeger)
+#  - Metrics generation from spans
+#  - Remote write to Prometheus
+#  - 7-day trace retention
+#
+# ═══════════════════════════════════════════════════════════════════════════
+
+server:
+  http_listen_port: 3200
+  log_level: info
+
+distributor:
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+          endpoint: 0.0.0.0:4317
+        http:
+          endpoint: 0.0.0.0:4318
+    jaeger:
+      protocols:
+        thrift_http:
+          endpoint: 0.0.0.0:14268
+        grpc:
+          endpoint: 0.0.0.0:14250
+        thrift_binary:
+          endpoint: 0.0.0.0:6832
+        thrift_compact:
+          endpoint: 0.0.0.0:6831
+
+ingester:
+  max_block_duration: 10m
+  max_block_bytes: 1_000_000
+  complete_block_timeout: 1m
+
+compactor:
+  compaction:
+    block_retention: 168h  # 7 days
+
+storage:
+  trace:
+    backend: local
+    wal:
+      path: /tmp/tempo/wal
+      encoding: snappy
+    local:
+      path: /tmp/tempo/blocks
+    pool:
+      max_workers: 100
+      queue_depth: 10000
+
+querier:
+  frontend_worker:
+    frontend_address: tempo:9095
+  max_concurrent_queries: 10
+
+query_frontend:
+  search:
+    max_duration: 168h  # 7 days
+    default_result_limit: 20
+    max_result_limit: 50
+  trace_by_id:
+    query_timeout: 10s
+
+metrics_generator:
+  registry:
+    external_labels:
+      source: tempo
+      cluster: rhinometric-trial
+      version: "2.1.0"
+  
+  storage:
+    path: /tmp/tempo/generator/wal
+    remote_write:
+      - url: http://prometheus:9090/api/v1/write
+        send_exemplars: true
+        headers:
+          X-Scope-OrgID: tempo
+    
+  traces_storage:
+    path: /tmp/tempo/generator/traces
+  
+  processor:
+    service_graphs:
+      dimensions:
+        - http.method
+        - http.target
+        - http.status_code
+      histogram_buckets: [0.1, 0.2, 0.4, 0.8, 1.0, 1.5, 2.0, 3.0, 4.0, 5.0]
+      peer_attributes:
+        - peer.service
+        - db.name
+        - db.system
+    
+    span_metrics:
+      dimensions:
+        - http.method
+        - http.target
+        - http.status_code
+        - service.version
+      histogram_buckets: [0.002, 0.004, 0.008, 0.016, 0.032, 0.064, 0.128, 0.256, 0.512, 1.024, 2.048, 4.096, 8.192, 16.384]
+      enable_target_info: true
+
+overrides:
+  defaults:
+    metrics_generator:
+      processors: [service-graphs, span-metrics]
+      generate_native_histograms: both
+  per_tenant_override_config: /etc/tempo/overrides.yml
+
+memberlist:
+  abort_if_cluster_join_fails: false
+  join_members:
+    - tempo:7946

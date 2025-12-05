@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rhinometric API Connector</title>
+    <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/@tailwindcss/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .card {
+            backdrop-filter: blur(10px);
+            background: rgba(255, 255, 255, 0.9);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+        }
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.875rem;
+            font-weight: 600;
+        }
+        .status-healthy {
+            background: #10b981;
+            color: white;
+        }
+        .status-unhealthy {
+            background: #ef4444;
+            color: white;
+        }
+        .status-unknown {
+            background: #6b7280;
+            color: white;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 10px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+        }
+        .input-field {
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 10px 16px;
+            width: 100%;
+            transition: border-color 0.3s;
+        }
+        .input-field:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        .logo {
+            font-size: 2rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+    </style>
+</head>
+<body class="min-h-screen py-8 px-4">
+    <div id="app">
+        <!-- Header -->
+        <div class="max-w-6xl mx-auto mb-8">
+            <div class="card rounded-2xl p-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h1 class="logo">🔌 Rhinometric API Connector</h1>
+                        <p class="text-gray-600 mt-2">Conecta APIs externas sin editar código</p>
+                    </div>
+                    <button @click="showForm = !showForm" class="btn-primary">
+                        <span v-if="!showForm">➕ Nueva API</span>
+                        <span v-else>✕ Cancelar</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Form (when visible) -->
+        <div v-if="showForm" class="max-w-6xl mx-auto mb-8">
+            <div class="card rounded-2xl p-8">
+                <h2 class="text-2xl font-bold mb-6 text-gray-800">Agregar Nueva API</h2>
+                <form @submit.prevent="addApi">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">Nombre</label>
+                            <input v-model="newApi.name" type="text" required class="input-field" 
+                                   placeholder="ej: coindesk_api" />
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">Endpoint URL</label>
+                            <input v-model="newApi.endpoint" type="url" required class="input-field" 
+                                   placeholder="https://api.example.com/data" />
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">Tipo de Autenticación</label>
+                            <select v-model="newApi.authType" class="input-field">
+                                <option value="none">Sin Autenticación</option>
+                                <option value="bearer">Bearer Token</option>
+                                <option value="api_key">API Key</option>
+                                <option value="basic">Basic Auth</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">Token/Key (opcional)</label>
+                            <input v-model="newApi.authToken" type="password" class="input-field" 
+                                   placeholder="tu-token-aqui" :disabled="newApi.authType === 'none'" />
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">Intervalo de Scrape (segundos)</label>
+                            <input v-model.number="newApi.interval" type="number" min="5" max="3600" required class="input-field" 
+                                   placeholder="60" />
+                        </div>
+                        <div class="flex items-end">
+                            <label class="flex items-center cursor-pointer">
+                                <input v-model="newApi.enabled" type="checkbox" class="mr-2 w-5 h-5">
+                                <span class="text-sm font-semibold text-gray-700">Activar inmediatamente</span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="flex gap-4 mt-8">
+                        <button type="submit" class="btn-primary flex-1">
+                            💾 Guardar API
+                        </button>
+                        <button type="button" @click="testConnection" class="btn-primary bg-blue-500 flex-1">
+                            🔍 Probar Conexión
+                        </button>
+                    </div>
+                    <div v-if="testResult" class="mt-4 p-4 rounded-lg" 
+                         :class="testResult.success ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'">
+                        <p class="font-semibold">{{ testResult.message }}</p>
+                        <pre v-if="testResult.details" class="mt-2 text-sm">{{ testResult.details }}</pre>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- API List -->
+        <div class="max-w-6xl mx-auto">
+            <div class="card rounded-2xl p-8">
+                <div class="flex items-center justify-between mb-6">
+                    <h2 class="text-2xl font-bold text-gray-800">APIs Configuradas</h2>
+                    <button @click="refreshApis" class="text-purple-600 hover:text-purple-800 font-semibold">
+                        🔄 Actualizar
+                    </button>
+                </div>
+
+                <div v-if="loading" class="text-center py-12">
+                    <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto"></div>
+                    <p class="mt-4 text-gray-600">Cargando APIs...</p>
+                </div>
+
+                <div v-else-if="apis.length === 0" class="text-center py-12">
+                    <p class="text-gray-500 text-lg">No hay APIs configuradas</p>
+                    <p class="text-gray-400 mt-2">Haz clic en "Nueva API" para agregar la primera</p>
+                </div>
+
+                <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div v-for="api in apis" :key="api.id" class="border-2 border-gray-200 rounded-xl p-6 hover:shadow-lg transition-shadow">
+                        <div class="flex items-start justify-between mb-4">
+                            <div>
+                                <h3 class="text-lg font-bold text-gray-800">{{ api.name }}</h3>
+                                <p class="text-sm text-gray-500 mt-1 break-all">{{ api.endpoint }}</p>
+                            </div>
+                            <span class="status-badge" :class="{
+                                'status-healthy': api.status === 'healthy',
+                                'status-unhealthy': api.status === 'unhealthy',
+                                'status-unknown': !api.status
+                            }">
+                                <span class="mr-1">●</span>
+                                {{ api.status || 'Unknown' }}
+                            </span>
+                        </div>
+
+                        <div class="space-y-2 text-sm text-gray-600">
+                            <p><strong>Auth:</strong> {{ api.auth_type || 'none' }}</p>
+                            <p><strong>Intervalo:</strong> {{ api.scrape_interval || api.interval }}s</p>
+                            <p v-if="api.last_success"><strong>Último éxito:</strong> {{ formatDate(api.last_success) }}</p>
+                            <p v-if="api.total_requests"><strong>Requests:</strong> {{ api.total_requests }}</p>
+                        </div>
+
+                        <div class="flex gap-2 mt-4">
+                            <button @click="testApiConnection(api)" class="flex-1 bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 text-sm font-semibold">
+                                🔍 Probar
+                            </button>
+                            <button @click="deleteApi(api)" class="flex-1 bg-red-500 text-white py-2 px-4 rounded-lg hover:bg-red-600 text-sm font-semibold">
+                                🗑️ Eliminar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Toast Notifications -->
+        <div v-if="notification" class="fixed bottom-4 right-4 max-w-md">
+            <div class="card rounded-xl p-4 shadow-2xl" :class="{
+                'bg-green-50 border-green-200': notification.type === 'success',
+                'bg-red-50 border-red-200': notification.type === 'error',
+                'bg-blue-50 border-blue-200': notification.type === 'info'
+            }">
+                <p class="font-semibold" :class="{
+                    'text-green-800': notification.type === 'success',
+                    'text-red-800': notification.type === 'error',
+                    'text-blue-800': notification.type === 'info'
+                }">{{ notification.message }}</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

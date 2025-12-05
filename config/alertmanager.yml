@@ -1,6 +1,73 @@
 global:
   resolve_timeout: 5m
+  # SMTP configuration (configure if you want email alerts)
+  # smtp_smarthost: 'smtp.gmail.com:587'
+  # smtp_from: 'alerts@rhinometric.com'
+  # smtp_auth_username: 'your-email@gmail.com'
+  # smtp_auth_password: 'your-app-password'
+
+# Root route
 route:
   receiver: 'default'
+  group_by: ['alertname', 'cluster', 'service']
+  group_wait: 10s
+  group_interval: 10s
+  repeat_interval: 12h
+  
+  # Sub-routes for different severity levels
+  routes:
+    - match:
+        severity: critical
+      receiver: 'critical-alerts'
+      continue: true
+    
+    - match:
+        severity: warning
+      receiver: 'warning-alerts'
+      continue: false
+    
+    - match:
+        component: licensing
+      receiver: 'license-alerts'
+      continue: true
+
+# Receivers
 receivers:
   - name: 'default'
+    webhook_configs:
+      - url: 'http://rhinometric-api:8080/webhooks/alerts'
+        send_resolved: true
+
+  - name: 'critical-alerts'
+    webhook_configs:
+      - url: 'http://rhinometric-api:8080/webhooks/alerts/critical'
+        send_resolved: true
+    # Uncomment to enable email for critical alerts
+    # email_configs:
+    #   - to: 'admin@example.com'
+    #     headers:
+    #       Subject: '[CRITICAL] Rhinometric Alert - {{ .GroupLabels.alertname }}'
+
+  - name: 'warning-alerts'
+    webhook_configs:
+      - url: 'http://rhinometric-api:8080/webhooks/alerts/warning'
+        send_resolved: true
+
+  - name: 'license-alerts'
+    webhook_configs:
+      - url: 'http://rhinometric-api:8080/webhooks/alerts/license'
+        send_resolved: true
+    # Uncomment to enable email for license alerts
+    # email_configs:
+    #   - to: 'licenses@example.com'
+    #     headers:
+    #       Subject: '[LICENSE] Rhinometric - {{ .GroupLabels.alertname }}'
+
+# Inhibition rules (prevent alert spam)
+inhibit_rules:
+  # If a critical alert fires, suppress related warnings
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['alertname', 'instance']

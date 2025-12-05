@@ -1,0 +1,83 @@
+server:
+  http_listen_port: 3200
+
+distributor:
+  receivers:
+    jaeger:
+      protocols:
+        thrift_http:
+          endpoint: 0.0.0.0:14268
+        grpc:
+          endpoint: 0.0.0.0:14250
+        thrift_binary:
+          endpoint: 0.0.0.0:6832
+        thrift_compact:
+          endpoint: 0.0.0.0:6831
+    otlp:
+      protocols:
+        http:
+          endpoint: 0.0.0.0:4318
+        grpc:
+          endpoint: 0.0.0.0:4317
+
+overrides:
+  defaults:
+    metrics_generator:
+      processors:
+        - service-graphs
+        - span-metrics
+        - local-blocks
+
+ingester:
+  max_block_duration: 5m
+
+compactor:
+  compaction:
+    block_retention: 24h  # 1 día para trial optimizado
+
+metrics_generator:
+  registry:
+    external_labels:
+      source: tempo
+      cluster: rhinometric-trial
+  storage:
+    path: /tmp/tempo/generator/wal
+    remote_write:
+      - url: http://prometheus:9090/api/v1/write
+        send_exemplars: true
+  traces_storage:
+    path: /tmp/tempo/generator/traces
+  processor:
+    service_graphs:
+      dimensions:
+        - name
+        - service_name
+      max_items: 10000
+      wait: 10s
+    span_metrics:
+      dimensions:
+        - name
+        - service_name
+      enable_target_info: true
+    local_blocks:
+      max_live_traces: 10000
+      max_block_duration: 5m
+      max_block_bytes: 100000000
+      flush_check_period: 10s
+      complete_block_timeout: 1m
+
+storage:
+  trace:
+    backend: local
+    wal:
+      path: /tmp/tempo/wal
+    local:
+      path: /tmp/tempo/blocks
+
+querier:
+  max_concurrent_queries: 10  # Reducido de 20 a 10
+
+query_frontend:
+  search:
+    max_duration: 48h  # 2 días máximo
+    default_result_limit: 10  # Reducido de 20 a 10
