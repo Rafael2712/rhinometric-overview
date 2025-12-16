@@ -12,7 +12,7 @@ services:
       SMTP_HOST: smtp.zoho.eu
       SMTP_PORT: 465
       SMTP_USER: rafael.canelon@rhinometric.com
-      SMTP_PASSWORD: ${SMTP_PASSWORD:-271211Rc$}
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
       SMTP_FROM: rafael.canelon@rhinometric.com
     ports:
     - 5000:5000
@@ -626,7 +626,7 @@ services:
       SMTP_HOST: ${SMTP_HOST:-smtp.zoho.eu}
       SMTP_PORT: ${SMTP_PORT:-587}
       SMTP_USERNAME: ${SMTP_USER:-rafael.canelon@rhinometric.com}
-      SMTP_PASSWORD: ${SMTP_PASSWORD:-271211Rc$}
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
       SMTP_USE_TLS: 'true'
       SMTP_FROM: ${SMTP_FROM:-rafael.canelon@rhinometric.com}
       SMTP_FROM_NAME: RhinoMetric Reports
@@ -677,7 +677,7 @@ services:
       SMTP_HOST: ${SMTP_HOST:-smtp.zoho.eu}
       SMTP_PORT: ${SMTP_PORT:-587}
       SMTP_USER: ${SMTP_USER:-rafael.canelon@rhinometric.com}
-      SMTP_PASSWORD: ${SMTP_PASSWORD:-271211Rc$}
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
       SMTP_FROM: ${SMTP_FROM:-rafael.canelon@rhinometric.com}
       ALERT_EMAIL_TO: ${ALERT_EMAIL_TO:-rafael.canelon@rhinometric.com}
       CHECK_INTERVAL: 43200
@@ -1368,7 +1368,8 @@ services:
       # External Services (Docker network DNS)
       PROMETHEUS_URL: "http://prometheus:9090"
       AI_ANOMALY_URL: "http://rhinometric-ai-anomaly:8085"
-      LICENSE_VALIDATOR_URL: "http://license-server-v2:5000"
+      LICENSE_VALIDATOR_URL: "http://rhinometric-license-server-v2:5000"
+      RHINOMETRIC_LICENSE_KEY: "DC67oXWd93slMMKSvsMVl3U1-pmiirCRvvBuXDwPH-Y"
       ALERTMANAGER_URL: "http://alertmanager:9093"
       GRAFANA_URL: "http://grafana:3000"
       LOKI_URL: "http://loki:3100"

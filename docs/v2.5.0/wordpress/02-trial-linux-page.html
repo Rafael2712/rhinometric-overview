@@ -1,0 +1,447 @@
+<!-- ════════════════════════════════════════════════════════════════════════
+     RHINOMETRIC TRIAL LINUX - PÁGINA WORDPRESS
+     
+     Instrucciones de uso:
+     1. Crear nueva página en wp-admin → Páginas → Añadir nueva
+     2. Título: "Trial Rhinometric 14 días - Instalación Linux"
+     3. Cambiar a editor HTML (tres puntos → Editar como HTML)
+     4. Pegar este código completo
+     5. Ajustar la URL de descarga si es necesario
+     6. Publicar
+     
+     IMPORTANTE: Sustituir {LICENSE_SERVER_URL} con tu URL real
+     Ejemplo: https://licensing.rhinometric.com:5000/downloads/trial-installer
+════════════════════════════════════════════════════════════════════════ -->
+
+<style>
+/* Estilos específicos para página Trial */
+.rhino-trial-container {
+    max-width: 1200px;
+    margin: 40px auto;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    line-height: 1.7;
+    color: #2c3e50;
+}
+
+.rhino-trial-hero {
+    background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
+    color: white;
+    padding: 60px 40px;
+    border-radius: 16px;
+    text-align: center;
+    margin-bottom: 40px;
+    box-shadow: 0 10px 40px rgba(46, 204, 113, 0.3);
+}
+
+.rhino-trial-hero h1 {
+    font-size: 42px;
+    margin-bottom: 15px;
+    font-weight: 700;
+}
+
+.rhino-trial-badge {
+    display: inline-block;
+    background: rgba(255,255,255,0.2);
+    padding: 8px 20px;
+    border-radius: 25px;
+    font-size: 14px;
+    font-weight: 600;
+    margin: 5px;
+}
+
+.rhino-download-section {
+    background: white;
+    border: 3px solid #2ecc71;
+    border-radius: 12px;
+    padding: 40px;
+    margin: 30px 0;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+}
+
+.rhino-download-btn-trial {
+    display: inline-block;
+    background: linear-gradient(135deg, #2ecc71, #27ae60);
+    color: white !important;
+    padding: 20px 50px;
+    font-size: 20px;
+    font-weight: 700;
+    border-radius: 50px;
+    text-decoration: none !important;
+    box-shadow: 0 8px 24px rgba(46, 204, 113, 0.4);
+    transition: all 0.3s;
+    margin: 20px 0;
+}
+
+.rhino-download-btn-trial:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 32px rgba(46, 204, 113, 0.5);
+}
+
+.rhino-code-block {
+    background: #2c3e50;
+    color: #2ecc71;
+    padding: 20px;
+    border-radius: 8px;
+    font-family: 'Courier New', monospace;
+    overflow-x: auto;
+    margin: 15px 0;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+.rhino-code-block code {
+    color: #2ecc71;
+    font-size: 14px;
+}
+
+.rhino-platform-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+    margin: 30px 0;
+}
+
+.rhino-platform-card {
+    background: #f8f9fa;
+    padding: 25px;
+    border-radius: 12px;
+    border-top: 5px solid #2ecc71;
+    text-align: center;
+    transition: all 0.3s;
+}
+
+.rhino-platform-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+}
+
+.rhino-platform-icon {
+    font-size: 48px;
+    margin-bottom: 15px;
+}
+
+.rhino-install-steps {
+    background: linear-gradient(to bottom, #ffffff, #f8f9fa);
+    padding: 40px;
+    border-radius: 12px;
+    margin: 40px 0;
+}
+
+.rhino-step-trial {
+    display: flex;
+    align-items: flex-start;
+    margin: 25px 0;
+    padding: 20px;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+.rhino-step-number-trial {
+    background: linear-gradient(135deg, #2ecc71, #27ae60);
+    color: white;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    font-weight: 700;
+    margin-right: 20px;
+    flex-shrink: 0;
+    box-shadow: 0 4px 12px rgba(46, 204, 113, 0.4);
+}
+
+.rhino-checklist {
+    list-style: none;
+    padding: 0;
+}
+
+.rhino-checklist li {
+    padding: 12px 0 12px 35px;
+    position: relative;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.rhino-checklist li:before {
+    content: "✓";
+    position: absolute;
+    left: 0;
+    color: #2ecc71;
+    font-weight: 700;
+    font-size: 18px;
+}
+
+.rhino-warning-box {
+    background: linear-gradient(to right, #fff3cd, #fff8e1);
+    border-left: 5px solid #ffc107;
+    padding: 25px;
+    border-radius: 8px;
+    margin: 30px 0;
+}
+
+.rhino-pricing-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 40px;
+    border-radius: 16px;
+    text-align: center;
+    margin: 40px 0;
+    box-shadow: 0 10px 40px rgba(102, 126, 234, 0.3);
+}
+
+@media (max-width: 768px) {
+    .rhino-trial-hero h1 {
+        font-size: 32px;
+    }
+}
+</style>
+
+<div class="rhino-trial-container">
+    
+    <!-- Hero Section -->
+    <div class="rhino-trial-hero">
+        <h1>🐧 Rhinometric Trial - 14 Días</h1>
+        <p style="font-size: 20px; margin-bottom: 25px;">
+            Evalúa Rhinometric en tu infraestructura real
+        </p>
+        <div>
+            <span class="rhino-trial-badge">⏱️ 14 Días Completos</span>
+            <span class="rhino-trial-badge">🖥️ Hasta 5 Hosts</span>
+            <span class="rhino-trial-badge">🚀 Instalación Automática</span>
+            <span class="rhino-trial-badge">💯 Funcionalidad Completa</span>
+        </div>
+    </div>
+    
+    <!-- Download Section -->
+    <div class="rhino-download-section">
+        <h2 style="text-align: center; color: #2ecc71; margin-bottom: 20px;">
+            📥 Descarga el Instalador Linux
+        </h2>
+        <p style="text-align: center; font-size: 16px; color: #555; margin-bottom: 25px;">
+            Script de instalación automatizada compatible con Ubuntu, Debian y CentOS. 
+            Despliega todo el stack Rhinometric en minutos.
+        </p>
+        
+        <div style="text-align: center;">
+            <a href="https://licensing.rhinometric.com:5000/downloads/trial-installer" class="rhino-download-btn-trial">
+                📥 Descargar rhinometric-trial-2.5.0-install.sh
+            </a>
+            <p style="color: #999; font-size: 13px; margin-top: 10px;">
+                Tamaño: ~50 KB | Plataforma: Linux | Versión: 2.5.0
+            </p>
+        </div>
+    </div>
+    
+    <!-- Supported Platforms -->
+    <h2 style="text-align: center; margin: 50px 0 30px; color: #2c3e50;">
+        💻 Plataformas Soportadas
+    </h2>
+    
+    <div class="rhino-platform-grid">
+        <div class="rhino-platform-card">
+            <div class="rhino-platform-icon">🐧</div>
+            <h3 style="color: #2c3e50; margin-bottom: 10px;">Ubuntu</h3>
+            <p>20.04 LTS o superior<br>22.04 LTS (recomendado)</p>
+        </div>
+        
+        <div class="rhino-platform-card">
+            <div class="rhino-platform-icon">📦</div>
+            <h3 style="color: #2c3e50; margin-bottom: 10px;">Debian</h3>
+            <p>11 (Bullseye) o superior<br>12 (Bookworm)</p>
+        </div>
+        
+        <div class="rhino-platform-card">
+            <div class="rhino-platform-icon">🎯</div>
+            <h3 style="color: #2c3e50; margin-bottom: 10px;">CentOS / Rocky</h3>
+            <p>CentOS 8+<br>Rocky Linux 8+</p>
+        </div>
+        
+        <div class="rhino-platform-card">
+            <div class="rhino-platform-icon">🔶</div>
+            <h3 style="color: #2c3e50; margin-bottom: 10px;">Red Hat</h3>
+            <p>RHEL 8 o superior<br>AlmaLinux 8+</p>
+        </div>
+    </div>
+    
+    <!-- Installation Steps -->
+    <div class="rhino-install-steps">
+        <h2 style="text-align: center; margin-bottom: 30px; color: #2c3e50;">
+            🚀 Guía de Instalación Rápida
+        </h2>
+        
+        <div class="rhino-step-trial">
+            <div class="rhino-step-number-trial">1</div>
+            <div>
+                <h3 style="color: #2c3e50; margin-bottom: 10px;">Descarga el Instalador</h3>
+                <p>Descarga el script desde el botón de arriba o usando wget:</p>
+                <div class="rhino-code-block">
+                    <code>wget https://licensing.rhinometric.com:5000/downloads/trial-installer -O rhinometric-install.sh</code>
+                </div>
+            </div>
+        </div>
+        
+        <div class="rhino-step-trial">
+            <div class="rhino-step-number-trial">2</div>
+            <div>
+                <h3 style="color: #2c3e50; margin-bottom: 10px;">Ejecuta el Instalador</h3>
+                <p>Dale permisos de ejecución y ejecuta como root o con sudo:</p>
+                <div class="rhino-code-block">
+                    <code>chmod +x rhinometric-install.sh<br>sudo ./rhinometric-install.sh</code>
+                </div>
+                <p style="margin-top: 10px; color: #666; font-size: 14px;">
+                    El script instalará automáticamente Docker, descargará las imágenes y configurará el stack.
+                </p>
+            </div>
+        </div>
+        
+        <div class="rhino-step-trial">
+            <div class="rhino-step-number-trial">3</div>
+            <div>
+                <h3 style="color: #2c3e50; margin-bottom: 10px;">Configura tu Licencia</h3>
+                <p>Introduce la clave de licencia que recibiste por email:</p>
+                <div class="rhino-code-block">
+                    <code>echo "RHINO-TRIAL-2025-XXXXXXXXXXXX" > /opt/rhinometric/license.key</code>
+                </div>
+            </div>
+        </div>
+        
+        <div class="rhino-step-trial">
+            <div class="rhino-step-number-trial">4</div>
+            <div>
+                <h3 style="color: #2c3e50; margin-bottom: 10px;">Accede a la Plataforma</h3>
+                <p>Una vez completada la instalación (5-10 minutos), accede a:</p>
+                <ul style="list-style: none; padding: 0; margin-top: 15px;">
+                    <li style="padding: 8px 0;">🎨 <strong>Grafana:</strong> http://[TU-SERVIDOR]:3000</li>
+                    <li style="padding: 8px 0;">🔌 <strong>API Connector:</strong> http://[TU-SERVIDOR]:8000</li>
+                    <li style="padding: 8px 0;">🎯 <strong>Dashboard Builder:</strong> http://[TU-SERVIDOR]:8001</li>
+                    <li style="padding: 8px 0;">📊 <strong>Prometheus:</strong> http://[TU-SERVIDOR]:9090</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Requirements Checklist -->
+    <div style="background: #f8f9fa; padding: 40px; border-radius: 12px; margin: 40px 0;">
+        <h2 style="text-align: center; margin-bottom: 30px; color: #2c3e50;">
+            ⚙️ Requisitos del Sistema
+        </h2>
+        
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 30px;">
+            <div>
+                <h3 style="color: #2ecc71; margin-bottom: 15px;">💻 Hardware Mínimo</h3>
+                <ul class="rhino-checklist">
+                    <li>8 GB RAM (16 GB recomendado)</li>
+                    <li>4 CPU Cores (8 cores recomendado)</li>
+                    <li>20 GB espacio en disco libre</li>
+                    <li>Conexión a internet estable</li>
+                </ul>
+            </div>
+            
+            <div>
+                <h3 style="color: #2ecc71; margin-bottom: 15px;">🐧 Software Requerido</h3>
+                <ul class="rhino-checklist">
+                    <li>Docker 24.0 o superior</li>
+                    <li>Docker Compose v2</li>
+                    <li>Acceso root o sudo</li>
+                    <li>Puertos 3000, 8000, 8001, 9090 disponibles</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    
+    <!-- What's Included -->
+    <div style="background: white; border: 2px dashed #2ecc71; border-radius: 12px; padding: 40px; margin: 40px 0;">
+        <h2 style="text-align: center; color: #2c3e50; margin-bottom: 30px;">
+            📦 ¿Qué incluye el Trial de 14 días?
+        </h2>
+        
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px;">
+            <div style="text-align: center; padding: 20px;">
+                <div style="font-size: 40px; margin-bottom: 10px;">📊</div>
+                <h4 style="color: #2c3e50; margin-bottom: 8px;">Observabilidad Completa</h4>
+                <p style="font-size: 14px; color: #666;">Prometheus, Grafana, Loki, Tempo, Jaeger</p>
+            </div>
+            
+            <div style="text-align: center; padding: 20px;">
+                <div style="font-size: 40px; margin-bottom: 10px;">🎨</div>
+                <h4 style="color: #2c3e50; margin-bottom: 8px;">Rhinometric Console</h4>
+                <p style="font-size: 14px; color: #666;">UI personalizada con Vue.js + FastAPI</p>
+            </div>
+            
+            <div style="text-align: center; padding: 20px;">
+                <div style="font-size: 40px; margin-bottom: 10px;">🤖</div>
+                <h4 style="color: #2c3e50; margin-bottom: 8px;">AI Anomaly Engine</h4>
+                <p style="font-size: 14px; color: #666;">Detección de anomalías con ML</p>
+            </div>
+            
+            <div style="text-align: center; padding: 20px;">
+                <div style="font-size: 40px; margin-bottom: 10px;">🔔</div>
+                <h4 style="color: #2c3e50; margin-bottom: 8px;">Alertas Avanzadas</h4>
+                <p style="font-size: 14px; color: #666;">Alertmanager con múltiples canales</p>
+            </div>
+            
+            <div style="text-align: center; padding: 20px;">
+                <div style="font-size: 40px; margin-bottom: 10px;">🔗</div>
+                <h4 style="color: #2c3e50; margin-bottom: 8px;">API Connector</h4>
+                <p style="font-size: 14px; color: #666;">Integra tus APIs externas</p>
+            </div>
+            
+            <div style="text-align: center; padding: 20px;">
+                <div style="font-size: 40px; margin-bottom: 10px;">📚</div>
+                <h4 style="color: #2c3e50; margin-bottom: 8px;">Documentación Completa</h4>
+                <p style="font-size: 14px; color: #666;">Manuales, guías y ejemplos</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Warning Box -->
+    <div class="rhino-warning-box">
+        <h3 style="color: #f57c00; margin-bottom: 15px;">⚠️ Importante - Límites del Trial</h3>
+        <ul style="list-style: disc; padding-left: 20px; color: #666;">
+            <li><strong>Duración:</strong> 14 días desde la primera activación (no renovable)</li>
+            <li><strong>Hosts monitorizados:</strong> Máximo 5 servidores/hosts simultáneos</li>
+            <li><strong>Sin soporte comercial:</strong> Soporte limitado por email (24-48h respuesta)</li>
+            <li><strong>No apto para producción:</strong> Solo para evaluación y pruebas</li>
+            <li><strong>Datos no persistentes:</strong> Al expirar, los datos históricos se pierden</li>
+        </ul>
+        <p style="margin-top: 15px; font-weight: 600; color: #e74c3c;">
+            ⚡ Al finalizar el trial, puedes adquirir una licencia anual o permanente para uso en producción.
+        </p>
+    </div>
+    
+    <!-- Pricing CTA -->
+    <div class="rhino-pricing-card">
+        <h2 style="margin-bottom: 15px;">💎 ¿Listo para Producción?</h2>
+        <p style="font-size: 18px; margin-bottom: 25px; opacity: 0.95;">
+            Después del trial, adquiere Rhinometric Annual Standard
+        </p>
+        <div style="font-size: 48px; font-weight: 700; margin: 20px 0;">
+            $1,999 USD/año
+        </div>
+        <p style="font-size: 16px; margin-bottom: 30px; opacity: 0.9;">
+            ✅ Hasta 20 hosts | ✅ Soporte prioritario | ✅ Actualizaciones incluidas
+        </p>
+        <a href="mailto:rafael.canelon@rhinometric.com?subject=Solicitud%20Licencia%20Annual%20Standard" 
+           style="display: inline-block; background: white; color: #667eea; padding: 15px 40px; border-radius: 50px; text-decoration: none; font-weight: 700; box-shadow: 0 6px 20px rgba(0,0,0,0.3);">
+            📧 Solicitar Presupuesto
+        </a>
+    </div>
+    
+    <!-- Support Section -->
+    <div style="background: linear-gradient(135deg, #e3f2fd, #f1f8ff); padding: 40px; border-radius: 12px; text-align: center; margin: 40px 0;">
+        <h2 style="color: #1976d2; margin-bottom: 20px;">💬 Soporte Técnico</h2>
+        <p style="font-size: 16px; color: #555; margin-bottom: 25px;">
+            ¿Problemas con la instalación? Estamos aquí para ayudarte
+        </p>
+        <div style="display: flex; justify-content: center; gap: 20px; flex-wrap: wrap;">
+            <a href="mailto:rafael.canelon@rhinometric.com" style="padding: 12px 25px; background: white; border-radius: 25px; text-decoration: none; color: #1976d2; font-weight: 600; box-shadow: 0 3px 10px rgba(25, 118, 210, 0.2);">
+                📧 Email Soporte
+            </a>
+            <a href="https://rhinometric.com/docs" style="padding: 12px 25px; background: white; border-radius: 25px; text-decoration: none; color: #1976d2; font-weight: 600; box-shadow: 0 3px 10px rgba(25, 118, 210, 0.2);">
+                📚 Documentación
+            </a>
+        </div>
+    </div>
+    
+</div>

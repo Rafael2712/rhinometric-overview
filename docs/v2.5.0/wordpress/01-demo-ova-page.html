@@ -1,0 +1,370 @@
+<!-- ════════════════════════════════════════════════════════════════════════
+     RHINOMETRIC DEMO OVA - PÁGINA WORDPRESS
+     
+     Instrucciones de uso:
+     1. Crear nueva página en wp-admin → Páginas → Añadir nueva
+     2. Título: "Demo Rhinometric - Descarga OVA"
+     3. Cambiar a editor HTML (tres puntos → Editar como HTML)
+     4. Pegar este código completo
+     5. Ajustar la URL de descarga si es necesario (línea con href=)
+     6. Publicar
+     
+     IMPORTANTE: Sustituir {LICENSE_SERVER_URL} con tu URL real del License Server
+     Ejemplo: https://licensing.rhinometric.com:5000/downloads/demo-ova
+════════════════════════════════════════════════════════════════════════ -->
+
+<style>
+/* Estilos inline para evitar conflictos con tema WordPress */
+.rhino-demo-container {
+    max-width: 1200px;
+    margin: 40px auto;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    line-height: 1.7;
+    color: #2c3e50;
+}
+
+.rhino-hero {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 60px 40px;
+    border-radius: 16px;
+    text-align: center;
+    margin-bottom: 40px;
+    box-shadow: 0 10px 40px rgba(102, 126, 234, 0.3);
+}
+
+.rhino-hero h1 {
+    font-size: 42px;
+    margin-bottom: 15px;
+    font-weight: 700;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+}
+
+.rhino-hero .subtitle {
+    font-size: 20px;
+    opacity: 0.95;
+    margin-bottom: 30px;
+}
+
+.rhino-badge {
+    display: inline-block;
+    background: rgba(255,255,255,0.2);
+    padding: 8px 20px;
+    border-radius: 25px;
+    font-size: 14px;
+    font-weight: 600;
+    margin: 5px;
+    backdrop-filter: blur(10px);
+}
+
+.rhino-download-card {
+    background: white;
+    border: 3px solid #667eea;
+    border-radius: 12px;
+    padding: 40px;
+    margin: 30px 0;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+}
+
+.rhino-download-btn {
+    display: inline-block;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white !important;
+    padding: 20px 50px;
+    font-size: 20px;
+    font-weight: 700;
+    border-radius: 50px;
+    text-decoration: none !important;
+    box-shadow: 0 8px 24px rgba(102, 126, 234, 0.4);
+    transition: all 0.3s;
+    margin: 20px 0;
+}
+
+.rhino-download-btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 32px rgba(102, 126, 234, 0.5);
+}
+
+.rhino-features-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 25px;
+    margin: 40px 0;
+}
+
+.rhino-feature-card {
+    background: #f8f9fa;
+    padding: 30px;
+    border-radius: 12px;
+    border-left: 5px solid #667eea;
+    transition: all 0.3s;
+}
+
+.rhino-feature-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+}
+
+.rhino-feature-icon {
+    font-size: 40px;
+    margin-bottom: 15px;
+}
+
+.rhino-feature-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: #2c3e50;
+    margin-bottom: 10px;
+}
+
+.rhino-steps {
+    background: linear-gradient(to bottom, #ffffff, #f8f9fa);
+    padding: 40px;
+    border-radius: 12px;
+    margin: 40px 0;
+}
+
+.rhino-step {
+    display: flex;
+    align-items: flex-start;
+    margin: 25px 0;
+    padding: 20px;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+.rhino-step-number {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    font-weight: 700;
+    margin-right: 20px;
+    flex-shrink: 0;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.rhino-step-content {
+    flex: 1;
+}
+
+.rhino-step-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: #2c3e50;
+    margin-bottom: 8px;
+}
+
+.rhino-requirements {
+    background: linear-gradient(to right, #fff3cd, #fff8e1);
+    border-left: 5px solid #ffc107;
+    padding: 30px;
+    border-radius: 8px;
+    margin: 40px 0;
+}
+
+.rhino-requirements h3 {
+    color: #f57c00;
+    margin-bottom: 20px;
+}
+
+.rhino-req-list {
+    list-style: none;
+    padding: 0;
+}
+
+.rhino-req-list li {
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(245, 124, 0, 0.2);
+}
+
+.rhino-req-list li:last-child {
+    border-bottom: none;
+}
+
+.rhino-support-box {
+    background: linear-gradient(135deg, #e3f2fd, #f1f8ff);
+    padding: 40px;
+    border-radius: 12px;
+    text-align: center;
+    margin: 40px 0;
+}
+
+@media (max-width: 768px) {
+    .rhino-hero h1 {
+        font-size: 32px;
+    }
+    .rhino-download-btn {
+        font-size: 16px;
+        padding: 15px 30px;
+    }
+}
+</style>
+
+<div class="rhino-demo-container">
+    
+    <!-- Hero Section -->
+    <div class="rhino-hero">
+        <h1>🦏 Rhinometric Demo OVA</h1>
+        <p class="subtitle">Prueba Rhinometric en minutos - Importa y ejecuta</p>
+        <div>
+            <span class="rhino-badge">⏱️ 4 Horas de Evaluación</span>
+            <span class="rhino-badge">📦 Todo Incluido</span>
+            <span class="rhino-badge">🚀 Listo para Usar</span>
+            <span class="rhino-badge">💻 VirtualBox / VMware</span>
+        </div>
+    </div>
+    
+    <!-- Download Card -->
+    <div class="rhino-download-card">
+        <h2 style="text-align: center; color: #667eea; margin-bottom: 20px;">
+            📥 Descarga la OVA Demo
+        </h2>
+        <p style="text-align: center; font-size: 16px; color: #555; margin-bottom: 25px;">
+            Archivo OVA pre-configurado con todo el stack Rhinometric. Simplemente importa en tu software
+            de virtualización favorito y comienza a explorar.
+        </p>
+        
+        <div style="text-align: center;">
+            <a href="https://licensing.rhinometric.com:5000/downloads/demo-ova" class="rhino-download-btn">
+                📥 Descargar rhinometric-demo-2.5.0.ova
+            </a>
+            <p style="color: #999; font-size: 13px; margin-top: 10px;">
+                Tamaño aproximado: 2-4 GB | Formato: OVA | Versión: 2.5.0
+            </p>
+        </div>
+    </div>
+    
+    <!-- Features Grid -->
+    <h2 style="text-align: center; margin: 50px 0 30px; color: #2c3e50;">
+        ✨ ¿Qué incluye la Demo?
+    </h2>
+    
+    <div class="rhino-features-grid">
+        <div class="rhino-feature-card">
+            <div class="rhino-feature-icon">📊</div>
+            <div class="rhino-feature-title">Stack Completo</div>
+            <p>Grafana, Prometheus, Loki, Tempo, Jaeger, Alertmanager y todos los exportadores pre-configurados.</p>
+        </div>
+        
+        <div class="rhino-feature-card">
+            <div class="rhino-feature-icon">🎨</div>
+            <div class="rhino-feature-title">Dashboards Listos</div>
+            <p>+15 dashboards profesionales con métricas en tiempo real y visualizaciones interactivas.</p>
+        </div>
+        
+        <div class="rhino-feature-card">
+            <div class="rhino-feature-icon">🔗</div>
+            <div class="rhino-feature-icon">API Connector</div>
+            <p>Integra tus APIs externas y centraliza toda la observabilidad en un solo lugar.</p>
+        </div>
+        
+        <div class="rhino-feature-card">
+            <div class="rhino-feature-icon">🔔</div>
+            <div class="rhino-feature-title">Sistema de Alertas</div>
+            <p>Alertas inteligentes con canales configurables (Email, Slack, Webhook, etc.).</p>
+        </div>
+        
+        <div class="rhino-feature-card">
+            <div class="rhino-feature-icon">🔍</div>
+            <div class="rhino-feature-title">Drilldown Completo</div>
+            <p>Navegación fluida entre métricas → logs → trazas distribuidas.</p>
+        </div>
+        
+        <div class="rhino-feature-card">
+            <div class="rhino-feature-icon">🤖</div>
+            <div class="rhino-feature-title">AI Anomaly Engine</div>
+            <p>Detección automática de anomalías con Machine Learning (Prophet + IsolationForest).</p>
+        </div>
+    </div>
+    
+    <!-- Installation Steps -->
+    <div class="rhino-steps">
+        <h2 style="text-align: center; margin-bottom: 30px; color: #2c3e50;">
+            🚀 Instalación en 3 Pasos
+        </h2>
+        
+        <div class="rhino-step">
+            <div class="rhino-step-number">1</div>
+            <div class="rhino-step-content">
+                <div class="rhino-step-title">Descarga e Importa la OVA</div>
+                <p>
+                    • Descarga el archivo <strong>rhinometric-demo-2.5.0.ova</strong><br>
+                    • Abre VirtualBox o VMware<br>
+                    • Archivo → Importar servicio virtualizado<br>
+                    • Selecciona la OVA descargada y sigue el asistente
+                </p>
+            </div>
+        </div>
+        
+        <div class="rhino-step">
+            <div class="rhino-step-number">2</div>
+            <div class="rhino-step-content">
+                <div class="rhino-step-title">Inicia la Máquina Virtual</div>
+                <p>
+                    • Asigna al menos <strong>4 GB de RAM</strong> (recomendado 8 GB)<br>
+                    • Configura red en modo <strong>Bridge</strong> o <strong>NAT</strong><br>
+                    • Inicia la VM - el sistema arrancará automáticamente<br>
+                    • Espera 2-3 minutos para que todos los servicios inicien
+                </p>
+            </div>
+        </div>
+        
+        <div class="rhino-step">
+            <div class="rhino-step-number">3</div>
+            <div class="rhino-step-content">
+                <div class="rhino-step-title">Accede a Rhinometric</div>
+                <p>
+                    • Abre tu navegador en: <strong>http://localhost:3000</strong><br>
+                    • Usuario: <strong>admin</strong><br>
+                    • Contraseña: <strong>rhinometric</strong><br>
+                    • ¡Explora los dashboards y funcionalidades!
+                </p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Requirements -->
+    <div class="rhino-requirements">
+        <h3>⚙️ Requisitos del Sistema</h3>
+        <ul class="rhino-req-list">
+            <li><strong>💻 Software de Virtualización:</strong> VirtualBox 6.1+ o VMware Workstation/Fusion</li>
+            <li><strong>🧠 RAM:</strong> Mínimo 4 GB (Recomendado 8 GB)</li>
+            <li><strong>💾 Espacio en Disco:</strong> 15 GB disponibles</li>
+            <li><strong>🖥️ Sistema Host:</strong> Windows 10/11, macOS 10.14+, o Linux</li>
+            <li><strong>🌐 Red:</strong> Conexión a internet para descargar la OVA</li>
+            <li><strong>⏱️ Duración de la Demo:</strong> 4 horas desde el primer inicio</li>
+        </ul>
+    </div>
+    
+    <!-- Support Section -->
+    <div class="rhino-support-box">
+        <h2 style="color: #1976d2; margin-bottom: 20px;">💬 ¿Necesitas ayuda?</h2>
+        <p style="font-size: 16px; color: #555; margin-bottom: 25px;">
+            Nuestro equipo de soporte está disponible para asistirte
+        </p>
+        <div style="display: flex; justify-content: center; gap: 20px; flex-wrap: wrap;">
+            <a href="mailto:rafael.canelon@rhinometric.com" style="display: inline-flex; align-items: center; gap: 8px; padding: 12px 25px; background: white; border-radius: 25px; text-decoration: none; color: #1976d2; font-weight: 600; box-shadow: 0 3px 10px rgba(25, 118, 210, 0.2);">
+                📧 Email Soporte
+            </a>
+            <a href="https://rhinometric.com/docs" style="display: inline-flex; align-items: center; gap: 8px; padding: 12px 25px; background: white; border-radius: 25px; text-decoration: none; color: #1976d2; font-weight: 600; box-shadow: 0 3px 10px rgba(25, 118, 210, 0.2);">
+                📚 Documentación
+            </a>
+            <a href="https://rhinometric.com/trial" style="display: inline-flex; align-items: center; gap: 8px; padding: 12px 25px; background: white; border-radius: 25px; text-decoration: none; color: #1976d2; font-weight: 600; box-shadow: 0 3px 10px rgba(25, 118, 210, 0.2);">
+                🚀 Solicitar Trial Completo
+            </a>
+        </div>
+        
+        <p style="margin-top: 30px; font-size: 14px; color: #666;">
+            ¿Te gustó la demo? <strong>Solicita una licencia Trial de 14 días</strong> para evaluar Rhinometric 
+            en tu infraestructura real con hasta 5 hosts.
+        </p>
+    </div>
+    
+</div>

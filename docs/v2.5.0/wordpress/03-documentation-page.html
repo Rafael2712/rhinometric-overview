@@ -1,0 +1,496 @@
+<!-- ════════════════════════════════════════════════════════════════════════
+     RHINOMETRIC DOCUMENTACIÓN - PÁGINA WORDPRESS
+     
+     Instrucciones de uso:
+     1. Crear nueva página en wp-admin → Páginas → Añadir nueva
+     2. Título: "Documentación Rhinometric"
+     3. Cambiar a editor HTML (tres puntos → Editar como HTML)
+     4. Pegar este código completo
+     5. Ajustar las URLs de descarga de PDFs si es necesario
+     6. Publicar
+     
+     IMPORTANTE: Sustituir {LICENSE_SERVER_URL} con tu URL real
+     Ejemplo: https://licensing.rhinometric.com:5000/docs/
+════════════════════════════════════════════════════════════════════════ -->
+
+<style>
+.rhino-docs-container {
+    max-width: 1200px;
+    margin: 40px auto;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    line-height: 1.7;
+    color: #2c3e50;
+}
+
+.rhino-docs-hero {
+    background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+    color: white;
+    padding: 60px 40px;
+    border-radius: 16px;
+    text-align: center;
+    margin-bottom: 40px;
+    box-shadow: 0 10px 40px rgba(52, 152, 219, 0.3);
+}
+
+.rhino-docs-hero h1 {
+    font-size: 42px;
+    margin-bottom: 15px;
+    font-weight: 700;
+}
+
+.rhino-docs-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 30px;
+    margin: 40px 0;
+}
+
+.rhino-doc-card {
+    background: white;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+    transition: all 0.3s;
+}
+
+.rhino-doc-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 16px 40px rgba(0,0,0,0.15);
+}
+
+.rhino-doc-header {
+    padding: 30px;
+    color: white;
+    text-align: center;
+}
+
+.rhino-doc-header.installation {
+    background: linear-gradient(135deg, #9b59b6, #8e44ad);
+}
+
+.rhino-doc-header.user-manual {
+    background: linear-gradient(135deg, #e74c3c, #c0392b);
+}
+
+.rhino-doc-header.api {
+    background: linear-gradient(135deg, #16a085, #1abc9c);
+}
+
+.rhino-doc-header.architecture {
+    background: linear-gradient(135deg, #f39c12, #e67e22);
+}
+
+.rhino-doc-icon {
+    font-size: 64px;
+    margin-bottom: 15px;
+}
+
+.rhino-doc-title {
+    font-size: 24px;
+    font-weight: 700;
+    margin-bottom: 10px;
+}
+
+.rhino-doc-body {
+    padding: 30px;
+}
+
+.rhino-doc-description {
+    color: #666;
+    font-size: 15px;
+    margin-bottom: 20px;
+    line-height: 1.8;
+}
+
+.rhino-doc-features {
+    list-style: none;
+    padding: 0;
+    margin: 20px 0;
+}
+
+.rhino-doc-features li {
+    padding: 8px 0 8px 30px;
+    position: relative;
+    color: #555;
+    font-size: 14px;
+}
+
+.rhino-doc-features li:before {
+    content: "✓";
+    position: absolute;
+    left: 0;
+    color: #2ecc71;
+    font-weight: 700;
+    font-size: 16px;
+}
+
+.rhino-download-btn-doc {
+    display: inline-block;
+    width: 100%;
+    text-align: center;
+    padding: 14px 20px;
+    background: #3498db;
+    color: white !important;
+    text-decoration: none !important;
+    border-radius: 8px;
+    font-weight: 600;
+    transition: all 0.3s;
+    margin: 5px 0;
+}
+
+.rhino-download-btn-doc:hover {
+    background: #2980b9;
+    transform: translateY(-2px);
+}
+
+.rhino-download-btn-doc.spanish {
+    background: #e74c3c;
+}
+
+.rhino-download-btn-doc.spanish:hover {
+    background: #c0392b;
+}
+
+.rhino-download-btn-doc.english {
+    background: #3498db;
+}
+
+.rhino-download-btn-doc.english:hover {
+    background: #2980b9;
+}
+
+.rhino-quick-links {
+    background: linear-gradient(to bottom, #ecf0f1, #bdc3c7);
+    padding: 40px;
+    border-radius: 12px;
+    margin: 40px 0;
+}
+
+.rhino-quick-links-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    margin-top: 25px;
+}
+
+.rhino-quick-link {
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    text-align: center;
+    text-decoration: none !important;
+    color: #2c3e50 !important;
+    transition: all 0.3s;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.rhino-quick-link:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+}
+
+.rhino-video-section {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 50px 40px;
+    border-radius: 16px;
+    text-align: center;
+    margin: 40px 0;
+}
+
+.rhino-gdpr-notice {
+    background: linear-gradient(to right, #fff3cd, #fff8e1);
+    border-left: 5px solid #ffc107;
+    padding: 30px;
+    border-radius: 8px;
+    margin: 40px 0;
+}
+
+@media (max-width: 768px) {
+    .rhino-docs-hero h1 {
+        font-size: 32px;
+    }
+    .rhino-docs-grid {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+
+<div class="rhino-docs-container">
+    
+    <!-- Hero Section -->
+    <div class="rhino-docs-hero">
+        <h1>📚 Documentación Rhinometric</h1>
+        <p style="font-size: 20px; margin-bottom: 25px;">
+            Manuales, guías y recursos para dominar Rhinometric v2.5.0
+        </p>
+        <p style="font-size: 15px; opacity: 0.95;">
+            Toda la información que necesitas para instalar, configurar y operar tu plataforma de observabilidad
+        </p>
+    </div>
+    
+    <!-- Main Documentation Grid -->
+    <div class="rhino-docs-grid">
+        
+        <!-- Installation Guide -->
+        <div class="rhino-doc-card">
+            <div class="rhino-doc-header installation">
+                <div class="rhino-doc-icon">🔧</div>
+                <div class="rhino-doc-title">Guía de Instalación</div>
+            </div>
+            <div class="rhino-doc-body">
+                <p class="rhino-doc-description">
+                    Manual completo de instalación paso a paso para diferentes plataformas y escenarios. 
+                    Incluye requisitos, troubleshooting y configuración avanzada.
+                </p>
+                
+                <ul class="rhino-doc-features">
+                    <li>Instalación en Linux (Ubuntu/Debian/CentOS)</li>
+                    <li>Instalación con Docker Compose</li>
+                    <li>Configuración de redes y puertos</li>
+                    <li>Alta disponibilidad (HA)</li>
+                    <li>Migración desde v2.1.0</li>
+                    <li>Troubleshooting común</li>
+                </ul>
+                
+                <div style="margin-top: 25px;">
+                    <a href="https://licensing.rhinometric.com:5000/docs/installation-guide?lang=es" class="rhino-download-btn-doc spanish">
+                        📥 Descargar PDF (Español)
+                    </a>
+                    <a href="https://licensing.rhinometric.com:5000/docs/installation-guide?lang=en" class="rhino-download-btn-doc english">
+                        📥 Download PDF (English)
+                    </a>
+                </div>
+                
+                <p style="text-align: center; color: #999; font-size: 12px; margin-top: 10px;">
+                    Última actualización: Diciembre 2025 | v2.5.0
+                </p>
+            </div>
+        </div>
+        
+        <!-- User Manual -->
+        <div class="rhino-doc-card">
+            <div class="rhino-doc-header user-manual">
+                <div class="rhino-doc-icon">📖</div>
+                <div class="rhino-doc-title">Manual de Usuario</div>
+            </div>
+            <div class="rhino-doc-body">
+                <p class="rhino-doc-description">
+                    Documentación completa de la Rhinometric Console, dashboards, configuración de alertas,
+                    integración de APIs y uso del AI Anomaly Engine.
+                </p>
+                
+                <ul class="rhino-doc-features">
+                    <li>Navegación en Grafana y Console</li>
+                    <li>Configuración de data sources</li>
+                    <li>Creación de dashboards personalizados</li>
+                    <li>Sistema de alertas y notificaciones</li>
+                    <li>API Connector - Integración externa</li>
+                    <li>AI Anomaly Detection</li>
+                    <li>Gestión de licencias</li>
+                </ul>
+                
+                <div style="margin-top: 25px;">
+                    <a href="https://licensing.rhinometric.com:5000/docs/user-manual?lang=es" class="rhino-download-btn-doc spanish">
+                        📥 Descargar PDF (Español)
+                    </a>
+                    <a href="https://licensing.rhinometric.com:5000/docs/user-manual?lang=en" class="rhino-download-btn-doc english">
+                        📥 Download PDF (English)
+                    </a>
+                </div>
+                
+                <p style="text-align: center; color: #999; font-size: 12px; margin-top: 10px;">
+                    Última actualización: Diciembre 2025 | v2.5.0
+                </p>
+            </div>
+        </div>
+        
+    </div>
+    
+    <!-- Additional Resources Grid -->
+    <h2 style="text-align: center; margin: 60px 0 30px; color: #2c3e50;">
+        🎯 Recursos Adicionales
+    </h2>
+    
+    <div class="rhino-docs-grid">
+        
+        <!-- API Reference -->
+        <div class="rhino-doc-card">
+            <div class="rhino-doc-header api">
+                <div class="rhino-doc-icon">🔌</div>
+                <div class="rhino-doc-title">API Reference</div>
+            </div>
+            <div class="rhino-doc-body">
+                <p class="rhino-doc-description">
+                    Documentación técnica de las APIs REST de Rhinometric: License Server, 
+                    API Connector, Dashboard Builder y Console Backend.
+                </p>
+                
+                <ul class="rhino-doc-features">
+                    <li>License Server v2 API (FastAPI)</li>
+                    <li>API Connector endpoints</li>
+                    <li>Dashboard Builder API</li>
+                    <li>Autenticación y tokens</li>
+                    <li>Ejemplos con curl y Python</li>
+                </ul>
+                
+                <div style="margin-top: 25px;">
+                    <a href="https://licensing.rhinometric.com:5000/api/docs" target="_blank" class="rhino-download-btn-doc" style="background: #16a085;">
+                        🌐 Ver OpenAPI Docs (Online)
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Architecture Guide -->
+        <div class="rhino-doc-card">
+            <div class="rhino-doc-header architecture">
+                <div class="rhino-doc-icon">🏗️</div>
+                <div class="rhino-doc-title">Guía de Arquitectura</div>
+            </div>
+            <div class="rhino-doc-body">
+                <p class="rhino-doc-description">
+                    Comprende la arquitectura interna de Rhinometric: componentes, flujos de datos,
+                    networking, storage y mejores prácticas de deployment.
+                </p>
+                
+                <ul class="rhino-doc-features">
+                    <li>Diagrama de arquitectura completo</li>
+                    <li>Stack de observabilidad (LGTM)</li>
+                    <li>Networking y puertos</li>
+                    <li>Persistencia de datos</li>
+                    <li>Escalabilidad horizontal</li>
+                </ul>
+                
+                <div style="margin-top: 25px;">
+                    <a href="https://rhinometric.com/docs/architecture" class="rhino-download-btn-doc" style="background: #f39c12;">
+                        📄 Ver Documentación Online
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+    </div>
+    
+    <!-- Quick Links Section -->
+    <div class="rhino-quick-links">
+        <h2 style="text-align: center; color: #2c3e50; margin-bottom: 20px;">
+            ⚡ Accesos Rápidos
+        </h2>
+        
+        <div class="rhino-quick-links-grid">
+            <a href="https://rhinometric.com/demo" class="rhino-quick-link">
+                <div style="font-size: 32px; margin-bottom: 10px;">🎬</div>
+                <div style="font-weight: 600;">Demo OVA</div>
+                <div style="font-size: 12px; color: #666;">4 horas prueba</div>
+            </a>
+            
+            <a href="https://rhinometric.com/trial" class="rhino-quick-link">
+                <div style="font-size: 32px; margin-bottom: 10px;">🚀</div>
+                <div style="font-weight: 600;">Trial Linux</div>
+                <div style="font-size: 12px; color: #666;">14 días completos</div>
+            </a>
+            
+            <a href="https://github.com/Rafael2712/rhinometric-overview" target="_blank" class="rhino-quick-link">
+                <div style="font-size: 32px; margin-bottom: 10px;">💻</div>
+                <div style="font-weight: 600;">GitHub</div>
+                <div style="font-size: 12px; color: #666;">Código y releases</div>
+            </a>
+            
+            <a href="mailto:rafael.canelon@rhinometric.com" class="rhino-quick-link">
+                <div style="font-size: 32px; margin-bottom: 10px;">📧</div>
+                <div style="font-weight: 600;">Soporte</div>
+                <div style="font-size: 12px; color: #666;">Email técnico</div>
+            </a>
+            
+            <a href="https://rhinometric.com/roadmap" class="rhino-quick-link">
+                <div style="font-size: 32px; margin-bottom: 10px;">🗺️</div>
+                <div style="font-weight: 600;">Roadmap</div>
+                <div style="font-size: 12px; color: #666;">Próximas features</div>
+            </a>
+            
+            <a href="https://rhinometric.com/changelog" class="rhino-quick-link">
+                <div style="font-size: 32px; margin-bottom: 10px;">📝</div>
+                <div style="font-weight: 600;">Changelog</div>
+                <div style="font-size: 12px; color: #666;">Historial versiones</div>
+            </a>
+        </div>
+    </div>
+    
+    <!-- Video Tutorials Section -->
+    <div class="rhino-video-section">
+        <h2 style="margin-bottom: 15px;">🎥 Video Tutoriales</h2>
+        <p style="font-size: 16px; margin-bottom: 25px; opacity: 0.95;">
+            Próximamente: Serie de video tutoriales en YouTube cubriendo instalación,
+            configuración avanzada, integración de APIs y casos de uso reales.
+        </p>
+        <a href="https://youtube.com/@rhinometric" target="_blank" 
+           style="display: inline-block; background: white; color: #667eea; padding: 15px 40px; border-radius: 50px; text-decoration: none; font-weight: 700; box-shadow: 0 6px 20px rgba(0,0,0,0.3);">
+            📺 Suscribirse al Canal
+        </a>
+    </div>
+    
+    <!-- GDPR Notice -->
+    <div class="rhino-gdpr-notice">
+        <h3 style="color: #f57c00; margin-bottom: 15px;">🛡️ Privacidad de Datos (GDPR)</h3>
+        <p style="color: #666; font-size: 14px; line-height: 1.8;">
+            Rhinometric es una plataforma <strong>100% on-premise</strong>. Todos tus datos de monitoreo, 
+            logs, métricas y trazas permanecen en tu infraestructura. No enviamos información a servidores 
+            externos. El único dato que sale de tu red es la validación de licencia (clave encriptada) 
+            contra nuestro License Server. Cumplimos con GDPR (UE) 2016/679 y CCPA.
+        </p>
+        <p style="margin-top: 15px; font-size: 13px; color: #999;">
+            Para más información: 
+            <a href="https://rhinometric.com/privacy" style="color: #f57c00; font-weight: 600;">Política de Privacidad</a> | 
+            <a href="https://rhinometric.com/gdpr" style="color: #f57c00; font-weight: 600;">Cumplimiento GDPR</a>
+        </p>
+    </div>
+    
+    <!-- Support CTA -->
+    <div style="background: linear-gradient(135deg, #e3f2fd, #f1f8ff); padding: 50px 40px; border-radius: 16px; text-align: center; margin: 40px 0;">
+        <h2 style="color: #1976d2; margin-bottom: 20px;">💬 ¿No encuentras lo que buscas?</h2>
+        <p style="font-size: 16px; color: #555; margin-bottom: 30px; max-width: 600px; margin-left: auto; margin-right: auto;">
+            Nuestro equipo de soporte técnico está disponible para ayudarte con cualquier duda 
+            sobre instalación, configuración o uso de Rhinometric.
+        </p>
+        
+        <div style="display: flex; justify-content: center; gap: 20px; flex-wrap: wrap;">
+            <a href="mailto:rafael.canelon@rhinometric.com?subject=Consulta%20sobre%20Rhinometric" 
+               style="padding: 15px 35px; background: white; border-radius: 50px; text-decoration: none; color: #1976d2; font-weight: 700; box-shadow: 0 4px 15px rgba(25, 118, 210, 0.2);">
+                📧 Contactar Soporte
+            </a>
+            
+            <a href="https://rhinometric.com/faq" 
+               style="padding: 15px 35px; background: #1976d2; border-radius: 50px; text-decoration: none; color: white; font-weight: 700; box-shadow: 0 4px 15px rgba(25, 118, 210, 0.3);">
+                ❓ Ver FAQ
+            </a>
+        </div>
+        
+        <p style="margin-top: 25px; font-size: 13px; color: #999;">
+            Tiempo de respuesta: 24-48 horas (clientes trial) | 4-8 horas (clientes annual)
+        </p>
+    </div>
+    
+    <!-- Footer Stats -->
+    <div style="background: #2c3e50; color: white; padding: 40px; border-radius: 12px; margin-top: 40px;">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 30px; text-align: center;">
+            <div>
+                <div style="font-size: 36px; font-weight: 700; color: #2ecc71;">2.5.0</div>
+                <div style="font-size: 14px; opacity: 0.8; margin-top: 5px;">Versión Actual</div>
+            </div>
+            <div>
+                <div style="font-size: 36px; font-weight: 700; color: #3498db;">24+</div>
+                <div style="font-size: 14px; opacity: 0.8; margin-top: 5px;">Componentes</div>
+            </div>
+            <div>
+                <div style="font-size: 36px; font-weight: 700; color: #e74c3c;">15+</div>
+                <div style="font-size: 14px; opacity: 0.8; margin-top: 5px;">Dashboards</div>
+            </div>
+            <div>
+                <div style="font-size: 36px; font-weight: 700; color: #f39c12;">100%</div>
+                <div style="font-size: 14px; opacity: 0.8; margin-top: 5px;">On-Premise</div>
+            </div>
+        </div>
+    </div>
+    
+</div>
