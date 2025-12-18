@@ -11,40 +11,75 @@
             box-sizing: border-box;
         }
         
+        @page {
+            size: A4;
+            margin: 2cm;
+        }
+        
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
             line-height: 1.6;
-            color: #333;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            padding: 20px;
+            color: #2d3748;
+            background: #f7fafc;
         }
         
         .container {
-            max-width: 900px;
+            max-width: 1000px;
             margin: 0 auto;
             background: white;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
             padding: 40px;
-            border-radius: 12px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+        
+        .download-btn {
+            display: inline-block;
+            background: white;
+            color: #667eea;
+            padding: 15px 30px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: bold;
+            margin-top: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+            transition: transform 0.2s;
+        }
+        
+        .download-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.3);
+        }
+        
+        .content {
+            padding: 40px;
         }
         
         h1, h2, h3, h4 {
-            color: #667eea;
+            color: #2d3748;
             margin-top: 1.5em;
             margin-bottom: 0.5em;
         }
         
-        h1 {
-            font-size: 2.5em;
-            border-bottom: 3px solid #667eea;
-            padding-bottom: 0.3em;
-            margin-top: 0;
-        }
-        
         h2 {
             font-size: 2em;
-            border-bottom: 2px solid #e2e8f0;
+            border-bottom: 2px solid #667eea;
             padding-bottom: 0.3em;
+            color: #667eea;
         }
         
         h3 {
@@ -52,52 +87,10 @@
             color: #764ba2;
         }
         
-        h4 {
-            font-size: 1.2em;
-        }
-        
-        p {
-            margin-bottom: 1em;
-        }
-        
-        ul, ol {
-            margin-left: 2em;
-            margin-bottom: 1em;
-        }
-        
-        li {
-            margin-bottom: 0.5em;
-        }
-        
-        code {
-            background: #f7fafc;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-family: 'Courier New', monospace;
-            color: #e53e3e;
-            font-size: 0.9em;
-        }
-        
-        pre {
-            background: #2d3748;
-            color: #f7fafc;
-            padding: 20px;
-            border-radius: 8px;
-            overflow-x: auto;
-            margin-bottom: 1em;
-            border-left: 4px solid #667eea;
-        }
-        
-        pre code {
-            background: transparent;
-            color: #f7fafc;
-            padding: 0;
-        }
-        
         table {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 1.5em;
+            margin: 1.5em 0;
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         }
         
@@ -117,119 +110,99 @@
             background: #f7fafc;
         }
         
-        blockquote {
-            border-left: 4px solid #667eea;
-            padding-left: 20px;
-            margin: 1em 0;
-            color: #666;
-            font-style: italic;
-            background: #f7fafc;
-            padding: 15px 20px;
+        code {
+            background: #2d3748;
+            color: #68d391;
+            padding: 2px 6px;
             border-radius: 4px;
-        }
-        
-        a {
-            color: #667eea;
-            text-decoration: none;
-            border-bottom: 2px solid transparent;
-            transition: border-color 0.3s;
-        }
-        
-        a:hover {
-            border-bottom-color: #667eea;
-        }
-        
-        .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 30px;
-            margin: -40px -40px 40px -40px;
-            border-radius: 12px 12px 0 0;
-            text-align: center;
-        }
-        
-        .header h1 {
-            color: white;
-            border: none;
-            margin: 0;
-            font-size: 2.5em;
-        }
-        
-        .header p {
-            margin: 10px 0 0 0;
-            opacity: 0.9;
-        }
-        
-        .footer {
-            margin-top: 40px;
-            padding-top: 20px;
-            border-top: 2px solid #e2e8f0;
-            text-align: center;
-            color: #666;
+            font-family: 'Courier New', monospace;
             font-size: 0.9em;
         }
         
-        .warning {
-            background: #fff3cd;
-            border-left: 4px solid #ffc107;
-            padding: 15px;
+        pre {
+            background: #2d3748;
+            color: #f7fafc;
+            padding: 20px;
+            border-radius: 8px;
+            overflow-x: auto;
             margin: 1em 0;
-            border-radius: 4px;
+            border-left: 4px solid #667eea;
         }
         
-        .info {
-            background: #d1ecf1;
-            border-left: 4px solid #17a2b8;
-            padding: 15px;
-            margin: 1em 0;
-            border-radius: 4px;
+        pre code {
+            background: transparent;
+            color: #f7fafc;
+            padding: 0;
         }
         
-        .success {
-            background: #d4edda;
-            border-left: 4px solid #28a745;
-            padding: 15px;
-            margin: 1em 0;
-            border-radius: 4px;
+        ul, ol {
+            margin-left: 2em;
+            margin-bottom: 1em;
+        }
+        
+        li {
+            margin-bottom: 0.5em;
+        }
+        
+        .footer {
+            background: #2d3748;
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .footer a {
+            color: #68d391;
+            text-decoration: none;
         }
         
         @media print {
             body {
                 background: white;
-                padding: 0;
             }
-            .container {
-                box-shadow: none;
-                padding: 20px;
+            .header, .download-btn {
+                background: #667eea !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            .download-btn {
+                display: none;
             }
         }
     </style>
+    <script>
+        function downloadPDF() {
+            window.print();
+        }
+    </script>
 </head>
 <body>
     <div class="container">
         <div class="header">
             <h1>🦏 Manual de Usuario</h1>
             <p>Rhinometric v2.1.0 - Plataforma de Observabilidad Empresarial</p>
+            <a href="#" class="download-btn" onclick="downloadPDF(); return false;">
+                📥 Descargar PDF
+            </a>
         </div>
         
-        <h1 id="rhinometric-v210-manual-de-usuario">🦏 Rhinometric v2.1.0 - Manual de Usuario</h1>
+        <div class="content">
+            <h1>🦏 Rhinometric v2.1.0 - Manual de Usuario</h1>
 <p><strong>Plataforma de Observabilidad Empresarial</strong></p>
 <hr />
-<h2 id="tabla-de-contenidos">📋 Tabla de Contenidos</h2>
+<h2>📋 Tabla de Contenidos</h2>
 <ol>
 <li><a href="#introducción">Introducción</a></li>
 <li><a href="#requisitos-del-sistema">Requisitos del Sistema</a></li>
 <li><a href="#instalación-rápida">Instalación Rápida</a></li>
 <li><a href="#acceso-a-servicios">Acceso a Servicios</a></li>
 <li><a href="#dashboards-de-grafana">Dashboards de Grafana</a></li>
-<li><a href="#monitoreo-de-apis-externas">Monitoreo de APIs Externas</a></li>
-<li><a href="#gestión-de-licencias">Gestión de Licencias</a></li>
 <li><a href="#configuración-avanzada">Configuración Avanzada</a></li>
 <li><a href="#troubleshooting">Troubleshooting</a></li>
 <li><a href="#soporte">Soporte</a></li>
 </ol>
 <hr />
-<h2 id="introduccion">🎯 Introducción</h2>
+<h2>🎯 Introducción</h2>
 <p>Rhinometric es una plataforma completa de observabilidad empresarial que integra:</p>
 <ul>
 <li><strong>Métricas</strong>: Prometheus + Node Exporter + Postgres Exporter</li>
@@ -237,18 +210,16 @@
 <li><strong>Trazas</strong>: Tempo + OpenTelemetry Collector</li>
 <li><strong>Visualización</strong>: Grafana con 8 dashboards pre-configurados</li>
 <li><strong>Alertas</strong>: Alertmanager con reglas predefinidas</li>
-<li><strong>APIs</strong>: Conector para monitoreo de servicios externos</li>
 </ul>
-<h3 id="caracteristicas-principales">✨ Características Principales</h3>
+<h3>✨ Características Principales</h3>
 <p>✅ <strong>Instalación en 1 comando</strong> - Scripts automatizados para Linux, macOS y Windows<br />
 ✅ <strong>16 servicios integrados</strong> - Stack completo pre-configurado<br />
-✅ <strong>8 dashboards listos</strong> - Métricas, logs, trazas, APIs<br />
-✅ <strong>Alertas inteligentes</strong> - CPU, RAM, disk, API downtime<br />
-✅ <strong>Multi-tenant</strong> - Aislamiento de datos por cliente<br />
-✅ <strong>Alta disponibilidad</strong> - Configuración HA opcional  </p>
+✅ <strong>8 dashboards listos</strong> - Métricas, logs, trazas<br />
+✅ <strong>Alertas inteligentes</strong> - CPU, RAM, disk<br />
+✅ <strong>Multi-tenant</strong> - Aislamiento de datos por cliente  </p>
 <hr />
-<h2 id="requisitos-del-sistema">💻 Requisitos del Sistema</h2>
-<h3 id="minimos-trialdesarrollo">Mínimos (Trial/Desarrollo)</h3>
+<h2>💻 Requisitos del Sistema</h2>
+<h3>Mínimos (Trial/Desarrollo)</h3>
 <ul>
 <li><strong>CPU</strong>: 4 cores</li>
 <li><strong>RAM</strong>: 8 GB</li>
@@ -256,7 +227,7 @@
 <li><strong>SO</strong>: Linux (Ubuntu 20.04+), macOS (11+), Windows 10/11</li>
 <li><strong>Software</strong>: Docker 20.10+, Docker Compose 2.0+</li>
 </ul>
-<h3 id="recomendados-produccion">Recomendados (Producción)</h3>
+<h3>Recomendados (Producción)</h3>
 <ul>
 <li><strong>CPU</strong>: 8 cores</li>
 <li><strong>RAM</strong>: 16 GB</li>
@@ -264,56 +235,49 @@
 <li><strong>Red</strong>: 1 Gbps</li>
 <li><strong>SO</strong>: Ubuntu 22.04 LTS o Rocky Linux 9</li>
 </ul>
-<h3 id="puertos-requeridos">Puertos Requeridos</h3>
-<div class="codehilite"><pre><span></span><code><span class="mf">3000</span><span class="w">  </span><span class="o">-</span><span class="w"> </span><span class="n">Grafana</span><span class="w"> </span><span class="p">(</span><span class="n">UI</span><span class="w"> </span><span class="n">principal</span><span class="p">)</span>
-<span class="mf">5000</span><span class="w">  </span><span class="o">-</span><span class="w"> </span><span class="n">License</span><span class="w"> </span><span class="n">Server</span><span class="w"> </span><span class="n">API</span>
-<span class="mf">5432</span><span class="w">  </span><span class="o">-</span><span class="w"> </span><span class="nb">Pos</span><span class="n">tgreSQL</span>
-<span class="mf">6379</span><span class="w">  </span><span class="o">-</span><span class="w"> </span><span class="n">Redis</span>
-<span class="mf">8090</span><span class="w">  </span><span class="o">-</span><span class="w"> </span><span class="n">API</span><span class="w"> </span><span class="n">Proxy</span>
-<span class="mf">8091</span><span class="w">  </span><span class="o">-</span><span class="w"> </span><span class="n">API</span><span class="w"> </span><span class="n">Connector</span><span class="w"> </span><span class="n">UI</span>
-<span class="mf">8092</span><span class="w">  </span><span class="o">-</span><span class="w"> </span><span class="n">License</span><span class="w"> </span><span class="n">Management</span><span class="w"> </span><span class="n">UI</span>
-<span class="mf">9090</span><span class="w">  </span><span class="o">-</span><span class="w"> </span><span class="n">Prometheus</span>
-<span class="mf">9093</span><span class="w">  </span><span class="o">-</span><span class="w"> </span><span class="n">Alertmanager</span>
-<span class="mf">9100</span><span class="w">  </span><span class="o">-</span><span class="w"> </span><span class="n">Node</span><span class="w"> </span><span class="nb">Exp</span><span class="ow">or</span><span class="n">ter</span>
-</code></pre></div>
-
+<h3>Puertos Requeridos</h3>
+<pre><code>3000  - Grafana (UI principal)
+9090  - Prometheus
+9093  - Alertmanager
+9100  - Node Exporter
+3100  - Loki
+3200  - Tempo
+</code></pre>
 <hr />
-<h2 id="instalacion-rapida">🚀 Instalación Rápida</h2>
-<h3 id="linux-macos">Linux / macOS</h3>
-<div class="codehilite"><pre><span></span><code><span class="c1"># 1. Descargar Rhinometric</span>
-git<span class="w"> </span>clone<span class="w"> </span>https://github.com/Rafael2712/mi-proyecto.git
-<span class="nb">cd</span><span class="w"> </span>mi-proyecto/infrastructure/mi-proyecto/rhinometric-trial-v2.1.0-universal
+<h2>🚀 Instalación Rápida</h2>
+<h3>Linux / macOS</h3>
+<pre><code class="language-bash"># 1. Descargar Rhinometric
+git clone https://github.com/Rafael2712/mi-proyecto.git
+cd mi-proyecto/infrastructure/mi-proyecto/rhinometric-trial-v2.1.0-universal
 
-<span class="c1"># 2. Configurar licencia (si ya la tienes)</span>
-cp<span class="w"> </span>.env.example<span class="w"> </span>.env
-nano<span class="w"> </span>.env<span class="w">  </span><span class="c1"># Agregar LICENSE_KEY</span>
+# 2. Configurar licencia (si ya la tienes)
+cp .env.example .env
+nano .env  # Agregar LICENSE_KEY
 
-<span class="c1"># 3. Ejecutar instalador</span>
-chmod<span class="w"> </span>+x<span class="w"> </span>install.sh
+# 3. Ejecutar instalador
+chmod +x install.sh
 ./install.sh
 
-<span class="c1"># 4. Verificar servicios</span>
-docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> </span>docker-compose-v2.1.0.yml<span class="w"> </span>ps
-</code></pre></div>
+# 4. Verificar servicios
+docker compose -f docker-compose-v2.1.0.yml ps
+</code></pre>
+<h3>Windows (PowerShell)</h3>
+<pre><code class="language-powershell"># 1. Descargar Rhinometric
+git clone https://github.com/Rafael2712/mi-proyecto.git
+cd mi-proyecto\infrastructure\mi-proyecto\rhinometric-trial-v2.1.0-universal
 
-<h3 id="windows-powershell">Windows (PowerShell)</h3>
-<div class="codehilite"><pre><span></span><code><span class="c"># 1. Descargar Rhinometric</span>
-<span class="n">git</span> <span class="n">clone</span> <span class="n">https</span><span class="p">://</span><span class="n">github</span><span class="p">.</span><span class="n">com</span><span class="p">/</span><span class="n">Rafael2712</span><span class="p">/</span><span class="n">mi-proyecto</span><span class="p">.</span><span class="n">git</span>
-<span class="nb">cd </span><span class="n">mi-proyecto</span><span class="p">\</span><span class="n">infrastructure</span><span class="p">\</span><span class="n">mi-proyecto</span><span class="p">\</span><span class="n">rhinometric-trial-v2</span><span class="p">.</span><span class="n">1</span><span class="p">.</span><span class="n">0-universal</span>
+# 2. Configurar licencia
+copy .env.example .env
+notepad .env  # Agregar LICENSE_KEY
 
-<span class="c"># 2. Configurar licencia</span>
-<span class="nb">copy </span><span class="p">.</span><span class="n">env</span><span class="p">.</span><span class="n">example</span> <span class="p">.</span><span class="n">env</span>
-<span class="n">notepad</span> <span class="p">.</span><span class="n">env</span>  <span class="c"># Agregar LICENSE_KEY</span>
+# 3. Ejecutar instalador
+.\install.ps1
 
-<span class="c"># 3. Ejecutar instalador</span>
-<span class="p">.\</span><span class="n">install</span><span class="p">.</span><span class="n">ps1</span>
-
-<span class="c"># 4. Verificar servicios</span>
-<span class="n">docker</span> <span class="n">compose</span> <span class="o">-f</span> <span class="n">docker-compose-v2</span><span class="p">.</span><span class="n">1</span><span class="p">.</span><span class="n">0</span><span class="p">.</span><span class="n">yml</span> <span class="nb">ps</span>
-</code></pre></div>
-
+# 4. Verificar servicios
+docker compose -f docker-compose-v2.1.0.yml ps
+</code></pre>
 <hr />
-<h2 id="acceso-a-servicios">🌐 Acceso a Servicios</h2>
+<h2>🌐 Acceso a Servicios</h2>
 <p>Después de la instalación, accede a:</p>
 <table>
 <thead>
@@ -327,7 +291,7 @@ docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> 
 <tr>
 <td><strong>Grafana</strong></td>
 <td>http://localhost:3000</td>
-<td>Ver archivo <code>credentials.txt</code></td>
+<td>admin / admin (cambiar en primer login)</td>
 </tr>
 <tr>
 <td><strong>Prometheus</strong></td>
@@ -335,38 +299,28 @@ docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> 
 <td>-</td>
 </tr>
 <tr>
-<td><strong>License Server API</strong></td>
-<td>http://localhost:5000/api/docs</td>
-<td>-</td>
-</tr>
-<tr>
-<td><strong>API Connector UI</strong></td>
-<td>http://localhost:8091</td>
-<td>-</td>
-</tr>
-<tr>
-<td><strong>License Management</strong></td>
-<td>http://localhost:8092</td>
-<td>-</td>
-</tr>
-<tr>
 <td><strong>Alertmanager</strong></td>
 <td>http://localhost:9093</td>
 <td>-</td>
 </tr>
+<tr>
+<td><strong>Loki</strong></td>
+<td>http://localhost:3100</td>
+<td>-</td>
+</tr>
 </tbody>
 </table>
-<h3 id="primer-acceso-a-grafana">🔐 Primer Acceso a Grafana</h3>
+<h3>🔐 Primer Acceso a Grafana</h3>
 <ol>
 <li>Abrir http://localhost:3000</li>
 <li>Usuario: <code>admin</code></li>
-<li>Contraseña: Ver <code>credentials.txt</code> generado por el instalador</li>
+<li>Contraseña: <code>admin</code></li>
 <li><strong>Cambiar contraseña</strong> en el primer login (obligatorio)</li>
 </ol>
 <hr />
-<h2 id="dashboards-de-grafana">📊 Dashboards de Grafana</h2>
+<h2>📊 Dashboards de Grafana</h2>
 <p>Rhinometric incluye 8 dashboards pre-configurados:</p>
-<h3 id="1-system-overview">1. 📈 <strong>System Overview</strong></h3>
+<h3>1. 📈 <strong>System Overview</strong></h3>
 <ul>
 <li><strong>Descripción</strong>: Métricas generales del sistema</li>
 <li><strong>Contenido</strong>:</li>
@@ -376,7 +330,7 @@ docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> 
 <li>Network traffic (ingress/egress)</li>
 <li><strong>Uso</strong>: Monitoreo general de salud del servidor</li>
 </ul>
-<h3 id="2-database-health">2. 🗄️ <strong>Database Health</strong></h3>
+<h3>2. 🗄️ <strong>Database Health</strong></h3>
 <ul>
 <li><strong>Descripción</strong>: PostgreSQL performance</li>
 <li><strong>Contenido</strong>:</li>
@@ -387,7 +341,7 @@ docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> 
 <li>Locks y deadlocks</li>
 <li><strong>Uso</strong>: Optimización de queries y detección de cuellos de botella</li>
 </ul>
-<h3 id="3-container-metrics">3. 🐳 <strong>Container Metrics</strong></h3>
+<h3>3. 🐳 <strong>Container Metrics</strong></h3>
 <ul>
 <li><strong>Descripción</strong>: Docker containers via cAdvisor</li>
 <li><strong>Contenido</strong>:</li>
@@ -397,17 +351,17 @@ docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> 
 <li>Container health status</li>
 <li><strong>Uso</strong>: Identificar contenedores problemáticos</li>
 </ul>
-<h3 id="4-api-monitoring">4. 🌐 <strong>API Monitoring</strong></h3>
+<h3>4. 🌐 <strong>Network Overview</strong></h3>
 <ul>
-<li><strong>Descripción</strong>: Servicios externos monitoreados</li>
+<li><strong>Descripción</strong>: Tráfico de red del sistema</li>
 <li><strong>Contenido</strong>:</li>
-<li>Response time (p50, p95, p99)</li>
-<li>Status codes (2xx, 4xx, 5xx)</li>
-<li>Availability %</li>
-<li>Error rate</li>
-<li><strong>Uso</strong>: SLA tracking de APIs externas</li>
+<li>Network traffic (ingress/egress)</li>
+<li>Packets sent/received</li>
+<li>Network errors</li>
+<li>Bandwidth usage</li>
+<li><strong>Uso</strong>: Monitoreo de conectividad y saturación de red</li>
 </ul>
-<h3 id="5-logs-explorer">5. 📝 <strong>Logs Explorer</strong></h3>
+<h3>5. 📝 <strong>Logs Explorer</strong></h3>
 <ul>
 <li><strong>Descripción</strong>: Búsqueda centralizada de logs</li>
 <li><strong>Contenido</strong>:</li>
@@ -417,7 +371,7 @@ docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> 
 <li>Exportación de logs</li>
 <li><strong>Uso</strong>: Debugging y auditoría</li>
 </ul>
-<h3 id="6-distributed-tracing">6. 🔍 <strong>Distributed Tracing</strong></h3>
+<h3>6. 🔍 <strong>Distributed Tracing</strong></h3>
 <ul>
 <li><strong>Descripción</strong>: Service graph y latency</li>
 <li><strong>Contenido</strong>:</li>
@@ -427,16 +381,17 @@ docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> 
 <li>Error traces</li>
 <li><strong>Uso</strong>: Identificar microservicios lentos</li>
 </ul>
-<h3 id="7-license-management">7. 📋 <strong>License Management</strong></h3>
+<h3>7. 📋 <strong>Prometheus Targets</strong></h3>
 <ul>
-<li><strong>Descripción</strong>: Estado de licencias</li>
+<li><strong>Descripción</strong>: Estado de los exporters</li>
 <li><strong>Contenido</strong>:</li>
-<li>Licencias activas/expiradas</li>
-<li>Timeline de expiración</li>
-<li>Uso por tipo (trial/annual/permanent)</li>
-<li><strong>Uso</strong>: Gestión de clientes</li>
+<li>Targets UP/DOWN</li>
+<li>Scrape duration</li>
+<li>Samples ingested</li>
+<li>Last scrape timestamp</li>
+<li><strong>Uso</strong>: Verificar que Prometheus está recogiendo métricas</li>
 </ul>
-<h3 id="8-alerting-dashboard">8. 🚨 <strong>Alerting Dashboard</strong></h3>
+<h3>8. 🚨 <strong>Alerting Dashboard</strong></h3>
 <ul>
 <li><strong>Descripción</strong>: Alertas activas e históricas</li>
 <li><strong>Contenido</strong>:</li>
@@ -447,114 +402,36 @@ docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> 
 <li><strong>Uso</strong>: Incident management</li>
 </ul>
 <hr />
-<h2 id="monitoreo-de-apis-externas">🔌 Monitoreo de APIs Externas</h2>
-<h3 id="agregar-una-api-externa">Agregar una API Externa</h3>
-<ol>
-<li><strong>Acceder al API Connector UI</strong>:</li>
-<li>
-<p>URL: http://localhost:8091</p>
-</li>
-<li>
-<p><strong>Configurar API</strong>:<br />
-<code>json
-   {
-     "name": "GitHub API",
-     "endpoint": "https://api.github.com/status",
-     "auth_type": "none",
-     "scrape_interval": 60
-   }</code></p>
-</li>
-<li>
-<p><strong>Verificar en Grafana</strong>:</p>
-</li>
-<li>Dashboard: <strong>API Monitoring</strong></li>
-<li>Métricas aparecerán en ~2 minutos</li>
-</ol>
-<h3 id="tipos-de-autenticacion-soportados">Tipos de Autenticación Soportados</h3>
-<ul>
-<li><strong>None</strong>: Sin autenticación</li>
-<li><strong>Bearer Token</strong>: <code>Authorization: Bearer &lt;token&gt;</code></li>
-<li><strong>API Key</strong>: Header personalizado</li>
-<li><strong>Basic Auth</strong>: Username + Password</li>
-</ul>
-<h3 id="ejemplo-con-bearer-token">Ejemplo con Bearer Token</h3>
-<div class="codehilite"><pre><span></span><code>curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://localhost:5000/api/external-apis<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Content-Type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{</span>
-<span class="s1">    &quot;name&quot;: &quot;Private API&quot;,</span>
-<span class="s1">    &quot;endpoint&quot;: &quot;https://api.example.com/health&quot;,</span>
-<span class="s1">    &quot;auth_type&quot;: &quot;bearer&quot;,</span>
-<span class="s1">    &quot;auth_token&quot;: &quot;your_token_here&quot;,</span>
-<span class="s1">    &quot;scrape_interval&quot;: 120</span>
-<span class="s1">  }&#39;</span>
-</code></pre></div>
-
-<hr />
-<h2 id="gestion-de-licencias">🎫 Gestión de Licencias</h2>
-<h3 id="crear-licencia-ui">Crear Licencia (UI)</h3>
-<ol>
-<li><strong>Acceder</strong>: http://localhost:8092</li>
-<li><strong>Click</strong> en "Crear Nueva Licencia"</li>
-<li><strong>Completar formulario</strong>:</li>
-<li>Nombre del cliente</li>
-<li>Email</li>
-<li>Empresa</li>
-<li>Tipo: Trial (30d) / Annual (365d) / Permanent</li>
-<li><strong>Enviar</strong>: La licencia se genera y envía por email automáticamente</li>
-</ol>
-<h3 id="crear-licencia-api">Crear Licencia (API)</h3>
-<div class="codehilite"><pre><span></span><code>curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://localhost:5000/api/admin/licenses<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Content-Type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{</span>
-<span class="s1">    &quot;customer_name&quot;: &quot;Acme Corp&quot;,</span>
-<span class="s1">    &quot;client_email&quot;: &quot;admin@acme.com&quot;,</span>
-<span class="s1">    &quot;client_company&quot;: &quot;Acme Corporation&quot;,</span>
-<span class="s1">    &quot;license_type&quot;: &quot;annual&quot;</span>
-<span class="s1">  }&#39;</span>
-</code></pre></div>
-
-<h3 id="listar-licencias">Listar Licencias</h3>
-<div class="codehilite"><pre><span></span><code><span class="c1"># Ver todas las licencias</span>
-curl<span class="w"> </span>http://localhost:5000/api/admin/licenses
-
-<span class="c1"># Estadísticas</span>
-curl<span class="w"> </span>http://localhost:5000/api/admin/licenses/stats
-</code></pre></div>
-
-<hr />
-<h2 id="configuracion-avanzada">⚙️ Configuración Avanzada</h2>
-<h3 id="personalizar-alertas">Personalizar Alertas</h3>
+<h2>⚙️ Configuración Avanzada</h2>
+<h3>Personalizar Alertas</h3>
 <p>Editar <code>prometheus/rules/alerts.yml</code>:</p>
-<div class="codehilite"><pre><span></span><code><span class="nt">groups</span><span class="p">:</span>
-<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">custom_alerts</span>
-<span class="w">    </span><span class="nt">rules</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">alert</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">HighMemoryUsage</span>
-<span class="w">        </span><span class="nt">expr</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes &lt; 0.1</span>
-<span class="w">        </span><span class="nt">for</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5m</span>
-<span class="w">        </span><span class="nt">labels</span><span class="p">:</span>
-<span class="w">          </span><span class="nt">severity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">warning</span>
-<span class="w">        </span><span class="nt">annotations</span><span class="p">:</span>
-<span class="w">          </span><span class="nt">summary</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;RAM</span><span class="nv"> </span><span class="s">crítica</span><span class="nv"> </span><span class="s">en</span><span class="nv"> </span><span class="s">{{</span><span class="nv"> </span><span class="s">$labels.instance</span><span class="nv"> </span><span class="s">}}&quot;</span>
-</code></pre></div>
-
+<pre><code class="language-yaml">groups:
+  - name: custom_alerts
+    rules:
+      - alert: HighMemoryUsage
+        expr: node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes &lt; 0.1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: &quot;RAM crítica en {{ $labels.instance }}&quot;
+</code></pre>
 <p>Reiniciar Prometheus:</p>
-<div class="codehilite"><pre><span></span><code>docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> </span>docker-compose-v2.1.0.yml<span class="w"> </span>restart<span class="w"> </span>prometheus
-</code></pre></div>
-
-<h3 id="configurar-retencion-de-datos">Configurar Retención de Datos</h3>
+<pre><code class="language-bash">docker compose -f docker-compose-v2.1.0.yml restart prometheus
+</code></pre>
+<h3>Configurar Retención de Datos</h3>
 <p>Editar <code>docker-compose-v2.1.0.yml</code>:</p>
-<div class="codehilite"><pre><span></span><code><span class="nt">prometheus</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">command</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&#39;--storage.tsdb.retention.time=90d&#39;</span><span class="w">  </span><span class="c1"># 90 días de métricas</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&#39;--storage.tsdb.retention.size=50GB&#39;</span>
+<pre><code class="language-yaml">prometheus:
+  command:
+    - '--storage.tsdb.retention.time=90d'  # 90 días de métricas
+    - '--storage.tsdb.retention.size=50GB'
 
-<span class="nt">loki</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">command</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&#39;-config.file=/etc/loki/local-config.yaml&#39;</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&#39;-table-manager.retention-period=30d&#39;</span><span class="w">  </span><span class="c1"># 30 días de logs</span>
-</code></pre></div>
-
-<h3 id="habilitar-https">Habilitar HTTPS</h3>
+loki:
+  command:
+    - '-config.file=/etc/loki/local-config.yaml'
+    - '-table-manager.retention-period=30d'  # 30 días de logs
+</code></pre>
+<h3>Habilitar HTTPS</h3>
 <ol>
 <li>
 <p><strong>Generar certificados</strong>:<br />
@@ -579,104 +456,82 @@ curl<span class="w"> </span>http://localhost:5000/api/admin/licenses/stats
 </li>
 </ol>
 <hr />
-<h2 id="troubleshooting">🔧 Troubleshooting</h2>
-<h3 id="problema-servicios-no-inician">Problema: Servicios no inician</h3>
+<h2>🔧 Troubleshooting</h2>
+<h3>Problema: Servicios no inician</h3>
 <p><strong>Síntomas</strong>: <code>docker compose ps</code> muestra servicios en estado "Restarting"</p>
 <p><strong>Solución</strong>:</p>
-<div class="codehilite"><pre><span></span><code><span class="c1"># Ver logs del servicio problemático</span>
-docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> </span>docker-compose-v2.1.0.yml<span class="w"> </span>logs<span class="w"> </span>&lt;service_name&gt;
+<pre><code class="language-bash"># Ver logs del servicio problemático
+docker compose -f docker-compose-v2.1.0.yml logs &lt;service_name&gt;
 
-<span class="c1"># Verificar puertos ocupados</span>
-netstat<span class="w"> </span>-tulpn<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-E<span class="w"> </span><span class="s1">&#39;3000|5432|9090&#39;</span>
+# Verificar puertos ocupados
+netstat -tulpn | grep -E '3000|5432|9090'
 
-<span class="c1"># Liberar puertos y reiniciar</span>
-docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> </span>docker-compose-v2.1.0.yml<span class="w"> </span>down
-docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> </span>docker-compose-v2.1.0.yml<span class="w"> </span>up<span class="w"> </span>-d
-</code></pre></div>
-
-<h3 id="problema-grafana-no-carga-dashboards">Problema: Grafana no carga dashboards</h3>
+# Liberar puertos y reiniciar
+docker compose -f docker-compose-v2.1.0.yml down
+docker compose -f docker-compose-v2.1.0.yml up -d
+</code></pre>
+<h3>Problema: Grafana no carga dashboards</h3>
 <p><strong>Síntomas</strong>: Dashboards aparecen vacíos</p>
 <p><strong>Solución</strong>:</p>
-<div class="codehilite"><pre><span></span><code><span class="c1"># Verificar Prometheus está scrapeando</span>
-curl<span class="w"> </span>http://localhost:9090/api/v1/targets
+<pre><code class="language-bash"># Verificar Prometheus está scrapeando
+curl http://localhost:9090/api/v1/targets
 
-<span class="c1"># Verificar Loki recibe logs</span>
-curl<span class="w"> </span>http://localhost:3100/ready
+# Verificar Loki recibe logs
+curl http://localhost:3100/ready
 
-<span class="c1"># Reimportar dashboards</span>
-docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> </span>docker-compose-v2.1.0.yml<span class="w"> </span>restart<span class="w"> </span>grafana
-</code></pre></div>
-
-<h3 id="problema-email-de-licencia-no-llega">Problema: Email de licencia no llega</h3>
-<p><strong>Síntomas</strong>: Licencia creada pero email no se envía</p>
-<p><strong>Solución</strong>:<br />
-1. Verificar SMTP_PASSWORD en <code>.env</code><br />
-2. Comprobar logs:<br />
-<code>bash
-   docker compose -f docker-compose-v2.1.0.yml logs license-server-v2 | grep "Email"</code><br />
-3. Verificar app password de Zoho:<br />
-   - https://accounts.zoho.com/home#security/security<br />
-   - Crear nuevo "App Password"<br />
-   - Actualizar <code>.env</code> y reiniciar:<br />
-<code>bash
-     docker compose -f docker-compose-v2.1.0.yml restart license-server-v2</code></p>
-<h3 id="problema-disco-lleno">Problema: Disco lleno</h3>
+# Reimportar dashboards
+docker compose -f docker-compose-v2.1.0.yml restart grafana
+</code></pre>
+<h3>Problema: Disco lleno</h3>
 <p><strong>Síntomas</strong>: Servicios lentos, errores de escritura</p>
 <p><strong>Solución</strong>:</p>
-<div class="codehilite"><pre><span></span><code><span class="c1"># Verificar uso de disco</span>
-docker<span class="w"> </span>system<span class="w"> </span>df
+<pre><code class="language-bash"># Verificar uso de disco
+docker system df
 
-<span class="c1"># Limpiar imágenes y volúmenes no usados</span>
-docker<span class="w"> </span>system<span class="w"> </span>prune<span class="w"> </span>-a<span class="w"> </span>--volumes
+# Limpiar imágenes y volúmenes no usados
+docker system prune -a --volumes
 
-<span class="c1"># Reducir retención de datos (ver Configuración Avanzada)</span>
-</code></pre></div>
-
+# Reducir retención de datos (ver Configuración Avanzada)
+</code></pre>
 <hr />
-<h2 id="soporte">📞 Soporte</h2>
-<h3 id="canales-de-soporte">Canales de Soporte</h3>
+<h2>📞 Soporte</h2>
+<h3>Canales de Soporte</h3>
 <ul>
 <li><strong>Email</strong>: soporte@rhinometric.com</li>
 <li><strong>Web</strong>: https://rhinometric.com</li>
 <li><strong>GitHub Issues</strong>: https://github.com/Rafael2712/mi-proyecto/issues</li>
 <li><strong>Documentación</strong>: Este manual + README.md</li>
 </ul>
-<h3 id="informacion-para-reportar-issues">Información para Reportar Issues</h3>
+<h3>Información para Reportar Issues</h3>
 <p>Incluir siempre:<br />
 1. Versión de Rhinometric (<code>docker compose version</code>)<br />
 2. Sistema operativo y versión<br />
 3. Logs relevantes (<code>docker compose logs &lt;service&gt;</code>)<br />
 4. Pasos para reproducir el problema<br />
 5. Screenshot si aplica</p>
-<h3 id="horarios-de-atencion">Horarios de Atención</h3>
+<h3>Horarios de Atención</h3>
 <ul>
 <li><strong>Lunes a Viernes</strong>: 9:00 - 18:00 (CET)</li>
 <li><strong>Email 24/7</strong>: Respuesta en 24-48h</li>
 <li><strong>Emergencias</strong>: contacto@rhinometric.com</li>
 </ul>
 <hr />
-<h2 id="recursos-adicionales">📚 Recursos Adicionales</h2>
+<h2>📚 Recursos Adicionales</h2>
 <ul>
 <li><strong>README.md</strong>: Documentación completa del proyecto</li>
-<li><strong>CONFIGURAR_EMAIL_ZOHO.md</strong>: Guía de configuración de emails</li>
 <li><strong>CHANGELOG.md</strong>: Historial de versiones</li>
-<li><strong>Terraform</strong>: <code>terraform/oracle-cloud/README.md</code> para deploy en cloud</li>
+<li><strong>GitHub</strong>: https://github.com/Rafael2712/mi-proyecto</li>
 </ul>
 <hr />
 <p><strong>© 2025 Rhinometric. Todos los derechos reservados.</strong></p>
 <p>Versión del documento: 2.1.0<br />
-Última actualización: Octubre 2025</p>
-<hr />
-<blockquote>
-<p><strong>Nota</strong>: Este documento debe convertirse a PDF usando:<br />
-- Pandoc: <code>pandoc manual_usuario.md -o manual_usuario.pdf</code><br />
-- Markdown to PDF: https://www.markdowntopdf.com/<br />
-- VSCode Extension: "Markdown PDF"</p>
-</blockquote>
+Última actualización: Diciembre 2025</p>
+        </div>
         
         <div class="footer">
-            <p>© 2025 Rhinometric Platform | <a href="https://rhinometric.com">rhinometric.com</a></p>
+            <p><strong>© 2025 Rhinometric. Todos los derechos reservados.</strong></p>
             <p>Soporte: <a href="mailto:soporte@rhinometric.com">soporte@rhinometric.com</a></p>
+            <p>Web: <a href="https://rhinometric.com">rhinometric.com</a></p>
         </div>
     </div>
 </body>
