@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guía de Instalación - Rhinometric v2.1.0</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        
+        h1, h2, h3, h4 {
+            color: #667eea;
+            margin-top: 1.5em;
+            margin-bottom: 0.5em;
+        }
+        
+        h1 {
+            font-size: 2.5em;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 0.3em;
+            margin-top: 0;
+        }
+        
+        h2 {
+            font-size: 2em;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 0.3em;
+        }
+        
+        h3 {
+            font-size: 1.5em;
+            color: #764ba2;
+        }
+        
+        h4 {
+            font-size: 1.2em;
+        }
+        
+        p {
+            margin-bottom: 1em;
+        }
+        
+        ul, ol {
+            margin-left: 2em;
+            margin-bottom: 1em;
+        }
+        
+        li {
+            margin-bottom: 0.5em;
+        }
+        
+        code {
+            background: #f7fafc;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            color: #e53e3e;
+            font-size: 0.9em;
+        }
+        
+        pre {
+            background: #2d3748;
+            color: #f7fafc;
+            padding: 20px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin-bottom: 1em;
+            border-left: 4px solid #667eea;
+        }
+        
+        pre code {
+            background: transparent;
+            color: #f7fafc;
+            padding: 0;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 1.5em;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border: 1px solid #e2e8f0;
+        }
+        
+        th {
+            background: #667eea;
+            color: white;
+            font-weight: 600;
+        }
+        
+        tr:nth-child(even) {
+            background: #f7fafc;
+        }
+        
+        blockquote {
+            border-left: 4px solid #667eea;
+            padding-left: 20px;
+            margin: 1em 0;
+            color: #666;
+            font-style: italic;
+            background: #f7fafc;
+            padding: 15px 20px;
+            border-radius: 4px;
+        }
+        
+        a {
+            color: #667eea;
+            text-decoration: none;
+            border-bottom: 2px solid transparent;
+            transition: border-color 0.3s;
+        }
+        
+        a:hover {
+            border-bottom-color: #667eea;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            margin: -40px -40px 40px -40px;
+            border-radius: 12px 12px 0 0;
+            text-align: center;
+        }
+        
+        .header h1 {
+            color: white;
+            border: none;
+            margin: 0;
+            font-size: 2.5em;
+        }
+        
+        .header p {
+            margin: 10px 0 0 0;
+            opacity: 0.9;
+        }
+        
+        .footer {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 2px solid #e2e8f0;
+            text-align: center;
+            color: #666;
+            font-size: 0.9em;
+        }
+        
+        .warning {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 1em 0;
+            border-radius: 4px;
+        }
+        
+        .info {
+            background: #d1ecf1;
+            border-left: 4px solid #17a2b8;
+            padding: 15px;
+            margin: 1em 0;
+            border-radius: 4px;
+        }
+        
+        .success {
+            background: #d4edda;
+            border-left: 4px solid #28a745;
+            padding: 15px;
+            margin: 1em 0;
+            border-radius: 4px;
+        }
+        
+        @media print {
+            body {
+                background: white;
+                padding: 0;
+            }
+            .container {
+                box-shadow: none;
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🦏 Guía de Instalación</h1>
+            <p>Rhinometric v2.1.0 - Plataforma de Observabilidad Empresarial</p>
+        </div>
+        
+        <h1 id="rhinometric-v210-guia-de-instalacion-completa">🚀 Rhinometric v2.1.0 - Guía de Instalación Completa</h1>
+<p><strong>Instalación paso a paso para Linux, macOS y Windows</strong></p>
+<hr />
+<h2 id="tabla-de-contenidos">📋 Tabla de Contenidos</h2>
+<ol>
+<li><a href="#pre-requisitos">Pre-requisitos</a></li>
+<li><a href="#descarga-e-instalación">Descarga e Instalación</a></li>
+<li><a href="#instalación-linux-macos">Instalación Linux/macOS</a></li>
+<li><a href="#instalación-windows">Instalación Windows</a></li>
+<li><a href="#configuración-post-instalación">Configuración Post-Instalación</a></li>
+<li><a href="#verificación">Verificación</a></li>
+<li><a href="#desinstalación">Desinstalación</a></li>
+</ol>
+<hr />
+<h2 id="pre-requisitos">✅ Pre-requisitos</h2>
+<h3 id="software-requerido">Software Requerido</h3>
+<h4 id="1-docker-desktop-obligatorio">1. Docker Desktop (OBLIGATORIO)</h4>
+<p><strong>Linux</strong>:</p>
+<div class="codehilite"><pre><span></span><code><span class="c1"># Ubuntu/Debian</span>
+curl<span class="w"> </span>-fsSL<span class="w"> </span>https://get.docker.com<span class="w"> </span>-o<span class="w"> </span>get-docker.sh
+sudo<span class="w"> </span>sh<span class="w"> </span>get-docker.sh
+sudo<span class="w"> </span>usermod<span class="w"> </span>-aG<span class="w"> </span>docker<span class="w"> </span><span class="nv">$USER</span>
+newgrp<span class="w"> </span>docker
+
+<span class="c1"># Verificar</span>
+docker<span class="w"> </span>--version<span class="w">  </span><span class="c1"># Debe mostrar 20.10+</span>
+</code></pre></div>
+
+<p><strong>macOS</strong>:<br />
+1. Descargar desde: https://www.docker.com/products/docker-desktop/<br />
+2. Instalar <code>.dmg</code><br />
+3. Abrir Docker Desktop<br />
+4. Esperar que inicie completamente (ícono en barra superior)</p>
+<p><strong>Windows</strong>:<br />
+1. Descargar desde: https://www.docker.com/products/docker-desktop/<br />
+2. Ejecutar instalador<br />
+3. Habilitar WSL 2 si se solicita<br />
+4. Reiniciar PC<br />
+5. Abrir Docker Desktop y esperar inicio completo</p>
+<h4 id="2-git-recomendado">2. Git (RECOMENDADO)</h4>
+<p><strong>Linux</strong>:</p>
+<div class="codehilite"><pre><span></span><code>sudo<span class="w"> </span>apt-get<span class="w"> </span>install<span class="w"> </span>git<span class="w">  </span><span class="c1"># Ubuntu/Debian</span>
+sudo<span class="w"> </span>yum<span class="w"> </span>install<span class="w"> </span>git<span class="w">       </span><span class="c1"># RHEL/CentOS</span>
+</code></pre></div>
+
+<p><strong>macOS</strong>:</p>
+<div class="codehilite"><pre><span></span><code>brew<span class="w"> </span>install<span class="w"> </span>git<span class="w">  </span><span class="c1"># Con Homebrew</span>
+<span class="c1"># O descargar desde: https://git-scm.com/download/mac</span>
+</code></pre></div>
+
+<p><strong>Windows</strong>:<br />
+- Descargar desde: https://git-scm.com/download/win<br />
+- Instalar con opciones por defecto</p>
+<h3 id="hardware-minimo">Hardware Mínimo</h3>
+<table>
+<thead>
+<tr>
+<th>Componente</th>
+<th>Mínimo</th>
+<th>Recomendado</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CPU</td>
+<td>4 cores</td>
+<td>8 cores</td>
+</tr>
+<tr>
+<td>RAM</td>
+<td>8 GB</td>
+<td>16 GB</td>
+</tr>
+<tr>
+<td>Disco</td>
+<td>50 GB libres</td>
+<td>200 GB SSD</td>
+</tr>
+<tr>
+<td>Red</td>
+<td>100 Mbps</td>
+<td>1 Gbps</td>
+</tr>
+</tbody>
+</table>
+<h3 id="puertos-disponibles">Puertos Disponibles</h3>
+<p>Verificar que estos puertos NO estén en uso:</p>
+<div class="codehilite"><pre><span></span><code><span class="c1"># Linux/macOS</span>
+netstat<span class="w"> </span>-tuln<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-E<span class="w"> </span><span class="s1">&#39;3000|5000|5432|8090|8091|8092|9090&#39;</span>
+
+<span class="c1"># Windows (PowerShell)</span>
+netstat<span class="w"> </span>-ano<span class="w"> </span><span class="p">|</span><span class="w"> </span>findstr<span class="w"> </span>-E<span class="w"> </span><span class="s2">&quot;3000 5000 5432 8090 8091 8092 9090&quot;</span>
+</code></pre></div>
+
+<p>Si algún puerto está ocupado, detener el servicio o cambiar el puerto en <code>docker-compose-v2.1.0.yml</code>.</p>
+<hr />
+<h2 id="descarga-e-instalacion">📥 Descarga e Instalación</h2>
+<h3 id="opcion-1-clonar-desde-github-recomendado">Opción 1: Clonar desde GitHub (Recomendado)</h3>
+<div class="codehilite"><pre><span></span><code>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/Rafael2712/mi-proyecto.git
+<span class="nb">cd</span><span class="w"> </span>mi-proyecto/infrastructure/mi-proyecto/rhinometric-trial-v2.1.0-universal
+</code></pre></div>
+
+<h3 id="opcion-2-descargar-release-zip">Opción 2: Descargar Release ZIP</h3>
+<ol>
+<li>Ir a: https://github.com/Rafael2712/mi-proyecto/releases</li>
+<li>Descargar <code>rhinometric-trial-v2.1.0-universal.tar.gz</code></li>
+<li>Extraer:</li>
+</ol>
+<div class="codehilite"><pre><span></span><code><span class="c1"># Linux/macOS</span>
+tar<span class="w"> </span>-xzf<span class="w"> </span>rhinometric-trial-v2.1.0-universal.tar.gz
+<span class="nb">cd</span><span class="w"> </span>rhinometric-trial-v2.1.0-universal
+
+<span class="c1"># Windows (PowerShell)</span>
+Expand-Archive<span class="w"> </span>rhinometric-trial-v2.1.0-universal.zip
+<span class="nb">cd</span><span class="w"> </span>rhinometric-trial-v2.1.0-universal
+</code></pre></div>
+
+<hr />
+<h2 id="instalacion-linuxmacos">🐧 Instalación Linux/macOS</h2>
+<h3 id="metodo-1-instalador-automatico-recomendado">Método 1: Instalador Automático (Recomendado)</h3>
+<div class="codehilite"><pre><span></span><code><span class="c1"># 1. Dar permisos de ejecución</span>
+chmod<span class="w"> </span>+x<span class="w"> </span>install.sh
+
+<span class="c1"># 2. Ejecutar instalador</span>
+./install.sh
+
+<span class="c1"># El instalador:</span>
+<span class="c1"># ✅ Verifica Docker instalado</span>
+<span class="c1"># ✅ Verifica puertos disponibles</span>
+<span class="c1"># ✅ Crea .env con contraseñas seguras</span>
+<span class="c1"># ✅ Descarga imágenes Docker</span>
+<span class="c1"># ✅ Inicia todos los servicios</span>
+<span class="c1"># ✅ Espera a que estén healthy</span>
+<span class="c1"># ✅ Muestra URLs de acceso</span>
+</code></pre></div>
+
+<p><strong>Salida esperada</strong>:</p>
+<div class="codehilite"><pre><span></span><code><span class="err">╔════════════════════════════════════════════════════════════════╗</span>
+<span class="err">║</span><span class="w">  </span><span class="n">Rhinometric</span><span class="w"> </span><span class="n">v2</span><span class="mf">.1.0</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">Observability</span><span class="w"> </span><span class="n">Platform</span><span class="w">                 </span><span class="err">║</span>
+<span class="err">╚════════════════════════════════════════════════════════════════╝</span>
+
+<span class="o">[</span><span class="n">STEP</span><span class="o">]</span><span class="w"> </span><span class="n">Checking</span><span class="w"> </span><span class="n">Docker</span><span class="w"> </span><span class="n">installation</span><span class="p">...</span>
+<span class="err">✅</span><span class="w"> </span><span class="n">Docker</span><span class="w"> </span><span class="mf">24.0.6</span><span class="w"> </span><span class="k">found</span>
+<span class="err">✅</span><span class="w"> </span><span class="n">Docker</span><span class="w"> </span><span class="n">daemon</span><span class="w"> </span><span class="k">is</span><span class="w"> </span><span class="n">running</span>
+
+<span class="o">[</span><span class="n">STEP</span><span class="o">]</span><span class="w"> </span><span class="n">Checking</span><span class="w"> </span><span class="n">Docker</span><span class="w"> </span><span class="n">Compose</span><span class="p">...</span>
+<span class="err">✅</span><span class="w"> </span><span class="n">Docker</span><span class="w"> </span><span class="n">Compose</span><span class="w"> </span><span class="n">v2</span><span class="mf">.23.0</span><span class="w"> </span><span class="k">found</span>
+
+<span class="o">[</span><span class="n">STEP</span><span class="o">]</span><span class="w"> </span><span class="n">Checking</span><span class="w"> </span><span class="n">port</span><span class="w"> </span><span class="n">availability</span><span class="p">...</span>
+<span class="err">✅</span><span class="w"> </span><span class="ow">All</span><span class="w"> </span><span class="n">required</span><span class="w"> </span><span class="n">ports</span><span class="w"> </span><span class="k">are</span><span class="w"> </span><span class="n">available</span>
+
+<span class="o">[</span><span class="n">STEP</span><span class="o">]</span><span class="w"> </span><span class="n">Checking</span><span class="w"> </span><span class="k">disk</span><span class="w"> </span><span class="nf">space</span><span class="p">...</span>
+<span class="err">✅</span><span class="w"> </span><span class="mi">150</span><span class="n">GB</span><span class="w"> </span><span class="n">available</span>
+
+<span class="o">[</span><span class="n">STEP</span><span class="o">]</span><span class="w"> </span><span class="n">Setting</span><span class="w"> </span><span class="n">up</span><span class="w"> </span><span class="n">environment</span><span class="w"> </span><span class="n">configuration</span><span class="p">...</span>
+<span class="err">✅</span><span class="w"> </span><span class="n">Environment</span><span class="w"> </span><span class="n">configured</span><span class="w"> </span><span class="k">with</span><span class="w"> </span><span class="n">secure</span><span class="w"> </span><span class="n">passwords</span>
+<span class="err">✅</span><span class="w"> </span><span class="n">Credentials</span><span class="w"> </span><span class="n">saved</span><span class="w"> </span><span class="k">to</span><span class="w"> </span><span class="n">credentials</span><span class="p">.</span><span class="n">txt</span><span class="w"> </span><span class="p">(</span><span class="nf">permissions</span><span class="err">:</span><span class="w"> </span><span class="mi">600</span><span class="p">)</span>
+
+<span class="o">[</span><span class="n">STEP</span><span class="o">]</span><span class="w"> </span><span class="n">Deploying</span><span class="w"> </span><span class="n">Rhinometric</span><span class="w"> </span><span class="n">stack</span><span class="p">...</span>
+<span class="n">Pulling</span><span class="w"> </span><span class="n">Docker</span><span class="w"> </span><span class="n">images</span><span class="w"> </span><span class="p">(</span><span class="n">this</span><span class="w"> </span><span class="n">may</span><span class="w"> </span><span class="n">take</span><span class="w"> </span><span class="mi">5</span><span class="o">-</span><span class="mi">10</span><span class="w"> </span><span class="n">minutes</span><span class="w"> </span><span class="k">on</span><span class="w"> </span><span class="k">first</span><span class="w"> </span><span class="n">run</span><span class="p">)...</span>
+<span class="o">[</span><span class="n">+</span><span class="o">]</span><span class="w"> </span><span class="n">Pulling</span><span class="w"> </span><span class="mi">16</span><span class="o">/</span><span class="mi">16</span>
+<span class="w"> </span><span class="err">✔</span><span class="w"> </span><span class="n">postgres</span><span class="w"> </span><span class="n">Pulled</span>
+<span class="w"> </span><span class="err">✔</span><span class="w"> </span><span class="n">redis</span><span class="w"> </span><span class="n">Pulled</span>
+<span class="w"> </span><span class="err">✔</span><span class="w"> </span><span class="n">grafana</span><span class="w"> </span><span class="n">Pulled</span>
+<span class="w"> </span><span class="p">...</span><span class="w"> </span><span class="p">(</span><span class="n">más</span><span class="w"> </span><span class="n">servicios</span><span class="p">)</span>
+
+<span class="n">Starting</span><span class="w"> </span><span class="n">services</span><span class="p">...</span>
+<span class="o">[</span><span class="n">+</span><span class="o">]</span><span class="w"> </span><span class="n">Running</span><span class="w"> </span><span class="mi">16</span><span class="o">/</span><span class="mi">16</span>
+<span class="w"> </span><span class="err">✔</span><span class="w"> </span><span class="n">Container</span><span class="w"> </span><span class="n">rhinometric</span><span class="o">-</span><span class="n">postgres</span><span class="w">    </span><span class="n">Healthy</span>
+<span class="w"> </span><span class="err">✔</span><span class="w"> </span><span class="n">Container</span><span class="w"> </span><span class="n">rhinometric</span><span class="o">-</span><span class="n">redis</span><span class="w">       </span><span class="n">Healthy</span>
+<span class="w"> </span><span class="err">✔</span><span class="w"> </span><span class="n">Container</span><span class="w"> </span><span class="n">rhinometric</span><span class="o">-</span><span class="n">grafana</span><span class="w">     </span><span class="n">Healthy</span>
+<span class="w"> </span><span class="p">...</span><span class="w"> </span><span class="p">(</span><span class="n">más</span><span class="w"> </span><span class="n">servicios</span><span class="p">)</span>
+
+<span class="err">✅</span><span class="w"> </span><span class="ow">All</span><span class="w"> </span><span class="n">services</span><span class="w"> </span><span class="n">started</span>
+
+<span class="o">[</span><span class="n">STEP</span><span class="o">]</span><span class="w"> </span><span class="n">Waiting</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="n">services</span><span class="w"> </span><span class="k">to</span><span class="w"> </span><span class="n">become</span><span class="w"> </span><span class="n">healthy</span><span class="p">...</span>
+<span class="n">Healthy</span><span class="w"> </span><span class="nl">containers</span><span class="p">:</span><span class="w"> </span><span class="mi">16</span><span class="o">/</span><span class="mi">16</span><span class="w">  </span>
+<span class="err">✅</span><span class="w"> </span><span class="n">Core</span><span class="w"> </span><span class="n">services</span><span class="w"> </span><span class="k">are</span><span class="w"> </span><span class="n">healthy</span>
+
+<span class="err">╔════════════════════════════════════════════════════════════════╗</span>
+<span class="err">║</span><span class="w">  </span><span class="n">Installation</span><span class="w"> </span><span class="n">Complete</span><span class="err">!</span><span class="w">                                      </span><span class="err">║</span>
+<span class="err">╚════════════════════════════════════════════════════════════════╝</span>
+
+<span class="err">🌐</span><span class="w"> </span><span class="n">Access</span><span class="w"> </span><span class="nl">URLs</span><span class="p">:</span>
+<span class="w">  </span><span class="nl">Grafana</span><span class="p">:</span><span class="w">              </span><span class="nl">http</span><span class="p">:</span><span class="o">//</span><span class="nl">localhost</span><span class="p">:</span><span class="mi">3000</span>
+<span class="w">  </span><span class="nl">Prometheus</span><span class="p">:</span><span class="w">           </span><span class="nl">http</span><span class="p">:</span><span class="o">//</span><span class="nl">localhost</span><span class="p">:</span><span class="mi">9090</span>
+<span class="w">  </span><span class="n">License</span><span class="w"> </span><span class="nl">Server</span><span class="p">:</span><span class="w">       </span><span class="nl">http</span><span class="p">:</span><span class="o">//</span><span class="nl">localhost</span><span class="p">:</span><span class="mi">5000</span><span class="o">/</span><span class="n">api</span><span class="o">/</span><span class="n">docs</span>
+<span class="w">  </span><span class="n">API</span><span class="w"> </span><span class="n">Connector</span><span class="w"> </span><span class="nl">UI</span><span class="p">:</span><span class="w">     </span><span class="nl">http</span><span class="p">:</span><span class="o">//</span><span class="nl">localhost</span><span class="p">:</span><span class="mi">8091</span>
+<span class="w">  </span><span class="n">License</span><span class="w"> </span><span class="nl">Management</span><span class="p">:</span><span class="w">   </span><span class="nl">http</span><span class="p">:</span><span class="o">//</span><span class="nl">localhost</span><span class="p">:</span><span class="mi">8092</span>
+
+<span class="err">🔐</span><span class="w"> </span><span class="nl">Credentials</span><span class="p">:</span>
+<span class="w">  </span><span class="n">Saved</span><span class="w"> </span><span class="ow">in</span><span class="err">:</span><span class="w"> </span><span class="n">credentials</span><span class="p">.</span><span class="n">txt</span>
+<span class="w">  </span><span class="n">Grafana</span><span class="w"> </span><span class="nl">username</span><span class="p">:</span><span class="w"> </span><span class="k">admin</span>
+
+<span class="err">📋</span><span class="w"> </span><span class="n">Quick</span><span class="w"> </span><span class="nl">Commands</span><span class="p">:</span>
+<span class="w">  </span><span class="k">View</span><span class="w"> </span><span class="nl">logs</span><span class="p">:</span><span class="w">        </span><span class="n">docker</span><span class="w"> </span><span class="n">compose</span><span class="w"> </span><span class="o">-</span><span class="n">f</span><span class="w"> </span><span class="n">docker</span><span class="o">-</span><span class="n">compose</span><span class="o">-</span><span class="n">v2</span><span class="mf">.1.0</span><span class="p">.</span><span class="n">yml</span><span class="w"> </span><span class="n">logs</span><span class="w"> </span><span class="o">-</span><span class="n">f</span>
+<span class="w">  </span><span class="k">Check</span><span class="w"> </span><span class="nl">status</span><span class="p">:</span><span class="w">     </span><span class="n">docker</span><span class="w"> </span><span class="n">compose</span><span class="w"> </span><span class="o">-</span><span class="n">f</span><span class="w"> </span><span class="n">docker</span><span class="o">-</span><span class="n">compose</span><span class="o">-</span><span class="n">v2</span><span class="mf">.1.0</span><span class="p">.</span><span class="n">yml</span><span class="w"> </span><span class="n">ps</span>
+<span class="w">  </span><span class="n">Stop</span><span class="w"> </span><span class="nl">services</span><span class="p">:</span><span class="w">    </span><span class="n">docker</span><span class="w"> </span><span class="n">compose</span><span class="w"> </span><span class="o">-</span><span class="n">f</span><span class="w"> </span><span class="n">docker</span><span class="o">-</span><span class="n">compose</span><span class="o">-</span><span class="n">v2</span><span class="mf">.1.0</span><span class="p">.</span><span class="n">yml</span><span class="w"> </span><span class="n">down</span>
+<span class="w">  </span><span class="nl">Restart</span><span class="p">:</span><span class="w">          </span><span class="n">docker</span><span class="w"> </span><span class="n">compose</span><span class="w"> </span><span class="o">-</span><span class="n">f</span><span class="w"> </span><span class="n">docker</span><span class="o">-</span><span class="n">compose</span><span class="o">-</span><span class="n">v2</span><span class="mf">.1.0</span><span class="p">.</span><span class="n">yml</span><span class="w"> </span><span class="n">restart</span>
+</code></pre></div>
+
+<h3 id="metodo-2-instalacion-manual">Método 2: Instalación Manual</h3>
+<div class="codehilite"><pre><span></span><code><span class="c1"># 1. Copiar y configurar .env</span>
+cp<span class="w"> </span>.env.example<span class="w"> </span>.env
+nano<span class="w"> </span>.env<span class="w">  </span><span class="c1"># O usar vim, vi, etc.</span>
+
+<span class="c1"># Configurar:</span>
+<span class="nv">POSTGRES_PASSWORD</span><span class="o">=</span>tu_password_seguro
+<span class="nv">REDIS_PASSWORD</span><span class="o">=</span>tu_password_seguro
+<span class="nv">GRAFANA_PASSWORD</span><span class="o">=</span>tu_password_seguro
+
+<span class="c1"># 2. Descargar imágenes</span>
+docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> </span>docker-compose-v2.1.0.yml<span class="w"> </span>pull
+
+<span class="c1"># 3. Iniciar servicios</span>
+docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> </span>docker-compose-v2.1.0.yml<span class="w"> </span>up<span class="w"> </span>-d
+
+<span class="c1"># 4. Esperar a que estén healthy (2-3 minutos)</span>
+watch<span class="w"> </span>docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> </span>docker-compose-v2.1.0.yml<span class="w"> </span>ps
+
+<span class="c1"># 5. Verificar logs</span>
+docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> </span>docker-compose-v2.1.0.yml<span class="w"> </span>logs<span class="w"> </span>-f
+</code></pre></div>
+
+<hr />
+<h2 id="instalacion-windows">🪟 Instalación Windows</h2>
+<h3 id="metodo-1-instalador-powershell-recomendado">Método 1: Instalador PowerShell (Recomendado)</h3>
+<div class="codehilite"><pre><span></span><code><span class="c"># 1. Abrir PowerShell como Administrador</span>
+<span class="c"># Botón derecho en PowerShell → &quot;Ejecutar como administrador&quot;</span>
+
+<span class="c"># 2. Navegar al directorio</span>
+<span class="nb">cd </span><span class="n">C</span><span class="p">:\</span><span class="n">Users</span><span class="p">\</span><span class="n">TuUsuario</span><span class="p">\</span><span class="n">Downloads</span><span class="p">\</span><span class="n">rhinometric-trial-v2</span><span class="p">.</span><span class="n">1</span><span class="p">.</span><span class="n">0-universal</span>
+
+<span class="c"># 3. Habilitar ejecución de scripts (solo primera vez)</span>
+<span class="nb">Set-ExecutionPolicy</span> <span class="n">-ExecutionPolicy</span> <span class="n">RemoteSigned</span> <span class="n">-Scope</span> <span class="n">CurrentUser</span>
+
+<span class="c"># 4. Ejecutar instalador</span>
+<span class="p">.\</span><span class="n">install</span><span class="p">.</span><span class="n">ps1</span>
+
+<span class="c"># El instalador hace lo mismo que en Linux/macOS</span>
+</code></pre></div>
+
+<p><strong>Solución de problemas comunes</strong>:</p>
+<div class="codehilite"><pre><span></span><code><span class="c"># Error: &quot;No se puede ejecutar scripts&quot;</span>
+<span class="nb">Set-ExecutionPolicy</span> <span class="n">Bypass</span> <span class="n">-Scope</span> <span class="k">Process</span>
+
+<span class="c"># Error: &quot;Docker no encontrado&quot;</span>
+<span class="c"># - Verificar Docker Desktop esté running</span>
+<span class="c"># - Reiniciar PowerShell</span>
+<span class="c"># - Verificar: docker --version</span>
+
+<span class="c"># Error: &quot;Puertos ocupados&quot;</span>
+<span class="c"># - Detener servicios conflictivos:</span>
+<span class="nb">Get-Process</span> <span class="n">-Id</span> <span class="p">(</span><span class="nb">Get-NetTCPConnection</span> <span class="n">-LocalPort</span> <span class="n">3000</span><span class="p">).</span><span class="n">OwningProcess</span> <span class="p">|</span> <span class="nb">Stop-Process</span>
+</code></pre></div>
+
+<h3 id="metodo-2-instalacion-manual-powershell">Método 2: Instalación Manual (PowerShell)</h3>
+<div class="codehilite"><pre><span></span><code><span class="c"># 1. Copiar .env</span>
+<span class="nb">Copy-Item</span> <span class="p">.</span><span class="n">env</span><span class="p">.</span><span class="n">example</span> <span class="p">.</span><span class="n">env</span>
+<span class="n">notepad</span> <span class="p">.</span><span class="n">env</span>  <span class="c"># Configurar contraseñas</span>
+
+<span class="c"># 2. Descargar imágenes</span>
+<span class="n">docker</span> <span class="n">compose</span> <span class="o">-f</span> <span class="n">docker-compose-v2</span><span class="p">.</span><span class="n">1</span><span class="p">.</span><span class="n">0</span><span class="p">.</span><span class="n">yml</span> <span class="n">pull</span>
+
+<span class="c"># 3. Iniciar servicios</span>
+<span class="n">docker</span> <span class="n">compose</span> <span class="o">-f</span> <span class="n">docker-compose-v2</span><span class="p">.</span><span class="n">1</span><span class="p">.</span><span class="n">0</span><span class="p">.</span><span class="n">yml</span> <span class="n">up</span> <span class="n">-d</span>
+
+<span class="c"># 4. Verificar estado</span>
+<span class="n">docker</span> <span class="n">compose</span> <span class="o">-f</span> <span class="n">docker-compose-v2</span><span class="p">.</span><span class="n">1</span><span class="p">.</span><span class="n">0</span><span class="p">.</span><span class="n">yml</span> <span class="nb">ps</span>
+
+<span class="c"># 5. Ver logs</span>
+<span class="n">docker</span> <span class="n">compose</span> <span class="o">-f</span> <span class="n">docker-compose-v2</span><span class="p">.</span><span class="n">1</span><span class="p">.</span><span class="n">0</span><span class="p">.</span><span class="n">yml</span> <span class="n">logs</span> <span class="o">-f</span>
+</code></pre></div>
+
+<hr />
+<h2 id="configuracion-post-instalacion">⚙️ Configuración Post-Instalación</h2>
+<h3 id="1-configurar-licencia-si-ya-la-tienes">1. Configurar Licencia (Si ya la tienes)</h3>
+<div class="codehilite"><pre><span></span><code><span class="c1"># Editar .env</span>
+nano<span class="w"> </span>.env<span class="w">  </span><span class="c1"># Linux/macOS</span>
+notepad<span class="w"> </span>.env<span class="w">  </span><span class="c1"># Windows</span>
+
+<span class="c1"># Agregar al final:</span>
+<span class="nv">LICENSE_KEY</span><span class="o">=</span>RHINO-TRIAL-2025-ABC123XYZ456
+
+<span class="c1"># Reiniciar License Server</span>
+docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> </span>docker-compose-v2.1.0.yml<span class="w"> </span>restart<span class="w"> </span>license-server-v2
+</code></pre></div>
+
+<h3 id="2-configurar-email-opcional">2. Configurar Email (Opcional)</h3>
+<p>Para envío automático de licencias:</p>
+<div class="codehilite"><pre><span></span><code><span class="c1"># Editar .env</span>
+<span class="nv">SMTP_HOST</span><span class="o">=</span>smtp.zoho.eu
+<span class="nv">SMTP_PORT</span><span class="o">=</span><span class="m">465</span>
+<span class="nv">SMTP_USER</span><span class="o">=</span>tu_email@tudominio.com
+<span class="nv">SMTP_PASSWORD</span><span class="o">=</span>tu_app_password_zoho
+<span class="nv">SMTP_FROM</span><span class="o">=</span>tu_email@tudominio.com
+
+<span class="c1"># Reiniciar</span>
+docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> </span>docker-compose-v2.1.0.yml<span class="w"> </span>restart<span class="w"> </span>license-server-v2
+</code></pre></div>
+
+<p><strong>Generar App Password en Zoho</strong>:<br />
+1. Ir a: https://accounts.zoho.com/home#security/security<br />
+2. Click en "App Passwords"<br />
+3. Generar password para "Rhinometric"<br />
+4. Copiar y pegar en <code>.env</code></p>
+<h3 id="3-cambiar-contrasena-de-grafana">3. Cambiar Contraseña de Grafana</h3>
+<div class="codehilite"><pre><span></span><code><span class="c1"># Primer login en http://localhost:3000</span>
+<span class="c1"># Usuario: admin</span>
+<span class="c1"># Password: Ver credentials.txt</span>
+
+<span class="c1"># Grafana te obligará a cambiar la contraseña</span>
+<span class="c1"># Recomendación: Usar password manager (1Password, LastPass, Bitwarden)</span>
+</code></pre></div>
+
+<h3 id="4-configurar-alertas-email-opcional">4. Configurar Alertas Email (Opcional)</h3>
+<p>Editar <code>prometheus/alertmanager/config.yml</code>:</p>
+<div class="codehilite"><pre><span></span><code><span class="nt">global</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">smtp_smarthost</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;smtp.zoho.eu:587&#39;</span>
+<span class="w">  </span><span class="nt">smtp_from</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;alertas@tudominio.com&#39;</span>
+<span class="w">  </span><span class="nt">smtp_auth_username</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;alertas@tudominio.com&#39;</span>
+<span class="w">  </span><span class="nt">smtp_auth_password</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;tu_app_password&#39;</span>
+
+<span class="nt">route</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">receiver</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;email-alerts&#39;</span>
+
+<span class="nt">receivers</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;email-alerts&#39;</span>
+<span class="w">    </span><span class="nt">email_configs</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">to</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;ops@tuempresa.com&#39;</span>
+<span class="w">        </span><span class="nt">send_resolved</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+</code></pre></div>
+
+<p>Reiniciar Alertmanager:</p>
+<div class="codehilite"><pre><span></span><code>docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> </span>docker-compose-v2.1.0.yml<span class="w"> </span>restart<span class="w"> </span>alertmanager
+</code></pre></div>
+
+<hr />
+<h2 id="verificacion">✅ Verificación</h2>
+<h3 id="1-verificar-todos-los-servicios-running">1. Verificar Todos los Servicios Running</h3>
+<div class="codehilite"><pre><span></span><code>docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> </span>docker-compose-v2.1.0.yml<span class="w"> </span>ps
+</code></pre></div>
+
+<p><strong>Salida esperada</strong>: 16 servicios con estado <code>Up</code> y <code>(healthy)</code>:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">NAME</span><span class="w">                              </span><span class="n">STATUS</span><span class="w">                    </span><span class="n">PORTS</span>
+<span class="n">rhinometric</span><span class="o">-</span><span class="n">grafana</span><span class="w">               </span><span class="n">Up</span><span class="w"> </span><span class="mi">5</span><span class="w"> </span><span class="n">minutes</span><span class="w"> </span><span class="p">(</span><span class="n">healthy</span><span class="p">)</span><span class="w">    </span><span class="mf">0.0.0.0</span><span class="o">:</span><span class="mi">3000</span><span class="o">-&gt;</span><span class="mi">3000</span><span class="o">/</span><span class="n">tcp</span>
+<span class="n">rhinometric</span><span class="o">-</span><span class="n">prometheus</span><span class="w">            </span><span class="n">Up</span><span class="w"> </span><span class="mi">5</span><span class="w"> </span><span class="n">minutes</span><span class="w"> </span><span class="p">(</span><span class="n">healthy</span><span class="p">)</span><span class="w">    </span><span class="mf">0.0.0.0</span><span class="o">:</span><span class="mi">9090</span><span class="o">-&gt;</span><span class="mi">9090</span><span class="o">/</span><span class="n">tcp</span>
+<span class="n">rhinometric</span><span class="o">-</span><span class="n">postgres</span><span class="w">              </span><span class="n">Up</span><span class="w"> </span><span class="mi">5</span><span class="w"> </span><span class="n">minutes</span><span class="w"> </span><span class="p">(</span><span class="n">healthy</span><span class="p">)</span><span class="w">    </span><span class="mf">0.0.0.0</span><span class="o">:</span><span class="mi">5432</span><span class="o">-&gt;</span><span class="mi">5432</span><span class="o">/</span><span class="n">tcp</span>
+<span class="p">...</span><span class="w"> </span><span class="p">(</span><span class="mi">13</span><span class="w"> </span><span class="n">servicios</span><span class="w"> </span><span class="n">más</span><span class="p">)</span>
+</code></pre></div>
+
+<h3 id="2-verificar-urls-accesibles">2. Verificar URLs Accesibles</h3>
+<div class="codehilite"><pre><span></span><code><span class="c1"># Linux/macOS</span>
+curl<span class="w"> </span>-I<span class="w"> </span>http://localhost:3000<span class="w">  </span><span class="c1"># Grafana - debe retornar 200</span>
+curl<span class="w"> </span>-I<span class="w"> </span>http://localhost:9090<span class="w">  </span><span class="c1"># Prometheus - debe retornar 200</span>
+curl<span class="w"> </span>http://localhost:5000/api/health<span class="w">  </span><span class="c1"># License Server - JSON con &quot;status&quot;: &quot;healthy&quot;</span>
+
+<span class="c1"># Windows (PowerShell)</span>
+Invoke-WebRequest<span class="w"> </span>-Uri<span class="w"> </span>http://localhost:3000<span class="w"> </span>-Method<span class="w"> </span>Head
+Invoke-WebRequest<span class="w"> </span>-Uri<span class="w"> </span>http://localhost:9090<span class="w"> </span>-Method<span class="w"> </span>Head
+Invoke-WebRequest<span class="w"> </span>-Uri<span class="w"> </span>http://localhost:5000/api/health
+</code></pre></div>
+
+<h3 id="3-verificar-dashboards-en-grafana">3. Verificar Dashboards en Grafana</h3>
+<ol>
+<li>Abrir http://localhost:3000</li>
+<li>Login (admin + password de credentials.txt)</li>
+<li>Ir a Dashboards → Browse</li>
+<li>Verificar que existen 8 dashboards:</li>
+<li>System Overview</li>
+<li>Database Health</li>
+<li>Container Metrics</li>
+<li>API Monitoring</li>
+<li>Logs Explorer</li>
+<li>Distributed Tracing</li>
+<li>License Management</li>
+<li>Alerting Dashboard</li>
+</ol>
+<h3 id="4-verificar-prometheus-targets">4. Verificar Prometheus Targets</h3>
+<ol>
+<li>Abrir http://localhost:9090/targets</li>
+<li>Verificar que todos los targets estén <code>UP</code> (color verde):</li>
+<li>node-exporter (métricas del sistema)</li>
+<li>postgres-exporter (métricas de PostgreSQL)</li>
+<li>prometheus (self-monitoring)</li>
+<li>otel-collector (trazas)</li>
+</ol>
+<h3 id="5-test-de-licencia-opcional">5. Test de Licencia (Opcional)</h3>
+<div class="codehilite"><pre><span></span><code>curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://localhost:5000/api/admin/licenses<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Content-Type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{</span>
+<span class="s1">    &quot;customer_name&quot;: &quot;Test User&quot;,</span>
+<span class="s1">    &quot;client_email&quot;: &quot;test@example.com&quot;,</span>
+<span class="s1">    &quot;client_company&quot;: &quot;Test Company&quot;,</span>
+<span class="s1">    &quot;license_type&quot;: &quot;trial&quot;</span>
+<span class="s1">  }&#39;</span>
+</code></pre></div>
+
+<p>Debe retornar JSON con la licencia creada.</p>
+<hr />
+<h2 id="desinstalacion">🗑️ Desinstalación</h2>
+<h3 id="desinstalacion-completa-borra-todo">Desinstalación Completa (Borra TODO)</h3>
+<div class="codehilite"><pre><span></span><code><span class="c1"># Detener servicios</span>
+docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> </span>docker-compose-v2.1.0.yml<span class="w"> </span>down
+
+<span class="c1"># Borrar volúmenes (CUIDADO: Elimina datos permanentemente)</span>
+docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> </span>docker-compose-v2.1.0.yml<span class="w"> </span>down<span class="w"> </span>-v
+
+<span class="c1"># Borrar imágenes</span>
+docker<span class="w"> </span>images<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>rhinometric<span class="w"> </span><span class="p">|</span><span class="w"> </span>awk<span class="w"> </span><span class="s1">&#39;{print $3}&#39;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>xargs<span class="w"> </span>docker<span class="w"> </span>rmi
+
+<span class="c1"># Verificar</span>
+docker<span class="w"> </span>ps<span class="w"> </span>-a<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>rhinometric<span class="w">  </span><span class="c1"># No debe mostrar nada</span>
+</code></pre></div>
+
+<h3 id="desinstalacion-conservando-datos">Desinstalación Conservando Datos</h3>
+<div class="codehilite"><pre><span></span><code><span class="c1"># Solo detener servicios (conserva volúmenes)</span>
+docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> </span>docker-compose-v2.1.0.yml<span class="w"> </span>down
+
+<span class="c1"># Para volver a iniciar más tarde:</span>
+docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> </span>docker-compose-v2.1.0.yml<span class="w"> </span>up<span class="w"> </span>-d
+</code></pre></div>
+
+<h3 id="limpieza-de-docker-liberar-espacio">Limpieza de Docker (Liberar Espacio)</h3>
+<div class="codehilite"><pre><span></span><code><span class="c1"># Ver uso de disco</span>
+docker<span class="w"> </span>system<span class="w"> </span>df
+
+<span class="c1"># Limpiar todo lo no usado</span>
+docker<span class="w"> </span>system<span class="w"> </span>prune<span class="w"> </span>-a<span class="w"> </span>--volumes
+
+<span class="c1"># ADVERTENCIA: Esto borrará:</span>
+<span class="c1"># - Contenedores detenidos</span>
+<span class="c1"># - Redes no usadas</span>
+<span class="c1"># - Imágenes sin contenedores</span>
+<span class="c1"># - Volúmenes no montados</span>
+</code></pre></div>
+
+<hr />
+<h2 id="troubleshooting-instalacion">🆘 Troubleshooting Instalación</h2>
+<h3 id="problema-docker-no-esta-instalado">Problema: Docker no está instalado</h3>
+<p><strong>Error</strong>: <code>docker: command not found</code></p>
+<p><strong>Solución</strong>:<br />
+- Instalar Docker Desktop (ver sección Pre-requisitos)<br />
+- Verificar <code>docker --version</code><br />
+- Reiniciar terminal</p>
+<h3 id="problema-permisos-denegados-linux">Problema: Permisos denegados (Linux)</h3>
+<p><strong>Error</strong>: <code>permission denied while trying to connect to the Docker daemon socket</code></p>
+<p><strong>Solución</strong>:</p>
+<div class="codehilite"><pre><span></span><code>sudo<span class="w"> </span>usermod<span class="w"> </span>-aG<span class="w"> </span>docker<span class="w"> </span><span class="nv">$USER</span>
+newgrp<span class="w"> </span>docker
+<span class="c1"># O reiniciar sesión</span>
+</code></pre></div>
+
+<h3 id="problema-puertos-ocupados">Problema: Puertos ocupados</h3>
+<p><strong>Error</strong>: <code>Error starting userland proxy: listen tcp4 0.0.0.0:3000: bind: address already in use</code></p>
+<p><strong>Solución</strong>:</p>
+<div class="codehilite"><pre><span></span><code><span class="c1"># Identificar qué proceso usa el puerto</span>
+sudo<span class="w"> </span>lsof<span class="w"> </span>-i<span class="w"> </span>:3000<span class="w">  </span><span class="c1"># Linux/macOS</span>
+netstat<span class="w"> </span>-ano<span class="w"> </span><span class="p">|</span><span class="w"> </span>findstr<span class="w"> </span>:3000<span class="w">  </span><span class="c1"># Windows</span>
+
+<span class="c1"># Detener proceso o cambiar puerto en docker-compose-v2.1.0.yml</span>
+</code></pre></div>
+
+<h3 id="problema-sin-espacio-en-disco">Problema: Sin espacio en disco</h3>
+<p><strong>Error</strong>: <code>no space left on device</code></p>
+<p><strong>Solución</strong>:</p>
+<div class="codehilite"><pre><span></span><code><span class="c1"># Limpiar Docker</span>
+docker<span class="w"> </span>system<span class="w"> </span>prune<span class="w"> </span>-a<span class="w"> </span>--volumes
+
+<span class="c1"># Verificar espacio</span>
+df<span class="w"> </span>-h<span class="w">  </span><span class="c1"># Linux/macOS</span>
+Get-PSDrive<span class="w">  </span><span class="c1"># Windows</span>
+</code></pre></div>
+
+<h3 id="problema-servicios-quedan-en-restarting">Problema: Servicios quedan en "Restarting"</h3>
+<p><strong>Síntomas</strong>: <code>docker ps</code> muestra servicios reiniciando constantemente</p>
+<p><strong>Solución</strong>:</p>
+<div class="codehilite"><pre><span></span><code><span class="c1"># Ver logs del servicio problemático</span>
+docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> </span>docker-compose-v2.1.0.yml<span class="w"> </span>logs<span class="w"> </span>&lt;servicio&gt;
+
+<span class="c1"># Causas comunes:</span>
+<span class="c1"># 1. Configuración incorrecta en .env</span>
+<span class="c1"># 2. Puerto ocupado</span>
+<span class="c1"># 3. Falta de recursos (RAM/CPU)</span>
+
+<span class="c1"># Verificar recursos:</span>
+docker<span class="w"> </span>stats
+
+<span class="c1"># Si es falta de RAM, aumentar límites en Docker Desktop:</span>
+<span class="c1"># Settings → Resources → Memory → Aumentar a 8GB mínimo</span>
+</code></pre></div>
+
+<hr />
+<h2 id="soporte-instalacion">📞 Soporte Instalación</h2>
+<p>Si la instalación falla después de seguir esta guía:</p>
+<ol>
+<li><strong>Recopilar información</strong>:<br />
+   ```bash<br />
+   # Sistema operativo<br />
+   uname -a  # Linux/macOS<br />
+   systeminfo  # Windows</li>
+</ol>
+<p># Docker version<br />
+   docker --version<br />
+   docker compose version</p>
+<p># Logs completos<br />
+   docker compose -f docker-compose-v2.1.0.yml logs &gt; logs.txt<br />
+   ```</p>
+<ol>
+<li><strong>Contactar soporte</strong>:</li>
+<li>Email: soporte@rhinometric.com</li>
+<li>Asunto: "Instalación fallida v2.1.0"</li>
+<li>
+<p>Adjuntar: logs.txt + información del sistema</p>
+</li>
+<li>
+<p><strong>GitHub Issues</strong>:</p>
+</li>
+<li>https://github.com/Rafael2712/mi-proyecto/issues</li>
+<li>Template: "Installation Problem"</li>
+</ol>
+<hr />
+<p><strong>© 2025 Rhinometric. Todos los derechos reservados.</strong></p>
+<p>Versión del documento: 2.1.0<br />
+Última actualización: Octubre 2025</p>
+<hr />
+<blockquote>
+<p><strong>Nota</strong>: Para convertir a PDF:<br />
+<code>bash
+pandoc guia_instalacion.md -o guia_instalacion.pdf --toc --toc-depth=2</code></p>
+</blockquote>
+        
+        <div class="footer">
+            <p>© 2025 Rhinometric Platform | <a href="https://rhinometric.com">rhinometric.com</a></p>
+            <p>Soporte: <a href="mailto:soporte@rhinometric.com">soporte@rhinometric.com</a></p>
+        </div>
+    </div>
+</body>
+</html>
