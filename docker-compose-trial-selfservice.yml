@@ -1,0 +1,135 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# DOCKER-COMPOSE CONFIGURATION FOR TRIAL SELF-SERVICE
+# ═══════════════════════════════════════════════════════════════════════════
+# Add these environment variables to your existing docker-compose.yml
+
+version: '3.8'
+
+services:
+  license-api:
+    # ... existing configuration ...
+    
+    environment:
+      # ═══ Existing vars ═══
+      DATABASE_URL: postgresql://license_admin:${DB_PASSWORD:-RhinoLic2025Secure!}@postgres:5432/licenses
+      REDIS_URL: redis://redis:6379/0
+      SECRET_KEY: ${SECRET_KEY:-rhino-secret-key-change-in-production-2025}
+      
+      # ═══ SMTP Configuration (existing, ensure configured) ═══
+      SMTP_HOST: smtp.zoho.eu
+      SMTP_PORT: "465"
+      SMTP_USER: rafael.canelon@rhinometric.com
+      SMTP_PASSWORD: "271211Rc$"  # App password from Zoho
+      SMTP_FROM: rafael.canelon@rhinometric.com
+      SMTP_FROM_NAME: Rhinometric License Manager
+      
+      # ═══ NEW: Trial Self-Service URLs ═══
+      # These URLs are included in the welcome email sent to leads
+      
+      # OVA download URL (update with your actual CDN/S3 URL)
+      OVA_DOWNLOAD_URL: ${OVA_DOWNLOAD_URL:-https://rhinometric.com/downloads/rhinometric-v2.5.0.ova}
+      
+      # Installation manual URL (PDF or docs site)
+      MANUAL_INSTALL_URL: ${MANUAL_INSTALL_URL:-https://docs.rhinometric.com/installation}
+      
+      # User guide URL
+      MANUAL_USER_URL: ${MANUAL_USER_URL:-https://docs.rhinometric.com/user-guide}
+      
+      # ═══ Admin credentials ═══
+      ADMIN_USERNAME: admin
+      ADMIN_PASSWORD_HASH: ${ADMIN_PASSWORD_HASH}  # bcrypt hash
+      
+      # ═══ OVA Trial Days (deprecated, now using tier-based) ═══
+      OVA_TRIAL_DAYS: "14"
+      
+      # ═══ CORS Origins ═══
+      CORS_ORIGINS: "https://rhinometric.com,https://license.rhinometric.com,http://localhost:3000"
+      
+      # ═══ Telemetry ═══
+      TELEMETRY_ENABLED: "true"
+      MAX_ACTIVATIONS_PER_LICENSE: "1"
+    
+    volumes:
+      # Mount static files directory for trial signup form
+      - ./static:/app/static:ro
+      
+      # Mount logs directory
+      - ./logs:/app/logs:rw
+      
+      # Mount docs directory (PDFs)
+      - ./docs:/app/docs:ro
+    
+    ports:
+      - "8090:80"  # Or 5000:80 depending on your setup
+    
+    networks:
+      - license-net
+    
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    
+    restart: unless-stopped
+
+  # ═══════════════════════════════════════════════════════════════════════
+  # PostgreSQL (existing, no changes needed)
+  # ═══════════════════════════════════════════════════════════════════════
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: licenses
+      POSTGRES_USER: license_admin
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-RhinoLic2025Secure!}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U license_admin -d licenses"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - license-net
+
+  # ═══════════════════════════════════════════════════════════════════════
+  # Redis (existing, no changes needed)
+  # ═══════════════════════════════════════════════════════════════════════
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - license-net
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  license-net:
+    driver: bridge
+
+# ═══════════════════════════════════════════════════════════════════════════
+# ENVIRONMENT FILE (.env)
+# ═══════════════════════════════════════════════════════════════════════════
+# Create a .env file with these variables (example):
+#
+# DB_PASSWORD=RhinoLic2025Secure!
+# SECRET_KEY=your-secret-key-here
+# ADMIN_PASSWORD_HASH=$2b$12$...  # bcrypt hash of admin password
+# 
+# # Download URLs (update with your actual URLs)
+# OVA_DOWNLOAD_URL=https://cdn.rhinometric.com/downloads/rhinometric-v2.5.0.ova
+# MANUAL_INSTALL_URL=https://docs.rhinometric.com/es/installation
+# MANUAL_USER_URL=https://docs.rhinometric.com/es/user-guide
+#
+# ═══════════════════════════════════════════════════════════════════════════

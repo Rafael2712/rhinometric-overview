@@ -1,0 +1,29 @@
+# RHINOMETRIC v2.3.0 - Test Dependencies
+# ======================================
+#
+# Install with: pip install -r requirements-tests.txt
+
+# Core pytest
+pytest>=7.4.0
+pytest-cov>=4.1.0
+pytest-html>=3.2.0
+pytest-timeout>=2.1.0
+pytest-xdist>=3.3.1
+
+# Cryptography
+cryptography>=41.0.0
+
+# Docker SDK
+docker>=6.1.0
+
+# Utilities
+pyyaml>=6.0
+requests>=2.31.0
+python-dateutil>=2.8.0
+
+# Code quality
+pytest-flake8>=1.1.1
+pytest-mypy>=0.10.0
+
+# Coverage
+coverage[toml]>=7.3.0

@@ -1,0 +1,34 @@
+{
+  "ImageId": "ami-04b9d785b274d5caa",
+  "InstanceType": "t3.medium",
+  "KeyName": "rhinometric-test-key",
+  "SecurityGroupIds": ["sg-04ce3cdd00dd4d171"],
+  "BlockDeviceMappings": [
+    {
+      "DeviceName": "/dev/sda1",
+      "Ebs": {
+        "VolumeSize": 30,
+        "DeleteOnTermination": true,
+        "VolumeType": "gp3"
+      }
+    }
+  ],
+  "InstanceMarketOptions": {
+    "MarketType": "spot",
+    "SpotOptions": {
+      "SpotInstanceType": "persistent",
+      "InstanceInterruptionBehavior": "stop"
+    }
+  },
+  "TagSpecifications": [
+    {
+      "ResourceType": "instance",
+      "Tags": [
+        {
+          "Key": "Name",
+          "Value": "rhinometric-vm-t3medium"
+        }
+      ]
+    }
+  ]
+}

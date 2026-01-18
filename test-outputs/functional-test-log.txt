@@ -1,0 +1,136 @@
+--- Logging error ---
+Traceback (most recent call last):
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.11_3.11.2544.0_x64__qbz5n2kfra8p0\Lib\logging\__init__.py", line 1113, in emit
+    stream.write(msg + self.terminator)
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.11_3.11.2544.0_x64__qbz5n2kfra8p0\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\u2705' in position 31: character maps to <undefined>
+Call stack:
+  File "C:\Users\canel\mi-proyecto\infrastructure\mi-proyecto\run-functional-tests-ascii.py", line 17, in <module>
+    license_path = find_license_file()
+  File "C:\Users\canel\mi-proyecto\infrastructure\mi-proyecto\license-monitor\license_monitor.py", line 104, in find_license_file
+    logger.info(f"\u2705 Licencia encontrada: {path}")
+Message: '\u2705 Licencia encontrada: ./licenses/cliente.lic'
+Arguments: ()
+--- Logging error ---
+Traceback (most recent call last):
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.11_3.11.2544.0_x64__qbz5n2kfra8p0\Lib\logging\__init__.py", line 1113, in emit
+    stream.write(msg + self.terminator)
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.11_3.11.2544.0_x64__qbz5n2kfra8p0\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\u2705' in position 31: character maps to <undefined>
+Call stack:
+  File "C:\Users\canel\mi-proyecto\infrastructure\mi-proyecto\run-functional-tests-ascii.py", line 17, in <module>
+    license_path = find_license_file()
+  File "C:\Users\canel\mi-proyecto\infrastructure\mi-proyecto\license-monitor\license_monitor.py", line 104, in find_license_file
+    logger.info(f"\u2705 Licencia encontrada: {path}")
+Message: '\u2705 Licencia encontrada: ./licenses/cliente.lic'
+Arguments: ()
+======================================================================
+RHINOMETRIC LICENSE MONITOR - FUNCTIONAL TEST SUITE
+======================================================================
+
+======================================================================
+TEST 1: VERIFICAR LICENCIA ACTUAL
+======================================================================
+
+[OK] Licencia encontrada: ./licenses/cliente.lic
+
+[INFO] Informacion de licencia:
+   Cliente:  ClienteDemo
+   Tipo:     trial
+   HWID:     A3F7C9E1B2D4F6A8
+   Expira:   2025-12-03
+   Emitida:  2025-11-03T09:22:31.691997Z
+   Features: monitoring, alerting, reporting, ai_anomaly, veriverde_esg, api_connector, backup_restore
+
+[OK] Licencia valida - 29 dias restantes
+
+======================================================================
+TEST 2: ESCENARIO - LICENCIA EXPIRA EN 10 DIAS (INFORMATIVA)
+======================================================================
+
+[INFO] Licencia simulada:
+   Cliente:  BancoSantander
+   Expira:   2025-11-13
+   Dias:     10
+
+[EMAIL] Email generado:
+   Asunto:   [INFORMATIVA] RHINOMETRIC - Licencia expira en 10 día(s)
+   Tamano:   3462 bytes
+   Nivel:    INFORMATIVA
+   Color:    Azul (#3498db)
+
+======================================================================
+TEST 3: ESCENARIO - LICENCIA EXPIRA EN 3 DIAS (ADVERTENCIA)
+======================================================================
+
+[INFO] Licencia simulada:
+   Cliente:  TelefonicaEspana
+   Expira:   2025-11-06
+   Dias:     3
+
+[EMAIL] Email generado:
+   Asunto:   [ADVERTENCIA] RHINOMETRIC - Licencia expira en 3 día(s)
+   Tamano:   3464 bytes
+   Nivel:    ADVERTENCIA
+   Color:    Naranja (#f39c12)
+
+======================================================================
+TEST 4: ESCENARIO - LICENCIA EXPIRA EN 1 DIA (CRITICA)
+======================================================================
+
+[INFO] Licencia simulada:
+   Cliente:  BBVA
+   Expira:   2025-11-04
+   Dias:     1
+
+[EMAIL] Email generado:
+   Asunto:   [CRÍTICA] RHINOMETRIC - Licencia expira en 1 día(s)
+   Tamano:   3436 bytes
+   Nivel:    CRITICA
+   Color:    Rojo (#e74c3c)
+
+======================================================================
+TEST 5: VERIFICAR SISTEMA DE ESTADO DE ALERTAS
+======================================================================
+
+[STATUS] Estado actual de alertas:
+   10 dias: [PENDING]
+   3 dias: [PENDING]
+   1 dias: [PENDING]
+
+[ACTION] Simulando envio de alerta de 10 dias...
+[OK] Estado actualizado
+
+[OK] Estado persistente verificado correctamente
+
+======================================================================
+TEST 6: GENERAR DUMPS DE EMAILS PARA INSPECCION
+======================================================================
+
+[OK] Guardado: test-outputs/email_10_days_informativa.html
+[OK] Guardado: test-outputs/email_3_days_advertencia.html
+[OK] Guardado: test-outputs/email_1_day_critica.html
+[OK] Guardado: test-outputs/test_metadata.json
+
+======================================================================
+[SUCCESS] TODOS LOS TESTS FUNCIONALES COMPLETADOS EXITOSAMENTE
+======================================================================
+
+[SUMMARY] Resumen de tests:
+   [OK] TEST 1: Licencia actual verificada (29 dias)
+   [OK] TEST 2: Escenario 10 dias (INFORMATIVA)
+   [OK] TEST 3: Escenario 3 dias (ADVERTENCIA)
+   [OK] TEST 4: Escenario 1 dia (CRITICA)
+   [OK] TEST 5: Sistema de estado de alertas
+   [OK] TEST 6: Dumps de emails generados
+
+[FILES] Archivos generados en: ./test-outputs/
+   - email_10_days_informativa.html
+   - email_3_days_advertencia.html
+   - email_1_day_critica.html
+   - test_metadata.json
+

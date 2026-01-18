@@ -1,0 +1,140 @@
+# ============================================================================
+# RHINOMETRIC Report Generator - Configuration
+# Version: 2.2.0 Enterprise Edition
+# ============================================================================
+
+# Server Configuration
+server:
+  host: ${HOST:0.0.0.0}
+  port: ${PORT:8086}
+  workers: ${WORKERS:1}
+  log_level: ${LOG_LEVEL:info}
+
+# Prometheus Configuration
+prometheus:
+  url: ${PROMETHEUS_URL:http://prometheus:9090}
+  timeout: 30
+
+# Grafana Configuration
+grafana:
+  url: ${GRAFANA_URL:http://grafana:3000}
+  username: ${GRAFANA_USER:admin}
+  password: ${GRAFANA_PASSWORD:admin}
+  timeout: 30
+
+# SMTP Email Configuration
+smtp:
+  enabled: ${SMTP_ENABLED:true}
+  host: ${SMTP_HOST:smtp.gmail.com}
+  port: ${SMTP_PORT:587}
+  username: ${SMTP_USERNAME:}
+  password: ${SMTP_PASSWORD:}
+  use_tls: ${SMTP_USE_TLS:true}
+  from_email: ${SMTP_FROM:rhinometric@example.com}
+  from_name: ${SMTP_FROM_NAME:RhinoMetric Reports}
+
+# Storage Configuration
+storage:
+  reports_dir: ${REPORTS_DIR:/app/reports}
+  temp_dir: ${TEMP_DIR:/app/temp}
+  max_age_days: ${MAX_AGE_DAYS:30}
+  max_size_mb: ${MAX_SIZE_MB:1000}
+
+# Logging Configuration
+logging:
+  level: ${LOG_LEVEL:INFO}
+  format: ${LOG_FORMAT:json}
+
+# Report Configurations
+reports:
+  # Executive Report (Daily)
+  - name: executive_daily
+    display_name: "Executive Daily Report"
+    enabled: true
+    type: executive
+    format:
+      - pdf
+      - html
+    recipients:
+      - admin@example.com
+    schedule:
+      enabled: true
+      cron: "0 8 * * *"  # Daily at 8 AM
+      timezone: UTC
+    include_charts: true
+    include_anomalies: true
+    include_metrics: true
+    lookback_hours: 24
+
+  # Technical Report (Daily)
+  - name: technical_daily
+    display_name: "Technical Daily Report"
+    enabled: true
+    type: technical
+    format:
+      - pdf
+    recipients:
+      - devops@example.com
+      - sre@example.com
+    schedule:
+      enabled: true
+      cron: "0 9 * * *"  # Daily at 9 AM
+      timezone: UTC
+    include_charts: true
+    include_anomalies: true
+    include_metrics: true
+    lookback_hours: 24
+
+  # Anomaly Report (On-Demand)
+  - name: anomaly_analysis
+    display_name: "AI Anomaly Analysis Report"
+    enabled: true
+    type: anomaly
+    format:
+      - pdf
+    recipients:
+      - ml-team@example.com
+    schedule:
+      enabled: false
+    include_charts: true
+    include_anomalies: true
+    include_metrics: false
+    lookback_hours: 48
+
+  # Weekly Executive Summary
+  - name: executive_weekly
+    display_name: "Executive Weekly Summary"
+    enabled: true
+    type: executive
+    format:
+      - pdf
+      - html
+    recipients:
+      - ceo@example.com
+      - cto@example.com
+    schedule:
+      enabled: true
+      cron: "0 8 * * 1"  # Every Monday at 8 AM
+      timezone: UTC
+    include_charts: true
+    include_anomalies: true
+    include_metrics: true
+    lookback_hours: 168  # 7 days
+
+  # Monthly Report
+  - name: executive_monthly
+    display_name: "Executive Monthly Report"
+    enabled: true
+    type: executive
+    format:
+      - pdf
+    recipients:
+      - executive-team@example.com
+    schedule:
+      enabled: true
+      cron: "0 8 1 * *"  # First day of month at 8 AM
+      timezone: UTC
+    include_charts: true
+    include_anomalies: true
+    include_metrics: true
+    lookback_hours: 720  # 30 days

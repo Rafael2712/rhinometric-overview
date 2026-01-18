@@ -1,0 +1,32 @@
+{
+  "test_date": "2025-11-03T11:48:54.785267",
+  "license_actual": {
+    "customer": "ClienteDemo",
+    "type": "trial",
+    "expires": "2025-12-03",
+    "days_remaining": 29
+  },
+  "scenarios": [
+    {
+      "days": 10,
+      "level": "INFORMATIVA",
+      "customer": "BancoSantander",
+      "subject": "[INFORMATIVA] RHINOMETRIC - Licencia expira en 10 día(s)",
+      "email_size_bytes": 3462
+    },
+    {
+      "days": 3,
+      "level": "ADVERTENCIA",
+      "customer": "TelefonicaEspana",
+      "subject": "[ADVERTENCIA] RHINOMETRIC - Licencia expira en 3 día(s)",
+      "email_size_bytes": 3464
+    },
+    {
+      "days": 1,
+      "level": "CRITICA",
+      "customer": "BBVA",
+      "subject": "[CRÍTICA] RHINOMETRIC - Licencia expira en 1 día(s)",
+      "email_size_bytes": 3436
+    }
+  ]
+}

@@ -1,0 +1,37 @@
+# ==========================================
+# RHINOMETRIC v2.4.0 - Grafana with Plugin
+# ==========================================
+
+FROM grafana/grafana:10.2.0
+
+LABEL maintainer="RHINOMETRIC <contact@rhinometric.com>"
+LABEL version="2.4.0"
+LABEL description="Grafana with RHINOMETRIC API Connector plugin"
+
+USER root
+
+# Install Node.js (for plugin build if needed)
+RUN apk add --no-cache nodejs npm
+
+# Create plugin directory
+RUN mkdir -p /var/lib/grafana/plugins/rhinometric-api-connector
+
+# Copy plugin files
+COPY ui-visual/dist /var/lib/grafana/plugins/rhinometric-api-connector/dist
+COPY ui-visual/src/plugin.json /var/lib/grafana/plugins/rhinometric-api-connector/
+
+# Set permissions
+RUN chown -R grafana:grafana /var/lib/grafana/plugins
+
+# Copy custom Grafana configuration
+COPY grafana/grafana.ini /etc/grafana/grafana.ini
+
+# Copy provisioning files
+COPY grafana/provisioning /etc/grafana/provisioning
+
+USER grafana
+
+EXPOSE 3000
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider http://localhost:3000/api/health || exit 1

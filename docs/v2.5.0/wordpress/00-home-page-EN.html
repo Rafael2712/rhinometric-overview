@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rhinometric - Enterprise Observability & AIOps Platform</title>
+</head>
+<body>
+
+<style>
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    line-height: 1.6;
+    color: #1a202c;
+    background: #ffffff;
+}
+
+/* Professional Navigation Header */
+.rhino-nav {
+    position: sticky;
+    top: 0;
+    background: rgba(255, 255, 255, 0.98);
+    backdrop-filter: blur(10px);
+    box-shadow: 0 2px 20px rgba(0,0,0,0.08);
+    z-index: 1000;
+    padding: 15px 0;
+}
+
+.rhino-nav-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.rhino-logo-section {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.rhino-logo-img {
+    width: 50px;
+    height: 50px;
+    border-radius: 8px;
+}
+
+.rhino-brand {
+    font-size: 24px;
+    font-weight: 700;
+    color: #667eea;
+    text-decoration: none;
+}
+
+.rhino-nav-links {
+    display: flex;
+    gap: 35px;
+    align-items: center;
+}
+
+.rhino-nav-links a {
+    color: #4a5568;
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 15px;
+    transition: color 0.2s;
+}
+
+.rhino-nav-links a:hover {
+    color: #667eea;
+}
+
+.rhino-nav-cta {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white !important;
+    padding: 10px 25px;
+    border-radius: 6px;
+    font-weight: 600;
+}
+
+/* Hero Section */
+.rhino-hero {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 100px 20px;
+    text-align: center;
+}
+
+.rhino-hero-content {
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+.rhino-hero h1 {
+    font-size: 52px;
+    font-weight: 800;
+    margin-bottom: 20px;
+    line-height: 1.2;
+}
+
+.rhino-hero h1 .rhino-icon {
+    font-size: 60px;
+    vertical-align: middle;
+}
+
+.rhino-hero-subtitle {
+    font-size: 24px;
+    opacity: 0.95;
+    margin-bottom: 15px;
+    font-weight: 400;
+}
+
+.rhino-hero-tagline {
+    font-size: 18px;
+    opacity: 0.85;
+    margin-bottom: 40px;
+}
+
+.rhino-hero-ctas {
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.rhino-btn {
+    display: inline-block;
+    padding: 16px 40px;
+    font-size: 18px;
+    font-weight: 600;
+    border-radius: 8px;
+    text-decoration: none;
+    transition: all 0.3s;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+}
+
+.rhino-btn-primary {
+    background: white;
+    color: #667eea;
+}
+
+.rhino-btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.25);
+}
+
+.rhino-btn-secondary {
+    background: rgba(255,255,255,0.15);
+    color: white;
+    border: 2px solid white;
+}
+
+.rhino-btn-secondary:hover {
+    background: rgba(255,255,255,0.25);
+    transform: translateY(-2px);
+}
+
+/* Features Section */
+.rhino-section {
+    padding: 80px 20px;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.rhino-section-title {
+    text-align: center;
+    font-size: 42px;
+    font-weight: 700;
+    color: #1a202c;
+    margin-bottom: 50px;
+}
+
+.rhino-features-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 35px;
+    margin-top: 50px;
+}
+
+.rhino-feature-card {
+    background: white;
+    padding: 40px 30px;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    transition: transform 0.3s, box-shadow 0.3s;
+    border: 1px solid #e2e8f0;
+}
+
+.rhino-feature-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 30px rgba(102, 126, 234, 0.15);
+}
+
+.rhino-feature-icon {
+    font-size: 48px;
+    margin-bottom: 20px;
+}
+
+.rhino-feature-title {
+    font-size: 22px;
+    font-weight: 700;
+    color: #2d3748;
+    margin-bottom: 12px;
+}
+
+.rhino-feature-desc {
+    color: #4a5568;
+    font-size: 15px;
+    line-height: 1.7;
+}
+
+/* Architecture Section */
+.rhino-architecture {
+    background: #f7fafc;
+    padding: 80px 20px;
+}
+
+.rhino-arch-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 25px;
+    max-width: 1200px;
+    margin: 40px auto;
+}
+
+.rhino-arch-component {
+    background: white;
+    padding: 30px 20px;
+    border-radius: 10px;
+    text-align: center;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    border: 2px solid #e2e8f0;
+}
+
+.rhino-arch-component-icon {
+    font-size: 40px;
+    margin-bottom: 15px;
+}
+
+.rhino-arch-component-name {
+    font-size: 18px;
+    font-weight: 700;
+    color: #2d3748;
+    margin-bottom: 8px;
+}
+
+.rhino-arch-component-desc {
+    font-size: 13px;
+    color: #718096;
+}
+
+/* Use Cases */
+.rhino-usecases-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 30px;
+    margin-top: 50px;
+}
+
+.rhino-usecase-card {
+    background: linear-gradient(135deg, #f6f9fc 0%, #eef2f7 100%);
+    padding: 40px;
+    border-radius: 12px;
+    border-left: 5px solid #667eea;
+}
+
+.rhino-usecase-icon {
+    font-size: 42px;
+    margin-bottom: 20px;
+}
+
+.rhino-usecase-title {
+    font-size: 24px;
+    font-weight: 700;
+    color: #2d3748;
+    margin-bottom: 15px;
+}
+
+.rhino-usecase-desc {
+    color: #4a5568;
+    line-height: 1.7;
+}
+
+/* Pricing Section */
+.rhino-pricing {
+    background: white;
+    padding: 80px 20px;
+}
+
+.rhino-pricing-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 30px;
+    max-width: 1200px;
+    margin: 40px auto;
+}
+
+.rhino-price-card {
+    background: white;
+    border: 3px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 40px 30px;
+    text-align: center;
+    transition: all 0.3s;
+}
+
+.rhino-price-card.popular {
+    border-color: #10b981;
+    transform: scale(1.05);
+    box-shadow: 0 10px 40px rgba(16, 185, 129, 0.2);
+}
+
+.rhino-price-badge {
+    display: inline-block;
+    background: #10b981;
+    color: white;
+    padding: 6px 15px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    margin-bottom: 15px;
+}
+
+.rhino-price-title {
+    font-size: 24px;
+    font-weight: 700;
+    color: #2d3748;
+    margin-bottom: 10px;
+}
+
+.rhino-price-amount {
+    font-size: 42px;
+    font-weight: 800;
+    color: #667eea;
+    margin-bottom: 20px;
+}
+
+.rhino-price-features {
+    list-style: none;
+    margin: 25px 0;
+    text-align: left;
+}
+
+.rhino-price-features li {
+    padding: 10px 0;
+    color: #4a5568;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.rhino-price-features li:last-child {
+    border-bottom: none;
+}
+
+/* Footer */
+.rhino-footer {
+    background: #2d3748;
+    color: white;
+    padding: 60px 20px 30px;
+}
+
+.rhino-footer-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 40px;
+    max-width: 1200px;
+    margin: 0 auto 40px;
+}
+
+.rhino-footer-section h4 {
+    font-size: 18px;
+    margin-bottom: 20px;
+    color: white;
+}
+
+.rhino-footer-section ul {
+    list-style: none;
+}
+
+.rhino-footer-section ul li {
+    margin-bottom: 12px;
+}
+
+.rhino-footer-section a {
+    color: #cbd5e0;
+    text-decoration: none;
+    transition: color 0.2s;
+}
+
+.rhino-footer-section a:hover {
+    color: #667eea;
+}
+
+.rhino-footer-bottom {
+    text-align: center;
+    padding-top: 30px;
+    border-top: 1px solid #4a5568;
+    color: #a0aec0;
+    font-size: 14px;
+}
+
+@media (max-width: 768px) {
+    .rhino-nav-links {
+        display: none;
+    }
+    .rhino-hero h1 {
+        font-size: 36px;
+    }
+    .rhino-hero-subtitle {
+        font-size: 18px;
+    }
+    .rhino-price-card.popular {
+        transform: scale(1);
+    }
+}
+</style>
+
+<!-- Navigation Header -->
+<nav class="rhino-nav">
+    <div class="rhino-nav-container">
+        <div class="rhino-logo-section">
+            <a href="/" class="rhino-brand">🦏 Rhinometric</a>
+        </div>
+        <div class="rhino-nav-links">
+            <a href="/demo">Demo</a>
+            <a href="/trial">Trial</a>
+            <a href="/documentation">Docs</a>
+            <a href="/pricing">Pricing</a>
+            <a href="/contact" class="rhino-nav-cta">Contact Sales</a>
+        </div>
+    </div>
+</nav>
+
+<!-- Hero Section -->
+<section class="rhino-hero">
+    <div class="rhino-hero-content">
+        <h1><span class="rhino-icon">🦏</span> Rhinometric</h1>
+        <p class="rhino-hero-subtitle">Enterprise Observability & AIOps Platform</p>
+        <p class="rhino-hero-tagline">Complete Monitoring + AI + 100% On-Premise</p>
+        <div class="rhino-hero-ctas">
+            <a href="/demo" class="rhino-btn rhino-btn-primary">📦 Download Demo (4 hours free)</a>
+            <a href="/trial" class="rhino-btn rhino-btn-secondary">🚀 14-Day Trial (Linux)</a>
+        </div>
+    </div>
+</section>
+
+<!-- Why Rhinometric Section -->
+<section class="rhino-section">
+    <h2 class="rhino-section-title">Why Rhinometric?</h2>
+    
+    <div class="rhino-features-grid">
+        <div class="rhino-feature-card">
+            <div class="rhino-feature-icon">📊</div>
+            <h3 class="rhino-feature-title">Complete Observability</h3>
+            <p class="rhino-feature-desc">
+                Metrics, logs, and distributed traces in one unified stack. 
+                Grafana + Prometheus + Loki + Jaeger pre-configured.
+            </p>
+        </div>
+
+        <div class="rhino-feature-card">
+            <div class="rhino-feature-icon">🤖</div>
+            <h3 class="rhino-feature-title">Integrated AI</h3>
+            <p class="rhino-feature-desc">
+                Automatic anomaly detection with Prophet + IsolationForest. 
+                Reduce false alerts by 80%. Smart alerting without noise.
+            </p>
+        </div>
+
+        <div class="rhino-feature-card">
+            <div class="rhino-feature-icon">🔒</div>
+            <h3 class="rhino-feature-title">100% On-Premise</h3>
+            <p class="rhino-feature-desc">
+                Your data never leaves your infrastructure. GDPR compliant. 
+                No cloud dependencies. Total sovereignty over your metrics.
+            </p>
+        </div>
+
+        <div class="rhino-feature-card">
+            <div class="rhino-feature-icon">⚡</div>
+            <h3 class="rhino-feature-title">Simple Installation</h3>
+            <p class="rhino-feature-desc">
+                Demo OVA ready in 5 minutes. Trial installer automated for Linux. 
+                Flexible licensing per host.
+            </p>
+        </div>
+    </div>
+</section>
+
+<!-- Architecture Section -->
+<section class="rhino-architecture">
+    <h2 class="rhino-section-title">Stack Architecture</h2>
+    <p style="text-align: center; color: #4a5568; max-width: 800px; margin: 0 auto 40px; font-size: 17px;">
+        Rhinometric integrates the best open-source observability tools into a cohesive, production-ready stack.
+    </p>
+    
+    <div class="rhino-arch-grid">
+        <div class="rhino-arch-component">
+            <div class="rhino-arch-component-icon">📈</div>
+            <div class="rhino-arch-component-name">Prometheus</div>
+            <div class="rhino-arch-component-desc">Metrics Storage</div>
+        </div>
+
+        <div class="rhino-arch-component">
+            <div class="rhino-arch-component-icon">📊</div>
+            <div class="rhino-arch-component-name">Grafana</div>
+            <div class="rhino-arch-component-desc">Dashboards</div>
+        </div>
+
+        <div class="rhino-arch-component">
+            <div class="rhino-arch-component-icon">📝</div>
+            <div class="rhino-arch-component-name">Loki</div>
+            <div class="rhino-arch-component-desc">Log Aggregation</div>
+        </div>
+
+        <div class="rhino-arch-component">
+            <div class="rhino-arch-component-icon">🔍</div>
+            <div class="rhino-arch-component-name">Jaeger</div>
+            <div class="rhino-arch-component-desc">Tracing Backend</div>
+        </div>
+
+        <div class="rhino-arch-component">
+            <div class="rhino-arch-component-icon">🔔</div>
+            <div class="rhino-arch-component-name">Alertmanager</div>
+            <div class="rhino-arch-component-desc">Alert Routing</div>
+        </div>
+
+        <div class="rhino-arch-component">
+            <div class="rhino-arch-component-icon">🤖</div>
+            <div class="rhino-arch-component-name">AI Engine</div>
+            <div class="rhino-arch-component-desc">Anomaly Detection</div>
+        </div>
+    </div>
+</section>
+
+<!-- Use Cases Section -->
+<section class="rhino-section">
+    <h2 class="rhino-section-title">Use Cases</h2>
+    
+    <div class="rhino-usecases-grid">
+        <div class="rhino-usecase-card">
+            <div class="rhino-usecase-icon">🏢</div>
+            <h3 class="rhino-usecase-title">SMEs with Own Infrastructure</h3>
+            <p class="rhino-usecase-desc">
+                Medium-sized companies needing professional monitoring without depending on SaaS cloud. 
+                GDPR compliance without complexity.
+            </p>
+        </div>
+
+        <div class="rhino-usecase-card">
+            <div class="rhino-usecase-icon">🔧</div>
+            <h3 class="rhino-usecase-title">MSPs & Partners</h3>
+            <p class="rhino-usecase-desc">
+                Managed service providers monitoring multiple clients. Flexible licensing per host.
+            </p>
+        </div>
+
+        <div class="rhino-usecase-card">
+            <div class="rhino-usecase-icon">🏛️</div>
+            <h3 class="rhino-usecase-title">Public Sector & Regulated</h3>
+            <p class="rhino-usecase-desc">
+                Organizations with strict data sovereignty requirements. Healthcare, finance, government, defense.
+            </p>
+        </div>
+    </div>
+</section>
+
+<!-- Pricing Section -->
+<section class="rhino-pricing">
+    <h2 class="rhino-section-title">Plans & Pricing</h2>
+    
+    <div class="rhino-pricing-grid">
+        <!-- Demo Card -->
+        <div class="rhino-price-card">
+            <div class="rhino-price-title">Demo Cloud</div>
+            <div class="rhino-price-amount">FREE</div>
+            <p style="color: #718096; margin-bottom: 20px;">4 hours • Up to 20 hosts</p>
+            <ul class="rhino-price-features">
+                <li>✅ Pre-configured OVA</li>
+                <li>✅ VirtualBox/VMware</li>
+                <li>✅ Complete stack</li>
+                <li>✅ +15 dashboards</li>
+                <li>✅ AI Engine included</li>
+            </ul>
+            <a href="/demo" class="rhino-btn rhino-btn-primary" style="width: 100%; margin-top: 20px; text-align: center;">Download Demo</a>
+        </div>
+
+        <!-- Trial Card -->
+        <div class="rhino-price-card popular">
+            <div class="rhino-price-badge">POPULAR</div>
+            <div class="rhino-price-title">Trial</div>
+            <div class="rhino-price-amount">FREE</div>
+            <p style="color: #718096; margin-bottom: 20px;">14 days • Up to 10 hosts</p>
+            <ul class="rhino-price-features">
+                <li>✅ Linux installer</li>
+                <li>✅ Ubuntu/Debian/RHEL/Rocky</li>
+                <li>✅ Docker automated</li>
+                <li>✅ Full stack</li>
+                <li>✅ Email support</li>
+            </ul>
+            <a href="/trial" class="rhino-btn rhino-btn-primary" style="width: 100%; margin-top: 20px; text-align: center; background: #10b981;">Request Trial</a>
+        </div>
+
+        <!-- Annual Card -->
+        <div class="rhino-price-card">
+            <div class="rhino-price-title">Annual</div>
+            <div class="rhino-price-amount">Custom</div>
+            <p style="color: #718096; margin-bottom: 20px;">1 year • Up to 20 hosts</p>
+            <ul class="rhino-price-features">
+                <li>✅ 1-year license</li>
+                <li>✅ Up to 20 hosts (expandable)</li>
+                <li>✅ Email support</li>
+                <li>✅ Updates included</li>
+                <li>✅ Security patches</li>
+            </ul>
+            <a href="/contact" class="rhino-btn rhino-btn-primary" style="width: 100%; margin-top: 20px; text-align: center;">Contact Sales</a>
+        </div>
+
+        <!-- Enterprise Card -->
+        <div class="rhino-price-card">
+            <div class="rhino-price-title">Enterprise</div>
+            <div class="rhino-price-amount">Custom</div>
+            <p style="color: #718096; margin-bottom: 20px;">Customized terms</p>
+            <ul class="rhino-price-features">
+                <li>✅ Unlimited hosts</li>
+                <li>✅ Custom SLA</li>
+                <li>✅ Dedicated support</li>
+                <li>✅ Onboarding assistance</li>
+                <li>✅ Customization</li>
+            </ul>
+            <a href="/contact" class="rhino-btn rhino-btn-primary" style="width: 100%; margin-top: 20px; text-align: center;">Contact Sales</a>
+        </div>
+    </div>
+</section>
+
+<!-- CTA Final -->
+<section class="rhino-hero" style="padding: 80px 20px;">
+    <div class="rhino-hero-content">
+        <h2 style="font-size: 38px; margin-bottom: 20px;">Ready to try Rhinometric?</h2>
+        <p style="font-size: 18px; opacity: 0.9; margin-bottom: 35px;">
+            Download the demo or request a 14-day trial
+        </p>
+        <div class="rhino-hero-ctas">
+            <a href="/demo" class="rhino-btn rhino-btn-primary">📦 Demo (4 hours free)</a>
+            <a href="/trial" class="rhino-btn rhino-btn-secondary">🚀 Trial (14 days)</a>
+        </div>
+    </div>
+</section>
+
+<!-- Footer -->
+<footer class="rhino-footer">
+    <div class="rhino-footer-grid">
+        <div class="rhino-footer-section">
+            <h4>Product</h4>
+            <ul>
+                <li><a href="/demo">Demo OVA</a></li>
+                <li><a href="/trial">Trial 14 Days</a></li>
+                <li><a href="/pricing">Pricing</a></li>
+                <li><a href="/documentation">Documentation</a></li>
+            </ul>
+        </div>
+
+        <div class="rhino-footer-section">
+            <h4>Resources</h4>
+            <ul>
+                <li><a href="/documentation">Docs</a></li>
+                <li><a href="https://github.com/rhinometric" target="_blank">GitHub</a></li>
+                <li><a href="/documentation#changelog">Changelog</a></li>
+                <li><a href="/security">Security</a></li>
+            </ul>
+        </div>
+
+        <div class="rhino-footer-section">
+            <h4>Legal</h4>
+            <ul>
+                <li><a href="/privacy">Privacy Policy</a></li>
+                <li><a href="/terms">Terms of Service</a></li>
+                <li><a href="/contact">Contact</a></li>
+            </ul>
+        </div>
+
+        <div class="rhino-footer-section">
+            <h4>Contact</h4>
+            <ul>
+                <li>📧 rafael.canelon@rhinometric.com</li>
+                <li>⏰ Mon-Fri 9-18h CET</li>
+                <li>🌐 rhinometric.com</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="rhino-footer-bottom">
+        <p>© 2025 Rhinometric. Proprietary software. All rights reserved.</p>
+    </div>
+</footer>
+
+</body>
+</html>

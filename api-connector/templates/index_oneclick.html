@@ -1,0 +1,1011 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RHINOMETRIC - API Connector ONE-CLICK</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #ffffff;
+            min-height: 100vh;
+        }
+        
+        .header {
+            background: rgba(0, 212, 170, 0.1);
+            border-bottom: 2px solid #00d4aa;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .logo {
+            font-size: 24px;
+            font-weight: 700;
+            background: linear-gradient(90deg, #00d4aa 0%, #00ffcc 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .version-badge {
+            background: linear-gradient(90deg, #ff6b6b 0%, #ff9999 100%);
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 30px auto;
+            padding: 0 20px;
+        }
+        
+        .connectors-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .connector-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 2px solid rgba(0, 212, 170, 0.3);
+            border-radius: 12px;
+            padding: 25px;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .connector-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(0, 212, 170, 0.1), transparent);
+            transition: left 0.5s;
+        }
+        
+        .connector-card:hover::before {
+            left: 100%;
+        }
+        
+        .connector-card:hover {
+            border-color: #00d4aa;
+            transform: translateY(-8px);
+            box-shadow: 0 15px 40px rgba(0, 212, 170, 0.4);
+        }
+        
+        .connector-card.oneclick-ready {
+            border-color: #ff6b6b;
+            background: rgba(255, 107, 107, 0.05);
+        }
+        
+        .connector-card.oneclick-ready:hover {
+            border-color: #ff9999;
+            box-shadow: 0 15px 40px rgba(255, 107, 107, 0.4);
+        }
+        
+        .oneclick-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: linear-gradient(90deg, #ff6b6b 0%, #ff9999 100%);
+            color: white;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+        
+        .connector-icon {
+            font-size: 56px;
+            margin-bottom: 15px;
+            filter: drop-shadow(0 0 10px rgba(0, 212, 170, 0.5));
+        }
+        
+        .connector-name {
+            font-size: 20px;
+            font-weight: 700;
+            color: #00d4aa;
+            margin-bottom: 10px;
+        }
+        
+        .connector-desc {
+            font-size: 13px;
+            color: #aaa;
+            margin-bottom: 15px;
+        }
+        
+        .connector-time {
+            font-size: 11px;
+            color: #ff9999;
+            font-weight: 600;
+        }
+        
+        .form-section {
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid rgba(0, 212, 170, 0.3);
+            border-radius: 16px;
+            padding: 30px;
+            margin-top: 20px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        }
+        
+        h2 {
+            color: #00d4aa;
+            margin-bottom: 20px;
+            font-size: 28px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #00d4aa;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        
+        .label-hint {
+            color: #888;
+            font-weight: 400;
+            font-size: 12px;
+            margin-left: 5px;
+        }
+        
+        input[type="text"],
+        input[type="password"],
+        input[type="number"],
+        select,
+        textarea {
+            width: 100%;
+            padding: 12px 15px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid rgba(0, 212, 170, 0.3);
+            border-radius: 8px;
+            color: #ffffff;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+        
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #00d4aa;
+            box-shadow: 0 0 15px rgba(0, 212, 170, 0.4);
+            background: rgba(255, 255, 255, 0.08);
+        }
+        
+        textarea {
+            min-height: 80px;
+            resize: vertical;
+            font-family: 'Consolas', 'Monaco', monospace;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 15px;
+            margin-top: 30px;
+            flex-wrap: wrap;
+        }
+        
+        .button {
+            background: linear-gradient(90deg, #00d4aa 0%, #00ffcc 100%);
+            color: #1a1a2e;
+            border: none;
+            padding: 14px 28px;
+            border-radius: 8px;
+            font-weight: 700;
+            cursor: pointer;
+            font-size: 15px;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 4px 15px rgba(0, 212, 170, 0.3);
+        }
+        
+        .button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 212, 170, 0.5);
+        }
+        
+        .button:active:not(:disabled) {
+            transform: translateY(0);
+        }
+        
+        .button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .button-oneclick {
+            background: linear-gradient(90deg, #ff6b6b 0%, #ff9999 100%);
+            color: white;
+            font-size: 16px;
+            padding: 16px 32px;
+            box-shadow: 0 4px 20px rgba(255, 107, 107, 0.4);
+            animation: glow 2s infinite;
+        }
+        
+        @keyframes glow {
+            0%, 100% { box-shadow: 0 4px 20px rgba(255, 107, 107, 0.4); }
+            50% { box-shadow: 0 4px 30px rgba(255, 107, 107, 0.7); }
+        }
+        
+        .button-oneclick:hover:not(:disabled) {
+            box-shadow: 0 8px 35px rgba(255, 107, 107, 0.6);
+        }
+        
+        .button-secondary {
+            background: rgba(0, 212, 170, 0.1);
+            color: #00d4aa;
+            border: 2px solid #00d4aa;
+            box-shadow: none;
+        }
+        
+        .button-secondary:hover:not(:disabled) {
+            background: rgba(0, 212, 170, 0.2);
+            border-color: #00ffcc;
+        }
+        
+        /* Progress Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal-overlay.active {
+            display: flex;
+        }
+        
+        .modal {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            border: 2px solid #00d4aa;
+            border-radius: 16px;
+            padding: 40px;
+            max-width: 600px;
+            max-height: 90vh;
+            width: 90%;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            animation: modalSlideIn 0.3s ease-out;
+        }
+        
+        /* Scrollbar styling for modal */
+        .modal::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        .modal::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 4px;
+        }
+        
+        .modal::-webkit-scrollbar-thumb {
+            background: rgba(0, 212, 170, 0.5);
+            border-radius: 4px;
+        }
+        
+        .modal::-webkit-scrollbar-thumb:hover {
+            background: rgba(0, 212, 170, 0.7);
+        }
+        
+        @keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .modal h3 {
+            color: #00d4aa;
+            font-size: 24px;
+            margin-bottom: 25px;
+            text-align: center;
+        }
+        
+        .progress-steps {
+            margin: 30px 0;
+        }
+        
+        .progress-step {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 15px;
+            margin-bottom: 12px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(0, 212, 170, 0.2);
+            border-radius: 8px;
+            transition: all 0.3s;
+        }
+        
+        .progress-step.active {
+            border-color: #00d4aa;
+            background: rgba(0, 212, 170, 0.1);
+            animation: stepPulse 1.5s infinite;
+        }
+        
+        @keyframes stepPulse {
+            0%, 100% { box-shadow: 0 0 10px rgba(0, 212, 170, 0.3); }
+            50% { box-shadow: 0 0 20px rgba(0, 212, 170, 0.5); }
+        }
+        
+        .progress-step.completed {
+            border-color: #4ade80;
+            background: rgba(74, 222, 128, 0.1);
+        }
+        
+        .progress-step.error {
+            border-color: #ff6b6b;
+            background: rgba(255, 107, 107, 0.1);
+        }
+        
+        .step-icon {
+            font-size: 24px;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 212, 170, 0.2);
+            border-radius: 50%;
+        }
+        
+        .progress-step.active .step-icon {
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        
+        .progress-step.completed .step-icon {
+            background: rgba(74, 222, 128, 0.2);
+        }
+        
+        .step-info {
+            flex: 1;
+        }
+        
+        .step-title {
+            font-weight: 600;
+            color: #fff;
+            font-size: 14px;
+        }
+        
+        .step-desc {
+            font-size: 12px;
+            color: #888;
+            margin-top: 3px;
+        }
+        
+        .step-time {
+            font-size: 11px;
+            color: #00d4aa;
+            font-weight: 600;
+        }
+        
+        /* Success Result */
+        .result-section {
+            display: none;
+            margin-top: 30px;
+            padding: 25px;
+            background: rgba(74, 222, 128, 0.1);
+            border: 2px solid #4ade80;
+            border-radius: 12px;
+        }
+        
+        .result-section.active {
+            display: block;
+            animation: resultSlideIn 0.5s ease-out;
+        }
+        
+        @keyframes resultSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .result-title {
+            color: #4ade80;
+            font-size: 22px;
+            font-weight: 700;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .result-links {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        .result-link {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 15px;
+            background: rgba(0, 212, 170, 0.1);
+            border: 1px solid #00d4aa;
+            border-radius: 8px;
+            text-decoration: none;
+            color: #00d4aa;
+            transition: all 0.3s;
+        }
+        
+        .result-link:hover {
+            background: rgba(0, 212, 170, 0.2);
+            transform: translateX(5px);
+            box-shadow: 0 5px 15px rgba(0, 212, 170, 0.3);
+        }
+        
+        .result-link-label {
+            font-weight: 600;
+            font-size: 14px;
+        }
+        
+        .result-link-url {
+            font-size: 12px;
+            color: #888;
+            font-family: 'Consolas', monospace;
+        }
+        
+        .result-stats {
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 8px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+        }
+        
+        .result-stat {
+            text-align: center;
+        }
+        
+        .result-stat-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #00d4aa;
+        }
+        
+        .result-stat-label {
+            font-size: 12px;
+            color: #888;
+            margin-top: 5px;
+        }
+        
+        .message {
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+            font-size: 14px;
+            animation: messageSlideIn 0.3s ease-out;
+        }
+        
+        @keyframes messageSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .message.success {
+            background: rgba(74, 222, 128, 0.1);
+            border: 1px solid #4ade80;
+            color: #4ade80;
+        }
+        
+        .message.error {
+            background: rgba(255, 107, 107, 0.1);
+            border: 1px solid #ff6b6b;
+            color: #ff6b6b;
+        }
+        
+        .message.info {
+            background: rgba(0, 212, 170, 0.1);
+            border: 1px solid #00d4aa;
+            color: #00d4aa;
+        }
+        
+        .hidden {
+            display: none !important;
+        }
+        
+        .back-button {
+            background: rgba(255, 255, 255, 0.05);
+            color: #888;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+        
+        .back-button:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo">🚀 RHINOMETRIC - API Connector</div>
+        <div class="version-badge">⚡ ONE-CLICK v2.5.0</div>
+    </div>
+    
+    <div class="container">
+        <!-- Connector Selection -->
+        <div id="connectorSelection">
+            <h2>🔌 Selecciona un Conector</h2>
+            <div class="connectors-grid" id="connectorsGrid"></div>
+        </div>
+        
+        <!-- Form Section -->
+        <div id="formSection" class="form-section hidden">
+            <button class="back-button" onclick="showConnectors()">← Volver</button>
+            <h2 id="formTitle"></h2>
+            <form id="connectorForm">
+                <div id="formFields"></div>
+                <div class="button-group">
+                    <button type="button" class="button button-oneclick" onclick="deployOneClick()">
+                        🚀 CONECTAR Y DESPLEGAR (ONE-CLICK)
+                    </button>
+                </div>
+                <p style="margin-top: 16px; font-size: 13px; color: #94a3b8; text-align: center; font-style: italic;">
+                    ⚡ La validación de conexión se ejecuta automáticamente durante el deployment
+                </p>
+            </form>
+            <div id="messageContainer"></div>
+        </div>
+    </div>
+    
+    <!-- Progress Modal -->
+    <div id="progressModal" class="modal-overlay">
+        <div class="modal">
+            <h3>⚡ Desplegando Conector...</h3>
+            <div class="progress-steps" id="progressSteps"></div>
+            <div class="result-section" id="resultSection">
+                <div class="result-title">✅ ¡Despliegue Completado!</div>
+                <div class="result-links" id="resultLinks"></div>
+                <div class="result-stats" id="resultStats"></div>
+                <button class="button" style="width: 100%; margin-top: 20px;" onclick="closeModal()">
+                    Cerrar
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // ONE-CLICK Connector Configuration
+        const ONECLICK_CONNECTORS = {
+            rest: {
+                name: '🌐 REST API',
+                desc: 'Conecta a cualquier API REST externa',
+                time: '⚡ 30-60 segundos',
+                icon: '🌐',
+                enabled: true,
+                fields: [
+                    { name: 'name', label: 'Nombre de la Conexión', type: 'text', required: true, placeholder: 'Ej: JSONPlaceholder API' },
+                    { name: 'url', label: 'URL Base de la API', type: 'text', required: true, placeholder: 'https://api.example.com' },
+                    { name: 'endpoint', label: 'Endpoint', type: 'text', required: true, placeholder: '/api/data' },
+                    { name: 'method', label: 'Método HTTP', type: 'select', options: ['GET', 'POST'], required: true, default: 'GET' },
+                    { name: 'token', label: 'Bearer Token (opcional)', type: 'password', required: false },
+                    { name: 'fetch_interval', label: 'Intervalo de consulta (segundos)', type: 'number', required: false, default: 60 }
+                ]
+            },
+            mqtt: {
+                name: '📡 MQTT (IoT)',
+                desc: 'Conecta a broker MQTT para datos IoT',
+                time: '⚡ 30-60 segundos',
+                icon: '📡',
+                enabled: true,
+                fields: [
+                    { name: 'name', label: 'Nombre de la Conexión', type: 'text', required: true, placeholder: 'Ej: HiveMQ IoT Devices' },
+                    { name: 'broker_host', label: 'Broker MQTT', type: 'text', required: true, placeholder: 'broker.hivemq.com' },
+                    { name: 'broker_port', label: 'Puerto', type: 'number', required: true, default: 1883 },
+                    { name: 'topics', label: 'Topics (separados por coma)', type: 'textarea', required: true, placeholder: 'sensor/#, owntracks/#, iot/#', hint: 'Puedes usar wildcards (#, +)' },
+                    { name: 'username', label: 'Usuario (opcional)', type: 'text', required: false },
+                    { name: 'password', label: 'Contraseña (opcional)', type: 'password', required: false },
+                    { name: 'client_id', label: 'Client ID', type: 'text', required: false, default: 'rhinometric-collector' },
+                    { name: 'enable_demo_mode', label: '¿Permitir brokers públicos? (demo)', type: 'checkbox', default: false }
+                ]
+            },
+            database: {
+                name: '🗄️ Database',
+                desc: 'Consulta bases de datos SQL',
+                time: '⚡ 30-60 segundos',
+                icon: '🗄️',
+                enabled: true,
+                fields: [
+                    { name: 'name', label: 'Nombre de la Conexión', type: 'text', required: true, placeholder: 'Ej: Production DB' },
+                    { name: 'db_type', label: 'Tipo de Base de Datos', type: 'select', options: ['postgresql', 'mysql'], required: true, default: 'postgresql' },
+                    { name: 'db_host', label: 'Host', type: 'text', required: true, placeholder: 'localhost' },
+                    { name: 'db_port', label: 'Puerto', type: 'number', required: true, default: 5432 },
+                    { name: 'db_name', label: 'Nombre de la Base de Datos', type: 'text', required: true },
+                    { name: 'db_user', label: 'Usuario', type: 'text', required: true },
+                    { name: 'db_password', label: 'Contraseña', type: 'password', required: true },
+                    { name: 'query_sql', label: 'Query SQL', type: 'textarea', required: true, placeholder: 'SELECT COUNT(*) as total FROM users', hint: 'Query que se ejecutará periódicamente' },
+                    { name: 'query_interval', label: 'Intervalo (segundos)', type: 'number', required: false, default: 60 }
+                ]
+            },
+            webhook: {
+                name: '🪝 Webhook',
+                desc: 'Recibe eventos via webhooks',
+                time: '⚡ 30-60 segundos',
+                icon: '🪝',
+                enabled: true,
+                fields: [
+                    { name: 'name', label: 'Nombre de la Conexión', type: 'text', required: true, placeholder: 'Ej: GitHub Webhooks' },
+                    { name: 'webhook_port', label: 'Puerto del Webhook', type: 'number', required: true, default: 8080 },
+                    { name: 'webhook_path', label: 'Path del Webhook', type: 'text', required: true, default: '/webhook', placeholder: '/webhook/github' },
+                    { name: 'webhook_secret', label: 'Secret (opcional)', type: 'password', required: false, hint: 'Para validar webhooks autenticados' }
+                ]
+            }
+        };
+        
+        const DEPLOYMENT_STEPS = [
+            { id: 'validate', title: 'Validando configuración', desc: 'Verificando parámetros...', time: '2s' },
+            { id: 'generate', title: 'Generando código collector', desc: 'Creando código Python desde template...', time: '5s' },
+            { id: 'structure', title: 'Creando estructura de servicio', desc: 'Generando Dockerfile y dependencias...', time: '3s' },
+            { id: 'compose', title: 'Actualizando Docker Compose', desc: 'Agregando servicio al stack...', time: '2s' },
+            { id: 'prometheus', title: 'Configurando Prometheus', desc: 'Agregando scrape target...', time: '3s' },
+            { id: 'dashboard', title: 'Generando dashboard Grafana', desc: 'Creando visualizaciones automáticas...', time: '8s' },
+            { id: 'deploy', title: 'Desplegando servicios Docker', desc: 'Construyendo y ejecutando containers...', time: '15s' },
+            { id: 'health', title: 'Verificando health checks', desc: 'Esperando servicios healthy...', time: '10s' }
+        ];
+        
+        let selectedType = null;
+        let deploymentStartTime = null;
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            showConnectors();
+        });
+        
+        function showConnectors() {
+            document.getElementById('connectorSelection').classList.remove('hidden');
+            document.getElementById('formSection').classList.add('hidden');
+            
+            const grid = document.getElementById('connectorsGrid');
+            grid.innerHTML = '';
+            
+            Object.entries(ONECLICK_CONNECTORS).forEach(([key, connector]) => {
+                if (!connector.enabled) return;
+                
+                const card = document.createElement('div');
+                card.className = 'connector-card oneclick-ready';
+                card.onclick = () => selectConnector(key);
+                
+                card.innerHTML = `
+                    <div class="oneclick-badge">ONE-CLICK</div>
+                    <div class="connector-icon">${connector.icon}</div>
+                    <div class="connector-name">${connector.name}</div>
+                    <div class="connector-desc">${connector.desc}</div>
+                    <div class="connector-time">${connector.time}</div>
+                `;
+                
+                grid.appendChild(card);
+            });
+        }
+        
+        function selectConnector(type) {
+            selectedType = type;
+            const connector = ONECLICK_CONNECTORS[type];
+            
+            document.getElementById('connectorSelection').classList.add('hidden');
+            document.getElementById('formSection').classList.remove('hidden');
+            document.getElementById('formTitle').innerHTML = `${connector.icon} ${connector.name} <span class="oneclick-badge" style="position: static; margin-left: 10px;">ONE-CLICK</span>`;
+            
+            renderForm(connector.fields);
+            clearMessage();
+        }
+        
+        function renderForm(fields) {
+            const container = document.getElementById('formFields');
+            container.innerHTML = '';
+            
+            fields.forEach(field => {
+                const div = document.createElement('div');
+                div.className = 'form-group';
+                
+                const label = document.createElement('label');
+                label.textContent = field.label;
+                if (field.hint) {
+                    const hint = document.createElement('span');
+                    hint.className = 'label-hint';
+                    hint.textContent = ` (${field.hint})`;
+                    label.appendChild(hint);
+                }
+                div.appendChild(label);
+                
+                if (field.type === 'select') {
+                    const select = document.createElement('select');
+                    select.name = field.name;
+                    select.required = field.required || false;
+                    
+                    field.options.forEach(opt => {
+                        const option = document.createElement('option');
+                        option.value = opt;
+                        option.textContent = opt;
+                        if (opt === field.default) option.selected = true;
+                        select.appendChild(option);
+                    });
+                    
+                    div.appendChild(select);
+                } else if (field.type === 'checkbox') {
+                    const input = document.createElement('input');
+                    input.type = 'checkbox';
+                    input.name = field.name;
+                    input.checked = field.default || false;
+                    input.style.width = 'auto';
+                    input.style.marginRight = '10px';
+                    div.appendChild(input);
+                } else if (field.type === 'textarea') {
+                    const textarea = document.createElement('textarea');
+                    textarea.name = field.name;
+                    textarea.placeholder = field.placeholder || '';
+                    textarea.required = field.required || false;
+                    div.appendChild(textarea);
+                } else {
+                    const input = document.createElement('input');
+                    input.type = field.type;
+                    input.name = field.name;
+                    input.placeholder = field.placeholder || '';
+                    input.value = field.default || '';
+                    input.required = field.required || false;
+                    div.appendChild(input);
+                }
+                
+                container.appendChild(div);
+            });
+        }
+        
+        function getFormData() {
+            const form = document.getElementById('connectorForm');
+            const data = { connector_type: selectedType };
+            
+            const inputs = form.querySelectorAll('input, select, textarea');
+            inputs.forEach(input => {
+                if (input.type === 'checkbox') {
+                    data[input.name] = input.checked;
+                } else if (input.type === 'number') {
+                    data[input.name] = parseInt(input.value) || 0;
+                } else if (input.name === 'topics') {
+                    // Convert comma-separated topics to array
+                    data[input.name] = input.value.split(',').map(t => t.trim()).filter(t => t);
+                } else {
+                    data[input.name] = input.value;
+                }
+            });
+            
+            return data;
+        }
+        
+        async function deployOneClick() {
+            const data = getFormData();
+            
+            // Debug logging
+            console.log('🚀 Iniciando deployment con data:', data);
+
+            if (!data.name) {
+                showMessage('❌ El nombre de la conexión es requerido', 'error');
+                return;
+            }
+
+            if (!data.connector_type) {
+                showMessage('❌ Tipo de conector no seleccionado', 'error');
+                return;
+            }
+
+            // Validate required fields
+            const connector = ONECLICK_CONNECTORS[selectedType];
+            const missingFields = connector.fields
+                .filter(f => f.required && !data[f.name])
+                .map(f => f.label);
+
+            if (missingFields.length > 0) {
+                showMessage(`❌ Campos requeridos: ${missingFields.join(', ')}`, 'error');
+                return;
+            }
+
+            // Show progress modal
+            showProgressModal();
+            deploymentStartTime = Date.now();
+
+            try {
+                console.log('📡 Enviando POST a /api/connectors/create-full...');
+                
+                // Start deployment
+                const response = await fetch('/api/connectors/create-full', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                console.log('📥 Response status:', response.status);
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('❌ Error response:', errorText);
+                    let errorMsg = 'Deployment failed';
+                    try {
+                        const error = JSON.parse(errorText);
+                        errorMsg = error.detail || errorMsg;
+                    } catch (e) {
+                        errorMsg = errorText;
+                    }
+                    throw new Error(errorMsg);
+                }                const result = await response.json();
+                
+                // Show success result
+                showDeploymentResult(result);
+                
+            } catch (error) {
+                markStepError();
+                showMessage(`❌ Error en deployment: ${error.message}`, 'error');
+                setTimeout(() => closeModal(), 3000);
+            }
+        }
+        
+        function showProgressModal() {
+            const modal = document.getElementById('progressModal');
+            const stepsContainer = document.getElementById('progressSteps');
+            const resultSection = document.getElementById('resultSection');
+            
+            modal.classList.add('active');
+            resultSection.classList.remove('active');
+            stepsContainer.innerHTML = '';
+            
+            DEPLOYMENT_STEPS.forEach((step, index) => {
+                const stepEl = document.createElement('div');
+                stepEl.className = 'progress-step';
+                stepEl.id = `step-${step.id}`;
+                stepEl.innerHTML = `
+                    <div class="step-icon">⏳</div>
+                    <div class="step-info">
+                        <div class="step-title">${step.title}</div>
+                        <div class="step-desc">${step.desc}</div>
+                    </div>
+                    <div class="step-time">${step.time}</div>
+                `;
+                stepsContainer.appendChild(stepEl);
+                
+                // Simulate progress
+                setTimeout(() => {
+                    markStepActive(step.id);
+                    setTimeout(() => markStepCompleted(step.id), parseInt(step.time) * 1000);
+                }, index * 2000);
+            });
+        }
+        
+        function markStepActive(stepId) {
+            const step = document.getElementById(`step-${stepId}`);
+            if (step) {
+                step.classList.add('active');
+                step.querySelector('.step-icon').textContent = '⚙️';
+            }
+        }
+        
+        function markStepCompleted(stepId) {
+            const step = document.getElementById(`step-${stepId}`);
+            if (step) {
+                step.classList.remove('active');
+                step.classList.add('completed');
+                step.querySelector('.step-icon').textContent = '✅';
+            }
+        }
+        
+        function markStepError() {
+            const activeStep = document.querySelector('.progress-step.active');
+            if (activeStep) {
+                activeStep.classList.remove('active');
+                activeStep.classList.add('error');
+                activeStep.querySelector('.step-icon').textContent = '❌';
+            }
+        }
+        
+        function showDeploymentResult(result) {
+            const resultSection = document.getElementById('resultSection');
+            const linksContainer = document.getElementById('resultLinks');
+            const statsContainer = document.getElementById('resultStats');
+            
+            const deploymentTime = ((Date.now() - deploymentStartTime) / 1000).toFixed(1);
+            
+            // Links
+            linksContainer.innerHTML = `
+                <a href="${result.dashboard_url}" target="_blank" class="result-link">
+                    <div>
+                        <div class="result-link-label">📊 Ver Dashboard en Grafana</div>
+                        <div class="result-link-url">${result.dashboard_url}</div>
+                    </div>
+                    <div style="font-size: 24px;">→</div>
+                </a>
+                <a href="${result.metrics_url}" target="_blank" class="result-link">
+                    <div>
+                        <div class="result-link-label">📈 Ver Métricas Prometheus</div>
+                        <div class="result-link-url">${result.metrics_url}</div>
+                    </div>
+                    <div style="font-size: 24px;">→</div>
+                </a>
+            `;
+            
+            // Stats
+            statsContainer.innerHTML = `
+                <div class="result-stat">
+                    <div class="result-stat-value">${deploymentTime}s</div>
+                    <div class="result-stat-label">Tiempo Total</div>
+                </div>
+                <div class="result-stat">
+                    <div class="result-stat-value">${result.services_deployed.length}</div>
+                    <div class="result-stat-label">Servicios Desplegados</div>
+                </div>
+                <div class="result-stat">
+                    <div class="result-stat-value">✅</div>
+                    <div class="result-stat-label">Estado</div>
+                </div>
+            `;
+            
+            resultSection.classList.add('active');
+        }
+        
+        function closeModal() {
+            document.getElementById('progressModal').classList.remove('active');
+            showConnectors();
+        }
+        
+        // Message functions removed - not needed for ONE-CLICK flow
+    </script>
+</body>
+</html>

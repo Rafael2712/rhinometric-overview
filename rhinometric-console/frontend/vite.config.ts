@@ -12,10 +12,10 @@ export default defineConfig({
   server: {
     port: 3002,
     host: '0.0.0.0', // Allow external access
-    strictPort: true,
+    strictPort: false,
     proxy: {
       '/api': {
-        target: 'http://localhost:8100',
+        target: 'http://localhost:8105',
         changeOrigin: true
       }
     }

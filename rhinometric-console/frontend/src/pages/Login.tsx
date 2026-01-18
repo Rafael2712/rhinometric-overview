@@ -12,7 +12,16 @@ export function LoginPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
-  const login = useAuthStore((state) => state.login)
+  const { login, isAuthenticated, mustChangePassword } = useAuthStore()
+
+  // Redirect to home if already authenticated
+  useEffect(() => {
+    if (isAuthenticated && !mustChangePassword) {
+      navigate('/', { replace: true })
+    } else if (isAuthenticated && mustChangePassword) {
+      navigate('/change-password', { replace: true })
+    }
+  }, [isAuthenticated, mustChangePassword, navigate])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -21,7 +30,7 @@ export function LoginPage() {
 
     try {
       await login(username, password)
-      navigate('/')
+      // Navigation handled by useEffect after login
     } catch (err) {
       setError('Invalid credentials. Please try again.')
     } finally {
@@ -87,10 +96,14 @@ export function LoginPage() {
             </button>
           </form>
 
-          <div className="mt-6 pt-6 border-t border-surface-light">
-            <p className="text-xs text-text-muted text-center">
-              Demo credentials: <span className="text-primary">admin</span> / <span className="text-primary">admin</span>
-            </p>
+          <div className="mt-6 text-center">
+            <button
+              type="button"
+              className="text-sm text-primary hover:text-primary-dark transition-colors"
+              onClick={() => alert('Contacte al administrador para restablecer su contraseña')}
+            >
+              ¿Olvidó su contraseña?
+            </button>
           </div>
         </div>
 

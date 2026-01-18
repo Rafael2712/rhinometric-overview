@@ -1,0 +1,18 @@
+# ============================================================================
+# RHINOMETRIC v2.5.0 - MQTT IoT Dashboard Provisioning
+# Auto-carga de dashboard MQTT en Grafana
+# ============================================================================
+
+apiVersion: 1
+
+providers:
+  - name: 'RhinoMetric MQTT IoT'
+    orgId: 1
+    folder: '03 - Applications & APIs'
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 10
+    allowUiUpdates: true
+    options:
+      path: /etc/grafana/provisioning/dashboards/mqtt
+      foldersFromFilesStructure: false

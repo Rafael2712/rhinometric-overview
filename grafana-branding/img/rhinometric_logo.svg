@@ -1,0 +1,24 @@
+<svg width="200" height="60" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="rhinoGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#00d4aa;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#00ffcc;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Rhino Icon -->
+  <path d="M 20 25 Q 15 20 15 15 Q 15 10 20 10 L 35 10 Q 40 10 40 15 L 40 35 Q 40 40 35 40 L 25 40 Q 20 40 20 35 Z" 
+        fill="url(#rhinoGradient)" stroke="#00d4aa" stroke-width="2"/>
+  <circle cx="25" cy="20" r="3" fill="#ffffff"/>
+  <path d="M 30 25 L 35 30" stroke="#00d4aa" stroke-width="2" stroke-linecap="round"/>
+  
+  <!-- RHINOMETRIC Text -->
+  <text x="50" y="35" font-family="Arial, sans-serif" font-size="22" font-weight="bold" fill="url(#rhinoGradient)">
+    RHINOMETRIC
+  </text>
+  
+  <!-- Tagline -->
+  <text x="52" y="50" font-family="Arial, sans-serif" font-size="9" fill="#888888">
+    Observability Platform
+  </text>
+</svg>

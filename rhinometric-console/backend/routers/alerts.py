@@ -3,7 +3,8 @@ from pydantic import BaseModel
 from typing import Optional
 import httpx
 from config import settings
-from routers.auth import get_current_user, User
+from routers.auth import get_current_user
+from models.user import User as UserModel
 
 router = APIRouter()
 
@@ -23,7 +24,7 @@ class AlertsResponse(BaseModel):
 
 @router.get("", response_model=AlertsResponse)
 async def get_alerts(
-    current_user: User = Depends(get_current_user),
+    current_user: UserModel = Depends(get_current_user),
     active: Optional[bool] = Query(True, description="Filter active alerts"),
     severity: Optional[str] = Query(None, description="Filter by severity")
 ):
@@ -37,19 +38,28 @@ async def get_alerts(
     
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
-            # AlertManager API endpoint
+            # AlertManager API endpoint - returns ALL alerts (active + resolved)
             url = f"{settings.ALERTMANAGER_URL}/api/v2/alerts"
             
-            params = {}
-            if active is not None:
-                params["active"] = str(active).lower()
-            if severity:
-                params["filter"] = f"severity={severity}"
-            
-            response = await client.get(url, params=params)
+            response = await client.get(url)
             
             if response.status_code == 200:
                 alerts_data = response.json()
+                
+                # Filter by active state if requested (default: true)
+                if active:
+                    # Filter only firing alerts (status.state == "active")
+                    alerts_data = [
+                        a for a in alerts_data 
+                        if a.get("status", {}).get("state") == "active"
+                    ]
+                
+                # Filter by severity if provided
+                if severity:
+                    alerts_data = [
+                        a for a in alerts_data 
+                        if a.get("labels", {}).get("severity", "").lower() == severity.lower()
+                    ]
                 
                 # Parse and format alerts
                 formatted_alerts = []
@@ -88,7 +98,7 @@ async def get_alerts(
 async def silence_alert(
     fingerprint: str,
     duration: str = "1h",
-    current_user: User = Depends(get_current_user)
+    current_user: UserModel = Depends(get_current_user)
 ):
     """Create a silence for an alert"""
     try:

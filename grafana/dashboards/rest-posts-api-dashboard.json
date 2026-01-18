@@ -1,0 +1,177 @@
+{
+  "dashboard": {
+    "title": "RHINOMETRIC - Posts API API Monitoring",
+    "tags": [
+      "rest",
+      "api",
+      "auto-generated"
+    ],
+    "timezone": "browser",
+    "schemaVersion": 16,
+    "version": 0,
+    "refresh": "10s",
+    "uid": "rest-rest-posts-api",
+    "panels": [
+      {
+        "id": 1,
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 0,
+          "y": 0
+        },
+        "type": "gauge",
+        "title": "API Request Rate (req/s)",
+        "targets": [
+          {
+            "expr": "rate(api_requests_total[1m])",
+            "refId": "A",
+            "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus-uid"
+            }
+          }
+        ]
+      },
+      {
+        "id": 2,
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 6,
+          "y": 0
+        },
+        "type": "stat",
+        "title": "Success Rate (%)",
+        "targets": [
+          {
+            "expr": "sum(rate(api_requests_total{status=~'2..'}[5m])) / sum(rate(api_requests_total[5m])) * 100",
+            "refId": "A",
+            "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus-uid"
+            }
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "value": 0,
+                  "color": "red"
+                },
+                {
+                  "value": 90,
+                  "color": "yellow"
+                },
+                {
+                  "value": 95,
+                  "color": "green"
+                }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 3,
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 12,
+          "y": 0
+        },
+        "type": "stat",
+        "title": "Avg Response Time (ms)",
+        "targets": [
+          {
+            "expr": "avg(api_response_time_seconds) * 1000",
+            "refId": "A",
+            "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus-uid"
+            }
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "ms"
+          }
+        }
+      },
+      {
+        "id": 4,
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 18,
+          "y": 0
+        },
+        "type": "stat",
+        "title": "Total Requests",
+        "targets": [
+          {
+            "expr": "sum(api_requests_total)",
+            "refId": "A",
+            "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus-uid"
+            }
+          }
+        ]
+      },
+      {
+        "id": 5,
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 4
+        },
+        "type": "timeseries",
+        "title": "Requests by Status Code",
+        "targets": [
+          {
+            "expr": "rate(api_requests_total[1m])",
+            "refId": "A",
+            "legendFormat": "{{status}}",
+            "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus-uid"
+            }
+          }
+        ]
+      },
+      {
+        "id": 6,
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 4
+        },
+        "type": "heatmap",
+        "title": "Response Time Distribution",
+        "targets": [
+          {
+            "expr": "rate(api_response_time_seconds_bucket[1m])",
+            "refId": "A",
+            "format": "heatmap",
+            "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus-uid"
+            }
+          }
+        ]
+      }
+    ],
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    }
+  },
+  "overwrite": true
+}

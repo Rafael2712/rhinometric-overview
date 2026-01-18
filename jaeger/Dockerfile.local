@@ -1,0 +1,24 @@
+# Dockerfile temporal para construir Jaeger localmente
+FROM alpine:latest
+
+# Instalar dependencias
+RUN apk add --no-cache ca-certificates wget
+
+# Descargar Jaeger all-in-one
+RUN wget https://github.com/jaegertracing/jaeger/releases/download/v1.52.0/jaeger-1.52.0-linux-amd64.tar.gz \
+    && tar -xzf jaeger-1.52.0-linux-amd64.tar.gz \
+    && mv jaeger-1.52.0-linux-amd64/jaeger-all-in-one /usr/local/bin/ \
+    && rm -rf jaeger-1.52.0-linux-amd64*
+
+# Exponer puertos
+EXPOSE 16686 4317 4318 14268 14250
+
+# Variables de entorno
+ENV COLLECTOR_OTLP_ENABLED=true
+ENV SPAN_STORAGE_TYPE=badger
+ENV BADGER_EPHEMERAL=false
+ENV BADGER_DIRECTORY_VALUE=/badger/data
+ENV BADGER_DIRECTORY_KEY=/badger/key
+
+# Comando de inicio
+CMD ["/usr/local/bin/jaeger-all-in-one"]

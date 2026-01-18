@@ -1,0 +1,77 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /Resources 4 0 R /MediaBox [0 0 612 792] /Contents 5 0 R >>
+endobj
+4 0 obj
+<< /Font << /F1 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> >> >>
+endobj
+5 0 obj
+<< /Length 800 >>
+stream
+BT
+/F1 18 Tf
+50 750 Td
+(RHINOMETRIC v2.5.0 - GUIA DE INSTALACION) Tj
+0 -30 Td
+/F1 12 Tf
+(Autor: Rafael Canelon) Tj
+0 -20 Td
+(Fecha: 16 Diciembre 2025) Tj
+0 -40 Td
+/F1 14 Tf
+(REQUISITOS DEL SISTEMA) Tj
+0 -25 Td
+/F1 11 Tf
+(- Sistema Operativo: Ubuntu 22.04+, Debian 11+, CentOS 8+) Tj
+0 -18 Td
+(- Docker: 24.0 o superior) Tj
+0 -18 Td
+(- Docker Compose: 2.0 o superior) Tj
+0 -18 Td
+(- RAM: 8GB minimo \(16GB recomendado para produccion\)) Tj
+0 -18 Td
+(- CPU: 4 cores minimo \(8 cores recomendado\)) Tj
+0 -18 Td
+(- Disco: 50GB libres \(100GB para produccion\)) Tj
+0 -40 Td
+/F1 14 Tf
+(INSTALACION RAPIDA) Tj
+0 -25 Td
+/F1 11 Tf
+(1. Descargar instalador desde el email recibido) Tj
+0 -18 Td
+(2. Ejecutar: chmod +x rhinometric-*-install.sh) Tj
+0 -18 Td
+(3. Ejecutar: sudo ./rhinometric-*-install.sh) Tj
+0 -18 Td
+(4. Acceder a http://localhost:3000) Tj
+0 -40 Td
+/F1 14 Tf
+(SOPORTE) Tj
+0 -25 Td
+/F1 11 Tf
+(Email: rafael.canelon@rhinometric.com) Tj
+0 -18 Td
+(Web: https://rhinometric.com/documentation) Tj
+ET
+endstream
+endobj
+xref
+0 6
+0000000000 65535 f
+0000000009 00000 n
+0000000058 00000 n
+0000000115 00000 n
+0000000214 00000 n
+0000000301 00000 n
+trailer
+<< /Size 6 /Root 1 0 R >>
+startxref
+1152
+%%EOF

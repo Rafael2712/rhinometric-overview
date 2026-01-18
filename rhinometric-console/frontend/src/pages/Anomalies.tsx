@@ -315,12 +315,12 @@ export function AnomaliesPage() {
                     // Get the actual Prometheus query
                     const prometheusQuery = metricMap[selectedAnomaly.metric_name] || selectedAnomaly.metric_name
                     
-                    // Build Grafana Explore URL with proper encoding (datasource UID debe ser 'prometheus' minúsculas)
-                    const grafanaUrl = `http://localhost:3000/explore?orgId=1&left=${encodeURIComponent(JSON.stringify({
+                    // Build Grafana Explore URL with proper encoding (datasource UID debe ser 'prometheus' minúsculas) - usando RBAC proxy
+                    const grafanaUrl = `/api/grafana/explore?orgId=1&left=${encodeURIComponent(JSON.stringify({
                       datasource: 'prometheus',
                       queries: [{ refId: 'A', expr: prometheusQuery }],
                       range: { from: 'now-6h', to: 'now' }
-                    }))}`
+                    }))}&token=${token}`
                     window.open(grafanaUrl, '_blank')
                   }}
                 >

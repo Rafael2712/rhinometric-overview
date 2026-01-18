@@ -1,0 +1,24 @@
+# Claves maestras (NUNCA subir a Git)
+secrets/*.key
+secrets/*.pem
+secrets/master_key.txt
+
+# Licencias de prueba
+*.lic
+!example.lic
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.pytest_cache/
+.coverage
+
+# Logs
+*.log
+
+# IDEs
+.vscode/
+.idea/
+*.swp

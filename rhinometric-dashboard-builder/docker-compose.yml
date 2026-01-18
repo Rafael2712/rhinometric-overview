@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  dashboard-builder-backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: rhinometric-dashboard-builder-backend
+    environment:
+      HOST: 0.0.0.0
+      PORT: 8087
+      LOG_LEVEL: INFO
+      GRAFANA_URL: http://grafana:3000
+      GRAFANA_USER: admin
+      GRAFANA_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+      PROMETHEUS_URL: http://prometheus:9090
+    ports:
+      - "8087:8087"
+    networks:
+      - rhinometric_network_v22
+    depends_on:
+      - grafana
+      - prometheus
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8087/health').raise_for_status()"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+
+  dashboard-builder-frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: rhinometric-dashboard-builder-frontend
+    ports:
+      - "3001:80"
+    networks:
+      - rhinometric_network_v22
+    depends_on:
+      - dashboard-builder-backend
+    restart: unless-stopped
+
+networks:
+  rhinometric_network_v22:
+    external: true

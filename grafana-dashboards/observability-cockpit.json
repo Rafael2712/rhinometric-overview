@@ -1,0 +1,811 @@
+{
+  "dashboard": {
+    "title": "🎯 RHINOMETRIC Observability Cockpit",
+    "tags": ["rhinometric", "observability", "monitoring"],
+    "timezone": "browser",
+    "schemaVersion": 38,
+    "version": 0,
+    "refresh": "10s",
+    "panels": [
+      {
+        "id": 1,
+        "type": "text",
+        "title": "📡 Observability Stack Overview",
+        "gridPos": {
+          "x": 0,
+          "y": 0,
+          "w": 24,
+          "h": 3
+        },
+        "options": {
+          "mode": "markdown",
+          "content": "# 🎯 RHINOMETRIC Observability Cockpit\n\n**Real-time monitoring of your entire observability stack**\n\n| Component | Status | Endpoint |\n|-----------|--------|----------|\n| 🔥 **Prometheus** | Metrics Collection | http://localhost:9090 |\n| 📊 **Grafana** | Visualization | http://localhost:80 |\n| 🔍 **Loki** | Log Aggregation | http://localhost:3100 |\n| 🔗 **Tempo** | Distributed Tracing | http://localhost:3200 |\n| 📈 **cAdvisor** | Container Metrics | http://localhost:8080 |\n| ⚡ **Promtail** | Log Shipper | Internal |\n\n---"
+        }
+      },
+      {
+        "id": 2,
+        "type": "row",
+        "title": "🔥 Prometheus Metrics",
+        "gridPos": {
+          "x": 0,
+          "y": 3,
+          "w": 24,
+          "h": 1
+        },
+        "collapsed": false
+      },
+      {
+        "id": 3,
+        "type": "stat",
+        "title": "Prometheus Status",
+        "gridPos": {
+          "x": 0,
+          "y": 4,
+          "w": 4,
+          "h": 4
+        },
+        "targets": [
+          {
+            "expr": "up{job=\"prometheus\"}",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "mappings": [
+              {
+                "type": "value",
+                "options": {
+                  "0": {"text": "DOWN", "color": "red"},
+                  "1": {"text": "UP", "color": "green"}
+                }
+              }
+            ],
+            "color": {"mode": "thresholds"},
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "red"},
+                {"value": 1, "color": "green"}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 4,
+        "type": "stat",
+        "title": "Active Targets",
+        "gridPos": {
+          "x": 4,
+          "y": 4,
+          "w": 4,
+          "h": 4
+        },
+        "targets": [
+          {
+            "expr": "count(up == 1)",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "palette-classic"}
+          }
+        }
+      },
+      {
+        "id": 5,
+        "type": "gauge",
+        "title": "Samples Ingested/s",
+        "gridPos": {
+          "x": 8,
+          "y": 4,
+          "w": 4,
+          "h": 4
+        },
+        "targets": [
+          {
+            "expr": "rate(prometheus_tsdb_head_samples_appended_total[5m])",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "ops",
+            "min": 0,
+            "max": 10000,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "green"},
+                {"value": 5000, "color": "yellow"},
+                {"value": 8000, "color": "red"}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 6,
+        "type": "gauge",
+        "title": "TSDB Size",
+        "gridPos": {
+          "x": 12,
+          "y": 4,
+          "w": 4,
+          "h": 4
+        },
+        "targets": [
+          {
+            "expr": "prometheus_tsdb_storage_blocks_bytes / 1024 / 1024",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "decmbytes",
+            "min": 0,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "green"},
+                {"value": 500, "color": "yellow"},
+                {"value": 1000, "color": "red"}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 7,
+        "type": "stat",
+        "title": "Query Rate",
+        "gridPos": {
+          "x": 16,
+          "y": 4,
+          "w": 4,
+          "h": 4
+        },
+        "targets": [
+          {
+            "expr": "rate(prometheus_http_requests_total{handler=\"/api/v1/query\"}[5m])",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "reqps",
+            "color": {"mode": "palette-classic"}
+          }
+        }
+      },
+      {
+        "id": 8,
+        "type": "stat",
+        "title": "Scrape Duration",
+        "gridPos": {
+          "x": 20,
+          "y": 4,
+          "w": 4,
+          "h": 4
+        },
+        "targets": [
+          {
+            "expr": "avg(scrape_duration_seconds)",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "s",
+            "decimals": 3,
+            "color": {"mode": "thresholds"},
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "green"},
+                {"value": 0.5, "color": "yellow"},
+                {"value": 1, "color": "red"}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 9,
+        "type": "timeseries",
+        "title": "Metric Ingestion Rate",
+        "gridPos": {
+          "x": 0,
+          "y": 8,
+          "w": 12,
+          "h": 8
+        },
+        "targets": [
+          {
+            "expr": "rate(prometheus_tsdb_head_samples_appended_total[5m])",
+            "legendFormat": "Samples/s",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "ops",
+            "color": {"mode": "palette-classic"}
+          }
+        }
+      },
+      {
+        "id": 10,
+        "type": "timeseries",
+        "title": "Active Series",
+        "gridPos": {
+          "x": 12,
+          "y": 8,
+          "w": 12,
+          "h": 8
+        },
+        "targets": [
+          {
+            "expr": "prometheus_tsdb_head_series",
+            "legendFormat": "Series",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "palette-classic"}
+          }
+        }
+      },
+      {
+        "id": 11,
+        "type": "row",
+        "title": "🔍 Loki Logs",
+        "gridPos": {
+          "x": 0,
+          "y": 16,
+          "w": 24,
+          "h": 1
+        },
+        "collapsed": false
+      },
+      {
+        "id": 12,
+        "type": "stat",
+        "title": "Loki Status",
+        "gridPos": {
+          "x": 0,
+          "y": 17,
+          "w": 4,
+          "h": 4
+        },
+        "targets": [
+          {
+            "expr": "up{job=\"loki\"}",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "mappings": [
+              {
+                "type": "value",
+                "options": {
+                  "0": {"text": "DOWN", "color": "red"},
+                  "1": {"text": "UP", "color": "green"}
+                }
+              }
+            ],
+            "color": {"mode": "thresholds"},
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "red"},
+                {"value": 1, "color": "green"}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 13,
+        "type": "gauge",
+        "title": "Log Ingestion Rate",
+        "gridPos": {
+          "x": 4,
+          "y": 17,
+          "w": 5,
+          "h": 4
+        },
+        "targets": [
+          {
+            "expr": "sum(rate(loki_ingester_lines_received_total[5m]))",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "logs/s",
+            "min": 0,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "green"},
+                {"value": 1000, "color": "yellow"},
+                {"value": 5000, "color": "red"}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 14,
+        "type": "stat",
+        "title": "Active Streams",
+        "gridPos": {
+          "x": 9,
+          "y": 17,
+          "w": 5,
+          "h": 4
+        },
+        "targets": [
+          {
+            "expr": "sum(loki_ingester_streams)",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "palette-classic"}
+          }
+        }
+      },
+      {
+        "id": 15,
+        "type": "gauge",
+        "title": "Query Duration",
+        "gridPos": {
+          "x": 14,
+          "y": 17,
+          "w": 5,
+          "h": 4
+        },
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.99, sum(rate(loki_request_duration_seconds_bucket{route=\"/loki/api/v1/query_range\"}[5m])) by (le))",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "s",
+            "min": 0,
+            "max": 5,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "green"},
+                {"value": 2, "color": "yellow"},
+                {"value": 4, "color": "red"}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 16,
+        "type": "stat",
+        "title": "Bytes Processed",
+        "gridPos": {
+          "x": 19,
+          "y": 17,
+          "w": 5,
+          "h": 4
+        },
+        "targets": [
+          {
+            "expr": "sum(rate(loki_ingester_bytes_received_total[5m]))",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "Bps",
+            "color": {"mode": "palette-classic"}
+          }
+        }
+      },
+      {
+        "id": 17,
+        "type": "logs",
+        "title": "Recent Platform Logs",
+        "gridPos": {
+          "x": 0,
+          "y": 21,
+          "w": 24,
+          "h": 10
+        },
+        "targets": [
+          {
+            "expr": "{job=\"rhinometric\"} |= ``",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "showTime": true,
+          "showLabels": true,
+          "sortOrder": "Descending"
+        }
+      },
+      {
+        "id": 18,
+        "type": "row",
+        "title": "🔗 Tempo Traces",
+        "gridPos": {
+          "x": 0,
+          "y": 31,
+          "w": 24,
+          "h": 1
+        },
+        "collapsed": false
+      },
+      {
+        "id": 19,
+        "type": "stat",
+        "title": "Tempo Status",
+        "gridPos": {
+          "x": 0,
+          "y": 32,
+          "w": 4,
+          "h": 4
+        },
+        "targets": [
+          {
+            "expr": "up{job=\"tempo\"}",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "mappings": [
+              {
+                "type": "value",
+                "options": {
+                  "0": {"text": "DOWN", "color": "red"},
+                  "1": {"text": "UP", "color": "green"}
+                }
+              }
+            ],
+            "color": {"mode": "thresholds"},
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "red"},
+                {"value": 1, "color": "green"}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 20,
+        "type": "gauge",
+        "title": "Spans Ingested/s",
+        "gridPos": {
+          "x": 4,
+          "y": 32,
+          "w": 5,
+          "h": 4
+        },
+        "targets": [
+          {
+            "expr": "sum(rate(tempo_ingester_spans_received_total[5m]))",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "spans/s",
+            "min": 0,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "green"},
+                {"value": 500, "color": "yellow"},
+                {"value": 1000, "color": "red"}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 21,
+        "type": "stat",
+        "title": "Active Traces",
+        "gridPos": {
+          "x": 9,
+          "y": 32,
+          "w": 5,
+          "h": 4
+        },
+        "targets": [
+          {
+            "expr": "sum(tempo_ingester_traces_created_total)",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "palette-classic"}
+          }
+        }
+      },
+      {
+        "id": 22,
+        "type": "gauge",
+        "title": "Query Latency (p99)",
+        "gridPos": {
+          "x": 14,
+          "y": 32,
+          "w": 5,
+          "h": 4
+        },
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.99, sum(rate(tempo_request_duration_seconds_bucket{route=\"/api/traces/:traceID\"}[5m])) by (le))",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "s",
+            "min": 0,
+            "max": 2,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "green"},
+                {"value": 1, "color": "yellow"},
+                {"value": 1.5, "color": "red"}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 23,
+        "type": "stat",
+        "title": "Storage Size",
+        "gridPos": {
+          "x": 19,
+          "y": 32,
+          "w": 5,
+          "h": 4
+        },
+        "targets": [
+          {
+            "expr": "sum(tempo_ingester_bytes_received_total) / 1024 / 1024",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "decmbytes",
+            "color": {"mode": "palette-classic"}
+          }
+        }
+      },
+      {
+        "id": 24,
+        "type": "timeseries",
+        "title": "Span Ingestion Over Time",
+        "gridPos": {
+          "x": 0,
+          "y": 36,
+          "w": 24,
+          "h": 8
+        },
+        "targets": [
+          {
+            "expr": "sum(rate(tempo_ingester_spans_received_total[5m])) by (job)",
+            "legendFormat": "{{job}}",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "spans/s",
+            "color": {"mode": "palette-classic"}
+          }
+        }
+      },
+      {
+        "id": 25,
+        "type": "row",
+        "title": "📈 cAdvisor Container Metrics",
+        "gridPos": {
+          "x": 0,
+          "y": 44,
+          "w": 24,
+          "h": 1
+        },
+        "collapsed": false
+      },
+      {
+        "id": 26,
+        "type": "stat",
+        "title": "cAdvisor Status",
+        "gridPos": {
+          "x": 0,
+          "y": 45,
+          "w": 6,
+          "h": 4
+        },
+        "targets": [
+          {
+            "expr": "up{job=\"cadvisor\"}",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "mappings": [
+              {
+                "type": "value",
+                "options": {
+                  "0": {"text": "DOWN", "color": "red"},
+                  "1": {"text": "UP", "color": "green"}
+                }
+              }
+            ],
+            "color": {"mode": "thresholds"},
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "red"},
+                {"value": 1, "color": "green"}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 27,
+        "type": "stat",
+        "title": "Monitored Containers",
+        "gridPos": {
+          "x": 6,
+          "y": 45,
+          "w": 6,
+          "h": 4
+        },
+        "targets": [
+          {
+            "expr": "count(count by (name) (container_last_seen{name=~\"rhinometric-.*\"}))",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "palette-classic"}
+          }
+        }
+      },
+      {
+        "id": 28,
+        "type": "gauge",
+        "title": "Total CPU Usage",
+        "gridPos": {
+          "x": 12,
+          "y": 45,
+          "w": 6,
+          "h": 4
+        },
+        "targets": [
+          {
+            "expr": "sum(rate(container_cpu_usage_seconds_total{name=~\"rhinometric-.*\"}[5m])) * 100",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "min": 0,
+            "max": 400,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "green"},
+                {"value": 200, "color": "yellow"},
+                {"value": 300, "color": "red"}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 29,
+        "type": "gauge",
+        "title": "Total Memory Usage",
+        "gridPos": {
+          "x": 18,
+          "y": 45,
+          "w": 6,
+          "h": 4
+        },
+        "targets": [
+          {
+            "expr": "sum(container_memory_usage_bytes{name=~\"rhinometric-.*\"}) / 1024 / 1024",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "decmbytes",
+            "min": 0,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "green"},
+                {"value": 2000, "color": "yellow"},
+                {"value": 4000, "color": "red"}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 30,
+        "type": "timeseries",
+        "title": "CPU Usage by Container",
+        "gridPos": {
+          "x": 0,
+          "y": 49,
+          "w": 12,
+          "h": 8
+        },
+        "targets": [
+          {
+            "expr": "rate(container_cpu_usage_seconds_total{name=~\"rhinometric-.*\"}[5m]) * 100",
+            "legendFormat": "{{name}}",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "color": {"mode": "palette-classic"}
+          }
+        }
+      },
+      {
+        "id": 31,
+        "type": "timeseries",
+        "title": "Memory Usage by Container",
+        "gridPos": {
+          "x": 12,
+          "y": 49,
+          "w": 12,
+          "h": 8
+        },
+        "targets": [
+          {
+            "expr": "container_memory_usage_bytes{name=~\"rhinometric-.*\"} / 1024 / 1024",
+            "legendFormat": "{{name}}",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "decmbytes",
+            "color": {"mode": "palette-classic"}
+          }
+        }
+      }
+    ]
+  },
+  "folderId": 0,
+  "overwrite": true
+}

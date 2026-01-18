@@ -1,26 +1,28 @@
 FROM python:3.11-slim
 
-WORKDIR /app
+WORKDIR /workspace
 
 # Install dependencies
-RUN pip install --no-cache-dir \
-    numpy==1.26.0 \
-    scikit-learn==1.3.2 \
-    requests==2.31.0 \
-    prometheus-client==0.19.0
+COPY requirements.txt /workspace/
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy detector script
-COPY detector.py /app/
+# Copy application code (preserves app/ as package directory)
+COPY app/ /workspace/app/
+COPY config.yaml /workspace/
+COPY alert_mappings.yaml /workspace/
+
+# Set Python path to include /workspace
+ENV PYTHONPATH=/workspace
 
 # Create non-root user
 RUN useradd -m -u 1000 anomaly && \
-    chown -R anomaly:anomaly /app
+    chown -R anomaly:anomaly /workspace
 
 USER anomaly
 
-EXPOSE 8080
+EXPOSE 8085
 
-# Healthcheck
-HEALTHCHECK --interval=30s CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')"
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8085/health', timeout=3)" || exit 1
 
-CMD ["python", "-u", "detector.py"]
+CMD ["python", "-u", "app/main.py"]

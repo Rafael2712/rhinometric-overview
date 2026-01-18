@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  dashboard-studio:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: rhinometric-dashboard-studio
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+    networks:
+      - rhinometric_network_v22
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    depends_on:
+      - dashboard-builder
+
+  dashboard-builder:
+    image: rhinometric-dashboard-builder:v2.5.0
+    container_name: rhinometric-dashboard-builder
+    ports:
+      - "8001:8001"
+    environment:
+      - POSTGRES_HOST=rhinometric-postgres
+      - POSTGRES_DB=rhinometric_saas
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=rhinometric_v22
+      - GRAFANA_URL=http://rhinometric-grafana:3000
+      - GRAFANA_USER=admin
+      - GRAFANA_PASSWORD=rhinometric_v22
+      - PROMETHEUS_URL=http://rhinometric-prometheus:9090
+      - JWT_SECRET=your_jwt_secret_for_license_system_change_this
+    networks:
+      - rhinometric_network_v22
+    restart: unless-stopped
+
+networks:
+  rhinometric_network_v22:
+    external: true

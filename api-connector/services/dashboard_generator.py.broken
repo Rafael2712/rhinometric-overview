@@ -1,0 +1,536 @@
+"""
+RHINOMETRIC v2.5.0 - Dashboard Generator Service
+=================================================
+
+Auto-generates Grafana dashboards from templates.
+"""
+
+import json
+from typing import Dict, Any, List
+import logging
+from datetime import datetime
+
+logger = logging.getLogger(__name__)
+
+
+class DashboardGenerator:
+    """
+    Generates Grafana dashboards from templates.
+    """
+    
+    def __init__(self, templates_dir: str = None):
+        if templates_dir is None:
+            # Use absolute path from project root
+            base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            templates_dir = os.path.join(base_dir, "templates", "dashboards")
+        self.templates_dir = templates_dir
+        logger.info(f"DashboardGenerator initialized with templates_dir: {self.templates_dir}")
+    
+    def generate_dashboard(
+        self,
+        connector_type: str,
+        datasource_name: str,
+        datasource_uid: str,
+        config: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """
+        Generate Grafana dashboard JSON.
+        
+        Args:
+            connector_type: "rest", "mqtt", "database", "webhook"
+            datasource_name: Name of the datasource
+            datasource_uid: UID in Grafana
+            config: Additional configuration
+        
+        Returns:
+            Grafana dashboard JSON
+        """
+        if connector_type == "mqtt":
+            return self._generate_mqtt_dashboard(datasource_name, datasource_uid, config)
+        elif connector_type == "rest":
+            return self._generate_rest_dashboard(datasource_name, datasource_uid, config)
+        elif connector_type == "database":
+            return self._generate_database_dashboard(datasource_name, datasource_uid, config)
+        elif connector_type == "webhook":
+            return self._generate_webhook_dashboard(datasource_name, datasource_uid, config)
+        else:
+            raise ValueError(f"Unsupported connector type: {connector_type}")
+    
+    def _generate_mqtt_dashboard(
+        self,
+        name: str,
+        uid: str,
+        config: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """Generate MQTT IoT monitoring dashboard"""
+        return {
+            "title": f"RHINOMETRIC - {name} MQTT Monitoring",
+            "tags": ["mqtt", "iot", "auto-generated"],
+            "timezone": "browser",
+            "schemaVersion": 16,
+            "version": 0,
+            "refresh": "10s",
+            "uid": uid,
+            "panels": [
+                    # Panel 1: Connection Status
+                    {
+                        "id": 1,
+                        "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
+                        "type": "stat",
+                        "title": "MQTT Connection Status",
+                        "targets": [{
+                            "expr": "mqtt_connection_status",
+                            "refId": "A",
+                            "datasource": {"type": "prometheus", "uid": "prometheus-uid"}
+                        }],
+                        "fieldConfig": {
+                            "defaults": {
+                                "mappings": [
+                                    {"value": 0, "text": "Disconnected", "color": "red"},
+                                    {"value": 1, "text": "Connected", "color": "green"}
+                                ],
+                                "thresholds": {
+                                    "mode": "absolute",
+                                    "steps": [
+                                        {"value": 0, "color": "red"},
+                                        {"value": 1, "color": "green"}
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    # Panel 2: Messages Rate
+                    {
+                        "id": 2,
+                        "gridPos": {"h": 4, "w": 6, "x": 6, "y": 0},
+                        "type": "gauge",
+                        "title": "MQTT Messages Rate (msg/s)",
+                        "targets": [{
+                            "expr": "rate(mqtt_messages_received_total[1m])",
+                            "refId": "A",
+                            "datasource": {"type": "prometheus", "uid": "prometheus-uid"}
+                        }],
+                        "fieldConfig": {
+                            "defaults": {
+                                "min": 0,
+                                "max": 1000,
+                                "thresholds": {
+                                    "mode": "absolute",
+                                    "steps": [
+                                        {"value": 0, "color": "green"},
+                                        {"value": 500, "color": "yellow"},
+                                        {"value": 800, "color": "red"}
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    # Panel 3: Total Messages
+                    {
+                        "id": 3,
+                        "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0},
+                        "type": "stat",
+                        "title": "Total Messages Received",
+                        "targets": [{
+                            "expr": "sum(mqtt_messages_received_total)",
+                            "refId": "A",
+                            "datasource": {"type": "prometheus", "uid": "prometheus-uid"}
+                        }],
+                        "fieldConfig": {
+                            "defaults": {
+                                "unit": "short",
+                                "color": {"mode": "thresholds"}
+                            }
+                        }
+                    },
+                    # Panel 4: Active Topics
+                    {
+                        "id": 4,
+                        "gridPos": {"h": 4, "w": 6, "x": 18, "y": 0},
+                        "type": "stat",
+                        "title": "Active Topics",
+                        "targets": [{
+                            "expr": "count(mqtt_messages_received_total)",
+                            "refId": "A",
+                            "datasource": {"type": "prometheus", "uid": "prometheus-uid"}
+                        }],
+                        "fieldConfig": {
+                            "defaults": {
+                                "unit": "short",
+                                "color": {"mode": "palette-classic"}
+                            }
+                        }
+                    },
+                    # Panel 5: Messages Over Time
+                    {
+                        "id": 5,
+                        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4},
+                        "type": "timeseries",
+                        "title": "MQTT Messages Rate Over Time",
+                        "targets": [{
+                            "expr": "rate(mqtt_messages_received_total[1m])",
+                            "refId": "A",
+                            "legendFormat": "{{topic}}",
+                            "datasource": {"type": "prometheus", "uid": "prometheus-uid"}
+                        }],
+                        "fieldConfig": {
+                            "defaults": {
+                                "custom": {
+                                    "drawStyle": "line",
+                                    "lineInterpolation": "smooth",
+                                    "fillOpacity": 10
+                                }
+                            }
+                        }
+                    },
+                    # Panel 6: Top Topics
+                    {
+                        "id": 6,
+                        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4},
+                        "type": "barchart",
+                        "title": "Top 10 MQTT Topics by Messages",
+                        "targets": [{
+                            "expr": "rate(mqtt_messages_received[1m])",
+                            "refId": "A",
+                            "legendFormat": "{{topic}}",
+                            "datasource": {"type": "prometheus", "uid": "prometheus-uid"}
+                        }]
+                    }
+                ],
+                "time": {
+                    "from": "now-1h",
+                    "to": "now"
+                }
+        }
+    
+    def _generate_rest_dashboard(
+        self,
+        name: str,
+        uid: str,
+        config: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """Generate REST API monitoring dashboard"""
+        return {
+            "title": f"RHINOMETRIC - {name} API Monitoring",
+            "tags": ["rest", "api", "auto-generated"],
+            "timezone": "browser",
+            "schemaVersion": 16,
+            "version": 0,
+            "refresh": "10s",
+            "uid": uid,
+                "panels": [
+                    # Panel 1: Request Rate
+                    {
+                        "id": 1,
+                        "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
+                        "type": "gauge",
+                        "title": "API Request Rate (req/s)",
+                        "targets": [{
+                            "expr": "rate(api_requests_total[1m])",
+                            "refId": "A",
+                            "datasource": {"type": "prometheus", "uid": "prometheus-uid"}
+                        }]
+                    },
+                    # Panel 2: Success Rate
+                    {
+                        "id": 2,
+                        "gridPos": {"h": 4, "w": 6, "x": 6, "y": 0},
+                        "type": "stat",
+                        "title": "Success Rate (%)",
+                        "targets": [{
+                            "expr": "sum(rate(api_requests_total{status=~'2..'}[5m])) / sum(rate(api_requests_total[5m])) * 100",
+                            "refId": "A",
+                            "datasource": {"type": "prometheus", "uid": "prometheus-uid"}
+                        }],
+                        "fieldConfig": {
+                            "defaults": {
+                                "unit": "percent",
+                                "thresholds": {
+                                    "mode": "absolute",
+                                    "steps": [
+                                        {"value": 0, "color": "red"},
+                                        {"value": 90, "color": "yellow"},
+                                        {"value": 95, "color": "green"}
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    # Panel 3: Response Time
+                    {
+                        "id": 3,
+                        "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0},
+                        "type": "stat",
+                        "title": "Avg Response Time (ms)",
+                        "targets": [{
+                            "expr": "avg(api_response_time_seconds) * 1000",
+                            "refId": "A",
+                            "datasource": {"type": "prometheus", "uid": "prometheus-uid"}
+                        }],
+                        "fieldConfig": {
+                            "defaults": {
+                                "unit": "ms"
+                            }
+                        }
+                    },
+                    # Panel 4: Total Requests
+                    {
+                        "id": 4,
+                        "gridPos": {"h": 4, "w": 6, "x": 18, "y": 0},
+                        "type": "stat",
+                        "title": "Total Requests",
+                        "targets": [{
+                            "expr": "sum(api_requests_total)",
+                            "refId": "A",
+                            "datasource": {"type": "prometheus", "uid": "prometheus-uid"}
+                        }]
+                    },
+                    # Panel 5: Requests by Status
+                    {
+                        "id": 5,
+                        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4},
+                        "type": "timeseries",
+                        "title": "Requests by Status Code",
+                        "targets": [{
+                            "expr": "rate(api_requests_total[1m])",
+                            "refId": "A",
+                            "legendFormat": "{{status}}",
+                            "datasource": {"type": "prometheus", "uid": "prometheus-uid"}
+                        }]
+                    },
+                    # Panel 6: Response Time Distribution
+                    {
+                        "id": 6,
+                        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4},
+                        "type": "heatmap",
+                        "title": "Response Time Distribution",
+                        "targets": [{
+                            "expr": "rate(api_response_time_seconds_bucket[1m])",
+                            "refId": "A",
+                            "format": "heatmap",
+                            "datasource": {"type": "prometheus", "uid": "prometheus-uid"}
+                        }]
+                    }
+                ],
+                "time": {
+                    "from": "now-1h",
+                    "to": "now"
+                }
+        }
+    
+    def _generate_database_dashboard(
+        self,
+        name: str,
+        uid: str,
+        config: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """Generate Database monitoring dashboard"""
+        return {
+            "title": f"RHINOMETRIC - {name} Database Monitoring",
+            "tags": ["database", "sql", "auto-generated"],
+            "timezone": "browser",
+            "schemaVersion": 16,
+            "version": 0,
+            "refresh": "30s",
+            "uid": uid,
+                    # Panel 1: Query Rate
+                    {
+                        "id": 1,
+                        "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
+                        "type": "gauge",
+                        "title": "Query Rate (queries/s)",
+                        "targets": [{
+                            "expr": "rate(db_queries_total[1m])",
+                            "refId": "A",
+                            "datasource": {"type": "prometheus", "uid": "prometheus-uid"}
+                        }]
+                    },
+                    # Panel 2: Connection Pool
+                    {
+                        "id": 2,
+                        "gridPos": {"h": 4, "w": 6, "x": 6, "y": 0},
+                        "type": "stat",
+                        "title": "Active Connections",
+                        "targets": [{
+                            "expr": "db_connections_active",
+                            "refId": "A",
+                            "datasource": {"type": "prometheus", "uid": "prometheus-uid"}
+                        }]
+                    },
+                    # Panel 3: Query Time
+                    {
+                        "id": 3,
+                        "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0},
+                        "type": "stat",
+                        "title": "Avg Query Time (ms)",
+                        "targets": [{
+                            "expr": "avg(db_query_duration_seconds) * 1000",
+                            "refId": "A",
+                            "datasource": {"type": "prometheus", "uid": "prometheus-uid"}
+                        }],
+                        "fieldConfig": {
+                            "defaults": {
+                                "unit": "ms"
+                            }
+                        }
+                    },
+                    # Panel 4: Total Records
+                    {
+                        "id": 4,
+                        "gridPos": {"h": 4, "w": 6, "x": 18, "y": 0},
+                        "type": "stat",
+                        "title": "Total Records Fetched",
+                        "targets": [{
+                            "expr": "sum(db_records_fetched_total)",
+                            "refId": "A",
+                            "datasource": {"type": "prometheus", "uid": "prometheus-uid"}
+                        }]
+                    },
+                    # Panel 5: Query Performance
+                    {
+                        "id": 5,
+                        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4},
+                        "type": "timeseries",
+                        "title": "Query Execution Time",
+                        "targets": [{
+                            "expr": "db_query_duration_seconds * 1000",
+                            "refId": "A",
+                            "legendFormat": "{{query_type}}",
+                            "datasource": {"type": "prometheus", "uid": "prometheus-uid"}
+                        }]
+                    },
+                    # Panel 6: Query Types
+                    {
+                        "id": 6,
+                        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4},
+                        "type": "piechart",
+                        "title": "Query Types Distribution",
+                        "targets": [{
+                            "expr": "sum by (query_type) (db_queries_total)",
+                            "refId": "A",
+                            "legendFormat": "{{query_type}}",
+                            "datasource": {"type": "prometheus", "uid": "prometheus-uid"}
+                        }]
+                    }
+                ],
+                "time": {
+                    "from": "now-1h",
+                    "to": "now"
+                }
+        }
+    
+    def _generate_webhook_dashboard(
+        self,
+        name: str,
+        uid: str,
+        config: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """Generate Webhook monitoring dashboard"""
+        return {
+            "title": f"RHINOMETRIC - {name} Webhook Monitoring",
+            "tags": ["webhook", "events", "auto-generated"],
+            "timezone": "browser",
+            "schemaVersion": 16,
+            "version": 0,
+            "refresh": "10s",
+            "uid": uid,
+                "panels": [
+                    # Panel 1: Event Rate
+                    {
+                        "id": 1,
+                        "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
+                        "type": "gauge",
+                        "title": "Event Rate (events/s)",
+                        "targets": [{
+                            "expr": "rate(webhook_events_received_total[1m])",
+                            "refId": "A",
+                            "datasource": {"type": "prometheus", "uid": "prometheus-uid"}
+                        }]
+                    },
+                    # Panel 2: Success Rate
+                    {
+                        "id": 2,
+                        "gridPos": {"h": 4, "w": 6, "x": 6, "y": 0},
+                        "type": "stat",
+                        "title": "Success Rate (%)",
+                        "targets": [{
+                            "expr": "sum(rate(webhook_events_received_total{status='success'}[5m])) / sum(rate(webhook_events_received_total[5m])) * 100",
+                            "refId": "A",
+                            "datasource": {"type": "prometheus", "uid": "prometheus-uid"}
+                        }],
+                        "fieldConfig": {
+                            "defaults": {
+                                "unit": "percent",
+                                "thresholds": {
+                                    "mode": "absolute",
+                                    "steps": [
+                                        {"value": 0, "color": "red"},
+                                        {"value": 90, "color": "yellow"},
+                                        {"value": 99, "color": "green"}
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    # Panel 3: Processing Time
+                    {
+                        "id": 3,
+                        "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0},
+                        "type": "stat",
+                        "title": "Avg Processing Time (ms)",
+                        "targets": [{
+                            "expr": "avg(webhook_processing_duration_seconds) * 1000",
+                            "refId": "A",
+                            "datasource": {"type": "prometheus", "uid": "prometheus-uid"}
+                        }],
+                        "fieldConfig": {
+                            "defaults": {
+                                "unit": "ms"
+                            }
+                        }
+                    },
+                    # Panel 4: Total Events
+                    {
+                        "id": 4,
+                        "gridPos": {"h": 4, "w": 6, "x": 18, "y": 0},
+                        "type": "stat",
+                        "title": "Total Events Received",
+                        "targets": [{
+                            "expr": "sum(webhook_events_received_total)",
+                            "refId": "A",
+                            "datasource": {"type": "prometheus", "uid": "prometheus-uid"}
+                        }]
+                    },
+                    # Panel 5: Events Over Time
+                    {
+                        "id": 5,
+                        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4},
+                        "type": "timeseries",
+                        "title": "Webhook Events Rate",
+                        "targets": [{
+                            "expr": "rate(webhook_events_received_total[1m])",
+                            "refId": "A",
+                            "legendFormat": "{{event_type}}",
+                            "datasource": {"type": "prometheus", "uid": "prometheus-uid"}
+                        }]
+                    },
+                    # Panel 6: Event Types
+                    {
+                        "id": 6,
+                        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4},
+                        "type": "barchart",
+                        "title": "Top Event Types",
+                        "targets": [{
+                            "expr": "topk(10, webhook_events_received_total)",
+                            "refId": "A",
+                            "legendFormat": "{{event_type}}",
+                            "datasource": {"type": "prometheus", "uid": "prometheus-uid"}
+                        }]
+                    }
+                ],
+                "time": {
+                    "from": "now-1h",
+                    "to": "now"
+                }
+        }
+        }

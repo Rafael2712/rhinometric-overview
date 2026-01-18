@@ -1,0 +1,545 @@
+{
+  "dashboard": {
+    "title": "🎛️ RHINOMETRIC Control Center",
+    "tags": ["rhinometric", "control", "admin"],
+    "timezone": "browser",
+    "schemaVersion": 38,
+    "version": 0,
+    "refresh": "5s",
+    "panels": [
+      {
+        "id": 1,
+        "type": "text",
+        "title": "🚀 Welcome to RHINOMETRIC v2.4.0",
+        "gridPos": {
+          "x": 0,
+          "y": 0,
+          "w": 24,
+          "h": 3
+        },
+        "options": {
+          "mode": "markdown",
+          "content": "# 🎛️ RHINOMETRIC Control Center\n\n**Platform Observability & Management Console**\n\n- 🔗 **API Connector**: Create and manage data source connections\n- 📊 **Dashboard Builder**: Design custom monitoring dashboards\n- 📈 **System Metrics**: Real-time platform health monitoring\n\n**Quick Links**: [Grafana](/) | [Prometheus](http://localhost:9090) | [Tempo](http://localhost:3200) | [Loki](http://localhost:3100)\n\n---"
+        }
+      },
+      {
+        "id": 2,
+        "type": "row",
+        "title": "🔗 API Connector",
+        "gridPos": {
+          "x": 0,
+          "y": 3,
+          "w": 24,
+          "h": 1
+        },
+        "collapsed": false
+      },
+      {
+        "id": 3,
+        "type": "text",
+        "title": "About API Connector",
+        "gridPos": {
+          "x": 0,
+          "y": 4,
+          "w": 6,
+          "h": 8
+        },
+        "options": {
+          "mode": "markdown",
+          "content": "## 🔗 API Connector\n\n**Create data source connections**\n\nSupported types:\n- PostgreSQL\n- MySQL\n- InfluxDB\n- MongoDB\n- Elasticsearch\n- Prometheus\n- Loki\n- Tempo\n\n**Features**:\n- ✅ Connection testing\n- ✅ Auto-provisioning\n- ✅ Grafana integration\n- ✅ Connection history"
+        }
+      },
+      {
+        "id": 4,
+        "type": "text",
+        "title": "⚠️ Iframe Notice",
+        "gridPos": {
+          "x": 6,
+          "y": 4,
+          "w": 18,
+          "h": 2
+        },
+        "options": {
+          "mode": "markdown",
+          "content": "⚠️ **Security Notice**: Iframe content requires proper CSP headers. If you see \"Refused to display in frame\", this is expected browser behavior.\n\n**Alternative Access**: Open directly at [http://localhost:8000](http://localhost:8000)"
+        }
+      },
+      {
+        "id": 5,
+        "type": "text",
+        "title": "API Connector Interface",
+        "gridPos": {
+          "x": 6,
+          "y": 6,
+          "w": 18,
+          "h": 18
+        },
+        "options": {
+          "mode": "html",
+          "content": "<iframe src=\"http://localhost:8000\" width=\"100%\" height=\"800\" frameborder=\"0\" style=\"border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);\"></iframe>"
+        }
+      },
+      {
+        "id": 6,
+        "type": "stat",
+        "title": "API Connector Status",
+        "gridPos": {
+          "x": 0,
+          "y": 12,
+          "w": 3,
+          "h": 4
+        },
+        "targets": [
+          {
+            "expr": "up{job=\"api-connector\"}",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "mappings": [
+              {
+                "type": "value",
+                "options": {
+                  "0": {
+                    "text": "DOWN",
+                    "color": "red"
+                  },
+                  "1": {
+                    "text": "UP",
+                    "color": "green"
+                  }
+                }
+              }
+            ],
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "value": 0,
+                  "color": "red"
+                },
+                {
+                  "value": 1,
+                  "color": "green"
+                }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 7,
+        "type": "gauge",
+        "title": "Response Time",
+        "gridPos": {
+          "x": 3,
+          "y": 12,
+          "w": 3,
+          "h": 4
+        },
+        "targets": [
+          {
+            "expr": "rate(http_request_duration_seconds_sum{job=\"api-connector\"}[5m]) / rate(http_request_duration_seconds_count{job=\"api-connector\"}[5m])",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "s",
+            "min": 0,
+            "max": 1,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "value": 0,
+                  "color": "green"
+                },
+                {
+                  "value": 0.5,
+                  "color": "yellow"
+                },
+                {
+                  "value": 0.8,
+                  "color": "red"
+                }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 8,
+        "type": "stat",
+        "title": "Total Requests",
+        "gridPos": {
+          "x": 0,
+          "y": 16,
+          "w": 3,
+          "h": 4
+        },
+        "targets": [
+          {
+            "expr": "sum(rate(http_requests_total{job=\"api-connector\"}[5m]))",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "reqps",
+            "color": {
+              "mode": "palette-classic"
+            }
+          }
+        }
+      },
+      {
+        "id": 9,
+        "type": "stat",
+        "title": "Error Rate",
+        "gridPos": {
+          "x": 3,
+          "y": 16,
+          "w": 3,
+          "h": 4
+        },
+        "targets": [
+          {
+            "expr": "sum(rate(http_requests_total{job=\"api-connector\",status=~\"5..\"}[5m])) / sum(rate(http_requests_total{job=\"api-connector\"}[5m])) * 100",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "value": 0,
+                  "color": "green"
+                },
+                {
+                  "value": 1,
+                  "color": "yellow"
+                },
+                {
+                  "value": 5,
+                  "color": "red"
+                }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 10,
+        "type": "row",
+        "title": "📊 Dashboard Builder",
+        "gridPos": {
+          "x": 0,
+          "y": 24,
+          "w": 24,
+          "h": 1
+        },
+        "collapsed": false
+      },
+      {
+        "id": 11,
+        "type": "text",
+        "title": "About Dashboard Builder",
+        "gridPos": {
+          "x": 0,
+          "y": 25,
+          "w": 6,
+          "h": 8
+        },
+        "options": {
+          "mode": "markdown",
+          "content": "## 📊 Dashboard Builder\n\n**Visual dashboard designer**\n\nFeatures:\n- 📋 Pre-built templates\n- 🎨 Drag & drop editor\n- 📊 Panel library\n- 🔗 Datasource integration\n- 💾 Save to PostgreSQL\n- 🚀 Deploy to Grafana\n\n**Templates**:\n- System Metrics\n- API Monitoring\n- Database Performance\n- Custom Design"
+        }
+      },
+      {
+        "id": 12,
+        "type": "text",
+        "title": "⚠️ Iframe Notice",
+        "gridPos": {
+          "x": 6,
+          "y": 25,
+          "w": 18,
+          "h": 2
+        },
+        "options": {
+          "mode": "markdown",
+          "content": "⚠️ **Security Notice**: Iframe content requires proper CSP headers. If you see \"Refused to display in frame\", this is expected browser behavior.\n\n**Alternative Access**: Open directly at [http://localhost:8001](http://localhost:8001)"
+        }
+      },
+      {
+        "id": 13,
+        "type": "text",
+        "title": "Dashboard Builder Interface",
+        "gridPos": {
+          "x": 6,
+          "y": 27,
+          "w": 18,
+          "h": 18
+        },
+        "options": {
+          "mode": "html",
+          "content": "<iframe src=\"http://localhost:8001\" width=\"100%\" height=\"800\" frameborder=\"0\" style=\"border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);\"></iframe>"
+        }
+      },
+      {
+        "id": 14,
+        "type": "stat",
+        "title": "Dashboard Builder Status",
+        "gridPos": {
+          "x": 0,
+          "y": 33,
+          "w": 3,
+          "h": 4
+        },
+        "targets": [
+          {
+            "expr": "up{job=\"dashboard-builder\"}",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "mappings": [
+              {
+                "type": "value",
+                "options": {
+                  "0": {
+                    "text": "DOWN",
+                    "color": "red"
+                  },
+                  "1": {
+                    "text": "UP",
+                    "color": "green"
+                  }
+                }
+              }
+            ],
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "value": 0,
+                  "color": "red"
+                },
+                {
+                  "value": 1,
+                  "color": "green"
+                }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 15,
+        "type": "gauge",
+        "title": "Response Time",
+        "gridPos": {
+          "x": 3,
+          "y": 33,
+          "w": 3,
+          "h": 4
+        },
+        "targets": [
+          {
+            "expr": "rate(http_request_duration_seconds_sum{job=\"dashboard-builder\"}[5m]) / rate(http_request_duration_seconds_count{job=\"dashboard-builder\"}[5m])",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "s",
+            "min": 0,
+            "max": 1,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "value": 0,
+                  "color": "green"
+                },
+                {
+                  "value": 0.5,
+                  "color": "yellow"
+                },
+                {
+                  "value": 0.8,
+                  "color": "red"
+                }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 16,
+        "type": "stat",
+        "title": "Dashboards Created",
+        "gridPos": {
+          "x": 0,
+          "y": 37,
+          "w": 3,
+          "h": 4
+        },
+        "targets": [
+          {
+            "expr": "sum(dashboard_created_total{job=\"dashboard-builder\"})",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            }
+          }
+        }
+      },
+      {
+        "id": 17,
+        "type": "stat",
+        "title": "Active Users",
+        "gridPos": {
+          "x": 3,
+          "y": 37,
+          "w": 3,
+          "h": 4
+        },
+        "targets": [
+          {
+            "expr": "count(count by (user) (http_requests_total{job=\"dashboard-builder\"}))",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            }
+          }
+        }
+      },
+      {
+        "id": 18,
+        "type": "row",
+        "title": "📈 System Metrics",
+        "gridPos": {
+          "x": 0,
+          "y": 45,
+          "w": 24,
+          "h": 1
+        },
+        "collapsed": false
+      },
+      {
+        "id": 19,
+        "type": "timeseries",
+        "title": "Container CPU Usage",
+        "gridPos": {
+          "x": 0,
+          "y": 46,
+          "w": 12,
+          "h": 8
+        },
+        "targets": [
+          {
+            "expr": "rate(container_cpu_usage_seconds_total{name=~\"rhinometric-.*\"}[5m]) * 100",
+            "legendFormat": "{{name}}",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "color": {
+              "mode": "palette-classic"
+            }
+          }
+        }
+      },
+      {
+        "id": 20,
+        "type": "timeseries",
+        "title": "Container Memory Usage",
+        "gridPos": {
+          "x": 12,
+          "y": 46,
+          "w": 12,
+          "h": 8
+        },
+        "targets": [
+          {
+            "expr": "container_memory_usage_bytes{name=~\"rhinometric-.*\"} / 1024 / 1024",
+            "legendFormat": "{{name}}",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "decmbytes",
+            "color": {
+              "mode": "palette-classic"
+            }
+          }
+        }
+      },
+      {
+        "id": 21,
+        "type": "table",
+        "title": "Container Health Status",
+        "gridPos": {
+          "x": 0,
+          "y": 54,
+          "w": 24,
+          "h": 8
+        },
+        "targets": [
+          {
+            "expr": "container_last_seen{name=~\"rhinometric-.*\"}",
+            "format": "table",
+            "instant": true,
+            "refId": "A"
+          }
+        ],
+        "transformations": [
+          {
+            "id": "organize",
+            "options": {
+              "excludeByName": {
+                "Time": true,
+                "Value": true,
+                "__name__": true,
+                "instance": true,
+                "job": true
+              },
+              "renameByName": {
+                "name": "Container",
+                "image": "Image"
+              }
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "folderId": 0,
+  "overwrite": true
+}

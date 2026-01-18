@@ -1,0 +1,19 @@
+# ============================================================================
+# RHINOMETRIC v2.2.0 - Alertmanager Datasource
+# Integración AI Anomaly Detection → Grafana
+# ============================================================================
+
+apiVersion: 1
+
+datasources:
+  - name: Alertmanager
+    type: alertmanager
+    access: proxy
+    url: http://alertmanager:9093
+    uid: alertmanager-uid
+    jsonData:
+      implementation: prometheus
+      handleGrafanaManagedAlerts: false
+    isDefault: false
+    editable: false
+    version: 1

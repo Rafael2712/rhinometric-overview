@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="1" failures="0" skipped="0" tests="1" time="6.619" timestamp="2025-11-03T16:02:24.259664+01:00" hostname="LAPTOP-TAPV340J"><testcase classname="" name="tests.test_messaging_connectors" time="0.000"><error message="collection failure">ImportError while importing test module 'C:\Users\canel\mi-proyecto\infrastructure\mi-proyecto\tests\test_messaging_connectors.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+..\..\..\AppData\Local\Programs\Python\Python313\Lib\site-packages\_pytest\python.py:498: in importtestmodule
+    mod = import_path(
+..\..\..\AppData\Local\Programs\Python\Python313\Lib\site-packages\_pytest\pathlib.py:587: in import_path
+    importlib.import_module(module_name)
+..\..\..\AppData\Local\Programs\Python\Python313\Lib\importlib\__init__.py:88: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+&lt;frozen importlib._bootstrap&gt;:1387: in _gcd_import
+    ???
+&lt;frozen importlib._bootstrap&gt;:1360: in _find_and_load
+    ???
+&lt;frozen importlib._bootstrap&gt;:1331: in _find_and_load_unlocked
+    ???
+&lt;frozen importlib._bootstrap&gt;:935: in _load_unlocked
+    ???
+..\..\..\AppData\Local\Programs\Python\Python313\Lib\site-packages\_pytest\assertion\rewrite.py:186: in exec_module
+    exec(co, module.__dict__)
+tests\test_messaging_connectors.py:24: in &lt;module&gt;
+    from connectors.kafka_connector import KafkaConnector
+api-connector\connectors\kafka_connector.py:14: in &lt;module&gt;
+    from kafka import KafkaAdminClient, KafkaConsumer
+..\..\..\AppData\Local\Programs\Python\Python313\Lib\site-packages\kafka\__init__.py:23: in &lt;module&gt;
+    from kafka.consumer import KafkaConsumer
+..\..\..\AppData\Local\Programs\Python\Python313\Lib\site-packages\kafka\consumer\__init__.py:3: in &lt;module&gt;
+    from kafka.consumer.group import KafkaConsumer
+..\..\..\AppData\Local\Programs\Python\Python313\Lib\site-packages\kafka\consumer\group.py:13: in &lt;module&gt;
+    from kafka.consumer.fetcher import Fetcher
+..\..\..\AppData\Local\Programs\Python\Python313\Lib\site-packages\kafka\consumer\fetcher.py:19: in &lt;module&gt;
+    from kafka.record import MemoryRecords
+..\..\..\AppData\Local\Programs\Python\Python313\Lib\site-packages\kafka\record\__init__.py:1: in &lt;module&gt;
+    from kafka.record.memory_records import MemoryRecords, MemoryRecordsBuilder
+..\..\..\AppData\Local\Programs\Python\Python313\Lib\site-packages\kafka\record\memory_records.py:27: in &lt;module&gt;
+    from kafka.record.legacy_records import LegacyRecordBatch, LegacyRecordBatchBuilder
+..\..\..\AppData\Local\Programs\Python\Python313\Lib\site-packages\kafka\record\legacy_records.py:50: in &lt;module&gt;
+    from kafka.codec import (
+..\..\..\AppData\Local\Programs\Python\Python313\Lib\site-packages\kafka\codec.py:9: in &lt;module&gt;
+    from kafka.vendor.six.moves import range
+E   ModuleNotFoundError: No module named 'kafka.vendor.six.moves'</error></testcase></testsuite></testsuites>

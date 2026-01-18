@@ -9,6 +9,7 @@
 #  ✓ AI Anomaly Detection service (NEW v2.2.0)
 #  ✓ All core services and exporters
 #  ✓ Optimized 15s scrape interval
+#  ✓ Jaeger tracing (Tempo removed)
 #
 # ═══════════════════════════════════════════════════════════════════════════
 
@@ -32,15 +33,6 @@ alerting:
         - targets: ['alertmanager:9093']
       timeout: 10s
       api_version: v2
-
-remote_write:
-  - url: http://tempo:3200/api/v1/push
-    queue_config:
-      capacity: 10000
-      max_shards: 10
-      min_shards: 1
-      max_samples_per_send: 5000
-      batch_send_deadline: 5s
 
 scrape_configs:
   # ═══════════════════════════════════════════════════════════════════════
@@ -80,12 +72,12 @@ scrape_configs:
           service: 'loki'
     metrics_path: '/metrics'
 
-  - job_name: 'tempo'
+  - job_name: 'jaeger'
     static_configs:
-      - targets: ['tempo:3200']
+      - targets: ['jaeger:14269']
         labels:
           tier: 'core'
-          service: 'tempo'
+          service: 'jaeger'
     metrics_path: '/metrics'
 
   # ═══════════════════════════════════════════════════════════════════════
@@ -102,39 +94,42 @@ scrape_configs:
     metrics_path: '/api/metrics'
     scrape_interval: 10s
 
-  - job_name: 'postgres-exporter'
-    static_configs:
-      - targets: ['postgres-exporter:9187']
-        labels:
-          tier: 'database'
-          service: 'postgres'
-    scrape_interval: 30s
+  # DISABLED: postgres-exporter not configured
+  # - job_name: 'postgres-exporter'
+  #   static_configs:
+  #     - targets: ['postgres-exporter:9187']
+  #       labels:
+  #         tier: 'database'
+  #         service: 'postgres'
+  #   scrape_interval: 30s
 
   # ═══════════════════════════════════════════════════════════════════════
-  #  TIER 3: API CONNECTIVITY
+  #  TIER 3: API CONNECTIVITY (DISABLED - Services not in docker-compose) (DISABLED - Services not in docker-compose)
   # ═══════════════════════════════════════════════════════════════════════
 
-  - job_name: 'api-proxy'
-    static_configs:
-      - targets: ['api-proxy:8090']
-        labels:
-          tier: 'connectivity'
-          service: 'api-proxy'
-    metrics_path: '/api/metrics/prometheus'
-    scrape_interval: 15s
+  # DISABLED: api-proxy service not deployed in on-premise version
+  # - job_name: 'api-proxy'
+  #   static_configs:
+  #     - targets: ['api-proxy:8090']
+  #       labels:
+  #         tier: 'connectivity'
+  #         service: 'api-proxy'
+  #   metrics_path: '/api/metrics/prometheus'
+  #   scrape_interval: 15s
 
-  - job_name: 'external-apis'
-    static_configs:
-      - targets: ['api-proxy:8090']
-        labels:
-          tier: 'external'
-          api_type: 'public'
-    metrics_path: '/api/metrics/prometheus'
-    scrape_interval: 60s
-    relabel_configs:
-      - source_labels: [__address__]
-        target_label: proxy
-        replacement: 'api-proxy'
+  # DISABLED: external-apis uses api-proxy which doesn't exist
+  # - job_name: 'external-apis'
+  #   static_configs:
+  #     - targets: ['api-proxy:8090']
+  #       labels:
+  #         tier: 'external'
+  #         api_type: 'public'
+  #   metrics_path: '/api/metrics/prometheus'
+  #   scrape_interval: 60s
+  #   relabel_configs:
+  #     - source_labels: [__address__]
+  #       target_label: proxy
+  #       replacement: 'api-proxy'
 
   # ═══════════════════════════════════════════════════════════════════════
   #  TIER 4: TELEMETRY
@@ -152,15 +147,16 @@ scrape_configs:
   #  TIER 5: NEW v2.2.0 SERVICES
   # ═══════════════════════════════════════════════════════════════════════
 
-  - job_name: 'veriverde'
-    static_configs:
-      - targets: ['rhinometric-veriverde:9200']
-        labels:
-          tier: 'sustainability'
-          service: 'veriverde'
-          module: 'energy-monitoring'
-    scrape_interval: 30s
-    metrics_path: '/metrics'
+  # DISABLED: veriverde not deployed in current stack
+  # - job_name: 'veriverde'
+  #   static_configs:
+  #     - targets: ['rhinometric-veriverde:9200']
+  #       labels:
+  #         tier: 'sustainability'
+  #         service: 'veriverde'
+  #         module: 'energy-monitoring'
+  #   scrape_interval: 30s
+  #   metrics_path: '/metrics'
 
   - job_name: 'ai-anomaly'
     static_configs:
@@ -224,10 +220,11 @@ scrape_configs:
           - http://grafana:3000
           - http://prometheus:9090
           - http://loki:3100/ready
-          - http://tempo:3200/ready
+          - http://jaeger:14269
           - http://license-server-v2:5000/api/health
-          - http://api-proxy:8090/health
-          - http://rhinometric-veriverde:9200/health
+          # DISABLED: Services not in stack
+          # - http://api-proxy:8090/health
+          # - http://rhinometric-veriverde:9200/health
           - http://rhinometric-ai-anomaly:8085/health
         labels:
           tier: 'health'
@@ -243,16 +240,3 @@ scrape_configs:
 storage:
   tsdb:
     out_of_order_time_window: 30m
-
-# ═══════════════════════════════════════════════════════════════════════════
-#  SCRAPE TARGETS SUMMARY - v2.2.0
-# ═══════════════════════════════════════════════════════════════════════════
-#
-#  Total jobs: 17 (2 new in v2.2.0)
-#  New v2.2.0:
-#    - veriverde: Energy/CO2/temperature sustainability metrics
-#    - ai-anomaly: Anomaly detection service metrics
-#
-#  Health checks: 8 services via blackbox
-#
-# ═══════════════════════════════════════════════════════════════════════════

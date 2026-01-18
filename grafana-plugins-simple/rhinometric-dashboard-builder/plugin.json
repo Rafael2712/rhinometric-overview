@@ -1,0 +1,29 @@
+{
+  "type": "app",
+  "name": "Rhinometric Dashboard Builder",
+  "id": "rhinometric-dashboard-builder-iframe",
+  "info": {
+    "description": "Visual dashboard builder for Rhinometric Observability Platform",
+    "author": {
+      "name": "Rhinometric",
+      "url": "https://rhinometric.com"
+    },
+    "keywords": ["rhinometric", "dashboard", "builder"],
+    "version": "2.4.0",
+    "updated": "2025-11-05"
+  },
+  "includes": [
+    {
+      "type": "page",
+      "name": "Dashboard Builder",
+      "path": "/a/rhinometric-dashboard-builder-iframe",
+      "role": "Viewer",
+      "addToNav": true,
+      "defaultNav": true
+    }
+  ],
+  "dependencies": {
+    "grafanaDependency": ">=9.0.0",
+    "plugins": []
+  }
+}

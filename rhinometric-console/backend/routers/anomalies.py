@@ -3,7 +3,8 @@ from pydantic import BaseModel
 from typing import Optional
 import httpx
 from config import settings
-from routers.auth import get_current_user, User
+from routers.auth import get_current_user
+from models.user import User as UserModel
 
 router = APIRouter()
 
@@ -27,7 +28,7 @@ class AnomaliesResponse(BaseModel):
 
 @router.get("")
 async def get_anomalies(
-    current_user: User = Depends(get_current_user),
+    current_user: UserModel = Depends(get_current_user),
     severity: Optional[str] = Query(None, description="Filter by severity: high, medium, low"),
     time_range: Optional[str] = Query("24h", description="Time range: 1h, 24h, 7d, 30d"),
     page: int = Query(1, ge=1),
@@ -67,56 +68,19 @@ async def get_anomalies(
                     detail=f"AI Anomaly service error: {response.text}"
                 )
                 
-    except httpx.ConnectError:
-        # Return mock data if service is not available
-        mock_anomalies = [
-            Anomaly(
-                id=1,
-                timestamp="2024-11-24 14:23:45",
-                metric="cpu_usage_percent",
-                service="api-gateway",
-                severity="high",
-                deviation="+47%",
-                baseline=32.5,
-                current=47.8,
-                confidence=0.94,
-                description="CPU usage significantly above baseline"
-            ),
-            Anomaly(
-                id=2,
-                timestamp="2024-11-24 14:18:12",
-                metric="response_time_ms",
-                service="database",
-                severity="medium",
-                deviation="+23%",
-                baseline=145,
-                current=178,
-                confidence=0.87,
-                description="Response time elevated"
-            ),
-            Anomaly(
-                id=3,
-                timestamp="2024-11-24 13:56:33",
-                metric="memory_usage_bytes",
-                service="worker-pool",
-                severity="low",
-                deviation="+12%",
-                baseline=2.1,
-                current=2.35,
-                confidence=0.76,
-                description="Minor memory increase detected"
-            )
-        ]
-        
-        # Apply severity filter
-        if severity:
-            mock_anomalies = [a for a in mock_anomalies if a.severity == severity.lower()]
-        
-        return AnomaliesResponse(
-            anomalies=mock_anomalies,
-            total=len(mock_anomalies),
-            page=page,
-            page_size=page_size
+    except httpx.ConnectError as e:
+        # AI Anomaly Detection Engine connection error
+        print(f"Error connecting to AI Anomaly service: {e}")
+        raise HTTPException(
+            status_code=503,
+            detail=f"AI Anomaly Detection Engine connection failed: {str(e)}"
+        )
+    except Exception as e:
+        # Other errors (DNS, timeout, etc.)
+        print(f"Error fetching anomalies: {e}")
+        raise HTTPException(
+            status_code=503,
+            detail=f"AI Anomaly service error: {str(e)}"
         )
     except Exception as e:
         raise HTTPException(
@@ -127,7 +91,7 @@ async def get_anomalies(
 @router.get("/{anomaly_id}")
 async def get_anomaly_details(
     anomaly_id: int,
-    current_user: User = Depends(get_current_user)
+    current_user: UserModel = Depends(get_current_user)
 ):
     """Get detailed information about a specific anomaly"""
     try:

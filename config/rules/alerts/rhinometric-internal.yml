@@ -1,0 +1,120 @@
+groups:
+  - name: rhinometric_internal_health
+    interval: 30s
+    rules:
+      # Prometheus Down
+      - alert: RhinometricPrometheusDown
+        expr: up{job="prometheus"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          component: prometheus
+          tier: rhinometric-internal
+        annotations:
+          summary: "Prometheus service is down"
+          description: "Prometheus has been unavailable for more than 2 minutes."
+          runbook_url: "https://grafana.rhinometric.com/d/runbooks?var-topic=prometheus-down"
+
+      # Alertmanager Down
+      - alert: RhinometricAlertmanagerDown
+        expr: up{job="alertmanager"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          component: alertmanager
+          tier: rhinometric-internal
+        annotations:
+          summary: "Alertmanager service is down"
+          description: "Alertmanager has been unavailable for more than 2 minutes. Alerts will not be delivered."
+          runbook_url: "https://grafana.rhinometric.com/d/runbooks?var-topic=alertmanager-down"
+
+      # Grafana Down
+      - alert: RhinometricGrafanaDown
+        expr: up{job="grafana"} == 0
+        for: 3m
+        labels:
+          severity: critical
+          component: grafana
+          tier: rhinometric-internal
+        annotations:
+          summary: "Grafana service is down"
+          description: "Grafana has been unavailable for more than 3 minutes. Dashboards are inaccessible."
+          runbook_url: "https://grafana.rhinometric.com/d/runbooks?var-topic=grafana-down"
+
+      # AI Anomaly Engine Down
+      - alert: RhinometricAIEngineDown
+        expr: up{job="ai-anomaly"} == 0
+        for: 5m
+        labels:
+          severity: critical
+          component: ai-anomaly
+          tier: rhinometric-internal
+        annotations:
+          summary: "AI Anomaly Engine is down"
+          description: "AI Anomaly service has been unavailable for more than 5 minutes. Anomaly detection stopped."
+          runbook_url: "https://grafana.rhinometric.com/d/runbooks?var-topic=ai-engine-down"
+
+      # Loki Down
+      - alert: RhinometricLokiDown
+        expr: up{job="loki"} == 0
+        for: 3m
+        labels:
+          severity: high
+          component: loki
+          tier: rhinometric-internal
+        annotations:
+          summary: "Loki service is down"
+          description: "Loki has been unavailable for more than 3 minutes. Log aggregation stopped."
+          runbook_url: "https://grafana.rhinometric.com/d/runbooks?var-topic=loki-down"
+
+      # Jaeger Down
+      - alert: RhinometricJaegerDown
+        expr: up{job="jaeger"} == 0
+        for: 3m
+        labels:
+          severity: high
+          component: jaeger
+          tier: rhinometric-internal
+        annotations:
+          summary: "Jaeger service is down"
+          description: "Jaeger has been unavailable for more than 3 minutes. Distributed tracing unavailable."
+          runbook_url: "https://grafana.rhinometric.com/d/runbooks?var-topic=jaeger-down"
+
+      # Console Backend Down
+      - alert: RhinometricConsoleBackendDown
+        expr: up{job="rhinometric-console-backend"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          component: console-backend
+          tier: rhinometric-internal
+        annotations:
+          summary: "Rhinometric Console Backend API is down"
+          description: "Console Backend has been unavailable for more than 2 minutes. UI will show errors."
+          runbook_url: "https://grafana.rhinometric.com/d/runbooks?var-topic=console-backend-down"
+
+      # License Validator Down
+      - alert: RhinometricLicenseValidatorDown
+        expr: up{job="license-validator"} == 0
+        for: 5m
+        labels:
+          severity: high
+          component: license-validator
+          tier: rhinometric-internal
+        annotations:
+          summary: "License Validator service is down"
+          description: "License Validator has been unavailable for more than 5 minutes. License checks may fail."
+          runbook_url: "https://grafana.rhinometric.com/d/runbooks?var-topic=license-validator-down"
+
+      # Multiple Components Down (Cascade Failure Detection)
+      - alert: RhinometricCascadeFailure
+        expr: count(up{job=~"prometheus|alertmanager|grafana|ai-anomaly|loki|jaeger|rhinometric-console-backend"} == 0) >= 3
+        for: 1m
+        labels:
+          severity: critical
+          component: multiple
+          tier: rhinometric-internal
+        annotations:
+          summary: "⚠️ CASCADE FAILURE: Multiple Rhinometric components are down"
+          description: "{{ $value }} critical services are unavailable simultaneously. This indicates a systemic issue."
+          runbook_url: "https://grafana.rhinometric.com/d/runbooks?var-topic=cascade-failure"

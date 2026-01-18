@@ -1,0 +1,18 @@
+# ============================================================================
+# RHINOMETRIC v2.2.0 - Dashboard Provisioning
+# Auto-carga de dashboards en Grafana
+# ============================================================================
+
+apiVersion: 1
+
+providers:
+  - name: 'RhinoMetric AI Dashboards'
+    orgId: 1
+    folder: 'AI & ML'
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 10
+    allowUiUpdates: true
+    options:
+      path: /etc/grafana/provisioning/dashboards
+      foldersFromFilesStructure: true

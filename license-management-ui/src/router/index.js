@@ -1,12 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import Home from '../views/Home.vue'
-import Dashboard from '../views/Dashboard.vue'
-import CreateLicense from '../views/CreateLicense.vue'
-import ManageLicenses from '../views/ManageLicenses.vue'
-import LicenseActivations from '../views/LicenseActivations.vue'
-import SecurityAlerts from '../views/SecurityAlerts.vue'
-import LicenseValidator from '../views/LicenseValidator.vue'
-import Settings from '../views/Settings.vue'
 
 const routes = [
   {
@@ -17,37 +10,37 @@ const routes = [
   {
     path: '/dashboard',
     name: 'Dashboard',
-    component: Dashboard
+    component: () => import('../views/Dashboard.vue')
   },
   {
-    path: '/create',
+    path: '/create-license',
     name: 'CreateLicense',
-    component: CreateLicense
+    component: () => import('../views/CreateLicense.vue')
   },
   {
-    path: '/manage',
+    path: '/manage-licenses',
     name: 'ManageLicenses',
-    component: ManageLicenses
-  },
-  {
-    path: '/activations',
-    name: 'LicenseActivations',
-    component: LicenseActivations
-  },
-  {
-    path: '/security',
-    name: 'SecurityAlerts',
-    component: SecurityAlerts
+    component: () => import('../views/ManageLicenses.vue')
   },
   {
     path: '/validator',
     name: 'LicenseValidator',
-    component: LicenseValidator
+    component: () => import('../views/LicenseValidator.vue')
+  },
+  {
+    path: '/activations',
+    name: 'LicenseActivations',
+    component: () => import('../views/LicenseActivations.vue')
+  },
+  {
+    path: '/security',
+    name: 'SecurityAlerts',
+    component: () => import('../views/SecurityAlerts.vue')
   },
   {
     path: '/settings',
     name: 'Settings',
-    component: Settings
+    component: () => import('../views/Settings.vue')
   }
 ]
 

@@ -1,0 +1,39 @@
+base:
+  grafana_url: "${GRAFANA_PUBLIC_URL:http://localhost:3000}"
+  docs_url: "${DOCS_BASE_URL:https://grafana.rhinometric.com}"
+
+alerts:
+  http_request_rate:
+    dashboard_url: "{grafana_url}/d/rhinometric-ai-anomaly/05-ai-anomaly-detection?var-metric=http_request_rate&from=now-1h&to=now"
+    runbook_url: "{grafana_url}/d/rhinometric-ai-anomaly/05-ai-anomaly-detection?var-metric=http_request_rate&from=now-6h&to=now"
+    service: "backend"
+  
+  http_latency_p99:
+    dashboard_url: "{grafana_url}/d/rhinometric-ai-anomaly/05-ai-anomaly-detection?var-metric=http_latency_p99&from=now-1h&to=now"
+    runbook_url: "{grafana_url}/d/rhinometric-ai-anomaly/05-ai-anomaly-detection?var-metric=http_latency_p99&from=now-6h&to=now"
+    service: "backend"
+  
+  postgres_connections:
+    dashboard_url: "{grafana_url}/d/rhinometric-ai-anomaly/05-ai-anomaly-detection?var-metric=postgres_connections&from=now-1h&to=now"
+    runbook_url: "{grafana_url}/d/rhinometric-ai-anomaly/05-ai-anomaly-detection?var-metric=postgres_connections&from=now-6h&to=now"
+    service: "postgres"
+  
+  node_cpu_usage:
+    dashboard_url: "{grafana_url}/d/rhinometric-ai-anomaly/05-ai-anomaly-detection?var-metric=node_cpu_usage&from=now-1h&to=now"
+    runbook_url: "{grafana_url}/d/rhinometric-ai-anomaly/05-ai-anomaly-detection?var-metric=node_cpu_usage&from=now-6h&to=now"
+    service: "infrastructure"
+  
+  node_network_receive:
+    dashboard_url: "{grafana_url}/d/rhinometric-ai-anomaly/05-ai-anomaly-detection?var-metric=node_network_receive&from=now-1h&to=now"
+    runbook_url: "{grafana_url}/d/rhinometric-ai-anomaly/05-ai-anomaly-detection?var-metric=node_network_receive&from=now-6h&to=now"
+    service: "infrastructure"
+  
+  node_network_transmit:
+    dashboard_url: "{grafana_url}/d/rhinometric-ai-anomaly/05-ai-anomaly-detection?var-metric=node_network_transmit&from=now-1h&to=now"
+    runbook_url: "{grafana_url}/d/rhinometric-ai-anomaly/05-ai-anomaly-detection?var-metric=node_network_transmit&from=now-6h&to=now"
+    service: "infrastructure"
+
+default:
+  dashboard_url: "{grafana_url}/d/rhinometric-ai-anomaly/05-ai-anomaly-detection?from=now-1h&to=now"
+  runbook_url: "{grafana_url}/"
+  service: "unknown"

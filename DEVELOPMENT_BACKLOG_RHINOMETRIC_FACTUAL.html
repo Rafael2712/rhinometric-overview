@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DEVELOPMENT_BACKLOG_RHINOMETRIC_FACTUAL</title>
+    
+<style>
+    @page {
+        size: A4;
+        margin: 2cm;
+    }
+    
+    body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        line-height: 1.6;
+        color: #333;
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+    
+    h1 {
+        color: #2c3e50;
+        border-bottom: 3px solid #3498db;
+        padding-bottom: 10px;
+        margin-top: 40px;
+        page-break-before: always;
+    }
+    
+    h1:first-of-type {
+        page-break-before: auto;
+    }
+    
+    h2 {
+        color: #34495e;
+        border-bottom: 2px solid #95a5a6;
+        padding-bottom: 8px;
+        margin-top: 30px;
+    }
+    
+    h3 {
+        color: #555;
+        margin-top: 20px;
+    }
+    
+    h4 {
+        color: #666;
+        margin-top: 15px;
+    }
+    
+    code {
+        background-color: #f4f4f4;
+        padding: 2px 6px;
+        border-radius: 3px;
+        font-family: 'Consolas', 'Monaco', monospace;
+        font-size: 0.9em;
+    }
+    
+    pre {
+        background-color: #f8f8f8;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        padding: 15px;
+        overflow-x: auto;
+        page-break-inside: avoid;
+    }
+    
+    pre code {
+        background-color: transparent;
+        padding: 0;
+    }
+    
+    table {
+        border-collapse: collapse;
+        width: 100%;
+        margin: 20px 0;
+        page-break-inside: avoid;
+    }
+    
+    th {
+        background-color: #3498db;
+        color: white;
+        padding: 12px;
+        text-align: left;
+        font-weight: bold;
+    }
+    
+    td {
+        border: 1px solid #ddd;
+        padding: 10px;
+    }
+    
+    tr:nth-child(even) {
+        background-color: #f9f9f9;
+    }
+    
+    blockquote {
+        border-left: 4px solid #3498db;
+        padding-left: 20px;
+        margin: 20px 0;
+        color: #555;
+        font-style: italic;
+    }
+    
+    ul, ol {
+        margin: 15px 0;
+        padding-left: 30px;
+    }
+    
+    li {
+        margin: 8px 0;
+    }
+    
+    a {
+        color: #3498db;
+        text-decoration: none;
+    }
+    
+    a:hover {
+        text-decoration: underline;
+    }
+    
+    hr {
+        border: none;
+        border-top: 2px solid #ddd;
+        margin: 40px 0;
+    }
+    
+    .header-info {
+        background-color: #ecf0f1;
+        padding: 15px;
+        border-radius: 5px;
+        margin-bottom: 30px;
+    }
+    
+    .download-pdf-btn {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: linear-gradient(135deg, #3498db, #2980b9);
+        color: white;
+        padding: 12px 24px;
+        border: none;
+        border-radius: 8px;
+        font-size: 16px;
+        font-weight: bold;
+        cursor: pointer;
+        box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
+        transition: all 0.3s ease;
+        z-index: 1000;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .download-pdf-btn:hover {
+        background: linear-gradient(135deg, #2980b9, #21618c);
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(52, 152, 219, 0.4);
+    }
+    
+    .download-pdf-btn:active {
+        transform: translateY(0);
+    }
+    
+    @media print {
+        .download-pdf-btn {
+            display: none !important;
+        }
+        
+        .header-info {
+            page-break-after: avoid;
+        }
+        
+        body {
+            font-size: 11pt;
+        }
+        
+        h1 {
+            font-size: 24pt;
+        }
+        
+        h2 {
+            font-size: 18pt;
+        }
+        
+        h3 {
+            font-size: 14pt;
+        }
+        
+        a {
+            color: #000;
+            text-decoration: none;
+        }
+        
+        pre, blockquote, table {
+            page-break-inside: avoid;
+        }
+    }
+</style>
+
+</head>
+<body>
+    <button class="download-pdf-btn" onclick="window.print()">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+        </svg>
+        Download PDF
+    </button>
+    
+    <div class="header-info">
+        <p><strong>Auto-generated from:</strong> DEVELOPMENT_BACKLOG_RHINOMETRIC_FACTUAL.md</p>
+        <p><strong>Generation date:</strong> December 17, 2025</p>
+    </div>
+    <h1>RHINOMETRIC v2.5.0</h1>
+<h2>Backlog de Desarrollo y Pendings</h2>
+<p><strong>Date:</strong> 17 de Diciembre, 2025<br />
+<strong>Source:</strong> PENDIENTES_DESARROLLO_RHINOMETRIC.md, ISSUES-PENDIENTES-v2.6.0.md, análisis de código<br />
+<strong>Estado del Proyecto:</strong> Production operational with pending improvements</p>
+<hr />
+<h2>Status Summary</h2>
+<p><strong>Completed:</strong> ~75%<br />
+<strong>In Development:</strong> ~15%<br />
+<strong>Planned/Pending:</strong> ~10%</p>
+<p>This document lists ONLY pending tasks documented in the repository, without inventing features.</p>
+<hr />
+<h2>🔴 PRIORIDAD CRÍTICA (Próximas 2 weeks)</h2>
+<h3>1. Fix Annual Email Links ⏰ URGENTE</h3>
+<p><strong>Source file:</strong> <code>PENDIENTES_DESARROLLO_RHINOMETRIC.md</code> lines 19-36<br />
+<strong>Status:</strong> ❌ Pending<br />
+<strong>Estimated time:</strong> 30 minutes  </p>
+<p><strong>Documented problem:</strong><br />
+- Enlaces de descarga de instalador llevan a página incorrecta<br />
+- Enlaces de manuales no funcionan<br />
+- Solo el enlace de la web funciona</p>
+<p><strong>Tasks:</strong><br />
+- [ ] Obtener URLs correctas de Google Drive (públicas)<br />
+- [ ] Actualizar template en <code>/home/ubuntu/license-server/app/main.py</code><br />
+- [ ] Rebuild Docker container<br />
+- [ ] Probar envío de email de prueba<br />
+- [ ] Verificar todos los enlaces en email recibido</p>
+<p><strong>Files to modify:</strong><br />
+- <code>main.py</code> lines 354, 360, 361</p>
+<hr />
+<h3>2. Implement Automatic Database Backup 🔒</h3>
+<p><strong>Source file:</strong> <code>PENDIENTES_DESARROLLO_RHINOMETRIC.md</code> lines 38-57<br />
+<strong>Status:</strong> ❌ Not implemented<br />
+<strong>Estimated time:</strong> 4 hours  </p>
+<p><strong>Tasks:</strong><br />
+- [ ] Crear script de backup diario de PostgreSQL<br />
+- [ ] Configurar cron job para ejecutar a las 3 AM<br />
+- [ ] Subir backups a AWS S3 o Google Cloud Storage<br />
+- [ ] Implementar retention policy (30 días hot, 1 año cold)<br />
+- [ ] Documentar procedimiento de restore<br />
+- [ ] Probar restore desde backup</p>
+<p><strong>Deliverables:</strong><br />
+- Script <code>backup_postgres.sh</code><br />
+- Documentación de DR (Disaster Recovery)<br />
+- Procedimiento de restore paso a paso</p>
+<hr />
+<h3>3. Migrate Legacy Stack and Remove Crashing Containers 🧹</h3>
+<p><strong>Source file:</strong> <code>PENDIENTES_DESARROLLO_RHINOMETRIC.md</code> lines 59-72<br />
+<strong>Status:</strong> ⚠️ rhinometric-license-server en loop de restart<br />
+<strong>Estimated time:</strong> 3 hours  </p>
+<p><strong>Tasks:</strong><br />
+- [ ] Exportar datos de rhinometric-postgres a license-server-postgres<br />
+- [ ] Verificar integridad de datos migrados<br />
+- [ ] Detener containers legacy: rhinometric-license-server, rhinometric-postgres, rhinometric-redis<br />
+- [ ] Eliminar containers y volúmenes legacy<br />
+- [ ] Actualizar Docker Compose para remover servicios deprecated<br />
+- [ ] Liberar recursos del servidor (expected: +100 MB RAM)</p>
+<hr />
+<h2>🟡 PRIORIDAD ALTA (Próximas 4 weeks)</h2>
+<h3>4. Implement Complete Monitoring (Prometheus + Grafana + Loki) 📊</h3>
+<p><strong>Source file:</strong> <code>PENDIENTES_DESARROLLO_RHINOMETRIC.md</code> lines 76-127<br />
+<strong>Status:</strong> 🔄 Partially implemented<br />
+<strong>Estimated time:</strong> 8 hours  </p>
+<p><strong>Components:</strong></p>
+<p><strong>A) Prometheus para Métricas</strong><br />
+- [ ] Instalar Prometheus container (✅ YA EXISTE en docker-compose-v2.5.0.yml)<br />
+- [ ] Configurar scraping de license-api, PostgreSQL, Redis<br />
+- [ ] Definir métricas custom:<br />
+  - <code>license_validations_total</code><br />
+  - <code>license_creations_total</code><br />
+  - <code>active_licenses_count</code><br />
+  - <code>api_response_time_seconds</code><br />
+- [ ] Configurar alertas en <code>prometheus.yml</code></p>
+<p><strong>B) Grafana para Visualización</strong><br />
+- [ ] Instalar Grafana container (✅ YA EXISTE)<br />
+- [ ] Conectar datasource Prometheus (✅ YA CONFIGURADO)<br />
+- [ ] Crear dashboards:<br />
+  1. Infrastructure Overview (CPU, RAM, Disk, Network)<br />
+  2. Application Metrics (Request rate, Response time, Error rate)<br />
+  3. License Analytics (Active licenses, by tier, expiring soon)<br />
+  4. Database Performance (Query duration, connections, deadlocks)<br />
+- [ ] Configurar alerting rules</p>
+<p><strong>C) Loki para Logs</strong><br />
+- [ ] Instalar Loki container (✅ YA EXISTE)<br />
+- [ ] Configurar Docker logging driver<br />
+- [ ] Conectar Grafana a Loki datasource (✅ YA CONFIGURADO)<br />
+- [ ] Crear dashboards de logs centralizados</p>
+<p><strong>Deliverables:</strong><br />
+- <code>docker-compose-monitoring.yml</code> (puede estar ya incluido en v2.5.0)<br />
+- 4 dashboards en Grafana<br />
+- Documentación de métricas<br />
+- Runbook de alertas</p>
+<hr />
+<h3>5. Automatic License Expiration Notifications 📧</h3>
+<p><strong>Source file:</strong> <code>PENDIENTES_DESARROLLO_RHINOMETRIC.md</code> lines 129-151<br />
+<strong>Status:</strong> ❌ Not implemented<br />
+<strong>Estimated time:</strong> 6 hours  </p>
+<p><strong>Functionality:</strong><br />
+- [ ] Cron job diario que verifica licencias próximas a expirar<br />
+- [ ] Email 30 días antes de expiración: "Su licencia expira pronto"<br />
+- [ ] Email 7 días antes: "Última semana de su licencia"<br />
+- [ ] Email 1 día antes: "Su licencia expira mañana"<br />
+- [ ] Email al expirar: "Su licencia ha expirado - Renovar ahora"</p>
+<p><strong>Templates:</strong><br />
+- [ ] <code>email_expiring_30days.html</code><br />
+- [ ] <code>email_expiring_7days.html</code><br />
+- [ ] <code>email_expiring_1day.html</code><br />
+- [ ] <code>email_expired.html</code></p>
+<p><strong>Script:</strong><br />
+- [ ] <code>check_expiring_licenses.py</code><br />
+- [ ] Agregar a crontab: <code>0 9 * * * python3 check_expiring_licenses.py</code></p>
+<hr />
+<h3>6. Self-Service Client Portal 🌐</h3>
+<p><strong>Source file:</strong> <code>PENDIENTES_DESARROLLO_RHINOMETRIC.md</code> lines 153-184<br />
+<strong>Status:</strong> ❌ Not implemented<br />
+<strong>Estimated time:</strong> 16 hours  </p>
+<p><strong>Features:</strong><br />
+- [ ] Registro de nuevo cliente<br />
+- [ ] Login de cliente existente<br />
+- [ ] Dashboard de cliente:<br />
+  - Ver sus licencias activas<br />
+  - Descargar archivos .lic<br />
+  - Ver fecha de expiración<br />
+  - Ver uso actual de hosts<br />
+  - Histórico de activaciones<br />
+- [ ] Renovar licencia (con pago)<br />
+- [ ] Upgrade de plan (Trial → Annual)<br />
+- [ ] Soporte: Crear ticket de ayuda</p>
+<p><strong>Endpoints nuevos:</strong><br />
+- <code>POST /api/client/register</code><br />
+- <code>POST /api/client/login</code><br />
+- <code>GET /api/client/licenses</code><br />
+- <code>GET /api/client/licenses/{key}/download</code><br />
+- <code>POST /api/client/licenses/{key}/renew</code><br />
+- <code>POST /api/client/support/ticket</code></p>
+<p><strong>Frontend:</strong><br />
+- Nueva carpeta: <code>client-portal/</code><br />
+- Framework: React o Vue.js (decidir)</p>
+<hr />
+<h3>7. Integrated Billing System 💳</h3>
+<p><strong>Source file:</strong> <code>PENDIENTES_DESARROLLO_RHINOMETRIC.md</code> lines 186-211<br />
+<strong>Status:</strong> ❌ Not implemented<br />
+<strong>Estimated time:</strong> 20 hours  </p>
+<p><strong>Integración con Stripe:</strong><br />
+- [ ] Crear cuenta Stripe<br />
+- [ ] Instalar SDK de Stripe<br />
+- [ ] Endpoints de pago:<br />
+  - <code>POST /api/payment/create-checkout-session</code><br />
+  - <code>POST /api/payment/webhook</code> (Stripe webhook)<br />
+  - <code>GET /api/payment/invoices/{license_key}</code><br />
+- [ ] Generar PDF de factura automáticamente<br />
+- [ ] Enviar factura por email<br />
+- [ ] Marcar licencia como "pagada" en DB</p>
+<p><strong>Flujo:</strong><br />
+1. Cliente selecciona plan<br />
+2. Redirige a Stripe Checkout<br />
+3. Cliente paga<br />
+4. Webhook notifica a Rhinometric<br />
+5. Licencia se activa automáticamente<br />
+6. Email con factura y .lic enviado</p>
+<hr />
+<h2>🟢 MEDIUM PRIORITY (Next 2-3 months)</h2>
+<h3>8. Documented Public API 📚</h3>
+<p><strong>Source file:</strong> <code>PENDIENTES_DESARROLLO_RHINOMETRIC.md</code> lines 215-224<br />
+<strong>Status:</strong> ⚠️ API existe pero sin documentación pública<br />
+<strong>Estimated time:</strong> 8 hours</p>
+<p><strong>Tasks:</strong><br />
+- [ ] Generar documentación Swagger/OpenAPI (✅ FastAPI ya genera auto-docs)<br />
+- [ ] Publicar en <code>rhinometric.com/docs/api</code><br />
+- [ ] Crear API keys para clientes<br />
+- [ ] Rate limiting por API key<br />
+- [ ] Ejemplos de uso en múltiples lenguajes (Python, JavaScript, curl)</p>
+<hr />
+<h3>9. Smart Alerts and Webhooks 🔔</h3>
+<p><strong>Source file:</strong> <code>PENDIENTES_DESARROLLO_RHINOMETRIC.md</code> lines 226-247<br />
+<strong>Status:</strong> ❌ Not implemented<br />
+<strong>Estimated time:</strong> 10 hours</p>
+<p><strong>Features:</strong><br />
+- [ ] Webhooks configurables por cliente<br />
+- [ ] Integración con Slack (alertas en canal)<br />
+- [ ] Integración con Microsoft Teams<br />
+- [ ] Integración con PagerDuty<br />
+- [ ] SMS via Twilio (opcional, costo adicional)</p>
+<p><strong>Triggers de alerta:</strong><br />
+- Host down<br />
+- CPU &gt; 90% por 5 minutes<br />
+- RAM &gt; 90% por 5 minutes<br />
+- Disk &gt; 85%<br />
+- Licencia expirando en 7 días<br />
+- Alcanzado 80% de max_hosts</p>
+<hr />
+<h3>10. Multi-Region (EU Datacenter) 🌍</h3>
+<p><strong>Source file:</strong> <code>PENDIENTES_DESARROLLO_RHINOMETRIC.md</code> lines 249-261<br />
+<strong>Status:</strong> ❌ Not implemented<br />
+<strong>Estimated time:</strong> 40 hours</p>
+<p><strong>Architecture:</strong><br />
+- [ ] Desplegar réplica en AWS EU (Frankfurt o Irlanda)<br />
+- [ ] Load balancer geográfico (Route 53 o Cloudflare)<br />
+- [ ] Replicación de PostgreSQL master-slave<br />
+- [ ] Redis Cluster para cache distribuido<br />
+- [ ] CDN para assets estáticos<br />
+- [ ] Latencia &lt; 50ms para clientes EU</p>
+<hr />
+<h3>11. Mobile App (iOS + Android) 📱</h3>
+<p><strong>Source file:</strong> <code>PENDIENTES_DESARROLLO_RHINOMETRIC.md</code> lines 263-278<br />
+<strong>Status:</strong> ❌ Not implemented<br />
+<strong>Estimated time:</strong> 80 hours (outsourcing recomendado)</p>
+<p><strong>Funcionalidades MVP:</strong><br />
+- Ver dashboards principales<br />
+- Recibir push notifications de alertas<br />
+- Ver licencias activas<br />
+- Responder a alertas críticas<br />
+- Chat de soporte</p>
+<p><strong>Tech Stack:</strong><br />
+- React Native o Flutter<br />
+- API REST de Rhinometric</p>
+<hr />
+<h3>12. Improvements to Existing Anomaly Detection Engine 🤖</h3>
+<p><strong>Source file:</strong> <code>PENDIENTES_DESARROLLO_RHINOMETRIC.md</code> lines 280-293<br />
+<strong>Status:</strong> 🔄 Basic engine implemented in v2.5.0 (puerto 8085), improvements planned for Q2 2026<br />
+<strong>Estimated time:</strong> 60 hours</p>
+<p><strong>Functionality:</strong><br />
+- ML model que aprende patrones normales de uso<br />
+- Detecta anomalías automáticamente<br />
+- Alertas predictivas: "CPU subirá &gt;90% en próximos 10 minutes"<br />
+- Recomendaciones: "Servidor X necesita más RAM"</p>
+<p><strong>Tech Stack:</strong><br />
+- Python scikit-learn o TensorFlow<br />
+- Time-series analysis<br />
+- Integración con Prometheus metrics</p>
+<hr />
+<h3>13. Native Kubernetes Monitoring ☸️</h3>
+<p><strong>Source file:</strong> <code>PENDIENTES_DESARROLLO_RHINOMETRIC.md</code> lines 295-305<br />
+<strong>Status:</strong> ❌ Not implemented<br />
+<strong>Estimated time:</strong> 30 hours</p>
+<p><strong>Features:</strong><br />
+- Descubrimiento automático de pods, services, nodes<br />
+- Dashboards específicos de K8s<br />
+- Health checks de deployments<br />
+- Resource limits monitoring<br />
+- Eventos de K8s centralizados</p>
+<hr />
+<h3>14. Custom Plugins Marketplace 🔌</h3>
+<p><strong>Source file:</strong> <code>PENDIENTES_DESARROLLO_RHINOMETRIC.md</code> lines 307-315<br />
+<strong>Status:</strong> 📋 Concepto<br />
+<strong>Estimated time:</strong> 100 hours</p>
+<p><strong>Vision:</strong><br />
+- Clientes pueden crear y vender plugins<br />
+- Rhinometric toma comisión (ej: 30%)<br />
+- Plugins para: integraciones, dashboards custom, alertas custom<br />
+- Instalación one-click desde Admin UI</p>
+<hr />
+<h2>🔵 LOW PRIORITY (Backlog - 6+ months)</h2>
+<h3>15. White-Label Solution 🏷️</h3>
+<p><strong>Source file:</strong> <code>PENDIENTES_DESARROLLO_RHINOMETRIC.md</code> lines 319-328<br />
+<strong>Status:</strong> 📋 Concepto<br />
+<strong>Estimated time:</strong> 60 hours</p>
+<p>Permitir que partners revendan Rhinometric con su propia marca:<br />
+- Logo personalizable<br />
+- Colores de marca<br />
+- Dominio custom (monitoring.clienteempresa.com)<br />
+- Emails con branding del partner</p>
+<hr />
+<h3>16. Enterprise SSO (SAML, OAuth) 🔐</h3>
+<p><strong>Source file:</strong> <code>PENDIENTES_DESARROLLO_RHINOMETRIC.md</code> lines 330-340<br />
+<strong>Status:</strong> ❌ Not implemented<br />
+<strong>Estimated time:</strong> 30 hours</p>
+<p>Integración con:<br />
+- Active Directory<br />
+- Okta<br />
+- Auth0<br />
+- Google Workspace<br />
+- Azure AD</p>
+<hr />
+<h3>17. Cloud Cost Optimization 💸</h3>
+<p><strong>Source file:</strong> <code>PENDIENTES_DESARROLLO_RHINOMETRIC.md</code> lines 342-351<br />
+<strong>Status:</strong> 📋 Concepto<br />
+<strong>Estimated time:</strong> 40 hours</p>
+<p>Dashboard que muestra:<br />
+- Costos de AWS, GCP, Azure<br />
+- Recursos subutilizados<br />
+- Recomendaciones de ahorro<br />
+- Proyecciones de gasto</p>
+<hr />
+<h3>18. Compliance Automation (SOC 2, ISO 27001) 📋</h3>
+<p><strong>Source file:</strong> <code>PENDIENTES_DESARROLLO_RHINOMETRIC.md</code> lines 353-365<br />
+<strong>Status:</strong> 🔄 Parcialmente conforme<br />
+<strong>Estimated time:</strong> 80 hours (con consultoría)</p>
+<p><strong>Tasks:</strong><br />
+- Logs de auditoría completos<br />
+- Reportes de compliance automáticos<br />
+- Políticas de retención documentadas<br />
+- Encriptación end-to-end<br />
+- Penetration testing anual<br />
+- Certificación SOC 2 Type II</p>
+<hr />
+<h3>19. On-Premise Installer (Air-Gapped) 🏢</h3>
+<p><strong>Source file:</strong> <code>PENDIENTES_DESARROLLO_RHINOMETRIC.md</code> lines 367-376<br />
+<strong>Status:</strong> ⚠️ Requiere Docker, internet<br />
+<strong>Estimated time:</strong> 30 hours</p>
+<p>Para clientes que no pueden tener conexión a internet:<br />
+- Instalador offline completo<br />
+- Todas las imágenes Docker incluidas<br />
+- Base de datos pre-configurada<br />
+- Updates manuales via USB</p>
+<hr />
+<h3>20. Complete Multi-Tenancy 🏘️</h3>
+<p><strong>Source file:</strong> <code>PENDIENTES_DESARROLLO_RHINOMETRIC.md</code> lines 378-388<br />
+<strong>Status:</strong> ⚠️ Parcial (una instancia por cliente actualmente)<br />
+<strong>Estimated time:</strong> 50 hours</p>
+<p>Permitir múltiples clientes en una sola instancia:<br />
+- Aislamiento total de datos<br />
+- Quotas por tenant<br />
+- Billing por tenant<br />
+- Admin por tenant<br />
+- Escalabilidad horizontal</p>
+<hr />
+<h2>📊 Effort Summary</h2>
+<h3>Breakdown by Priority</h3>
+<table>
+<thead>
+<tr>
+<th>Prioridad</th>
+<th>Tareas</th>
+<th>Total Hours</th>
+<th>Equivalent in Weeks (1 dev)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Critical</strong></td>
+<td>3</td>
+<td>~8 hours</td>
+<td>1 semana</td>
+</tr>
+<tr>
+<td><strong>High</strong></td>
+<td>7</td>
+<td>~124 hours</td>
+<td>3-4 weeks</td>
+</tr>
+<tr>
+<td><strong>Medium</strong></td>
+<td>7</td>
+<td>~328 hours</td>
+<td>8-10 weeks</td>
+</tr>
+<tr>
+<td><strong>Low</strong></td>
+<td>10</td>
+<td>~440 hours</td>
+<td>11-13 weeks</td>
+</tr>
+<tr>
+<td><strong>TOTAL</strong></td>
+<td><strong>27 tareas</strong></td>
+<td><strong>~900 hours</strong></td>
+<td><strong>22-26 weeks</strong></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2>🎯 Proposed Roadmap</h2>
+<p>According to <code>PENDIENTES_DESARROLLO_RHINOMETRIC.md</code> lines 401-483:</p>
+<h3>Q1 2026 (Ene-Mar)</h3>
+<p><strong>Focus:</strong> Stabilization and operational improvements</p>
+<p><strong>Goals Q1 2026:</strong><br />
+- Corregir enlaces del email<br />
+- Implementar backup automático<br />
+- Migrar stack legacy<br />
+- Monitoreo completo (Prometheus + Grafana + Loki)<br />
+- Notificaciones de expiración<br />
+- Portal de cliente self-service (inicio)</p>
+<p><strong>Expected result:</strong> Platform 100% production-ready</p>
+<h3>Q2 2026 (Abr-Jun)</h3>
+<p><strong>Focus:</strong> Feature expansion</p>
+<p><strong>Goals Q2 2026:</strong><br />
+- Sistema de facturación integrado<br />
+- API pública documentada<br />
+- Alertas inteligentes y webhooks<br />
+- Multi-región (EU datacenter)<br />
+- Mejoras del motor de anomalías (aprendizaje avanzado)</p>
+<p><strong>Expected result:</strong> Enterprise functionality</p>
+<h3>Q3 2026 (Jul-Sep)</h3>
+<p><strong>Focus:</strong> Scalability and new channels</p>
+<p><strong>Goals Q3 2026:</strong><br />
+- Mobile app (iOS + Android)<br />
+- Kubernetes monitoring nativo<br />
+- Custom plugins marketplace<br />
+- Cloud cost optimization</p>
+<p><strong>Expected result:</strong> Multi-platform platform</p>
+<h3>Q4 2026 (Oct-Dic)</h3>
+<p><strong>Focus:</strong> Enterprise and compliance</p>
+<p><strong>Goals Q4 2026:</strong><br />
+- White-label solution<br />
+- Enterprise SSO<br />
+- Compliance automation (SOC 2)<br />
+- On-premise installer air-gapped<br />
+- Multi-tenancy completo</p>
+<p><strong>Expected result:</strong> Enterprise-grade platform</p>
+<hr />
+<h2>💰 Investment Estimate</h2>
+<p>According to <code>PENDIENTES_DESARROLLO_RHINOMETRIC.md</code> lines 485-518:</p>
+<h3>Required Resources</h3>
+<p><strong>Development:</strong><br />
+- 1 Full-Stack Developer: $60K/año<br />
+- 1 DevOps Engineer: $70K/año<br />
+- 1 Frontend Developer (part-time): $30K/año<br />
+- <strong>Total Dev:</strong> $160K/año</p>
+<p><strong>Infrastructure:</strong><br />
+- AWS Lightsail (actual): $120/año<br />
+- AWS Lightsail upgrade (2GB RAM): $240/año<br />
+- AWS S3 backups: $60/año<br />
+- AWS Route 53: $50/año<br />
+- Monitoring tools: $100/año<br />
+- <strong>Total Infra:</strong> $570/año</p>
+<p><strong>Other:</strong><br />
+- SMTP (Zoho): $240/año<br />
+- SSL certificates: $100/año<br />
+- Testing tools: $200/año<br />
+- <strong>Total Other:</strong> $540/año</p>
+<p><strong>TOTAL YEAR 1:</strong> ~$161K</p>
+<hr />
+<h2>✅ Immediate Next Steps</h2>
+<p>According to <code>PENDIENTES_DESARROLLO_RHINOMETRIC.md</code> lines 545-571:</p>
+<p><strong>This Week:</strong><br />
+1. [ ] Obtener URLs correctas de instalador y manuales<br />
+2. [ ] Corregir enlaces del email<br />
+3. [ ] Probar flujo completo de creación de licencia</p>
+<p><strong>Next Week:</strong><br />
+1. [ ] Implementar backup automático<br />
+2. [ ] Migrar stack legacy<br />
+3. [ ] Liberar recursos del servidor</p>
+<p><strong>This Month:</strong><br />
+1. [ ] Implementar Prometheus + Grafana + Loki (parcialmente hecho)<br />
+2. [ ] Crear 4 dashboards principales<br />
+3. [ ] Configurar alertas básicas<br />
+4. [ ] Implementar notificaciones de expiración</p>
+<hr />
+<h2>Known Technical Issues</h2>
+<p>According to <code>ISSUES-PENDIENTES-v2.6.0.md</code>:</p>
+<h3>Issue #1: Stack Legacy en Loop de Restart</h3>
+<p><strong>Severity:</strong> High<br />
+<strong>Affected containers:</strong> rhinometric-license-server, rhinometric-postgres, rhinometric-redis<br />
+<strong>Status:</strong> ⚠️ En análisis<br />
+<strong>Proposed solution:</strong> Migración a stack v2 (License Server v2)</p>
+<h3>Issue #2: Enlaces del Email Rotos</h3>
+<p><strong>Severity:</strong> Critical<br />
+<strong>Afecta a:</strong> Todos los emails de licencias annual<br />
+<strong>Status:</strong> ❌ Pending<br />
+<strong>Proposed solution:</strong> Actualizar URLs en template HTML</p>
+<h3>Issue #3: Capacidad del Servidor Limitada</h3>
+<p><strong>Severity:</strong> Medium<br />
+<strong>Problem:</strong> Servidor actual tiene 914 MB RAM, stack requiere ~6-7 GB<br />
+<strong>Status:</strong> ⚠️ Funciona con limitaciones<br />
+<strong>Proposed solution:</strong> Upgrade a instancia con 8 GB RAM mínimo</p>
+<hr />
+<h2>Implementation Notes</h2>
+<h3>Tests Automatizados</h3>
+<p><strong>Status:</strong> ❌ Not implementeds<br />
+<strong>Coverage:</strong> 0%<br />
+<strong>Prioridad:</strong> Medium (según archivos de análisis)</p>
+<p>Pending:<br />
+- Unit tests para License Server<br />
+- Integration tests para flujos de licencias<br />
+- E2E tests para UI<br />
+- Load tests para capacidad</p>
+<h3>Documentación</h3>
+<p><strong>Status:</strong> ⚠️ 90% completa<br />
+<strong>Missing:</strong><br />
+- API pública (Swagger existe pero no publicado)<br />
+- Guías de troubleshooting avanzado<br />
+- Runbooks de operaciones<br />
+- Guías de desarrollo para contributors</p>
+<hr />
+<p><strong>Document generated from verifiable repository files.</strong><br />
+<strong>Last update:</strong> 17 de Diciembre, 2025<br />
+<strong>Document version:</strong> 1.0  </p>
+<hr />
+<p><strong>References:</strong><br />
+- <code>PENDIENTES_DESARROLLO_RHINOMETRIC.md</code> (fuente principal)<br />
+- <code>ISSUES-PENDIENTES-v2.6.0.md</code> (issues conocidos)<br />
+- <code>docker-compose-v2.5.0.yml</code> (capacidades actuales)<br />
+- <code>docs/v2.5.0/RELEASE_NOTES.md</code> (features implementadas)</p>
+    <hr>
+    <footer style="text-align: center; color: #999; font-size: 0.9em; margin-top: 50px;">
+        <p>© 2025 Rhinometric. Automatically generated document.</p>
+    </footer>
+</body>
+</html>

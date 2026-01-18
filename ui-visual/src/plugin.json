@@ -1,0 +1,21 @@
+{
+  "type": "panel",
+  "name": "RHINOMETRIC API Connector",
+  "id": "rhinometric-api-connector",
+
+  "info": {
+    "description": "Visual datasource connector for RHINOMETRIC observability platform",
+    "author": {
+      "name": "RHINOMETRIC",
+      "url": "https://rhinometric.com"
+    },
+    "keywords": ["rhinometric", "datasource", "connector", "api"],
+    "version": "2.4.0",
+    "updated": "2025-11-03"
+  },
+
+  "dependencies": {
+    "grafanaDependency": ">=9.0.0",
+    "plugins": []
+  }
+}

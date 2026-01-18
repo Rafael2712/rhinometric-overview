@@ -1,0 +1,614 @@
+"""
+RHINOMETRIC v2.5.0 - Dashboard Generator Service
+=================================================
+
+Auto-generates Grafana dashboards from templates.
+Based on working MQTT dashboard structure.
+"""
+
+import json
+from typing import Dict, Any
+import logging
+
+logger = logging.getLogger(__name__)
+
+
+class DashboardGenerator:
+    """
+    Generates Grafana dashboards for different collector types.
+    Returns dashboard object directly (not wrapped in API format).
+    """
+    
+    def __init__(self, templates_dir: str = None):
+        """
+        Initialize dashboard generator.
+        
+        Args:
+            templates_dir: Deprecated, kept for compatibility. Dashboards are code-based now.
+        """
+        # Ignore templates_dir - dashboards are embedded in code based on working MQTT dashboard
+        pass
+    
+    def generate_dashboard(
+        self,
+        connector_type: str,
+        datasource_name: str,
+        datasource_uid: str,
+        config: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """
+        Generate Grafana dashboard JSON.
+        
+        Args:
+            connector_type: "rest", "mqtt", "database", "webhook"
+            datasource_name: Name of the connector
+            datasource_uid: UID for the dashboard (e.g. "rest-api-name")
+            config: Additional configuration
+        
+        Returns:
+            Grafana dashboard JSON object (direct, not wrapped)
+        """
+        if connector_type == "rest":
+            return self._generate_rest_dashboard(datasource_name, datasource_uid, config)
+        elif connector_type == "mqtt":
+            return self._generate_mqtt_dashboard(datasource_name, datasource_uid, config)
+        elif connector_type == "database":
+            return self._generate_database_dashboard(datasource_name, datasource_uid, config)
+        elif connector_type == "webhook":
+            return self._generate_webhook_dashboard(datasource_name, datasource_uid, config)
+        else:
+            raise ValueError(f"Unsupported connector type: {connector_type}")
+    
+    def _generate_rest_dashboard(
+        self,
+        name: str,
+        uid: str,
+        config: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """
+        Generate REST API monitoring dashboard.
+        Based on working MQTT dashboard structure.
+        """
+        return {
+            "annotations": {
+                "list": []
+            },
+            "editable": True,
+            "fiscalYearStartMonth": 0,
+            "graphTooltip": 0,
+            "id": None,
+            "links": [],
+            "liveNow": False,
+            "panels": [
+                {
+                    "datasource": {"type": "prometheus", "uid": "prometheus"},
+                    "fieldConfig": {
+                        "defaults": {
+                            "color": {"mode": "thresholds"},
+                            "mappings": [],
+                            "thresholds": {
+                                "mode": "absolute",
+                                "steps": [
+                                    {"color": "red", "value": None},
+                                    {"color": "yellow", "value": 90},
+                                    {"color": "green", "value": 95}
+                                ]
+                            },
+                            "unit": "percent"
+                        }
+                    },
+                    "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+                    "id": 1,
+                    "options": {
+                        "orientation": "auto",
+                        "reduceOptions": {
+                            "values": False,
+                            "calcs": ["lastNotNull"],
+                            "fields": ""
+                        },
+                        "showThresholdLabels": False,
+                        "showThresholdMarkers": True
+                    },
+                    "pluginVersion": "9.5.0",
+                    "targets": [
+                        {
+                            "datasource": {"type": "prometheus", "uid": "prometheus"},
+                            "expr": "sum(rate(api_requests_total{status=~\"2..\"}[5m])) / sum(rate(api_requests_total[5m])) * 100",
+                            "refId": "A"
+                        }
+                    ],
+                    "title": "API Success Rate",
+                    "type": "gauge"
+                },
+                {
+                    "datasource": {"type": "prometheus", "uid": "prometheus"},
+                    "fieldConfig": {
+                        "defaults": {
+                            "color": {"mode": "palette-classic"},
+                            "custom": {
+                                "axisCenteredZero": False,
+                                "axisColorMode": "text",
+                                "axisLabel": "",
+                                "axisPlacement": "auto",
+                                "barAlignment": 0,
+                                "drawStyle": "line",
+                                "fillOpacity": 10,
+                                "gradientMode": "none",
+                                "hideFrom": {"tooltip": False, "viz": False, "legend": False},
+                                "lineInterpolation": "linear",
+                                "lineWidth": 1,
+                                "pointSize": 5,
+                                "scaleDistribution": {"type": "linear"},
+                                "showPoints": "auto",
+                                "spanNulls": False,
+                                "stacking": {"group": "A", "mode": "none"},
+                                "thresholdsStyle": {"mode": "off"}
+                            },
+                            "mappings": [],
+                            "thresholds": {
+                                "mode": "absolute",
+                                "steps": [{"color": "green", "value": None}]
+                            },
+                            "unit": "reqps"
+                        }
+                    },
+                    "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+                    "id": 2,
+                    "options": {
+                        "legend": {"calcs": [], "displayMode": "list", "placement": "bottom"},
+                        "tooltip": {"mode": "single", "sort": "none"}
+                    },
+                    "targets": [
+                        {
+                            "datasource": {"type": "prometheus", "uid": "prometheus"},
+                            "expr": "rate(api_requests_total[1m])",
+                            "legendFormat": "{{status}}",
+                            "refId": "A"
+                        }
+                    ],
+                    "title": "Request Rate by Status",
+                    "type": "timeseries"
+                },
+                {
+                    "datasource": {"type": "prometheus", "uid": "prometheus"},
+                    "fieldConfig": {
+                        "defaults": {
+                            "color": {"mode": "palette-classic"},
+                            "custom": {
+                                "axisCenteredZero": False,
+                                "axisColorMode": "text",
+                                "axisLabel": "",
+                                "axisPlacement": "auto",
+                                "barAlignment": 0,
+                                "drawStyle": "line",
+                                "fillOpacity": 10,
+                                "gradientMode": "none",
+                                "hideFrom": {"tooltip": False, "viz": False, "legend": False},
+                                "lineInterpolation": "smooth",
+                                "lineWidth": 2,
+                                "pointSize": 5,
+                                "scaleDistribution": {"type": "linear"},
+                                "showPoints": "auto",
+                                "spanNulls": False,
+                                "stacking": {"group": "A", "mode": "none"},
+                                "thresholdsStyle": {"mode": "off"}
+                            },
+                            "mappings": [],
+                            "thresholds": {
+                                "mode": "absolute",
+                                "steps": [{"color": "green", "value": None}]
+                            },
+                            "unit": "ms"
+                        }
+                    },
+                    "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+                    "id": 3,
+                    "options": {
+                        "legend": {"calcs": [], "displayMode": "list", "placement": "bottom"},
+                        "tooltip": {"mode": "single", "sort": "none"}
+                    },
+                    "targets": [
+                        {
+                            "datasource": {"type": "prometheus", "uid": "prometheus"},
+                            "expr": "rate(api_response_time_seconds_sum[5m]) / rate(api_response_time_seconds_count[5m]) * 1000",
+                            "legendFormat": "Response Time",
+                            "refId": "A"
+                        }
+                    ],
+                    "title": "Average Response Time",
+                    "type": "timeseries"
+                },
+                {
+                    "datasource": {"type": "prometheus", "uid": "prometheus"},
+                    "fieldConfig": {
+                        "defaults": {
+                            "color": {"mode": "thresholds"},
+                            "mappings": [],
+                            "thresholds": {
+                                "mode": "absolute",
+                                "steps": [{"color": "green", "value": None}]
+                            }
+                        }
+                    },
+                    "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+                    "id": 4,
+                    "options": {
+                        "colorMode": "value",
+                        "graphMode": "area",
+                        "justifyMode": "auto",
+                        "orientation": "auto",
+                        "reduceOptions": {
+                            "values": False,
+                            "calcs": ["lastNotNull"],
+                            "fields": ""
+                        },
+                        "textMode": "auto"
+                    },
+                    "pluginVersion": "9.5.0",
+                    "targets": [
+                        {
+                            "datasource": {"type": "prometheus", "uid": "prometheus"},
+                            "expr": "sum(api_requests_total)",
+                            "refId": "A"
+                        }
+                    ],
+                    "title": "Total Requests",
+                    "type": "stat"
+                }
+            ],
+            "refresh": "10s",
+            "schemaVersion": 38,
+            "style": "dark",
+            "tags": ["rest", "api", "auto-generated"],
+            "templating": {"list": []},
+            "time": {"from": "now-1h", "to": "now"},
+            "timepicker": {},
+            "timezone": "",
+            "title": f"RHINOMETRIC - {name} API Monitoring",
+            "uid": uid,
+            "version": 0,
+            "weekStart": ""
+        }
+    
+    def _generate_mqtt_dashboard(
+        self,
+        name: str,
+        uid: str,
+        config: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """Generate MQTT IoT monitoring dashboard."""
+        return {
+            "annotations": {"list": []},
+            "editable": True,
+            "fiscalYearStartMonth": 0,
+            "graphTooltip": 0,
+            "id": None,
+            "links": [],
+            "liveNow": False,
+            "panels": [
+                {
+                    "datasource": {"type": "prometheus", "uid": "prometheus"},
+                    "fieldConfig": {
+                        "defaults": {
+                            "color": {"mode": "thresholds"},
+                            "mappings": [
+                                {"options": {"0": {"text": "Disconnected", "color": "red"}}, "type": "value"},
+                                {"options": {"1": {"text": "Connected", "color": "green"}}, "type": "value"}
+                            ],
+                            "thresholds": {
+                                "mode": "absolute",
+                                "steps": [
+                                    {"color": "red", "value": None},
+                                    {"color": "green", "value": 1}
+                                ]
+                            }
+                        }
+                    },
+                    "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+                    "id": 1,
+                    "options": {
+                        "colorMode": "value",
+                        "graphMode": "none",
+                        "justifyMode": "auto",
+                        "orientation": "auto",
+                        "reduceOptions": {"values": False, "calcs": ["lastNotNull"], "fields": ""},
+                        "textMode": "auto"
+                    },
+                    "pluginVersion": "9.5.0",
+                    "targets": [
+                        {
+                            "datasource": {"type": "prometheus", "uid": "prometheus"},
+                            "expr": "mqtt_connection_status",
+                            "refId": "A"
+                        }
+                    ],
+                    "title": "MQTT Connection Status",
+                    "type": "stat"
+                },
+                {
+                    "datasource": {"type": "prometheus", "uid": "prometheus"},
+                    "fieldConfig": {
+                        "defaults": {
+                            "color": {"mode": "palette-classic"},
+                            "custom": {
+                                "axisCenteredZero": False,
+                                "axisColorMode": "text",
+                                "axisLabel": "",
+                                "axisPlacement": "auto",
+                                "barAlignment": 0,
+                                "drawStyle": "line",
+                                "fillOpacity": 10,
+                                "gradientMode": "none",
+                                "hideFrom": {"tooltip": False, "viz": False, "legend": False},
+                                "lineInterpolation": "linear",
+                                "lineWidth": 1,
+                                "pointSize": 5,
+                                "scaleDistribution": {"type": "linear"},
+                                "showPoints": "auto",
+                                "spanNulls": False,
+                                "stacking": {"group": "A", "mode": "none"},
+                                "thresholdsStyle": {"mode": "off"}
+                            },
+                            "mappings": [],
+                            "thresholds": {
+                                "mode": "absolute",
+                                "steps": [{"color": "green", "value": None}]
+                            }
+                        }
+                    },
+                    "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+                    "id": 2,
+                    "options": {
+                        "legend": {"calcs": [], "displayMode": "list", "placement": "bottom"},
+                        "tooltip": {"mode": "single", "sort": "none"}
+                    },
+                    "targets": [
+                        {
+                            "datasource": {"type": "prometheus", "uid": "prometheus"},
+                            "expr": "rate(mqtt_messages_received_total[1m])",
+                            "legendFormat": "{{topic}}",
+                            "refId": "A"
+                        }
+                    ],
+                    "title": "Messages Rate by Topic",
+                    "type": "timeseries"
+                }
+            ],
+            "refresh": "10s",
+            "schemaVersion": 38,
+            "style": "dark",
+            "tags": ["mqtt", "iot", "auto-generated"],
+            "templating": {"list": []},
+            "time": {"from": "now-1h", "to": "now"},
+            "timepicker": {},
+            "timezone": "",
+            "title": f"RHINOMETRIC - {name} MQTT Monitoring",
+            "uid": uid,
+            "version": 0,
+            "weekStart": ""
+        }
+    
+    def _generate_database_dashboard(
+        self,
+        name: str,
+        uid: str,
+        config: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """Generate Database monitoring dashboard."""
+        return {
+            "annotations": {"list": []},
+            "editable": True,
+            "fiscalYearStartMonth": 0,
+            "graphTooltip": 0,
+            "id": None,
+            "links": [],
+            "liveNow": False,
+            "panels": [
+                {
+                    "datasource": {"type": "prometheus", "uid": "prometheus"},
+                    "fieldConfig": {
+                        "defaults": {
+                            "color": {"mode": "thresholds"},
+                            "mappings": [],
+                            "thresholds": {
+                                "mode": "absolute",
+                                "steps": [{"color": "green", "value": None}]
+                            },
+                            "unit": "short"
+                        }
+                    },
+                    "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+                    "id": 1,
+                    "options": {
+                        "colorMode": "value",
+                        "graphMode": "area",
+                        "justifyMode": "auto",
+                        "orientation": "auto",
+                        "reduceOptions": {"values": False, "calcs": ["lastNotNull"], "fields": ""},
+                        "textMode": "auto"
+                    },
+                    "pluginVersion": "9.5.0",
+                    "targets": [
+                        {
+                            "datasource": {"type": "prometheus", "uid": "prometheus"},
+                            "expr": "db_queries_total",
+                            "refId": "A"
+                        }
+                    ],
+                    "title": "Total Queries",
+                    "type": "stat"
+                },
+                {
+                    "datasource": {"type": "prometheus", "uid": "prometheus"},
+                    "fieldConfig": {
+                        "defaults": {
+                            "color": {"mode": "palette-classic"},
+                            "custom": {
+                                "axisCenteredZero": False,
+                                "axisColorMode": "text",
+                                "axisLabel": "",
+                                "axisPlacement": "auto",
+                                "barAlignment": 0,
+                                "drawStyle": "line",
+                                "fillOpacity": 10,
+                                "gradientMode": "none",
+                                "hideFrom": {"tooltip": False, "viz": False, "legend": False},
+                                "lineInterpolation": "linear",
+                                "lineWidth": 1,
+                                "pointSize": 5,
+                                "scaleDistribution": {"type": "linear"},
+                                "showPoints": "auto",
+                                "spanNulls": False,
+                                "stacking": {"group": "A", "mode": "none"},
+                                "thresholdsStyle": {"mode": "off"}
+                            },
+                            "mappings": [],
+                            "thresholds": {
+                                "mode": "absolute",
+                                "steps": [{"color": "green", "value": None}]
+                            },
+                            "unit": "ms"
+                        }
+                    },
+                    "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+                    "id": 2,
+                    "options": {
+                        "legend": {"calcs": [], "displayMode": "list", "placement": "bottom"},
+                        "tooltip": {"mode": "single", "sort": "none"}
+                    },
+                    "targets": [
+                        {
+                            "datasource": {"type": "prometheus", "uid": "prometheus"},
+                            "expr": "avg(db_query_duration_seconds) * 1000",
+                            "refId": "A"
+                        }
+                    ],
+                    "title": "Query Duration",
+                    "type": "timeseries"
+                }
+            ],
+            "refresh": "30s",
+            "schemaVersion": 38,
+            "style": "dark",
+            "tags": ["database", "sql", "auto-generated"],
+            "templating": {"list": []},
+            "time": {"from": "now-6h", "to": "now"},
+            "timepicker": {},
+            "timezone": "",
+            "title": f"RHINOMETRIC - {name} Database Monitoring",
+            "uid": uid,
+            "version": 0,
+            "weekStart": ""
+        }
+    
+    def _generate_webhook_dashboard(
+        self,
+        name: str,
+        uid: str,
+        config: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """Generate Webhook monitoring dashboard."""
+        return {
+            "annotations": {"list": []},
+            "editable": True,
+            "fiscalYearStartMonth": 0,
+            "graphTooltip": 0,
+            "id": None,
+            "links": [],
+            "liveNow": False,
+            "panels": [
+                {
+                    "datasource": {"type": "prometheus", "uid": "prometheus"},
+                    "fieldConfig": {
+                        "defaults": {
+                            "color": {"mode": "thresholds"},
+                            "mappings": [],
+                            "thresholds": {
+                                "mode": "absolute",
+                                "steps": [{"color": "green", "value": None}]
+                            }
+                        }
+                    },
+                    "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+                    "id": 1,
+                    "options": {
+                        "colorMode": "value",
+                        "graphMode": "area",
+                        "justifyMode": "auto",
+                        "orientation": "auto",
+                        "reduceOptions": {"values": False, "calcs": ["lastNotNull"], "fields": ""},
+                        "textMode": "auto"
+                    },
+                    "pluginVersion": "9.5.0",
+                    "targets": [
+                        {
+                            "datasource": {"type": "prometheus", "uid": "prometheus"},
+                            "expr": "sum(webhook_events_received_total)",
+                            "refId": "A"
+                        }
+                    ],
+                    "title": "Total Events Received",
+                    "type": "stat"
+                },
+                {
+                    "datasource": {"type": "prometheus", "uid": "prometheus"},
+                    "fieldConfig": {
+                        "defaults": {
+                            "color": {"mode": "palette-classic"},
+                            "custom": {
+                                "axisCenteredZero": False,
+                                "axisColorMode": "text",
+                                "axisLabel": "",
+                                "axisPlacement": "auto",
+                                "barAlignment": 0,
+                                "drawStyle": "line",
+                                "fillOpacity": 10,
+                                "gradientMode": "none",
+                                "hideFrom": {"tooltip": False, "viz": False, "legend": False},
+                                "lineInterpolation": "linear",
+                                "lineWidth": 1,
+                                "pointSize": 5,
+                                "scaleDistribution": {"type": "linear"},
+                                "showPoints": "auto",
+                                "spanNulls": False,
+                                "stacking": {"group": "A", "mode": "none"},
+                                "thresholdsStyle": {"mode": "off"}
+                            },
+                            "mappings": [],
+                            "thresholds": {
+                                "mode": "absolute",
+                                "steps": [{"color": "green", "value": None}]
+                            }
+                        }
+                    },
+                    "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+                    "id": 2,
+                    "options": {
+                        "legend": {"calcs": [], "displayMode": "list", "placement": "bottom"},
+                        "tooltip": {"mode": "single", "sort": "none"}
+                    },
+                    "targets": [
+                        {
+                            "datasource": {"type": "prometheus", "uid": "prometheus"},
+                            "expr": "rate(webhook_events_received_total[1m])",
+                            "legendFormat": "{{event_type}}",
+                            "refId": "A"
+                        }
+                    ],
+                    "title": "Event Rate by Type",
+                    "type": "timeseries"
+                }
+            ],
+            "refresh": "10s",
+            "schemaVersion": 38,
+            "style": "dark",
+            "tags": ["webhook", "events", "auto-generated"],
+            "templating": {"list": []},
+            "time": {"from": "now-1h", "to": "now"},
+            "timepicker": {},
+            "timezone": "",
+            "title": f"RHINOMETRIC - {name} Webhook Monitoring",
+            "uid": uid,
+            "version": 0,
+            "weekStart": ""
+        }

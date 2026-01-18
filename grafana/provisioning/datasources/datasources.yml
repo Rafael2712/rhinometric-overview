@@ -21,13 +21,12 @@ datasources:
     jsonData:
       maxLines: 1000
 
-  - name: Tempo
-    type: tempo
-    uid: tempo
+  - name: Jaeger
+    type: jaeger
+    uid: jaeger
     access: proxy
-    url: http://tempo:3200
+    url: http://jaeger:16686
     editable: false
     jsonData:
-      httpMethod: GET
-      serviceMap:
-        datasourceUid: prometheus
+      tracesToLogs:
+        datasourceUid: loki

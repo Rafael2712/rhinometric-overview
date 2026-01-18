@@ -1,0 +1,43 @@
+# ═══════════════════════════════════════════════════════════════════════════
+#  DASHBOARD BUILDER SERVICE - RHINOMETRIC v2.4.0
+# ═══════════════════════════════════════════════════════════════════════════
+
+version: '3.8'
+
+services:
+  dashboard-builder:
+    build:
+      context: ./dashboard-builder
+      dockerfile: Dockerfile
+    container_name: rhinometric-dashboard-builder
+    ports:
+      - "8001:8001"
+    environment:
+      - POSTGRES_HOST=rhinometric-postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=rhinometric
+      - POSTGRES_USER=rhinometric
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-rhinometric}
+      - JWT_SECRET=${JWT_SECRET:-rhinometric-secret-key}
+      - LOG_LEVEL=info
+    networks:
+      - rhinometric_network_v22
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/')"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+    labels:
+      - "com.rhinometric.component=dashboard-builder"
+      - "com.rhinometric.version=2.4.0"
+    deploy:
+      resources:
+        limits:
+          cpus: '0.3'
+          memory: 512M
+
+networks:
+  rhinometric_network_v22:
+    name: mi-proyecto_rhinometric_network_v22
+    external: true

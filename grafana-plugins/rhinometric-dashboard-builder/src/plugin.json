@@ -1,0 +1,25 @@
+{
+  "type": "panel",
+  "name": "RHINOMETRIC Dashboard Builder",
+  "id": "rhinometric-dashboard-builder",
+  "info": {
+    "description": "Visual dashboard creator with drag-and-drop interface",
+    "author": {
+      "name": "RHINOMETRIC",
+      "url": "https://rhinometric.local"
+    },
+    "keywords": [
+      "dashboard",
+      "builder",
+      "visual",
+      "on-premise",
+      "rhinometric"
+    ],
+    "version": "2.4.0",
+    "updated": "2024-01-15"
+  },
+  "dependencies": {
+    "grafanaDependency": ">=10.0.0",
+    "plugins": []
+  }
+}

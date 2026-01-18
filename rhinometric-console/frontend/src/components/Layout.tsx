@@ -1,18 +1,23 @@
 import { useState } from 'react'
 import { Link, useLocation, Outlet } from 'react-router-dom'
-import { Home, AlertTriangle, CreditCard, Settings, LogOut, Menu, X } from 'lucide-react'
+import { Home, LayoutDashboard, AlertTriangle, Bell, FileText, Network, CreditCard, Settings, LogOut, Menu, X, Users } from 'lucide-react'
 import { useAuthStore } from '../lib/auth/store'
 
 const navigation = [
   { name: 'Home', href: '/', icon: Home },
+  { name: 'Dashboards', href: '/dashboards', icon: LayoutDashboard },
   { name: 'AI Anomalies', href: '/anomalies', icon: AlertTriangle },
+  { name: 'Alerts', href: '/alerts', icon: Bell },
+  { name: 'Logs', href: '/logs', icon: FileText },
+  { name: 'Traces', href: '/traces', icon: Network },
   { name: 'License', href: '/license', icon: CreditCard },
+  { name: 'Users', href: '/users', icon: Users, requiresAdmin: true },
   { name: 'Settings', href: '/settings', icon: Settings },
 ]
 
 export function Layout() {
   const location = useLocation()
-  const { user, logout } = useAuthStore()
+  const { user, logout, canManageUsers } = useAuthStore()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   
   // Environment detection
@@ -45,6 +50,11 @@ export function Layout() {
 
         <nav className="flex-1 px-4 py-6 space-y-1">
           {navigation.map((item) => {
+            // Hide Users menu if user doesn't have permission
+            if (item.requiresAdmin && !canManageUsers()) {
+              return null
+            }
+            
             const Icon = item.icon
             const isActive = location.pathname === item.href
             return (
@@ -67,7 +77,7 @@ export function Layout() {
             </div>
             <div className="ml-3 flex-1">
               <p className="text-sm font-medium text-white">{user?.username}</p>
-              <p className="text-xs text-gray-400 capitalize">{user?.role}</p>
+              <p className="text-xs text-gray-400">{user?.roles?.join(', ')}</p>
             </div>
           </div>
           <button onClick={logout} className="w-full flex items-center justify-center px-4 py-2 bg-surface-light hover:bg-error text-gray-300 hover:text-white rounded-md transition-colors duration-200">

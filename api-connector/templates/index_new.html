@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RHINOMETRIC - API Connector</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #ffffff;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .header {
+            background: rgba(0, 212, 170, 0.1);
+            border-bottom: 2px solid #00d4aa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+        }
+        
+        .logo {
+            font-size: 28px;
+            font-weight: 700;
+            background: linear-gradient(90deg, #00d4aa 0%, #00ffcc 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .subtitle {
+            color: #888;
+            margin-top: 8px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .connectors-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        
+        .connector-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid rgba(0, 212, 170, 0.3);
+            border-radius: 8px;
+            padding: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: center;
+        }
+        
+        .connector-card:hover, .connector-card.active {
+            border-color: #00d4aa;
+            background: rgba(0, 212, 170, 0.1);
+            transform: translateY(-3px);
+        }
+        
+        .connector-icon {
+            font-size: 36px;
+            margin-bottom: 10px;
+        }
+        
+        .connector-name {
+            font-size: 14px;
+            font-weight: 600;
+            color: #00d4aa;
+        }
+        
+        .form-section {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(0, 212, 170, 0.2);
+            border-radius: 12px;
+            padding: 30px;
+            display: none;
+        }
+        
+        .form-section.active {
+            display: block;
+        }
+        
+        h2 {
+            color: #00d4aa;
+            margin-bottom: 25px;
+            font-size: 24px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #00d4aa;
+            font-weight: 500;
+        }
+        
+        input, select {
+            width: 100%;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(0, 212, 170, 0.3);
+            border-radius: 6px;
+            color: #ffffff;
+            font-size: 14px;
+        }
+        
+        input:focus, select:focus {
+            outline: none;
+            border-color: #00d4aa;
+            background: rgba(255, 255, 255, 0.15);
+        }
+        
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+        }
+        
+        .checkbox-group input[type="checkbox"] {
+            width: auto;
+            margin-right: 10px;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 15px;
+            margin-top: 30px;
+        }
+        
+        button {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 6px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .btn-test {
+            background: rgba(255, 193, 7, 0.2);
+            color: #ffc107;
+            border: 2px solid #ffc107;
+        }
+        
+        .btn-test:hover {
+            background: #ffc107;
+            color: #000;
+        }
+        
+        .btn-save {
+            background: linear-gradient(90deg, #00d4aa 0%, #00ffcc 100%);
+            color: #000;
+            font-weight: 700;
+        }
+        
+        .btn-save:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 20px rgba(0, 212, 170, 0.5);
+        }
+        
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .message {
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 20px;
+            display: none;
+        }
+        
+        .message.success {
+            background: rgba(76, 175, 80, 0.2);
+            border: 1px solid #4caf50;
+            color: #4caf50;
+        }
+        
+        .message.error {
+            background: rgba(244, 67, 54, 0.2);
+            border: 1px solid #f44336;
+            color: #f44336;
+        }
+        
+        .message.info {
+            background: rgba(33, 150, 243, 0.2);
+            border: 1px solid #2196f3;
+            color: #2196f3;
+        }
+        
+        .loader {
+            border: 3px solid rgba(0, 212, 170, 0.3);
+            border-top: 3px solid #00d4aa;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            margin-left: 10px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .datasources-list {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(0, 212, 170, 0.2);
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 30px;
+        }
+        
+        .datasource-item {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .datasource-badge {
+            background: rgba(0, 212, 170, 0.2);
+            color: #00d4aa;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">🔌 RHINOMETRIC API Connector</div>
+            <div class="subtitle">Connect external APIs, databases, message queues, and IoT systems</div>
+        </div>
+        
+        <div class="connectors-grid" id="connectorsGrid">
+            <!-- Se llenará dinámicamente con JavaScript -->
+        </div>
+        
+        <div class="form-section" id="formSection">
+            <h2 id="formTitle">Configure Connection</h2>
+            <form id="connectionForm">
+                <input type="hidden" id="datasourceType" name="datasource_type">
+                
+                <div class="form-group">
+                    <label for="connectionName">Connection Name *</label>
+                    <input type="text" id="connectionName" required placeholder="My Database Connection">
+                </div>
+                
+                <div id="dynamicFields">
+                    <!-- Se llenará dinámicamente según el tipo -->
+                </div>
+                
+                <div class="button-group">
+                    <button type="button" class="btn-test" id="btnTest">
+                        🧪 Test Connection
+                    </button>
+                    <button type="button" class="btn-save" id="btnSave" disabled>
+                        💾 Save & Create in Grafana
+                    </button>
+                </div>
+            </form>
+            
+            <div class="message" id="message"></div>
+        </div>
+        
+        <div class="datasources-list">
+            <h2>📋 Configured Datasources</h2>
+            <div id="datasourcesList">
+                <p style="color: #888;">No datasources configured yet</p>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const API_BASE = '';  // Same origin
+        let selectedType = '';
+        let testPassed = false;
+        let templates = {};
+        
+        // Iconos por tipo
+        const icons = {
+            'postgresql': '🐘',
+            'redis': '📮',
+            'prometheus': '🔥',
+            'aws-cloudwatch': '☁️',
+            'azure-monitor': '🌐',
+            'rabbitmq': '🐰',
+            'kafka': '📨',
+            'mqtt': '📡'
+        };
+        
+        // Cargar templates desde el backend
+        async function loadTemplates() {
+            try {
+                const response = await fetch(`${API_BASE}/api/templates`);
+                const data = await response.json();
+                templates = data.templates;
+                renderConnectors();
+            } catch (error) {
+                console.error('Error loading templates:', error);
+            }
+        }
+        
+        // Renderizar tarjetas de conectores
+        function renderConnectors() {
+            const grid = document.getElementById('connectorsGrid');
+            grid.innerHTML = '';
+            
+            for (const [type, template] of Object.entries(templates)) {
+                const card = document.createElement('div');
+                card.className = 'connector-card';
+                card.innerHTML = `
+                    <div class="connector-icon">${icons[type] || '🔌'}</div>
+                    <div class="connector-name">${template.name}</div>
+                `;
+                card.onclick = () => selectConnector(type);
+                grid.appendChild(card);
+            }
+        }
+        
+        // Seleccionar conector
+        function selectConnector(type) {
+            selectedType = type;
+            testPassed = false;
+            document.getElementById('btnSave').disabled = true;
+            
+            // Actualizar UI
+            document.querySelectorAll('.connector-card').forEach(card => {
+                card.classList.remove('active');
+            });
+            event.currentTarget.classList.add('active');
+            
+            const formSection = document.getElementById('formSection');
+            formSection.classList.add('active');
+            
+            const template = templates[type];
+            document.getElementById('formTitle').textContent = `Configure ${template.name}`;
+            document.getElementById('datasourceType').value = type;
+            
+            // Renderizar campos dinámicos
+            renderFields(template.fields);
+            
+            // Limpiar mensaje
+            hideMessage();
+        }
+        
+        // Renderizar campos del formulario
+        function renderFields(fields) {
+            const container = document.getElementById('dynamicFields');
+            container.innerHTML = '';
+            
+            fields.forEach(field => {
+                const div = document.createElement('div');
+                div.className = 'form-group';
+                
+                if (field.type === 'boolean') {
+                    div.innerHTML = `
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="${field.name}" name="${field.name}" ${field.default ? 'checked' : ''}>
+                            <label for="${field.name}">${field.name.replace(/_/g, ' ').toUpperCase()}</label>
+                        </div>
+                    `;
+                } else if (field.type === 'select') {
+                    const options = field.options.map(opt => 
+                        `<option value="${opt}" ${opt === field.default ? 'selected' : ''}>${opt}</option>`
+                    ).join('');
+                    div.innerHTML = `
+                        <label for="${field.name}">${field.name.replace(/_/g, ' ').toUpperCase()} ${field.required ? '*' : ''}</label>
+                        <select id="${field.name}" name="${field.name}" ${field.required ? 'required' : ''}>
+                            ${options}
+                        </select>
+                    `;
+                } else {
+                    div.innerHTML = `
+                        <label for="${field.name}">${field.name.replace(/_/g, ' ').toUpperCase()} ${field.required ? '*' : ''}</label>
+                        <input 
+                            type="${field.type}" 
+                            id="${field.name}" 
+                            name="${field.name}" 
+                            ${field.required ? 'required' : ''}
+                            placeholder="${field.placeholder || field.default || ''}"
+                            value="${field.default || ''}"
+                        >
+                    `;
+                }
+                
+                container.appendChild(div);
+            });
+        }
+        
+        // Obtener datos del formulario
+        function getFormData() {
+            const formData = {
+                datasource_type: selectedType
+            };
+            
+            const fields = templates[selectedType].fields;
+            fields.forEach(field => {
+                const input = document.getElementById(field.name);
+                if (input) {
+                    if (field.type === 'boolean') {
+                        formData[field.name] = input.checked;
+                    } else if (field.type === 'number') {
+                        formData[field.name] = parseInt(input.value) || field.default;
+                    } else {
+                        formData[field.name] = input.value || field.default || '';
+                    }
+                }
+            });
+            
+            return formData;
+        }
+        
+        // Test connection
+        document.getElementById('btnTest').addEventListener('click', async () => {
+            const btn = document.getElementById('btnTest');
+            btn.disabled = true;
+            btn.innerHTML = '⏳ Testing... <span class="loader"></span>';
+            hideMessage();
+            
+            try {
+                const formData = getFormData();
+                const response = await fetch(`${API_BASE}/api/test-connection`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formData)
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showMessage(`✅ ${result.message} (${result.duration_ms.toFixed(0)}ms)`, 'success');
+                    testPassed = true;
+                    document.getElementById('btnSave').disabled = false;
+                } else {
+                    showMessage(`❌ ${result.message}`, 'error');
+                    testPassed = false;
+                    document.getElementById('btnSave').disabled = true;
+                }
+            } catch (error) {
+                showMessage(`❌ Error: ${error.message}`, 'error');
+                testPassed = false;
+                document.getElementById('btnSave').disabled = true;
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '🧪 Test Connection';
+            }
+        });
+        
+        // Save & Create in Grafana
+        document.getElementById('btnSave').addEventListener('click', async () => {
+            if (!testPassed) {
+                showMessage('⚠️ Please test the connection first', 'error');
+                return;
+            }
+            
+            const connectionName = document.getElementById('connectionName').value.trim();
+            if (!connectionName) {
+                showMessage('⚠️ Please enter a connection name', 'error');
+                return;
+            }
+            
+            const btn = document.getElementById('btnSave');
+            btn.disabled = true;
+            btn.innerHTML = '⏳ Creating... <span class="loader"></span>';
+            hideMessage();
+            
+            try {
+                const formData = getFormData();
+                const payload = {
+                    name: connectionName,
+                    type: selectedType,
+                    config: formData,
+                    tags: ['rhinometric', selectedType],
+                    is_default: false
+                };
+                
+                const response = await fetch(`${API_BASE}/api/datasources/grafana/create`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok && result.success) {
+                    showMessage(`✅ ${result.message}<br><small>Grafana UID: ${result.grafana_uid}</small>`, 'success');
+                    
+                    // Limpiar formulario
+                    document.getElementById('connectionForm').reset();
+                    document.getElementById('formSection').classList.remove('active');
+                    document.querySelectorAll('.connector-card').forEach(card => {
+                        card.classList.remove('active');
+                    });
+                    testPassed = false;
+                    
+                    // Recargar lista
+                    loadDatasources();
+                } else {
+                    showMessage(`❌ Error: ${result.detail || result.message || 'Unknown error'}`, 'error');
+                }
+            } catch (error) {
+                showMessage(`❌ Error: ${error.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '💾 Save & Create in Grafana';
+            }
+        });
+        
+        // Cargar datasources existentes
+        async function loadDatasources() {
+            try {
+                const response = await fetch(`${API_BASE}/api/datasources`);
+                const data = await response.json();
+                
+                const container = document.getElementById('datasourcesList');
+                
+                if (data.count === 0) {
+                    container.innerHTML = '<p style="color: #888;">No datasources configured yet</p>';
+                    return;
+                }
+                
+                container.innerHTML = '';
+                data.datasources.forEach(ds => {
+                    const item = document.createElement('div');
+                    item.className = 'datasource-item';
+                    item.innerHTML = `
+                        <div>
+                            <strong>${ds.name}</strong>
+                            <span class="datasource-badge">${ds.type}</span>
+                            ${ds.grafana_uid ? `<small style="color: #888; margin-left: 10px;">Grafana UID: ${ds.grafana_uid}</small>` : ''}
+                        </div>
+                        <div>${ds.enabled ? '✅' : '⏸️'}</div>
+                    `;
+                    container.appendChild(item);
+                });
+            } catch (error) {
+                console.error('Error loading datasources:', error);
+            }
+        }
+        
+        // Mostrar mensaje
+        function showMessage(text, type) {
+            const msg = document.getElementById('message');
+            msg.innerHTML = text;
+            msg.className = `message ${type}`;
+            msg.style.display = 'block';
+        }
+        
+        // Ocultar mensaje
+        function hideMessage() {
+            const msg = document.getElementById('message');
+            msg.style.display = 'none';
+        }
+        
+        // Inicializar
+        loadTemplates();
+        loadDatasources();
+    </script>
+</body>
+</html>

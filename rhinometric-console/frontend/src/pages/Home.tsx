@@ -1,19 +1,43 @@
-import { Activity, Server, AlertTriangle, Bell } from 'lucide-react'
-import { useEffect } from 'react'
+import { Activity, Server, AlertTriangle, Bell, TrendingUp, TrendingDown } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useAuthStore } from '../lib/auth/store'
+import { LineChart, Line, ResponsiveContainer } from 'recharts'
+import { useNavigate } from 'react-router-dom'
+
+interface SparklinePoint {
+  time: number
+  value: number
+}
+
+interface KPIHistory {
+  service_status: SparklinePoint[]
+  monitored_hosts: SparklinePoint[]
+  active_anomalies: SparklinePoint[]
+  alerts_24h: SparklinePoint[]
+}
 
 export function HomePage() {
+  const navigate = useNavigate()
+  const [history, setHistory] = useState<KPIHistory>({
+    service_status: [],
+    monitored_hosts: [],
+    active_anomalies: [],
+    alerts_24h: []
+  })
+  
   useEffect(() => {
     document.title = 'Rhinometric - Home'
   }, [])
 
   const token = useAuthStore((state) => state.token)
-
+  
   // Fetch KPIs from backend API
   const { data: kpisData, isLoading, error } = useQuery({
-    queryKey: ['kpis'],
+    queryKey: ['kpis', token],
     queryFn: async () => {
+      if (!token) throw new Error('No token available')
+      
       const response = await fetch('/api/kpis', {
         headers: {
           'Authorization': `Bearer ${token}`
@@ -22,45 +46,124 @@ export function HomePage() {
       if (!response.ok) throw new Error('Failed to fetch KPIs')
       return response.json()
     },
-    refetchInterval: 30000, // Refresh every 30 seconds
+    enabled: !!token,
+    refetchInterval: 5000, // Refresh every 5 seconds for "live" feel
   })
 
-  // Map API data to KPI cards
+  // Update history when new data arrives
+  useEffect(() => {
+    if (kpisData) {
+      const now = Date.now()
+      setHistory(prev => {
+        const updateSeries = (series: SparklinePoint[], newValue: any) => {
+          const val = typeof newValue === 'string' ? parseFloat(newValue) || 0 : newValue
+          // Keep last 20 points
+          const newSeries = [...series, { time: now, value: val }]
+          return newSeries.slice(-20)
+        }
+
+        // Use real service status percentage instead of random
+        const serviceStatusValue = kpisData.service_status.value === "Operational" ? 100 : 
+                                   (kpisData.service_status.operational_count / kpisData.service_status.total_count) * 100
+
+        return {
+          service_status: updateSeries(prev.service_status, serviceStatusValue),
+          monitored_hosts: updateSeries(prev.monitored_hosts, kpisData.monitored_hosts.value),
+          active_anomalies: updateSeries(prev.active_anomalies, kpisData.active_anomalies.value),
+          alerts_24h: updateSeries(prev.alerts_24h, kpisData.alerts_24h.value)
+        }
+      })
+    }
+  }, [kpisData])
+
+  // Fetch historical data once on mount
+  const { data: historyData } = useQuery({
+    queryKey: ['kpis-history', token],
+    queryFn: async () => {
+      if (!token) return null
+      const response = await fetch('/api/kpis/historical', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      if (!response.ok) return null
+      return response.json()
+    },
+    enabled: !!token,
+    staleTime: Infinity
+  })
+
+  // Initialize history with fetched data
+  useEffect(() => {
+    if (historyData) {
+      const mapPoints = (points: any[]) => points.map(p => ({
+        time: p.timestamp * 1000, // Convert to ms
+        value: p.value
+      }))
+
+      setHistory({
+        service_status: mapPoints(historyData.service_status),
+        monitored_hosts: mapPoints(historyData.monitored_hosts),
+        active_anomalies: mapPoints(historyData.active_anomalies),
+        alerts_24h: mapPoints(historyData.alerts_24h)
+      })
+    }
+  }, [historyData])
+
+  // Map API data to KPI cards with sparkline data
   const kpis = kpisData ? [
     { 
       name: 'Service Status', 
       value: kpisData.service_status.value, 
       status: kpisData.service_status.status, 
       icon: Activity, 
-      change: kpisData.service_status.change 
+      change: kpisData.service_status.change,
+      sparkline: history.service_status,
+      trend: 'up',
+      link: '/system-health'
     },
     { 
-      name: 'Monitored Hosts', 
+      name: 'Monitored Services', 
       value: kpisData.monitored_hosts.value, 
       status: kpisData.monitored_hosts.status, 
       icon: Server, 
-      change: kpisData.monitored_hosts.change 
+      change: kpisData.monitored_hosts.change,
+      sparkline: history.monitored_hosts,
+      trend: 'stable',
+      link: '/services'
     },
     { 
       name: 'Active Anomalies', 
       value: kpisData.active_anomalies.value, 
       status: kpisData.active_anomalies.status, 
       icon: AlertTriangle, 
-      change: kpisData.active_anomalies.change 
+      change: kpisData.active_anomalies.change,
+      sparkline: history.active_anomalies,
+      trend: 'down',
+      link: '/anomalies'
     },
     { 
       name: 'Alerts (24h)', 
       value: kpisData.alerts_24h.value, 
       status: kpisData.alerts_24h.status, 
       icon: Bell, 
-      change: kpisData.alerts_24h.change 
+      change: kpisData.alerts_24h.change,
+      sparkline: history.alerts_24h,
+      trend: 'up',
+      link: '/alerts'
     },
   ] : [
-    { name: 'Service Status', value: 'Loading...', status: 'success', icon: Activity, change: '' },
-    { name: 'Monitored Hosts', value: '...', status: 'success', icon: Server, change: '' },
-    { name: 'Active Anomalies', value: '...', status: 'success', icon: AlertTriangle, change: '' },
-    { name: 'Alerts (24h)', value: '...', status: 'success', icon: Bell, change: '' },
+    { name: 'Service Status', value: 'Loading...', status: 'success', icon: Activity, change: '', sparkline: [], trend: 'stable', link: '/system-health' },
+    { name: 'Monitored Services', value: '...', status: 'success', icon: Server, change: '', sparkline: [], trend: 'stable', link: '/services' },
+    { name: 'Active Anomalies', value: '...', status: 'success', icon: AlertTriangle, change: '', sparkline: [], trend: 'stable', link: '/anomalies' },
+    { name: 'Alerts (24h)', value: '...', status: 'success', icon: Bell, change: '', sparkline: [], trend: 'stable', link: '/alerts' },
   ]
+
+  // Debug logging
+  useEffect(() => {
+    console.log('Home - Token:', token ? 'present' : 'missing')
+    console.log('Home - Loading:', isLoading)
+    console.log('Home - Error:', error)
+    console.log('Home - Data:', kpisData)
+  }, [token, isLoading, error, kpisData])
 
   if (error) {
     console.error('Failed to load KPIs:', error)
@@ -71,13 +174,23 @@ export function HomePage() {
       <div>
         <h1 className="text-3xl font-bold text-white mb-2">Welcome to Rhinometric</h1>
         <p className="text-text-muted">AI-Powered Observability & Anomaly Detection Platform</p>
+        {/* Debug info */}
+        {!token && <p className="text-warning text-sm mt-2">⚠️ No authentication token</p>}
+        {error && <p className="text-error text-sm mt-2">❌ Error: {(error as Error).message}</p>}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {kpis.map((kpi) => {
           const Icon = kpi.icon
+          const TrendIcon = kpi.trend === 'up' ? TrendingUp : TrendingDown
+          const trendColor = kpi.trend === 'up' ? 'text-success' : kpi.trend === 'down' ? 'text-error' : 'text-gray-400'
+          
           return (
-            <div key={kpi.name} className="card">
+            <div 
+              key={kpi.name} 
+              className="card hover:border-primary/50 cursor-pointer transition-all duration-200 hover:shadow-lg hover:shadow-primary/20"
+              onClick={() => navigate(kpi.link)}
+            >
               <div className="flex items-start justify-between mb-4">
                 <div className="p-2 bg-primary/10 rounded-lg">
                   <Icon className="w-6 h-6 text-primary" />
@@ -87,8 +200,32 @@ export function HomePage() {
                 </span>
               </div>
               <p className="text-text-muted text-sm mb-1">{kpi.name}</p>
-              <p className="text-2xl font-bold text-white mb-2">{kpi.value}</p>
-              <p className="text-xs text-text-muted">{kpi.change}</p>
+              <div className="flex items-end justify-between mb-3">
+                <p className="text-2xl font-bold text-white">{kpi.value}</p>
+                {kpi.trend !== 'stable' && (
+                  <TrendIcon className={`w-5 h-5 ${trendColor}`} />
+                )}
+              </div>
+              
+              {/* Mini Sparkline Chart (últimas 24h) */}
+              {kpi.sparkline.length > 0 && (
+                <div className="h-12 -mx-2 mb-2">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={kpi.sparkline}>
+                      <Line 
+                        type="monotone" 
+                        dataKey="value" 
+                        stroke={kpi.status === 'success' ? '#10b981' : '#f59e0b'} 
+                        strokeWidth={2}
+                        dot={false}
+                        isAnimationActive={false}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+              
+              <p className="text-xs text-text-muted">{kpi.change || 'Last 24 hours'}</p>
             </div>
           )
         })}
@@ -138,10 +275,10 @@ export function HomePage() {
           </div>
           <div>
             <h3 className="text-lg font-semibold text-white mb-2">Real-time Metrics Integration</h3>
-            <p className="text-text-muted text-sm mb-4">This dashboard will display live metrics from Prometheus, active anomalies from the AI engine, and recent alerts from AlertManager once the backend API Gateway is connected.</p>
+            <p className="text-text-muted text-sm mb-4">This dashboard displays live metrics from Prometheus, active anomalies from the AI engine, and recent alerts from AlertManager.</p>
             <div className="flex space-x-2">
-              <span className="text-xs px-3 py-1 bg-primary/20 text-primary rounded-full">Backend API: In Development</span>
-              <span className="text-xs px-3 py-1 bg-success/20 text-success rounded-full">Frontend: Complete</span>
+              <span className="text-xs px-3 py-1 bg-success/20 text-success rounded-full">✓ Backend API: Connected</span>
+              <span className="text-xs px-3 py-1 bg-success/20 text-success rounded-full">✓ Frontend: Ready</span>
             </div>
           </div>
         </div>

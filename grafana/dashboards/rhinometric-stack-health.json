@@ -1,0 +1,383 @@
+{
+  "dashboard": {
+    "uid": "rhinometric-stack-health",
+    "title": "Rhinometric Stack Health",
+    "tags": ["rhinometric", "infrastructure", "health"],
+    "timezone": "browser",
+    "schemaVersion": 16,
+    "version": 1,
+    "refresh": "30s",
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "panels": [
+      {
+        "id": 1,
+        "title": "Prometheus Health",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "up{job=\"prometheus\"}",
+            "refId": "A",
+            "legendFormat": "Prometheus"
+          }
+        ],
+        "gridPos": {"x": 0, "y": 0, "w": 6, "h": 4},
+        "options": {
+          "colorMode": "background",
+          "graphMode": "none",
+          "justifyMode": "center",
+          "orientation": "horizontal",
+          "reduceOptions": {
+            "values": false,
+            "calcs": ["lastNotNull"]
+          },
+          "textMode": "value_and_name"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "mappings": [
+              {"type": "value", "value": "1", "text": "✓ Healthy"},
+              {"type": "value", "value": "0", "text": "✗ Down"}
+            ],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "red"},
+                {"value": 1, "color": "green"}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 2,
+        "title": "Alertmanager Health",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "up{job=\"alertmanager\"}",
+            "refId": "A",
+            "legendFormat": "Alertmanager"
+          }
+        ],
+        "gridPos": {"x": 6, "y": 0, "w": 6, "h": 4},
+        "options": {
+          "colorMode": "background",
+          "graphMode": "none",
+          "justifyMode": "center",
+          "orientation": "horizontal",
+          "reduceOptions": {
+            "values": false,
+            "calcs": ["lastNotNull"]
+          },
+          "textMode": "value_and_name"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "mappings": [
+              {"type": "value", "value": "1", "text": "✓ Healthy"},
+              {"type": "value", "value": "0", "text": "✗ Down"}
+            ],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "red"},
+                {"value": 1, "color": "green"}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 3,
+        "title": "Grafana Health",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "up{job=\"grafana\"}",
+            "refId": "A",
+            "legendFormat": "Grafana"
+          }
+        ],
+        "gridPos": {"x": 12, "y": 0, "w": 6, "h": 4},
+        "options": {
+          "colorMode": "background",
+          "graphMode": "none",
+          "justifyMode": "center",
+          "orientation": "horizontal",
+          "reduceOptions": {
+            "values": false,
+            "calcs": ["lastNotNull"]
+          },
+          "textMode": "value_and_name"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "mappings": [
+              {"type": "value", "value": "1", "text": "✓ Healthy"},
+              {"type": "value", "value": "0", "text": "✗ Down"}
+            ],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "red"},
+                {"value": 1, "color": "green"}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 4,
+        "title": "AI Anomaly Engine Health",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "up{job=\"ai-anomaly\"}",
+            "refId": "A",
+            "legendFormat": "AI Engine"
+          }
+        ],
+        "gridPos": {"x": 18, "y": 0, "w": 6, "h": 4},
+        "options": {
+          "colorMode": "background",
+          "graphMode": "none",
+          "justifyMode": "center",
+          "orientation": "horizontal",
+          "reduceOptions": {
+            "values": false,
+            "calcs": ["lastNotNull"]
+          },
+          "textMode": "value_and_name"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "mappings": [
+              {"type": "value", "value": "1", "text": "✓ Healthy"},
+              {"type": "value", "value": "0", "text": "✗ Down"}
+            ],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "red"},
+                {"value": 1, "color": "green"}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 5,
+        "title": "Loki Health",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "up{job=\"loki\"}",
+            "refId": "A",
+            "legendFormat": "Loki"
+          }
+        ],
+        "gridPos": {"x": 0, "y": 4, "w": 6, "h": 4},
+        "options": {
+          "colorMode": "background",
+          "graphMode": "none",
+          "justifyMode": "center",
+          "orientation": "horizontal",
+          "reduceOptions": {
+            "values": false,
+            "calcs": ["lastNotNull"]
+          },
+          "textMode": "value_and_name"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "mappings": [
+              {"type": "value", "value": "1", "text": "✓ Healthy"},
+              {"type": "value", "value": "0", "text": "✗ Down"}
+            ],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "red"},
+                {"value": 1, "color": "green"}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 6,
+        "title": "Jaeger Health",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "up{job=\"jaeger\"}",
+            "refId": "A",
+            "legendFormat": "Jaeger"
+          }
+        ],
+        "gridPos": {"x": 6, "y": 4, "w": 6, "h": 4},
+        "options": {
+          "colorMode": "background",
+          "graphMode": "none",
+          "justifyMode": "center",
+          "orientation": "horizontal",
+          "reduceOptions": {
+            "values": false,
+            "calcs": ["lastNotNull"]
+          },
+          "textMode": "value_and_name"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "mappings": [
+              {"type": "value", "value": "1", "text": "✓ Healthy"},
+              {"type": "value", "value": "0", "text": "✗ Down"}
+            ],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "red"},
+                {"value": 1, "color": "green"}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 7,
+        "title": "Console Backend Health",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "up{job=\"rhinometric-console-backend\"}",
+            "refId": "A",
+            "legendFormat": "Backend API"
+          }
+        ],
+        "gridPos": {"x": 12, "y": 4, "w": 6, "h": 4},
+        "options": {
+          "colorMode": "background",
+          "graphMode": "none",
+          "justifyMode": "center",
+          "orientation": "horizontal",
+          "reduceOptions": {
+            "values": false,
+            "calcs": ["lastNotNull"]
+          },
+          "textMode": "value_and_name"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "mappings": [
+              {"type": "value", "value": "1", "text": "✓ Healthy"},
+              {"type": "value", "value": "0", "text": "✗ Down"}
+            ],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "red"},
+                {"value": 1, "color": "green"}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 8,
+        "title": "License Validator Health",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "up{job=\"license-validator\"}",
+            "refId": "A",
+            "legendFormat": "License Validator"
+          }
+        ],
+        "gridPos": {"x": 18, "y": 4, "w": 6, "h": 4},
+        "options": {
+          "colorMode": "background",
+          "graphMode": "none",
+          "justifyMode": "center",
+          "orientation": "horizontal",
+          "reduceOptions": {
+            "values": false,
+            "calcs": ["lastNotNull"]
+          },
+          "textMode": "value_and_name"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "mappings": [
+              {"type": "value", "value": "1", "text": "✓ Healthy"},
+              {"type": "value", "value": "0", "text": "✗ Down"}
+            ],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "red"},
+                {"value": 1, "color": "green"}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 9,
+        "title": "Active Alerts by Service",
+        "type": "table",
+        "targets": [
+          {
+            "expr": "ALERTS{alertstate=\"firing\",job=~\"prometheus|alertmanager|grafana|loki|jaeger|ai-anomaly|rhinometric-console-backend|license-validator\"}",
+            "refId": "A",
+            "format": "table",
+            "instant": true
+          }
+        ],
+        "gridPos": {"x": 0, "y": 8, "w": 24, "h": 8},
+        "options": {
+          "showHeader": true,
+          "footer": {
+            "show": false
+          }
+        },
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "align": "auto",
+              "filterable": true
+            }
+          },
+          "overrides": [
+            {
+              "matcher": {"id": "byName", "options": "alertname"},
+              "properties": [
+                {"id": "displayName", "value": "Alert Name"},
+                {"id": "custom.width", "value": 200}
+              ]
+            },
+            {
+              "matcher": {"id": "byName", "options": "severity"},
+              "properties": [
+                {"id": "displayName", "value": "Severity"},
+                {"id": "custom.width", "value": 100}
+              ]
+            },
+            {
+              "matcher": {"id": "byName", "options": "job"},
+              "properties": [
+                {"id": "displayName", "value": "Component"},
+                {"id": "custom.width", "value": 180}
+              ]
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "overwrite": true,
+  "folderUid": "rhinometric-internal",
+  "message": "Rhinometric Stack Health dashboard - autovigilancia interna"
+}

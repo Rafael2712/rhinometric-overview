@@ -1,0 +1,95 @@
+groups:
+  - name: infrastructure_alerts
+    interval: 30s
+    rules:
+      # High CPU Usage
+      - alert: HighCPUUsage
+        expr: |
+          100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 5m
+        labels:
+          severity: warning
+          tier: infrastructure
+        annotations:
+          summary: "High CPU usage detected on {{ $labels.instance }}"
+          description: "CPU usage is {{ $value | humanize }}% on {{ $labels.instance }}"
+          runbook_url: "https://grafana.rhinometric.com/d/runbooks?var-topic=high-cpu"
+
+      # Critical CPU Usage
+      - alert: CriticalCPUUsage
+        expr: |
+          100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 95
+        for: 2m
+        labels:
+          severity: critical
+          tier: infrastructure
+        annotations:
+          summary: "CRITICAL: CPU usage on {{ $labels.instance }}"
+          description: "CPU usage is {{ $value | humanize }}% on {{ $labels.instance }}"
+          runbook_url: "https://grafana.rhinometric.com/d/runbooks?var-topic=critical-cpu"
+
+      # High Memory Usage (Node)
+      - alert: HighMemoryUsage
+        expr: |
+          (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+          tier: infrastructure
+          component: node
+        annotations:
+          summary: "High memory usage on node {{ $labels.instance }}"
+          description: "Memory usage is {{ $value | humanize }}% on {{ $labels.instance }}"
+          runbook_url: "https://grafana.rhinometric.com/d/runbooks?var-topic=high-memory"
+
+      # Critical Memory Usage
+      - alert: CriticalMemoryUsage
+        expr: |
+          (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 95
+        for: 2m
+        labels:
+          severity: critical
+          tier: infrastructure
+        annotations:
+          summary: "CRITICAL: Memory exhaustion on {{ $labels.instance }}"
+          description: "Memory usage is {{ $value | humanize }}% on {{ $labels.instance }}"
+          runbook_url: "https://grafana.rhinometric.com/d/runbooks?var-topic=critical-memory"
+
+      # Disk Usage High
+      - alert: HighDiskUsage
+        expr: |
+          (1 - (node_filesystem_avail_bytes{fstype!~"tmpfs|fuse.lxcfs"} / node_filesystem_size_bytes{fstype!~"tmpfs|fuse.lxcfs"})) * 100 > 80
+        for: 10m
+        labels:
+          severity: warning
+          tier: infrastructure
+        annotations:
+          summary: "Disk usage high on {{ $labels.instance }}"
+          description: "Disk {{ $labels.mountpoint }} is {{ $value | humanize }}% full on {{ $labels.instance }}"
+          runbook_url: "https://grafana.rhinometric.com/d/runbooks?var-topic=high-disk"
+
+      # Container Down
+      - alert: ContainerDown
+        expr: |
+          up{job=~".*"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          tier: infrastructure
+        annotations:
+          summary: "Container/Service {{ $labels.job }} is down"
+          description: "{{ $labels.instance }} of job {{ $labels.job }} has been down for more than 1 minute"
+          runbook_url: "https://grafana.rhinometric.com/d/runbooks?var-topic=container-down"
+
+      # High Container Memory
+      - alert: HighContainerMemory
+        expr: |
+          (container_memory_usage_bytes{name!=""} / container_spec_memory_limit_bytes{name!=""}) * 100 > 90
+        for: 5m
+        labels:
+          severity: warning
+          tier: infrastructure
+        annotations:
+          summary: "Container {{ $labels.name }} high memory usage"
+          description: "Container {{ $labels.name }} is using {{ $value | humanize }}% of its memory limit"
+          runbook_url: "https://grafana.rhinometric.com/d/runbooks?var-topic=container-memory"

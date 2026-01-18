@@ -1,0 +1,385 @@
+# ============================================================================
+# RHINOMETRIC AI ANOMALY DETECTION - Configuration
+# Version: 2.2.0 Enterprise Edition
+# ============================================================================
+
+# API Server Configuration
+server:
+  host: "0.0.0.0"
+  port: 8085
+  workers: 2
+  log_level: "INFO"
+  cors_enabled: true
+  cors_origins:
+    - "http://localhost:3000"
+    - "https://grafana.rhinometric.com"
+
+# Prometheus Configuration
+prometheus:
+  url: "${PROMETHEUS_URL:http://prometheus:9090}"
+  timeout: 30
+  max_retries: 3
+  retry_delay: 5
+
+# Alertmanager Configuration
+alertmanager:
+  enabled: true
+  url: "${ALERTMANAGER_URL:http://alertmanager:9093}"
+  timeout: 10
+  labels:
+    severity: "warning"
+    team: "platform"
+    component: "ai-anomaly-detector"
+
+# Detection Configuration
+detection:
+  # How often to check for anomalies (seconds)
+  check_interval: ${CHECK_INTERVAL_SECONDS:300}
+  
+  # How far back to look for data (hours)
+  lookback_hours: ${LOOKBACK_HOURS:24}
+  
+  # Minimum data points required for analysis
+  min_data_points: 20
+  
+  # Maximum anomalies to store in memory
+  max_anomalies: 500
+  
+  # Enable automatic model retraining
+  auto_retrain: true
+  
+  # Retrain interval (hours)
+  retrain_interval: 6
+
+# Machine Learning Models Configuration
+models:
+  # Isolation Forest - Good for multivariate outlier detection
+  isolation_forest:
+    enabled: true
+    contamination: 0.05  # Reduced from 0.1 to reduce false positives
+    n_estimators: 100
+    max_samples: "auto"
+    random_state: 42
+    n_jobs: -1
+  
+  # Local Outlier Factor - Good for local density-based anomalies
+  lof:
+    enabled: true
+    n_neighbors: 25  # Increased from 20 for more stable detection
+    contamination: 0.05  # Reduced from 0.1 to reduce false positives
+    novelty: true
+  
+  # One-Class SVM - Good for high-dimensional data
+  ocsvm:
+    enabled: false  # Disabled by default (computationally expensive)
+    kernel: "rbf"
+    gamma: "auto"
+    nu: 0.1
+  
+  # Statistical methods
+  statistical:
+    enabled: true
+    # Z-score threshold (number of standard deviations)
+    zscore_threshold: 3.5  # Increased from 3.0 to reduce noise
+    # Moving average window
+    moving_avg_window: 12
+    # Exponential smoothing alpha
+    ema_alpha: 0.3
+
+# Metrics to Monitor
+# Each metric can have its own configuration and thresholds
+metrics:
+  # CPU Metrics
+  - name: "node_cpu_usage"
+    display_name: "Node CPU Usage"
+    description: "CPU usage percentage across all cores"
+    query: '100 - (avg(rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)'
+    enabled: true
+    priority: "high"
+    check_interval: 300  # Override global interval
+    models:
+      - isolation_forest
+      - lof
+      - statistical
+    thresholds:
+      warning: 70
+      critical: 90
+    sensitivity: "low"  # Changed from medium - CPU varies naturally
+    
+  - name: "container_cpu_usage"
+    display_name: "Container CPU Usage"
+    description: "Per-container CPU usage (aggregated)"
+    query: 'avg(sum(rate(container_cpu_usage_seconds_total{container!=""}[5m])) by (container)) * 100'
+    enabled: true
+    priority: "medium"
+    models:
+      - isolation_forest
+      - statistical
+    thresholds:
+      warning: 80
+      critical: 95
+    sensitivity: "medium"
+
+  # Memory Metrics
+  - name: "node_memory_usage"
+    display_name: "Node Memory Usage"
+    description: "Memory usage percentage"
+    query: '(1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100'
+    enabled: true
+    priority: "high"
+    models:
+      - isolation_forest
+      - lof
+      - statistical
+    thresholds:
+      warning: 75
+      critical: 90
+    sensitivity: "medium"
+    
+  - name: "container_memory_usage"
+    display_name: "Container Memory Usage"
+    description: "Per-container memory usage (aggregated)"
+    query: 'avg(sum(container_memory_working_set_bytes{container!=""}) by (container)) / 1024 / 1024 / 1024'
+    enabled: true
+    priority: "medium"
+    models:
+      - isolation_forest
+      - statistical
+    thresholds:
+      warning: 1.5  # GB
+      critical: 2.0
+    sensitivity: "low"
+
+  # Disk Metrics
+  - name: "node_disk_usage"
+    display_name: "Node Disk Usage"
+    description: "Disk usage percentage"
+    query: '(1 - (node_filesystem_avail_bytes{fstype!~"tmpfs|fuse.lxcfs"} / node_filesystem_size_bytes)) * 100'
+    enabled: true
+    priority: "high"
+    models:
+      - statistical
+    thresholds:
+      warning: 80
+      critical: 95
+    sensitivity: "low"
+    
+  - name: "node_disk_io"
+    display_name: "Node Disk I/O"
+    description: "Disk read/write operations per second (aggregated)"
+    query: 'avg(rate(node_disk_io_time_seconds_total[5m]))'
+    enabled: true
+    priority: "medium"
+    models:
+      - isolation_forest
+      - statistical
+    thresholds:
+      warning: 0.8
+      critical: 0.95
+    sensitivity: "medium"
+
+  # Network Metrics
+  - name: "node_network_receive"
+    display_name: "Network Receive Rate"
+    description: "Network bytes received per second (aggregated)"
+    query: 'sum(rate(node_network_receive_bytes_total{device!="lo"}[5m]))'
+    enabled: true
+    priority: "medium"
+    models:
+      - isolation_forest
+      - statistical
+    thresholds:
+      warning: 100000000  # 100 MB/s
+      critical: 500000000  # 500 MB/s
+    sensitivity: "low"
+    
+  - name: "node_network_transmit"
+    display_name: "Network Transmit Rate"
+    description: "Network bytes transmitted per second (aggregated)"
+    query: 'sum(rate(node_network_transmit_bytes_total{device!="lo"}[5m]))'
+    enabled: true
+    priority: "medium"
+    models:
+      - isolation_forest
+      - statistical
+    thresholds:
+      warning: 100000000
+      critical: 500000000
+    sensitivity: "low"
+
+  # Application Metrics
+  - name: "http_request_rate"
+    display_name: "HTTP Request Rate"
+    description: "HTTP requests per second"
+    query: 'sum(rate(http_requests_total[5m]))'
+    enabled: true
+    priority: "high"
+    models:
+      - isolation_forest
+      - lof
+      - statistical
+    thresholds:
+      warning: 1000
+      critical: 5000
+    sensitivity: "medium"  # Changed from high - reduce noise from normal spikes
+    
+  - name: "http_error_rate"
+    display_name: "HTTP Error Rate"
+    description: "HTTP 5xx errors per second"
+    query: 'sum(rate(http_requests_total{status=~"5.."}[5m]))'
+    enabled: true
+    priority: "critical"
+    models:
+      - isolation_forest
+      - lof
+      - statistical
+    thresholds:
+      warning: 1
+      critical: 10
+    sensitivity: "high"
+    alert_on_any_anomaly: true
+    
+  - name: "http_latency_p95"
+    display_name: "HTTP P95 Latency"
+    description: "95th percentile request latency"
+    query: 'histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket[5m])))'
+    enabled: true
+    priority: "high"
+    models:
+      - isolation_forest
+      - lof
+      - statistical
+    thresholds:
+      warning: 1.0  # seconds
+      critical: 5.0
+    sensitivity: "medium"  # Changed from high - p95 naturally spiky
+    
+  - name: "http_latency_p99"
+    display_name: "HTTP P99 Latency"
+    description: "99th percentile request latency"
+    query: 'histogram_quantile(0.99, sum by (le) (rate(http_request_duration_seconds_bucket[5m])))'
+    enabled: true
+    priority: "high"
+    models:
+      - isolation_forest
+      - statistical
+    thresholds:
+      warning: 0.1   # LOWERED FOR TESTING - forces detection
+      critical: 0.5  # LOWERED FOR TESTING
+    sensitivity: "high"  # Increased sensitivity for demo
+
+  # Database Metrics
+  - name: "postgres_connections"
+    display_name: "PostgreSQL Active Connections"
+    description: "Number of active database connections (aggregated)"
+    query: 'sum(pg_stat_activity_count{state="active"})'
+    enabled: true
+    priority: "medium"
+    models:
+      - isolation_forest
+      - statistical
+    thresholds:
+      warning: 50
+      critical: 90
+    sensitivity: "medium"
+    
+  - name: "postgres_query_duration"
+    display_name: "PostgreSQL Query Duration"
+    description: "Average query execution time"
+    query: 'rate(pg_stat_statements_total_time[5m]) / rate(pg_stat_statements_calls[5m])'
+    enabled: true
+    priority: "high"
+    models:
+      - isolation_forest
+      - lof
+      - statistical
+    thresholds:
+      warning: 100  # ms
+      critical: 1000
+    sensitivity: "medium"
+
+  # Redis Metrics
+  - name: "redis_memory_usage"
+    display_name: "Redis Memory Usage"
+    description: "Redis memory usage in MB"
+    query: 'redis_memory_used_bytes / 1024 / 1024'
+    enabled: true
+    priority: "medium"
+    models:
+      - isolation_forest
+      - statistical
+    thresholds:
+      warning: 500
+      critical: 1000
+    sensitivity: "low"
+    
+  - name: "redis_hit_rate"
+    display_name: "Redis Cache Hit Rate"
+    description: "Redis cache hit ratio"
+    query: 'rate(redis_keyspace_hits_total[5m]) / (rate(redis_keyspace_hits_total[5m]) + rate(redis_keyspace_misses_total[5m]))'
+    enabled: true
+    priority: "high"
+    models:
+      - statistical
+    thresholds:
+      warning: 0.8  # 80% hit rate
+      critical: 0.5  # 50% hit rate
+    sensitivity: "medium"
+    invert_threshold: true  # Alert when below threshold
+
+  # Custom Application Metrics
+  - name: "license_validation_rate"
+    display_name: "License Validation Rate"
+    description: "License validations per second"
+    query: 'rate(rhinometric_license_validations_total[5m])'
+    enabled: true
+    priority: "medium"
+    models:
+      - isolation_forest
+      - statistical
+    sensitivity: "low"
+    
+  - name: "license_expired_count"
+    display_name: "Expired Licenses"
+    description: "Number of expired licenses detected"
+    query: 'rhinometric_license_expired_total'
+    enabled: true
+    priority: "critical"
+    models:
+      - statistical
+    thresholds:
+      warning: 1
+      critical: 5
+    sensitivity: "high"
+    alert_on_any_anomaly: true
+
+# Model Persistence
+persistence:
+  enabled: true
+  directory: "/app/models"
+  save_interval: 3600  # Save every hour
+  max_model_age: 604800  # 7 days in seconds
+  compression: true
+
+# Metrics Export (for this service)
+metrics_export:
+  enabled: true
+  port: 9090
+  path: "/metrics"
+  prefix: "rhinometric_anomaly_"
+
+# Logging Configuration
+logging:
+  level: "${LOG_LEVEL:INFO}"
+  format: "json"
+  output: "stdout"
+  log_anomalies: true
+  log_predictions: false  # Can be verbose
+  
+# Feature Flags
+features:
+  enable_api: true
+  enable_web_ui: false  # Future feature
+  enable_notifications: true
+  enable_auto_remediation: false  # Future feature
+  enable_model_explanation: true  # SHAP values for explainability

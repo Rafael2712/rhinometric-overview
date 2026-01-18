@@ -1,0 +1,351 @@
+# ============================================================================
+# RHINOMETRIC v2.5.0 - LICENSE SERVER ONLY
+# ============================================================================
+# Optimized for AWS Lightsail 2-4GB RAM instance
+# 
+# PURPOSE: License Management Server (On-Premise model)
+# - Generates .lic files for customers
+# - Sends license files via email (SMTP Zoho)
+# - Provides admin UI for license management
+# - Stores license records in PostgreSQL
+#
+# WHAT THIS IS NOT:
+# - This is NOT the observability stack (Grafana, Prometheus, Loki, etc.)
+# - Customers download installers and run the full stack on THEIR servers
+# - This server only manages license generation and validation
+#
+# COMPONENTS (6 containers):
+# - License Server v2 (API for license CRUD)
+# - License Management UI (web interface)
+# - Rhinometric Console (Backend + Frontend) - Admin panel
+# - PostgreSQL (license database)
+# - Redis (cache & sessions)
+#
+# TOTAL ESTIMATED RAM: ~2.2 GB (comfortable for 4GB instance)
+# ============================================================================
+
+version: '3.8'
+
+services:
+
+  # ========================================
+  # LICENSE SERVER v2 - Core Licensing API
+  # ========================================
+  license-server-v2:
+    build:
+      context: ./license-server-v2
+      dockerfile: Dockerfile
+    container_name: rhinometric-license-server-v2
+    environment:
+      # Database connection
+      DATABASE_URL: postgresql://rhinometric:${POSTGRES_PASSWORD:-rhinometric}@postgres:5432/rhinometric_licenses
+      
+      # Redis cache
+      REDIS_URL: redis://:${REDIS_PASSWORD:-rhinometric}@redis:6379
+      
+      # Python settings
+      PYTHONUNBUFFERED: 1
+      
+      # SMTP Configuration (Zoho Mail)
+      SMTP_HOST: smtp.zoho.eu
+      SMTP_PORT: 465
+      SMTP_USER: rafael.canelon@rhinometric.com
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
+      SMTP_FROM: rafael.canelon@rhinometric.com
+      
+      # License file generation settings
+      LICENSE_ENCRYPTION_KEY: ${LICENSE_ENCRYPTION_KEY:-default-key-change-me}
+      
+      # API settings
+      API_HOST: 0.0.0.0
+      API_PORT: 5000
+      
+      # URLs for email templates (GitHub raw URLs)
+      INSTALLER_TRIAL_URL: https://raw.githubusercontent.com/Rafael2712/rhinometric-overview/main/installers/install-rhinometric.sh
+      MANUAL_URL: https://raw.githubusercontent.com/Rafael2712/rhinometric-overview/main/docs/manual_usuario.md
+      GUIDE_URL: https://raw.githubusercontent.com/Rafael2712/rhinometric-overview/main/docs/guia_instalacion.md
+    
+    ports:
+      - "5000:5000"
+    
+    volumes:
+      - ${HOME}/rhinometric_data_v2.5/license-server/logs:/app/logs
+      - ${HOME}/rhinometric_data_v2.5/license-server/licenses:/app/licenses
+    
+    networks:
+      - rhinometric_network
+    
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/api/health"]
+      interval: 20s
+      timeout: 10s
+      retries: 3
+      start_period: 45s
+    
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.2'
+          memory: 256M
+    
+    restart: unless-stopped
+
+  # ========================================
+  # LICENSE UI - Web Interface for License Management
+  # ========================================
+  license-ui:
+    build:
+      context: ./license-management-ui
+      dockerfile: Dockerfile
+    container_name: rhinometric-license-ui
+    
+    environment:
+      # License API endpoint (internal Docker network)
+      VITE_API_URL: http://license-server-v2:5000
+      
+      # Public API endpoint (for browser requests)
+      VITE_PUBLIC_API_URL: http://${SERVER_IP:-localhost}:5000
+    
+    ports:
+      - "8093:8092"
+    
+    networks:
+      - rhinometric_network
+    
+    depends_on:
+      license-server-v2:
+        condition: service_healthy
+    
+    healthcheck:
+      test: ["CMD", "sh", "-c", "wget --spider -q -O /dev/null http://localhost:8092/ || exit 0"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    
+    deploy:
+      resources:
+        limits:
+          cpus: '0.3'
+          memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
+    
+    restart: unless-stopped
+
+  # ========================================
+  # POSTGRESQL - Main Database
+  # ========================================
+  postgres:
+    image: postgres:15.10-alpine
+    container_name: rhinometric-postgres
+    
+    environment:
+      POSTGRES_USER: rhinometric
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-rhinometric}
+      POSTGRES_DB: rhinometric_licenses
+      
+      # Performance tuning for license management workload
+      POSTGRES_INITDB_ARGS: "-E UTF8 --locale=en_US.UTF-8"
+    
+    ports:
+      - "5432:5432"
+    
+    volumes:
+      - ${HOME}/rhinometric_data_v2.5/postgres:/var/lib/postgresql/data
+      - ./license-server-v2/init_db.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    
+    networks:
+      - rhinometric_network
+    
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rhinometric -d rhinometric_licenses"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 45s
+    
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.2'
+          memory: 256M
+    
+    restart: unless-stopped
+
+  # ========================================
+  # REDIS - Cache & Session Store
+  # ========================================
+  redis:
+    image: redis:7.2-alpine
+    container_name: rhinometric-redis
+    
+    command: redis-server --requirepass ${REDIS_PASSWORD:-rhinometric} --maxmemory 200mb --maxmemory-policy allkeys-lru
+    
+    ports:
+      - "6379:6379"
+    
+    volumes:
+      - ${HOME}/rhinometric_data_v2.5/redis:/data
+    
+    networks:
+      - rhinometric_network
+    
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    
+    deploy:
+      resources:
+        limits:
+          cpus: '0.2'
+          memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
+    
+    restart: unless-stopped
+
+  # ========================================
+  # RHINOMETRIC CONSOLE - Backend API Gateway
+  # ========================================
+  rhinometric-console-backend:
+    build:
+      context: ./rhinometric-console/backend
+      dockerfile: Dockerfile
+    container_name: rhinometric-console-backend
+    
+    ports:
+      - "8105:8105"
+    
+    environment:
+      # API Settings
+      API_TITLE: "Rhinometric Console API Gateway"
+      API_VERSION: "2.5.0"
+      API_PREFIX: "/api"
+      
+      # Security
+      SECRET_KEY: "${SECRET_KEY:-your-secret-key-change-in-production-min-32-chars}"
+      ALGORITHM: "HS256"
+      ACCESS_TOKEN_EXPIRE_MINUTES: "1440"
+      
+      # CORS (allow frontend access)
+      CORS_ORIGINS: '["http://localhost:3002","http://rhinometric-console-frontend:3002","http://${SERVER_IP:-localhost}:3002"]'
+      
+      # License Server connection (internal)
+      LICENSE_VALIDATOR_URL: "http://license-server-v2:5000"
+      
+      # Database (shared with License Server)
+      DATABASE_URL: postgresql://rhinometric:${POSTGRES_PASSWORD:-rhinometric}@postgres:5432/rhinometric_licenses
+      
+      # Admin Credentials
+      ADMIN_USERNAME: "${ADMIN_USERNAME:-admin}"
+      ADMIN_PASSWORD: "${ADMIN_PASSWORD:-admin}"
+      
+      # License validation key
+      RHINOMETRIC_LICENSE_KEY: "${RHINOMETRIC_LICENSE_KEY:-}"
+    
+    volumes:
+      - ${HOME}/rhinometric_data_v2.5/console-backend/logs:/app/logs
+    
+    networks:
+      - rhinometric_network
+    
+    depends_on:
+      postgres:
+        condition: service_healthy
+      license-server-v2:
+        condition: service_healthy
+    
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8105/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    
+    deploy:
+      resources:
+        limits:
+          cpus: '0.4'
+          memory: 384M
+        reservations:
+          cpus: '0.2'
+          memory: 192M
+    
+    restart: unless-stopped
+
+  # ========================================
+  # RHINOMETRIC CONSOLE - Frontend UI (Admin Panel)
+  # ========================================
+  rhinometric-console-frontend:
+    build:
+      context: ./rhinometric-console/frontend
+      dockerfile: Dockerfile
+    container_name: rhinometric-console-frontend
+    
+    ports:
+      - "3002:3002"
+    
+    environment:
+      # Backend API URL (for browser requests)
+      VITE_API_URL: http://${SERVER_IP:-localhost}:8105
+    
+    networks:
+      - rhinometric_network
+    
+    depends_on:
+      rhinometric-console-backend:
+        condition: service_healthy
+    
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3002/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    
+    deploy:
+      resources:
+        limits:
+          cpus: '0.2'
+          memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
+    
+    restart: unless-stopped
+
+# ========================================
+# NETWORKS
+# ========================================
+networks:
+  rhinometric_network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.25.0.0/16
+
+# ========================================
+# VOLUMES
+# ========================================
+volumes:
+  postgres-data:
+    driver: local
+  redis-data:
+    driver: local

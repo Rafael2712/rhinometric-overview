@@ -1,0 +1,100 @@
+# ==========================================
+# RHINOMETRIC v2.4.0 - API Connector Stack
+# ==========================================
+# Docker Compose override for API Connector module
+#
+# Usage:
+#   docker compose -f docker-compose-v2.2.0.yml -f docker-compose-api-connector.yml up -d
+
+version: '3.8'
+
+services:
+  # ==================================
+  # API Connector Backend (FastAPI)
+  # ==================================
+  api-connector:
+    build:
+      context: ./api-connector
+      dockerfile: Dockerfile
+    image: rhinometric/api-connector:2.4.0
+    container_name: rhinometric-api-connector
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - PYTHONUNBUFFERED=1
+      - LOG_LEVEL=info
+      - CORS_ORIGINS=http://localhost:3000,http://grafana:3000
+    networks:
+      - rhinometric-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    labels:
+      com.rhinometric.service: "api-connector"
+      com.rhinometric.version: "2.4.0"
+      com.rhinometric.module: "visual-ui"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ==================================
+  # Grafana with API Connector Plugin
+  # ==================================
+  grafana-visual:
+    build:
+      context: .
+      dockerfile: ./ui-visual/Dockerfile.grafana
+    image: rhinometric/grafana-visual:2.4.0
+    container_name: rhinometric-grafana-visual
+    restart: unless-stopped
+    ports:
+      - "3001:3000"  # Puerto alternativo para no conflictar con Grafana existente
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=rhinometric2024
+      - GF_INSTALL_PLUGINS=
+      - GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS=rhinometric-api-connector
+      - GF_SERVER_ROOT_URL=http://localhost:3001
+      - GF_ANALYTICS_REPORTING_ENABLED=false
+      - GF_ANALYTICS_CHECK_FOR_UPDATES=false
+      - GF_LOG_LEVEL=info
+    volumes:
+      - grafana-visual-data:/var/lib/grafana
+      - ./ui-visual/dist:/var/lib/grafana/plugins/rhinometric-api-connector/dist:ro
+    networks:
+      - rhinometric-network
+    depends_on:
+      api-connector:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    labels:
+      com.rhinometric.service: "grafana-visual"
+      com.rhinometric.version: "2.4.0"
+      com.rhinometric.module: "visual-ui"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  rhinometric-network:
+    external: true
+    name: rhinometric_default
+
+volumes:
+  grafana-visual-data:
+    name: rhinometric_grafana_visual_data
+    labels:
+      com.rhinometric.volume: "grafana-visual"

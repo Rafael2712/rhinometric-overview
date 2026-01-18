@@ -1,0 +1,470 @@
+version: '3.8'
+services:
+  license-server-v2:
+    build:
+      context: ./license-server-v2
+      dockerfile: Dockerfile
+    container_name: rhinometric-license-server-v2
+    environment:
+      DATABASE_URL: postgresql://rhinometric:${POSTGRES_PASSWORD:-rhinometric}@postgres:5432/rhinometric
+      REDIS_URL: redis://:${REDIS_PASSWORD:-rhinometric}@redis:6379
+      PYTHONUNBUFFERED: 1
+      SMTP_HOST: smtp.zoho.eu
+      SMTP_PORT: 465
+      SMTP_USER: rafael.canelon@rhinometric.com
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-271211Rc$}
+      SMTP_FROM: rafael.canelon@rhinometric.com
+    ports:
+    - 5000:5000
+    volumes:
+    - ${HOME}/rhinometric_data_v2.2/license-server/logs:/app/logs
+    networks:
+    - rhinometric_network_v22
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: '0.4'
+          memory: 512M
+    restart: unless-stopped
+  license-ui:
+    build:
+      context: ./license-management-ui
+      dockerfile: Dockerfile
+    container_name: rhinometric-license-ui
+    ports:
+    - 8092:8092
+    networks:
+    - rhinometric_network_v22
+    depends_on:
+    - license-server-v2
+    deploy:
+      resources:
+        limits:
+          cpus: '0.4'
+          memory: 512M
+    restart: unless-stopped
+  postgres:
+    image: postgres:15.10-alpine
+    container_name: rhinometric-postgres
+    environment:
+      POSTGRES_USER: rhinometric
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-rhinometric}
+      POSTGRES_DB: rhinometric
+    ports:
+    - 5432:5432
+    volumes:
+    - ${HOME}/rhinometric_data_v2.2/postgres:/var/lib/postgresql/data
+    - ./init-db:/docker-entrypoint-initdb.d:ro
+    networks:
+    - rhinometric_network_v22
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+    restart: unless-stopped
+  redis:
+    image: redis:7.2-alpine
+    container_name: rhinometric-redis
+    command: redis-server --requirepass ${REDIS_PASSWORD:-rhinometric} --maxmemory
+      200mb --maxmemory-policy allkeys-lru
+    ports:
+    - 6379:6379
+    volumes:
+    - ${HOME}/rhinometric_data_v2.2/redis:/data
+    networks:
+    - rhinometric_network_v22
+    deploy:
+      resources:
+        limits:
+          cpus: '0.2'
+          memory: 256M
+    restart: unless-stopped
+  prometheus:
+    image: prom/prometheus:v2.53.0
+    container_name: rhinometric-prometheus
+    ports:
+    - 9090:9090
+    volumes:
+    - ./config/prometheus-v2.2.yml:/etc/prometheus/prometheus.yml:ro
+    - ${HOME}/rhinometric_data_v2.2/prometheus:/prometheus
+    - ./licenses:/opt/rhinometric/license:ro
+    - ./security:/security:ro
+    - ./entrypoint-prometheus-licensed.sh:/entrypoint-licensed.sh:ro
+    networks:
+    - rhinometric_network_v22
+    deploy:
+      resources:
+        limits:
+          cpus: '0.8'
+          memory: 1536M
+    restart: unless-stopped
+  loki:
+    image: grafana/loki:3.0.0
+    container_name: rhinometric-loki
+    ports:
+    - 3100:3100
+    volumes:
+    - ./config/loki-config.yml:/etc/loki/loki-config.yml:ro
+    - ${HOME}/rhinometric_data_v2.2/loki:/loki
+    - ./licenses:/opt/rhinometric/license:ro
+    - ./security:/security:ro
+    - ./entrypoint-loki-licensed.sh:/entrypoint-licensed.sh:ro
+    networks:
+    - rhinometric_network_v22
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1024M
+    restart: unless-stopped
+  tempo:
+    image: grafana/tempo:2.6.0
+    container_name: rhinometric-tempo
+    command: -config.file=/etc/tempo/tempo.yml
+    volumes:
+    - ./config/tempo-config.yml:/etc/tempo/tempo.yml:ro
+    - ${HOME}/rhinometric_data_v2.2/tempo:/tmp/tempo
+    ports:
+    - 3200:3200
+    - 14268:14268
+    - 14250:14250
+    networks:
+    - rhinometric_network_v22
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+    restart: unless-stopped
+  grafana:
+    image: grafana/grafana:10.4.0
+    container_name: rhinometric-grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+      GF_SERVER_ROOT_URL: http://localhost:3000
+      GF_INSTALL_PLUGINS: ''
+    ports:
+    - 3000:3000
+    volumes:
+    - ${HOME}/rhinometric_data_v2.2/grafana:/var/lib/grafana
+    - ./grafana/provisioning:/etc/grafana/provisioning:ro
+    - ./licenses:/opt/rhinometric/license:ro
+    - ./security:/security:ro
+    - ./entrypoint-grafana-licensed.sh:/entrypoint-licensed.sh:ro
+    networks:
+    - rhinometric_network_v22
+    depends_on:
+    - prometheus
+    - loki
+    - tempo
+    deploy:
+      resources:
+        limits:
+          cpus: '0.6'
+          memory: 800M
+    restart: unless-stopped
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.91.0
+    container_name: rhinometric-otel-collector
+    command: --config=/etc/otel-collector-config.yml
+    volumes:
+    - ./config/otel-collector-config.yml:/etc/otel-collector-config.yml:ro
+    ports:
+    - 4317:4317
+    - 4318:4318
+    networks:
+    - rhinometric_network_v22
+    depends_on:
+    - prometheus
+    - loki
+    - tempo
+    deploy:
+      resources:
+        limits:
+          cpus: '0.3'
+          memory: 512M
+    restart: unless-stopped
+  api-proxy:
+    build:
+      context: ./api-proxy
+      dockerfile: Dockerfile
+    container_name: rhinometric-api-proxy
+    environment:
+      PORT: 8081
+      PROMETHEUS_METRICS_ENABLED: 'true'
+    ports:
+    - 8081:8081
+    volumes:
+    - ./api-proxy/configs:/app/configs
+    networks:
+    - rhinometric_network_v22
+    depends_on:
+    - prometheus
+    deploy:
+      resources:
+        limits:
+          cpus: '0.3'
+          memory: 256M
+    restart: unless-stopped
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    container_name: rhinometric-alertmanager
+    command:
+    - --config.file=/etc/alertmanager/alertmanager.yml
+    - --storage.path=/alertmanager
+    ports:
+    - 9093:9093
+    volumes:
+    - ./config/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    - ${HOME}/rhinometric_data_v2.2/alertmanager:/alertmanager
+    networks:
+    - rhinometric_network_v22
+    deploy:
+      resources:
+        limits:
+          cpus: '0.2'
+          memory: 256M
+    restart: unless-stopped
+  promtail:
+    image: grafana/promtail:3.0.0
+    container_name: rhinometric-promtail
+    command: -config.file=/etc/promtail/promtail-config.yml
+    volumes:
+    - ./config/promtail-config.yml:/etc/promtail/promtail-config.yml:ro
+    - /var/log:/var/log:ro
+    - /var/lib/docker/containers:/var/lib/docker/containers:ro
+    networks:
+    - rhinometric_network_v22
+    depends_on:
+    - loki
+    deploy:
+      resources:
+        limits:
+          cpus: '0.2'
+          memory: 256M
+    restart: unless-stopped
+  node-exporter:
+    image: prom/node-exporter:v1.7.0
+    container_name: rhinometric-node-exporter
+    command:
+    - --path.procfs=/host/proc
+    - --path.sysfs=/host/sys
+    - --path.rootfs=/rootfs
+    - --collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)
+    ports:
+    - 9100:9100
+    volumes:
+    - /proc:/host/proc:ro
+    - /sys:/host/sys:ro
+    - /:/rootfs:ro
+    networks:
+    - rhinometric_network_v22
+    deploy:
+      resources:
+        limits:
+          cpus: '0.1'
+          memory: 128M
+    restart: unless-stopped
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    container_name: rhinometric-cadvisor
+    ports:
+    - 8080:8080
+    volumes:
+    - /:/rootfs:ro
+    - /var/run:/var/run:rw
+    - /sys:/sys:ro
+    - /var/lib/docker:/var/lib/docker:ro
+    networks:
+    - rhinometric_network_v22
+    deploy:
+      resources:
+        limits:
+          cpus: '0.3'
+          memory: 512M
+    restart: unless-stopped
+  blackbox-exporter:
+    image: prom/blackbox-exporter:v0.25.0
+    container_name: rhinometric-blackbox-exporter
+    command:
+    - --config.file=/etc/blackbox/config.yml
+    ports:
+    - 9115:9115
+    volumes:
+    - ./config/blackbox-config.yml:/etc/blackbox/config.yml:ro
+    networks:
+    - rhinometric_network_v22
+    deploy:
+      resources:
+        limits:
+          cpus: '0.1'
+          memory: 128M
+    restart: unless-stopped
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:v0.15.0
+    container_name: rhinometric-postgres-exporter
+    environment:
+      DATA_SOURCE_NAME: postgresql://rhinometric:${POSTGRES_PASSWORD:-rhinometric}@postgres:5432/rhinometric?sslmode=disable
+    ports:
+    - 9187:9187
+    networks:
+    - rhinometric_network_v22
+    depends_on:
+    - postgres
+    deploy:
+      resources:
+        limits:
+          cpus: '0.1'
+          memory: 128M
+    restart: unless-stopped
+  rhinometric-veriverde:
+    build:
+      context: ./rhinometric-veriverde
+      dockerfile: Dockerfile
+    container_name: rhinometric-veriverde
+    environment:
+      VERIVERDE_PORT: 9200
+      VERIVERDE_RENEWABLE_PERCENT: ${RENEWABLE_PERCENT:-0}
+      CO2_FACTOR_KG_PER_KWH: ${CO2_FACTOR:-0.233}
+    ports:
+    - 9200:9200
+    networks:
+    - rhinometric_network_v22
+    deploy:
+      resources:
+        limits:
+          cpus: '0.1'
+          memory: 128M
+    restart: unless-stopped
+  rhinometric-ai-anomaly:
+    build:
+      context: ./rhinometric-ai-anomaly
+      dockerfile: Dockerfile
+    container_name: rhinometric-ai-anomaly
+    environment:
+      PROMETHEUS_URL: http://prometheus:9090
+      CHECK_INTERVAL_SECONDS: 300
+      LOOKBACK_HOURS: 24
+      PORT: 8085
+    ports:
+    - 8085:8085
+    networks:
+    - rhinometric_network_v22
+    depends_on:
+    - prometheus
+    deploy:
+      resources:
+        limits:
+          cpus: '0.3'
+          memory: 512M
+    restart: unless-stopped
+  rhinometric-backup:
+    build:
+      context: ./rhinometric-backup
+      dockerfile: Dockerfile
+    container_name: rhinometric-backup
+    environment:
+      BACKUP_SCHEDULE: 0 2 * * *
+      BACKUP_RETENTION_DAYS: 30
+      BACKUP_COMPONENTS: prometheus,loki,tempo,grafana
+      RUN_IMMEDIATE: 'false'
+    volumes:
+    - ${HOME}/rhinometric_data_v2.2:/data:ro
+    - ${HOME}/rhinometric_backups:/backups
+    - ./scripts/rmetricctl:/usr/local/bin/rmetricctl:ro
+    networks:
+    - rhinometric_network_v22
+    deploy:
+      resources:
+        limits:
+          cpus: '0.2'
+          memory: 256M
+    restart: unless-stopped
+  rhinometric-report:
+    build:
+      context: ./rhinometric-report
+      dockerfile: Dockerfile
+    container_name: rhinometric-report
+    environment:
+      PROMETHEUS_URL: http://prometheus:9090
+      ANOMALY_SERVICE_URL: http://rhinometric-ai-anomaly:8085
+      REPORT_SCHEDULE: weekly
+      SMTP_HOST: smtp.zoho.eu
+      SMTP_PORT: 587
+      SMTP_USER: rafael.canelon@rhinometric.com
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-271211Rc$}
+      REPORT_RECIPIENTS: ${REPORT_RECIPIENTS:-rafael.canelon@rhinometric.com}
+      RUN_IMMEDIATE: 'false'
+    networks:
+    - rhinometric_network_v22
+    depends_on:
+    - prometheus
+    - rhinometric-ai-anomaly
+    deploy:
+      resources:
+        limits:
+          cpus: '0.2'
+          memory: 512M
+    restart: unless-stopped
+  license-monitor:
+    build:
+      context: ./license-monitor
+      dockerfile: Dockerfile
+    container_name: rhinometric-license-monitor
+    environment:
+      SMTP_HOST: ${SMTP_HOST:-smtp.zoho.eu}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-rafael.canelon@rhinometric.com}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-271211Rc$}
+      SMTP_FROM: ${SMTP_FROM:-rafael.canelon@rhinometric.com}
+      ALERT_EMAIL_TO: ${ALERT_EMAIL_TO:-rafael.canelon@rhinometric.com}
+      CHECK_INTERVAL: 43200
+      TZ: ${TZ:-Europe/Madrid}
+    volumes:
+    - ./licenses:/opt/rhinometric/license:ro
+    - ./security:/security:ro
+    - ${HOME}/rhinometric_data_v2.2/license-monitor:/tmp
+    - ${HOME}/rhinometric_data_v2.2/license-monitor/logs:/var/log/rhinometric
+    networks:
+    - rhinometric_network_v22
+    deploy:
+      resources:
+        limits:
+          cpus: '0.1'
+          memory: 128M
+    restart: unless-stopped
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: rhinometric-nginx
+    ports:
+    - 80:80
+    - 443:443
+    volumes:
+    - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    - ${HOME}/rhinometric_data_v2.2/nginx/logs:/var/log/nginx
+    networks:
+    - rhinometric_network_v22
+    depends_on:
+      grafana:
+        condition: service_healthy
+      license-server-v2:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: '0.2'
+          memory: 256M
+    restart: unless-stopped
+networks:
+  rhinometric_network_v22:
+    driver: bridge
+    ipam:
+      config:
+      - subnet: 172.22.0.0/16

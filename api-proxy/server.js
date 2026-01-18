@@ -67,7 +67,8 @@ const logger = winston.createLogger({
 // PROMETHEUS METRICS
 // ═══════════════════════════════════════════════════════════════════════════
 
-const register = new promClient.Register();
+// FIX: prom-client v15+ - Register is already instantiated
+const register = promClient.register;
 
 promClient.collectDefaultMetrics({ register, prefix: 'api_proxy_' });
 

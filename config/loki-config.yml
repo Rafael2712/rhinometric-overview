@@ -32,6 +32,9 @@ storage_config:
 compactor:
   working_directory: /loki/compactor
   compaction_interval: 5m
+  retention_enabled: true
+  retention_delete_delay: 2h
+  retention_delete_worker_count: 150
 limits_config:
   ingestion_rate_mb: 8
   ingestion_burst_size_mb: 16
@@ -41,6 +44,7 @@ limits_config:
   max_query_length: 720h
   max_query_parallelism: 32
   query_timeout: 2m
+  retention_period: 168h  # 7 días de retención para prevenir crecimiento descontrolado
 query_range:
   parallelise_shardable_queries: true
 ruler:

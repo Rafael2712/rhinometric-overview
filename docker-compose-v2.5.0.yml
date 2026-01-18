@@ -126,6 +126,9 @@ services:
   prometheus:
     image: prom/prometheus:v2.53.0
     container_name: rhinometric-prometheus
+    entrypoint: ["/entrypoint-licensed.sh"]
+    environment:
+      RHINOMETRIC_LICENSE_KEY: "${RHINOMETRIC_LICENSE_KEY:-}"
     ports:
     - 9090:9090
     volumes:
@@ -137,6 +140,9 @@ services:
     - ./entrypoint-prometheus-licensed.sh:/entrypoint-licensed.sh:ro
     networks:
     - rhinometric_network_v22
+    depends_on:
+      license-validator:
+        condition: service_healthy
     healthcheck:
       test:
       - CMD
@@ -157,6 +163,9 @@ services:
     image: grafana/loki:3.0.0
     container_name: rhinometric-loki
     user: "0"
+    entrypoint: ["/entrypoint-licensed.sh"]
+    environment:
+      RHINOMETRIC_LICENSE_KEY: "${RHINOMETRIC_LICENSE_KEY:-}"
     ports:
     - 3100:3100
     volumes:
@@ -167,6 +176,9 @@ services:
     - ./entrypoint-loki-licensed.sh:/entrypoint-licensed.sh:ro
     networks:
     - rhinometric_network_v22
+    depends_on:
+      license-validator:
+        condition: service_healthy
     healthcheck:
       test:
       - CMD
@@ -222,7 +234,9 @@ services:
   grafana:
     image: grafana/grafana:10.4.0
     container_name: rhinometric-grafana
+    entrypoint: ["/entrypoint-licensed.sh"]
     environment:
+      RHINOMETRIC_LICENSE_KEY: "${RHINOMETRIC_LICENSE_KEY:-}"
       GF_SECURITY_ADMIN_USER: ${GRAFANA_USER:-admin}
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
       GF_SERVER_ROOT_URL: https://app.rhinometric.com
@@ -1342,6 +1356,34 @@ services:
       - grafana
 
   # ========================================
+  # LICENSE VALIDATOR - Centralized License Validation
+  # ========================================
+  license-validator:
+    build:
+      context: ./license-validator
+      dockerfile: Dockerfile
+    container_name: rhinometric-license-validator
+    ports:
+      - "8099:8099"
+    environment:
+      LICENSE_SERVER_URL: "http://54.197.192.198:8090"
+      CACHE_TTL_SECONDS: "300"
+    networks:
+      - rhinometric_network_v22
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8099/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.2'
+          memory: 256M
+    restart: unless-stopped
+
+  # ========================================
   # RHINOMETRIC CONSOLE - Backend API Gateway
   # ========================================
   rhinometric-console-backend:
@@ -1368,8 +1410,8 @@ services:
       # External Services (Docker network DNS)
       PROMETHEUS_URL: "http://prometheus:9090"
       AI_ANOMALY_URL: "http://rhinometric-ai-anomaly:8085"
-      LICENSE_VALIDATOR_URL: "http://rhinometric-license-server-v2:5000"
-      RHINOMETRIC_LICENSE_KEY: "DC67oXWd93slMMKSvsMVl3U1-pmiirCRvvBuXDwPH-Y"
+      LICENSE_VALIDATOR_URL: "http://license-validator:8099"
+      RHINOMETRIC_LICENSE_KEY: "${RHINOMETRIC_LICENSE_KEY:-}"
       ALERTMANAGER_URL: "http://alertmanager:9093"
       GRAFANA_URL: "http://grafana:3000"
       LOKI_URL: "http://loki:3100"
@@ -1393,6 +1435,8 @@ services:
       - rhinometric_network_v22
     
     depends_on:
+      license-validator:
+        condition: service_healthy
       prometheus:
         condition: service_healthy
       grafana:

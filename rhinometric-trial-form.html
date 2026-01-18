@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solicitar Trial - Rhinometric</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 600px;
+            width: 100%;
+            padding: 40px;
+        }
+        h1 {
+            color: #667eea;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            color: #374151;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+        input[type="text"],
+        input[type="email"] {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 16px;
+        }
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        .checkbox-group {
+            background: #f9fafb;
+            padding: 15px;
+            border-radius: 6px;
+            border: 1px solid #e5e7eb;
+        }
+        .checkbox-group label {
+            display: flex;
+            align-items: flex-start;
+            font-weight: normal;
+        }
+        .checkbox-group input[type="checkbox"] {
+            margin-top: 4px;
+            margin-right: 10px;
+            width: 18px;
+            height: 18px;
+        }
+        button {
+            width: 100%;
+            background: #10b981;
+            color: white;
+            padding: 15px;
+            border: none;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        button:hover:not(:disabled) {
+            background: #059669;
+            transform: translateY(-2px);
+        }
+        button:disabled {
+            background: #6b7280;
+            cursor: not-allowed;
+        }
+        .message {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 6px;
+            display: none;
+        }
+        .message.success {
+            background: #d1fae5;
+            color: #065f46;
+            border: 2px solid #10b981;
+        }
+        .message.error {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 2px solid #dc2626;
+        }
+        .license-info {
+            background: white;
+            padding: 20px;
+            border-radius: 6px;
+            margin: 15px 0;
+        }
+        .license-info p {
+            margin: 8px 0;
+        }
+        code {
+            background: #f3f4f6;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Solicitar Trial Rhinometric</h1>
+        <p class="subtitle">14 días gratis - Hasta 5 hosts</p>
+        
+        <form id="trialForm">
+            <div class="form-group">
+                <label for="name">Nombre Completo *</label>
+                <input type="text" id="name" required placeholder="Juan Pérez">
+            </div>
+            
+            <div class="form-group">
+                <label for="email">Email Corporativo *</label>
+                <input type="email" id="email" required placeholder="juan.perez@empresa.com">
+            </div>
+            
+            <div class="form-group">
+                <label for="company">Empresa *</label>
+                <input type="text" id="company" required placeholder="Tu Empresa SL">
+            </div>
+            
+            <div class="form-group checkbox-group">
+                <label>
+                    <input type="checkbox" id="gdpr" required>
+                    <span style="font-size: 14px; line-height: 1.6;">
+                        Acepto la Política de Privacidad y autorizo el tratamiento de mis datos para recibir la licencia trial.
+                    </span>
+                </label>
+            </div>
+            
+            <button type="submit" id="submitBtn">
+                ✅ Generar Licencia Trial (14 días gratis)
+            </button>
+            
+            <div id="message" class="message"></div>
+        </form>
+    </div>
+
+    <script>
+        document.getElementById('trialForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const submitBtn = document.getElementById('submitBtn');
+            const messageDiv = document.getElementById('message');
+            const name = document.getElementById('name').value;
+            const email = document.getElementById('email').value;
+            const company = document.getElementById('company').value;
+            
+            // Deshabilitar botón
+            submitBtn.disabled = true;
+            submitBtn.textContent = '⏳ Generando licencia...';
+            messageDiv.style.display = 'none';
+            
+            try {
+                const formData = new FormData();
+                formData.append('action', 'rhinometric_trial');
+                formData.append('customer_name', name);
+                formData.append('client_email', email);
+                formData.append('client_company', company);
+                
+                const response = await fetch('/wp-admin/admin-ajax.php', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                console.log('Response:', result);
+                
+                if (result.success && result.data) {
+                    const data = result.data;
+                    
+                    messageDiv.className = 'message success';
+                    messageDiv.style.display = 'block';
+                    messageDiv.innerHTML = `
+                        <div style="text-align: center;">
+                            <div style="font-size: 48px; margin-bottom: 15px;">✅</div>
+                            <strong style="font-size: 20px;">¡Licencia Trial Creada!</strong>
+                            
+                            <div class="license-info">
+                                <p><strong>📧 Email enviado a:</strong> ${email}</p>
+                                <p><strong>🔑 Clave:</strong> <code>${data.license_key || 'Generada'}</code></p>
+                                <p><strong>⏰ Válida hasta:</strong> ${data.expires_at ? new Date(data.expires_at).toLocaleDateString('es-ES', {year: 'numeric', month: 'long', day: 'numeric'}) : '14 días'}</p>
+                                <p><strong>👤 Para:</strong> ${name} (${company})</p>
+                            </div>
+                            
+                            <div style="background: #fef3c7; color: #92400e; padding: 15px; border-radius: 6px; margin: 15px 0; font-size: 14px;">
+                                <strong>📬 En los próximos minutos recibirás:</strong><br>
+                                ✉️ Email con tu clave de licencia trial<br>
+                                📥 Enlace de descarga del instalador Linux<br>
+                                📖 Guía de instalación paso a paso<br><br>
+                                <small>⚠️ Si no lo recibes en 5 min, revisa <strong>spam/correo no deseado</strong></small>
+                            </div>
+                            
+                            <p style="margin-top: 15px; font-size: 13px;">
+                                ¿Problemas? Escribe a <a href="mailto:rafael.canelon@rhinometric.com" style="color: #065f46; text-decoration: underline;">rafael.canelon@rhinometric.com</a>
+                            </p>
+                        </div>
+                    `;
+                    
+                    // Limpiar formulario
+                    document.getElementById('trialForm').reset();
+                    
+                } else {
+                    throw new Error(result.data?.message || 'Error al crear licencia');
+                }
+                
+            } catch (error) {
+                console.error('Error:', error);
+                messageDiv.className = 'message error';
+                messageDiv.style.display = 'block';
+                messageDiv.innerHTML = `
+                    <strong>⚠️ Error al generar licencia</strong><br>
+                    ${error.message}<br><br>
+                    Por favor, contacta con <a href="mailto:rafael.canelon@rhinometric.com" style="color: #991b1b; text-decoration: underline;">rafael.canelon@rhinometric.com</a>
+                `;
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = '✅ Generar Licencia Trial (14 días gratis)';
+            }
+        });
+    </script>
+</body>
+</html>

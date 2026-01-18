@@ -1,0 +1,13 @@
+apiVersion: 1
+
+plugins:
+  - name: rhinometric-api-connector
+    type: panel
+    version: 2.4.0
+    path: /var/lib/grafana/plugins/rhinometric-api-connector
+    enabled: true
+    preload: false
+    jsonData:
+      apiUrl: http://api-connector:8000
+      autoRefresh: true
+      refreshInterval: 30
