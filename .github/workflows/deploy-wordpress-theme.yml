@@ -18,6 +18,8 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
+          set-safe-directory: true
+          persist-credentials: false
 
       - name: Validate required secrets
         shell: bash
