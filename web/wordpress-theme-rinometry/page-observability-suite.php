@@ -4,7 +4,7 @@ get_header();
 <section class="section">
   <div class="container">
     <h1 class="section-title"><?php esc_html_e('Observability Suite', 'rinometry'); ?></h1>
-    <p class="section-lead"><?php esc_html_e('Track system health with metrics, logs, traces, curated dashboards, and alerting workflows.', 'rinometry'); ?></p>
+    <p class="section-lead"><?php esc_html_e('Monitor system health across metrics, logs, traces, curated dashboards, and alerting workflows.', 'rinometry'); ?></p>
     <div class="grid">
       <div class="card">
         <div class="card-media">
@@ -40,7 +40,7 @@ get_header();
   <div class="container split">
     <div>
       <h2 class="section-title"><?php esc_html_e('Dashboards and alerts', 'rinometry'); ?></h2>
-      <p class="section-lead"><?php esc_html_e('Prebuilt dashboards and alert rules help teams respond faster with less tuning.', 'rinometry'); ?></p>
+      <p class="section-lead"><?php esc_html_e('Prebuilt dashboards and alert rules reduce setup time and improve response consistency.', 'rinometry'); ?></p>
     </div>
     <div class="card">
       <div class="card-media">

@@ -111,6 +111,18 @@ msgstr ""
 msgid "Website"
 msgstr ""
 
+msgid "Deploy Rhinometric on your infrastructure to keep telemetry, retention, and access under your control."
+msgstr ""
+
+msgid "Monitor system health across metrics, logs, traces, curated dashboards, and alerting workflows."
+msgstr ""
+
+msgid "Prebuilt dashboards and alert rules reduce setup time and improve response consistency."
+msgstr ""
+
+msgid "Security is built into Rhinometric—from access controls to hardened deployments. We never claim certifications we do not hold."
+msgstr ""
+
 msgid "Platform"
 msgstr ""
 

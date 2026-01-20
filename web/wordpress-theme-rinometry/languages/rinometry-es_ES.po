@@ -136,8 +136,8 @@ msgstr "Leads de demo"
 msgid "Demo request form"
 msgstr "Formulario de solicitud de demo"
 
-msgid "Deploy Rhinometric in your own infrastructure to keep sensitive telemetry within your control."
-msgstr "Despliega Rhinometric en tu propia infraestructura para mantener la telemetría sensible bajo tu control."
+msgid "Deploy Rhinometric on your infrastructure to keep telemetry, retention, and access under your control."
+msgstr "Despliega Rhinometric en tu infraestructura para mantener telemetría, retención y acceso bajo tu control."
 
 msgid "Deploy in your environment with quick-start assets and secure defaults."
 msgstr "Despliega en tu entorno con recursos de arranque rápido y configuraciones seguras."
@@ -400,8 +400,8 @@ msgstr "Incluye un mensaje breve."
 msgid "Connect Prometheus-style metrics pipelines and reuse existing alerting rules when appropriate."
 msgstr "Conecta pipelines de métricas estilo Prometheus y reutiliza reglas de alertas existentes cuando sea apropiado."
 
-msgid "Prebuilt dashboards and alert rules help teams respond faster with less tuning."
-msgstr "Dashboards y reglas de alertas preconfiguradas ayudan a responder más rápido con menos ajuste."
+msgid "Prebuilt dashboards and alert rules reduce setup time and improve response consistency."
+msgstr "Dashboards preconfigurados y reglas de alertas reducen el tiempo de configuración y mejoran la consistencia de respuesta."
 
 msgid "Pricing and checkout workflow"
 msgstr "Flujo de pricing y checkout"
@@ -511,8 +511,8 @@ msgstr "La verificación de seguridad falló. Inténtalo de nuevo."
 msgid "Security icon"
 msgstr "Icono de seguridad"
 
-msgid "Security is built into Rhinometric, from access controls to infrastructure hardening. We do not claim certifications that are not in place."
-msgstr "La seguridad está integrada en Rhinometric, desde controles de acceso hasta hardening de infraestructura. No afirmamos certificaciones que no estén confirmadas."
+msgid "Security is built into Rhinometric—from access controls to hardened deployments. We never claim certifications we do not hold."
+msgstr "La seguridad está integrada en Rhinometric, desde controles de acceso hasta despliegues endurecidos. Nunca afirmamos certificaciones que no poseemos."
 
 msgid "Send download link"
 msgstr "Enviar enlace de descarga"
@@ -559,8 +559,8 @@ msgstr "Trazas"
 msgid "Traces icon"
 msgstr "Icono de trazas"
 
-msgid "Track system health with metrics, logs, traces, curated dashboards, and alerting workflows."
-msgstr "Monitorea la salud del sistema con métricas, logs, trazas, dashboards curados y flujos de alertas."
+msgid "Monitor system health across metrics, logs, traces, curated dashboards, and alerting workflows."
+msgstr "Monitorea la salud del sistema en métricas, logs, trazas, dashboards curados y flujos de alertas."
 
 msgid "Tune retention, encryption, and access to meet regulatory requirements."
 msgstr "Ajusta retención, cifrado y acceso para cumplir requisitos regulatorios."
