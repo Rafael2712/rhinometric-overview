@@ -1,9 +1,9 @@
 /*
-Theme Name: RHINOMETRIC Enterprise
+Theme Name: Rhinometric Enterprise
 Theme URI: https://rhinometric.com
-Author: RHINOMETRIC
+Author: Rhinometric
 Author URI: https://rhinometric.com
-Description: Enterprise marketing site for RHINOMETRIC with WCAG 2.1 AA, i18n-ready, and conversion-focused downloads.
+Description: Enterprise marketing site for Rhinometric with WCAG 2.1 AA, i18n-ready, and conversion-focused downloads.
 Version: 1.0.0
 License: GPL-2.0-or-later
 Text Domain: rinometry
@@ -117,6 +117,11 @@ textarea:focus {
   gap: 0.75rem;
   font-weight: 700;
   color: var(--text);
+}
+
+.brand-logo {
+  width: 36px;
+  height: 36px;
 }
 
 .brand-mark {
@@ -244,6 +249,14 @@ textarea:focus {
   border-radius: var(--radius);
   border: 1px solid var(--border);
   box-shadow: var(--shadow);
+}
+
+.card img {
+  width: 100%;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: #ffffff;
+  margin-bottom: 1rem;
 }
 
 .card-media {

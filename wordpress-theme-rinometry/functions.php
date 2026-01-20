@@ -37,6 +37,20 @@ function rinometry_register_cpt_download_leads() {
 }
 add_action('init', 'rinometry_register_cpt_download_leads');
 
+function rinometry_register_cpt_demo_leads() {
+    register_post_type('demo_lead', [
+        'labels' => [
+            'name' => __('Demo Leads', 'rinometry'),
+            'singular_name' => __('Demo Lead', 'rinometry'),
+        ],
+        'public' => false,
+        'show_ui' => true,
+        'menu_icon' => 'dashicons-video-alt3',
+        'supports' => ['title'],
+    ]);
+}
+add_action('init', 'rinometry_register_cpt_demo_leads');
+
 function rinometry_meta_tags() {
     if (!is_singular()) {
         return;
@@ -46,7 +60,7 @@ function rinometry_meta_tags() {
     $custom_description = get_post_meta($post->ID, '_rino_meta_description', true);
     $description = $custom_description ? $custom_description : wp_trim_words(get_the_excerpt($post), 28);
     if (!$description) {
-        $description = __('RHINOMETRIC is an on-prem observability suite for metrics, logs, and traces with enterprise-grade security.', 'rinometry');
+        $description = __('Rhinometric is an on-prem observability suite for metrics, logs, and traces with enterprise-grade security.', 'rinometry');
     }
 
     $title = wp_get_document_title();
@@ -92,7 +106,15 @@ function rinometry_get_download_url() {
         return esc_url_raw($configured);
     }
 
-    return 'https://rhinometry.com/download';
+    return 'https://rhinometric.com/download';
+}
+
+function rinometry_get_lead_recipient() {
+    $configured = get_option('rinometry_lead_recipient');
+    if ($configured && is_email($configured)) {
+        return $configured;
+    }
+    return 'rafael.canelon@rhinometric.com';
 }
 
 function rinometry_register_settings() {
@@ -102,10 +124,23 @@ function rinometry_register_settings() {
         'default' => '',
     ]);
 
+    register_setting('general', 'rinometry_lead_recipient', [
+        'type' => 'string',
+        'sanitize_callback' => 'sanitize_email',
+        'default' => 'rafael.canelon@rhinometric.com',
+    ]);
+
     add_settings_field(
         'rinometry_download_url',
-        __('Rinometry download URL', 'rinometry'),
+        __('Rhinometric download URL', 'rinometry'),
         'rinometry_download_url_field',
+        'general'
+    );
+
+    add_settings_field(
+        'rinometry_lead_recipient',
+        __('Rhinometric lead recipient email', 'rinometry'),
+        'rinometry_lead_recipient_field',
         'general'
     );
 }
@@ -115,4 +150,10 @@ function rinometry_download_url_field() {
     $value = esc_url(get_option('rinometry_download_url'));
     echo '<input type="url" id="rinometry_download_url" name="rinometry_download_url" value="' . esc_attr($value) . '" class="regular-text" />';
     echo '<p class="description">' . esc_html__('Public download link used in emails and the download page.', 'rinometry') . '</p>';
+}
+
+function rinometry_lead_recipient_field() {
+    $value = esc_attr(get_option('rinometry_lead_recipient', 'rafael.canelon@rhinometric.com'));
+    echo '<input type="email" id="rinometry_lead_recipient" name="rinometry_lead_recipient" value="' . $value . '" class="regular-text" />';
+    echo '<p class="description">' . esc_html__('Lead notifications will be sent to this email.', 'rinometry') . '</p>';
 }

@@ -1,0 +1,626 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: Rhinometric Enterprise 1.0.0\n"
+"POT-Creation-Date: 2026-01-20 00:00+0000\n"
+"Language: es_ES\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgid "1. Prepare your environment"
+msgstr "1. Prepara tu entorno"
+
+msgid "2. Install Rhinometric"
+msgstr "2. Instala Rhinometric"
+
+msgid "3. Validate telemetry"
+msgstr "3. Valida la telemetría"
+
+msgid "A discovery call focused on your observability goals."
+msgstr "Una llamada de descubrimiento centrada en tus objetivos de observabilidad."
+
+msgid "A guided demo with metrics, logs, traces, and alerts."
+msgstr "Una demo guiada con métricas, logs, trazas y alertas."
+
+msgid "A new download lead was submitted:"
+msgstr "Se recibió un nuevo lead de descarga:"
+
+msgid "A response from the Rhinometric team within 1–2 business days."
+msgstr "Una respuesta del equipo de Rhinometric en 1–2 días hábiles."
+
+msgid "A transparent view of where Rhinometric is headed. Timelines are indicative and may evolve."
+msgstr "Una vista transparente de hacia dónde va Rhinometric. Los plazos son indicativos y pueden cambiar."
+
+msgid "A valid email is required."
+msgstr "Se requiere un correo válido."
+
+msgid "AI-assisted anomaly detection and triage."
+msgstr "Detección y triage de anomalías asistidos por IA."
+
+msgid "Access control"
+msgstr "Control de acceso"
+
+msgid "Advanced AI operations workflows [REVIEW]"
+msgstr "Flujos avanzados de operaciones con IA [REVIEW]"
+
+msgid "Alert center"
+msgstr "Centro de alertas"
+
+msgid "Alert routing for on-call response."
+msgstr "Enrutamiento de alertas para respuesta on‑call."
+
+msgid "Alerting with noise reduction and routing."
+msgstr "Alertas con reducción de ruido y enrutamiento."
+
+msgid "Alerts icon"
+msgstr "Icono de alertas"
+
+msgid "Aligns with logging and tracing backends used by platform teams. [REVIEW]"
+msgstr "Se alinea con backends de logs y trazas usados por equipos de plataforma. [REVIEW]"
+
+msgid "Audit visibility"
+msgstr "Visibilidad de auditoría"
+
+msgid "Automated compliance reporting [REVIEW]"
+msgstr "Reportes de cumplimiento automatizados [REVIEW]"
+
+msgid "Built for validation and acquisition"
+msgstr "Diseñado para validación y adquisición"
+
+msgid "Centralized log search with governance and noise reduction."
+msgstr "Búsqueda centralizada de logs con gobierno y reducción de ruido."
+
+msgid "Check your inbox for the download link. You can also use the link below:"
+msgstr "Revisa tu bandeja de entrada para el link de descarga. También puedes usar el enlace de abajo:"
+
+msgid "Clear guidance on the next steps for your evaluation."
+msgstr "Guía clara sobre los próximos pasos de tu evaluación."
+
+msgid "Clear next steps for evaluation and rollout."
+msgstr "Próximos pasos claros para evaluación y despliegue."
+
+msgid "Commercial scale"
+msgstr "Escalado comercial"
+
+msgid "Company"
+msgstr "Empresa"
+
+msgid "Company (optional)"
+msgstr "Empresa (opcional)"
+
+msgid "Complete the form to receive your download link and installation guidance."
+msgstr "Completa el formulario para recibir tu enlace de descarga y guía de instalación."
+
+msgid "Connect edge environments while centralizing governance and reporting."
+msgstr "Conecta entornos edge mientras centralizas gobierno y reportes."
+
+msgid "Connect your data sources and validate dashboards. Placeholder: link to quick start."
+msgstr "Conecta tus fuentes de datos y valida dashboards. Placeholder: enlace a quick start."
+
+msgid "Contact"
+msgstr "Contacto"
+
+msgid "Contact Rhinometric"
+msgstr "Contacta a Rhinometric"
+
+msgid "Contact form"
+msgstr "Formulario de contacto"
+
+msgid "Content not found"
+msgstr "Contenido no encontrado"
+
+msgid "Custom dashboards for product teams."
+msgstr "Dashboards personalizados para equipos de producto."
+
+msgid "Customer portal and license management [REVIEW]"
+msgstr "Portal de clientes y gestión de licencias [REVIEW]"
+
+msgid "Dashboards and alerts"
+msgstr "Dashboards y alertas"
+
+msgid "Dashboards for services, infrastructure, and SLAs."
+msgstr "Dashboards para servicios, infraestructura y SLAs."
+
+msgid "Dashboards icon"
+msgstr "Icono de dashboards"
+
+msgid "Data residency"
+msgstr "Residencia de datos"
+
+msgid "Demo Lead"
+msgstr "Lead de demo"
+
+msgid "Demo Leads"
+msgstr "Leads de demo"
+
+msgid "Demo request form"
+msgstr "Formulario de solicitud de demo"
+
+msgid "Deploy Rhinometric in your own infrastructure to keep sensitive telemetry within your control."
+msgstr "Despliega Rhinometric en tu propia infraestructura para mantener la telemetría sensible bajo tu control."
+
+msgid "Deploy in your environment with quick-start assets and secure defaults."
+msgstr "Despliega en tu entorno con recursos de arranque rápido y configuraciones seguras."
+
+msgid "Deployment flexibility"
+msgstr "Flexibilidad de despliegue"
+
+msgid "Distributed tracing to pinpoint latency, bottlenecks, and dependency issues."
+msgstr "Trazas distribuidas para identificar latencia, cuellos de botella y dependencias."
+
+msgid "Download Lead"
+msgstr "Lead de descarga"
+
+msgid "Download Leads"
+msgstr "Leads de descarga"
+
+msgid "Download Rhinometric"
+msgstr "Descargar Rhinometric"
+
+msgid "Download Rhinometric and receive installation guidance immediately."
+msgstr "Descarga Rhinometric y recibe guía de instalación de inmediato."
+
+msgid "Download gate with email delivery"
+msgstr "Formulario de descarga con envío por email"
+
+msgid "Download now"
+msgstr "Descargar ahora"
+
+msgid "Download sent!"
+msgstr "¡Descarga enviada!"
+
+msgid "Ecosystem expansion"
+msgstr "Expansión del ecosistema"
+
+msgid "Email"
+msgstr "Email"
+
+msgid "Email: hello@rhinometric.com"
+msgstr "Email: hello@rhinometric.com"
+
+msgid "Enterprise governance"
+msgstr "Gobernanza empresarial"
+
+msgid "Enterprise path"
+msgstr "Ruta enterprise"
+
+msgid "Enterprise security controls and audit-ready observability."
+msgstr "Controles de seguridad enterprise y observabilidad lista para auditoría."
+
+msgid "Enterprise-grade observability for metrics, logs, and traces with on-prem control."
+msgstr "Observabilidad de nivel enterprise para métricas, logs y trazas con control on‑prem."
+
+msgid "Example: observability for regulated on-prem workloads."
+msgstr "Ejemplo: observabilidad para cargas on‑prem reguladas."
+
+msgid "Executive dashboard"
+msgstr "Dashboard ejecutivo"
+
+msgid "Executive visibility on uptime and SLAs."
+msgstr "Visibilidad ejecutiva sobre uptime y SLAs."
+
+msgid "Expanded integration library [REVIEW]"
+msgstr "Biblioteca de integraciones ampliada [REVIEW]"
+
+msgid "Explore"
+msgstr "Explorar"
+
+msgid "Explore the suite"
+msgstr "Explorar la suite"
+
+msgid "Fast evaluation"
+msgstr "Evaluación rápida"
+
+msgid "Fast time-to-value with guided dashboards and playbooks."
+msgstr "Time-to-value rápido con dashboards y playbooks guiados."
+
+msgid "Follow the installation guide to deploy services securely. Placeholder: link to install guide."
+msgstr "Sigue la guía de instalación para desplegar los servicios de forma segura. Placeholder: enlace a guía de instalación."
+
+msgid "Footer"
+msgstr "Pie de página"
+
+msgid "Footer Navigation"
+msgstr "Navegación del pie de página"
+
+msgid "Full visibility across metrics, logs, traces, and alerts."
+msgstr "Visibilidad completa de métricas, logs, trazas y alertas."
+
+msgid "Get the download"
+msgstr "Obtén la descarga"
+
+msgid "Have a question or need help evaluating the platform? Send a message and we will respond."
+msgstr "¿Tienes una pregunta o necesitas ayuda para evaluar la plataforma? Envíanos un mensaje y te responderemos."
+
+msgid "High-level SLIs, SLO status, and incident posture."
+msgstr "SLIs de alto nivel, estado de SLO y postura de incidentes."
+
+msgid "Hybrid-ready"
+msgstr "Preparado para híbrido"
+
+msgid "Identify latency hotspots and service dependencies."
+msgstr "Identifica puntos críticos de latencia y dependencias de servicios."
+
+msgid "If needed, we can route you to the demo team."
+msgstr "Si es necesario, te derivamos al equipo de demos."
+
+msgid "Ingest standardized telemetry to preserve context across metrics, logs, and traces. [REVIEW]"
+msgstr "Ingesta telemetría estandarizada para preservar contexto entre métricas, logs y trazas. [REVIEW]"
+
+msgid "Integration-ready"
+msgstr "Listo para integraciones"
+
+msgid "Integrations & tooling"
+msgstr "Integraciones y herramientas"
+
+msgid "Language selector"
+msgstr "Selector de idioma"
+
+msgid "Later"
+msgstr "Después"
+
+msgid "Lead notifications will be sent to this email."
+msgstr "Las notificaciones de leads se enviarán a este email."
+
+msgid "Logging icon placeholder"
+msgstr "Placeholder de icono de logs"
+
+msgid "Logs"
+msgstr "Logs"
+
+msgid "Logs and traces stack"
+msgstr "Stack de logs y trazas"
+
+msgid "Logs explorer"
+msgstr "Explorador de logs"
+
+msgid "Logs icon"
+msgstr "Icono de logs"
+
+msgid "Maintain full ownership of telemetry and retention policies."
+msgstr "Mantén la propiedad total de la telemetría y las políticas de retención."
+
+msgid "Message"
+msgstr "Mensaje"
+
+msgid "Message (optional)"
+msgstr "Mensaje (opcional)"
+
+msgid "Metrics"
+msgstr "Métricas"
+
+msgid "Metrics ecosystems"
+msgstr "Ecosistemas de métricas"
+
+msgid "Metrics icon"
+msgstr "Icono de métricas"
+
+msgid "Metrics, logs, and traces in a single operational view with consistent retention policies."
+msgstr "Métricas, logs y trazas en una sola vista operativa con políticas de retención coherentes."
+
+msgid "Monitor your estate with curated dashboards, alerts, and anomaly detection tuned for enterprise reliability."
+msgstr "Monitorea tu entorno con dashboards curados, alertas y detección de anomalías ajustada para confiabilidad enterprise."
+
+msgid "Name"
+msgstr "Nombre"
+
+msgid "Name is required."
+msgstr "El nombre es obligatorio."
+
+msgid "Need help installing? Visit the thank you page for next steps:"
+msgstr "¿Necesitas ayuda para instalar? Visita la página de gracias para los siguientes pasos:"
+
+msgid "Need help? Request a demo"
+msgstr "¿Necesitas ayuda? Solicita una demo"
+
+msgid "New Rhinometric download request"
+msgstr "Nueva solicitud de descarga de Rhinometric"
+
+msgid "New contact request received:"
+msgstr "Nueva solicitud de contacto recibida:"
+
+msgid "New demo request received:"
+msgstr "Nueva solicitud de demo recibida:"
+
+msgid "Next"
+msgstr "Siguiente"
+
+msgid "Not provided"
+msgstr "No proporcionado"
+
+msgid "Now"
+msgstr "Ahora"
+
+msgid "Observability Suite"
+msgstr "Suite de observabilidad"
+
+msgid "Observability dashboards and alerts"
+msgstr "Dashboards y alertas de observabilidad"
+
+msgid "Observability suite designed for ops teams"
+msgstr "Suite de observabilidad diseñada para equipos de operaciones"
+
+msgid "On-Prem & Data Sovereignty"
+msgstr "On‑Prem y soberanía de datos"
+
+msgid "On-prem deployment documentation"
+msgstr "Documentación de despliegue on‑prem"
+
+msgid "On-prem icon"
+msgstr "Icono on‑prem"
+
+msgid "On-prem or hybrid deployment with data sovereignty."
+msgstr "Despliegue on‑prem o híbrido con soberanía de datos."
+
+msgid "OpenTelemetry icon placeholder"
+msgstr "Placeholder de icono OpenTelemetry"
+
+msgid "OpenTelemetry pipelines"
+msgstr "Pipelines de OpenTelemetry"
+
+msgid "Operational control"
+msgstr "Control operativo"
+
+msgid "Operational logs and audit-ready reporting for compliance teams."
+msgstr "Logs operativos y reportes listos para auditoría para equipos de compliance."
+
+msgid "Operational readiness"
+msgstr "Preparación operativa"
+
+msgid "Operator-first design"
+msgstr "Diseño centrado en operadores"
+
+msgid "Opinionated dashboards, alerts, and runbooks to accelerate incident response."
+msgstr "Dashboards, alertas y runbooks opinados para acelerar la respuesta a incidentes."
+
+msgid "Own your observability stack with on-prem control and enterprise-grade insights."
+msgstr "Domina tu stack de observabilidad con control on‑prem y insights de nivel enterprise."
+
+msgid "Partner marketplace [REVIEW]"
+msgstr "Marketplace de partners [REVIEW]"
+
+msgid "Placeholder visuals for product screens. Replace with real screenshots when available."
+msgstr "Visuales placeholder para pantallas de producto. Reemplázalos por screenshots reales cuando estén disponibles."
+
+msgid "Platform Overview"
+msgstr "Resumen de plataforma"
+
+msgid "Platform highlights"
+msgstr "Destacados de la plataforma"
+
+msgid "Platform icon"
+msgstr "Icono de plataforma"
+
+msgid "Please fix the following:"
+msgstr "Corrige lo siguiente:"
+
+msgid "Please include a short message."
+msgstr "Incluye un mensaje breve."
+
+msgid "Positioned to coexist with Prometheus-style metrics and alerting workflows. [REVIEW]"
+msgstr "Diseñado para coexistir con métricas y alertas estilo Prometheus. [REVIEW]"
+
+msgid "Prebuilt dashboards and alert rules help teams respond faster with less tuning."
+msgstr "Dashboards y reglas de alertas preconfiguradas ayudan a responder más rápido con menos ajuste."
+
+msgid "Pricing and checkout workflow"
+msgstr "Flujo de pricing y checkout"
+
+msgid "Primary"
+msgstr "Principal"
+
+msgid "Primary Navigation"
+msgstr "Navegación principal"
+
+msgid "Primary use case (recommended)"
+msgstr "Caso de uso principal (recomendado)"
+
+msgid "Product Roadmap"
+msgstr "Roadmap del producto"
+
+msgid "Product views"
+msgstr "Vistas de producto"
+
+msgid "Prometheus icon placeholder"
+msgstr "Placeholder de icono Prometheus"
+
+msgid "Prove ROI early"
+msgstr "Demuestra ROI temprano"
+
+msgid "Public download link used in emails and the download page."
+msgstr "Enlace público de descarga usado en emails y en la página de descarga."
+
+msgid "Ready to deploy?"
+msgstr "¿Listo para desplegar?"
+
+msgid "Request a demo"
+msgstr "Solicitar una demo"
+
+msgid "Request a demo to see the platform in action."
+msgstr "Solicita una demo para ver la plataforma en acción."
+
+msgid "Rhinometric"
+msgstr "Rhinometric"
+
+msgid "Rhinometric alerts screenshot placeholder"
+msgstr "Placeholder de captura de alertas de Rhinometric"
+
+msgid "Rhinometric brings metrics, logs, traces, and AI-assisted insights into a single, secure platform built for regulated industries and modern infrastructure teams."
+msgstr "Rhinometric reúne métricas, logs, trazas e insights asistidos por IA en una sola plataforma segura, creada para industrias reguladas y equipos de infraestructura modernos."
+
+msgid "Rhinometric contact request"
+msgstr "Solicitud de contacto de Rhinometric"
+
+msgid "Rhinometric dashboard screenshot placeholder"
+msgstr "Placeholder de captura del dashboard de Rhinometric"
+
+msgid "Rhinometric demo request"
+msgstr "Solicitud de demo de Rhinometric"
+
+msgid "Rhinometric download URL"
+msgstr "URL de descarga de Rhinometric"
+
+msgid "Rhinometric is an on-prem observability suite for metrics, logs, and traces with enterprise-grade security."
+msgstr "Rhinometric es una suite de observabilidad on‑prem para métricas, logs y trazas con seguridad de nivel enterprise."
+
+msgid "Rhinometric is designed to work alongside common observability tooling without forcing a rip-and-replace. Mentioned tools are provided as context, not guaranteed integrations."
+msgstr "Rhinometric está diseñado para convivir con herramientas de observabilidad comunes sin forzar un reemplazo total. Las herramientas mencionadas se dan como contexto, no como integraciones garantizadas."
+
+msgid "Rhinometric lead recipient email"
+msgstr "Email receptor de leads de Rhinometric"
+
+msgid "Rhinometric logo"
+msgstr "Logo de Rhinometric"
+
+msgid "Rhinometric logs screenshot placeholder"
+msgstr "Placeholder de captura de logs de Rhinometric"
+
+msgid "Rhinometric platform hero illustration"
+msgstr "Ilustración hero de la plataforma Rhinometric"
+
+msgid "Rhinometric traces screenshot placeholder"
+msgstr "Placeholder de captura de trazas de Rhinometric"
+
+msgid "Rhinometric unifies observability workflows with secure, on-prem deployment options and enterprise-grade governance."
+msgstr "Rhinometric unifica los flujos de observabilidad con opciones de despliegue on‑prem seguras y gobernanza de nivel enterprise."
+
+msgid "Role-based access and least-privilege defaults."
+msgstr "Acceso basado en roles y mínimos privilegios por defecto."
+
+msgid "Role-based access, audit visibility, and secure integrations for regulated teams."
+msgstr "Acceso basado en roles, visibilidad de auditoría e integraciones seguras para equipos regulados."
+
+msgid "Route alerts with context to reduce MTTR."
+msgstr "Enruta alertas con contexto para reducir el MTTR."
+
+msgid "Run fully on-premise or in a hybrid configuration while keeping sensitive data in your control."
+msgstr "Opera totalmente on‑prem o en configuración híbrida manteniendo los datos sensibles bajo tu control."
+
+msgid "Search, filter, and correlate logs with trace context."
+msgstr "Busca, filtra y correlaciona logs con contexto de trazas."
+
+msgid "Secure deployment"
+msgstr "Despliegue seguro"
+
+msgid "Security"
+msgstr "Seguridad"
+
+msgid "Security check failed. Please try again."
+msgstr "La verificación de seguridad falló. Inténtalo de nuevo."
+
+msgid "Security icon"
+msgstr "Icono de seguridad"
+
+msgid "Security is built into Rhinometric, from access controls to infrastructure hardening. We do not claim certifications that are not in place."
+msgstr "La seguridad está integrada en Rhinometric, desde controles de acceso hasta hardening de infraestructura. No afirmamos certificaciones que no estén confirmadas."
+
+msgid "Send download link"
+msgstr "Enviar enlace de descarga"
+
+msgid "Send request"
+msgstr "Enviar solicitud"
+
+msgid "Service-level indicators and infrastructure KPIs with long-term retention controls."
+msgstr "Indicadores de nivel de servicio y KPIs de infraestructura con controles de retención a largo plazo."
+
+msgid "Skip to content"
+msgstr "Saltar al contenido"
+
+msgid "Source"
+msgstr "Origen"
+
+msgid "Start with a trial download today and scale to enterprise licensing, checkout, and customer portal when you are ready."
+msgstr "Empieza con una descarga de prueba hoy y escala a licenciamiento enterprise, checkout y portal de clientes cuando estés listo."
+
+msgid "Support for hardened environments and on-prem controls."
+msgstr "Soporte para entornos endurecidos y controles on‑prem."
+
+msgid "Aligned with common telemetry standards and existing alerting workflows. [REVIEW]"
+msgstr "Alineado con estándares comunes de telemetría y flujos de alertas existentes. [REVIEW]"
+
+msgid "Tell us about your environment and we will schedule a tailored walkthrough of Rhinometric."
+msgstr "Cuéntanos sobre tu entorno y agendaremos un recorrido guiado de Rhinometric."
+
+msgid "Thank you for downloading Rhinometric"
+msgstr "Gracias por descargar Rhinometric"
+
+msgid "Thank you!"
+msgstr "¡Gracias!"
+
+msgid "Thanks for your interest in Rhinometric. Use the link below to download:"
+msgstr "Gracias por tu interés en Rhinometric. Usa el enlace de abajo para descargar:"
+
+msgid "Trace analysis"
+msgstr "Análisis de trazas"
+
+msgid "Traces"
+msgstr "Trazas"
+
+msgid "Traces icon"
+msgstr "Icono de trazas"
+
+msgid "Track system health with metrics, logs, traces, curated dashboards, and alerting workflows."
+msgstr "Monitorea la salud del sistema con métricas, logs, trazas, dashboards curados y flujos de alertas."
+
+msgid "Tune retention, encryption, and access to meet regulatory requirements."
+msgstr "Ajusta retención, cifrado y acceso para cumplir requisitos regulatorios."
+
+msgid "Unified Observability Platform"
+msgstr "Plataforma de observabilidad unificada"
+
+msgid "Unified data plane"
+msgstr "Plano de datos unificado"
+
+msgid "Upgrade to commercial licensing, SLA support, and managed services when you scale."
+msgstr "Actualiza a licenciamiento comercial, soporte SLA y servicios gestionados cuando escales."
+
+msgid "Use case"
+msgstr "Caso de uso"
+
+msgid "Validate performance, incident response, and compliance readiness in days—not months."
+msgstr "Valida rendimiento, respuesta a incidentes y preparación de cumplimiento en días, no meses."
+
+msgid "Validation & acquisition"
+msgstr "Validación y adquisición"
+
+msgid "Verify your infrastructure prerequisites and network access. Placeholder: add specific requirements."
+msgstr "Verifica los prerrequisitos de infraestructura y el acceso de red. Placeholder: agregar requisitos específicos."
+
+msgid "View installation steps"
+msgstr "Ver pasos de instalación"
+
+msgid "We follow up to support your evaluation."
+msgstr "Haremos seguimiento para apoyar tu evaluación."
+
+msgid "We received your request and will reach out shortly."
+msgstr "Recibimos tu solicitud y te contactaremos pronto."
+
+msgid "We send the download link to your email."
+msgstr "Enviamos el enlace de descarga a tu email."
+
+msgid "What happens next"
+msgstr "Qué sigue"
+
+msgid "What to expect"
+msgstr "Qué esperar"
+
+msgid "What you get"
+msgstr "Qué obtienes"
+
+msgid "Why teams choose Rhinometric"
+msgstr "Por qué los equipos eligen Rhinometric"
+
+msgid "Work email"
+msgstr "Email de trabajo"
+
+msgid "You receive installation steps and quick-start guidance."
+msgstr "Recibes pasos de instalación y guía de quick start."
+
+msgid "Your Rhinometric download link"
+msgstr "Tu enlace de descarga de Rhinometric"
+
+msgid "Your download link is on its way. Use the steps below to get started."
+msgstr "Tu enlace de descarga está en camino. Usa los pasos de abajo para comenzar."
+
+msgid "© %s Rhinometric. All rights reserved."
+msgstr "© %s Rhinometric. Todos los derechos reservados."

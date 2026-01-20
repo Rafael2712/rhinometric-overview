@@ -4,7 +4,7 @@ get_header();
 <section class="section">
   <div class="container">
     <h1 class="section-title"><?php esc_html_e('Platform Overview', 'rinometry'); ?></h1>
-    <p class="section-lead"><?php esc_html_e('RHINOMETRIC unifies observability workflows with secure, on-prem deployment options and enterprise-grade governance.', 'rinometry'); ?></p>
+    <p class="section-lead"><?php esc_html_e('Rhinometric unifies observability workflows with secure, on-prem deployment options and enterprise-grade governance.', 'rinometry'); ?></p>
     <div class="grid">
       <div class="card">
         <div class="card-media">
@@ -37,6 +37,34 @@ get_header();
   </div>
 </section>
 <section class="section">
+  <div class="container">
+    <h2 class="section-title"><?php esc_html_e('Product views', 'rinometry'); ?></h2>
+    <p class="section-lead"><?php esc_html_e('Placeholder visuals for product screens. Replace with real screenshots when available.', 'rinometry'); ?></p>
+    <div class="grid">
+      <div class="card">
+        <img src="<?php echo esc_url(get_template_directory_uri() . '/assets/img/product-dashboard.svg'); ?>" alt="<?php esc_attr_e('Rhinometric dashboard screenshot placeholder', 'rinometry'); ?>">
+        <h3><?php esc_html_e('Executive dashboard', 'rinometry'); ?></h3>
+        <p><?php esc_html_e('High-level SLIs, SLO status, and incident posture.', 'rinometry'); ?></p>
+      </div>
+      <div class="card">
+        <img src="<?php echo esc_url(get_template_directory_uri() . '/assets/img/product-logs.svg'); ?>" alt="<?php esc_attr_e('Rhinometric logs screenshot placeholder', 'rinometry'); ?>">
+        <h3><?php esc_html_e('Logs explorer', 'rinometry'); ?></h3>
+        <p><?php esc_html_e('Search, filter, and correlate logs with trace context.', 'rinometry'); ?></p>
+      </div>
+      <div class="card">
+        <img src="<?php echo esc_url(get_template_directory_uri() . '/assets/img/product-traces.svg'); ?>" alt="<?php esc_attr_e('Rhinometric traces screenshot placeholder', 'rinometry'); ?>">
+        <h3><?php esc_html_e('Trace analysis', 'rinometry'); ?></h3>
+        <p><?php esc_html_e('Identify latency hotspots and service dependencies.', 'rinometry'); ?></p>
+      </div>
+      <div class="card">
+        <img src="<?php echo esc_url(get_template_directory_uri() . '/assets/img/product-alerts.svg'); ?>" alt="<?php esc_attr_e('Rhinometric alerts screenshot placeholder', 'rinometry'); ?>">
+        <h3><?php esc_html_e('Alert center', 'rinometry'); ?></h3>
+        <p><?php esc_html_e('Route alerts with context to reduce MTTR.', 'rinometry'); ?></p>
+      </div>
+    </div>
+  </div>
+</section>
+<section class="section">
   <div class="container split">
     <div>
       <h2 class="section-title"><?php esc_html_e('Deployment flexibility', 'rinometry'); ?></h2>
@@ -44,7 +72,7 @@ get_header();
     </div>
     <div class="card">
       <h3><?php esc_html_e('Integration-ready', 'rinometry'); ?></h3>
-      <p><?php esc_html_e('Supports common telemetry standards and integrates with existing alerting workflows.', 'rinometry'); ?></p>
+      <p><?php esc_html_e('Aligned with common telemetry standards and existing alerting workflows. [REVIEW]', 'rinometry'); ?></p>
     </div>
   </div>
 </section>

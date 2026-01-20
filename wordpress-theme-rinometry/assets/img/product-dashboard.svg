@@ -1,0 +1,7 @@
+<svg width="640" height="420" viewBox="0 0 640 420" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Rhinometric dashboard placeholder">
+  <rect x="12" y="12" width="616" height="396" rx="24" fill="#FFFFFF" stroke="#E3E6EB" stroke-width="4"/>
+  <rect x="32" y="36" width="240" height="18" rx="9" fill="#2B6EF2"/>
+  <rect x="32" y="76" width="576" height="120" rx="16" fill="#F6F7F9" stroke="#E3E6EB" stroke-width="2"/>
+  <rect x="32" y="220" width="280" height="160" rx="16" fill="#F6F7F9" stroke="#E3E6EB" stroke-width="2"/>
+  <rect x="328" y="220" width="280" height="160" rx="16" fill="#F6F7F9" stroke="#E3E6EB" stroke-width="2"/>
+</svg>

@@ -1,0 +1,9 @@
+<svg width="640" height="420" viewBox="0 0 640 420" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Rhinometric traces placeholder">
+  <rect x="12" y="12" width="616" height="396" rx="24" fill="#FFFFFF" stroke="#E3E6EB" stroke-width="4"/>
+  <rect x="32" y="36" width="200" height="18" rx="9" fill="#2B6EF2"/>
+  <circle cx="140" cy="160" r="26" fill="#F28B2B"/>
+  <circle cx="320" cy="240" r="26" fill="#2B6EF2"/>
+  <circle cx="500" cy="140" r="26" fill="#2B6EF2"/>
+  <path d="M166 170L294 226" stroke="#2B6EF2" stroke-width="4"/>
+  <path d="M346 230L474 156" stroke="#2B6EF2" stroke-width="4"/>
+</svg>

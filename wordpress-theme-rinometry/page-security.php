@@ -4,7 +4,7 @@ get_header();
 <section class="section">
   <div class="container">
     <h1 class="section-title"><?php esc_html_e('Security', 'rinometry'); ?></h1>
-    <p class="section-lead"><?php esc_html_e('Security is built into RHINOMETRIC, from access controls to infrastructure hardening. We do not claim certifications that are not in place.', 'rinometry'); ?></p>
+    <p class="section-lead"><?php esc_html_e('Security is built into Rhinometric, from access controls to infrastructure hardening. We do not claim certifications that are not in place.', 'rinometry'); ?></p>
     <div class="grid">
       <div class="card">
         <div class="card-media">

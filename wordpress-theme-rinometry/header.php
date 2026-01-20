@@ -12,7 +12,7 @@
 <header class="site-header" role="banner">
   <div class="container header-inner">
     <a class="brand" href="<?php echo esc_url(home_url('/')); ?>">
-      <span class="brand-mark" aria-hidden="true"></span>
+      <img class="brand-logo" src="<?php echo esc_url(get_template_directory_uri() . '/assets/img/logo-rhinometric.svg'); ?>" alt="<?php esc_attr_e('Rhinometric logo', 'rinometry'); ?>">
       <span><?php echo esc_html(get_bloginfo('name')); ?></span>
     </a>
     <nav class="nav" role="navigation" aria-label="<?php esc_attr_e('Primary', 'rinometry'); ?>">
@@ -27,11 +27,11 @@
     </nav>
     <div class="header-actions">
       <?php rinometry_language_switcher(); ?>
-      <a class="btn btn-secondary" href="<?php echo esc_url(get_permalink(get_page_by_path('contact'))); ?>">
+      <a class="btn btn-secondary" href="<?php echo esc_url(get_permalink(get_page_by_path('request-demo'))); ?>">
         <?php esc_html_e('Request a demo', 'rinometry'); ?>
       </a>
       <a class="btn btn-primary" href="<?php echo esc_url(get_permalink(get_page_by_path('download'))); ?>">
-        <?php esc_html_e('Download RHINOMETRIC', 'rinometry'); ?>
+        <?php esc_html_e('Download Rhinometric', 'rinometry'); ?>
       </a>
     </div>
   </div>

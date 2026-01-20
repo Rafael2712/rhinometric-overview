@@ -23,9 +23,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($email === '' || !is_email($email)) {
             $errors[] = __('A valid email is required.', 'rinometry');
         }
-        if ($use_case === '') {
-            $errors[] = __('Please describe your primary use case.', 'rinometry');
-        }
 
         if (empty($errors)) {
             $lead_id = wp_insert_post([
@@ -43,25 +40,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $download_url = rinometry_get_download_url();
             $thank_you_url = get_permalink(get_page_by_path('thank-you'));
 
-            $subject = __('Your RHINOMETRIC download link', 'rinometry');
+            $subject = __('Your Rhinometric download link', 'rinometry');
             $message = sprintf(
                 "%s\n\n%s\n%s\n\n%s",
-              __('Thanks for your interest in RHINOMETRIC. Use the link below to download:', 'rinometry'),
+              __('Thanks for your interest in Rhinometric. Use the link below to download:', 'rinometry'),
                 $download_url,
                 __('Need help installing? Visit the thank you page for next steps:', 'rinometry'),
                 $thank_you_url
             );
 
             wp_mail($email, $subject, $message);
+            $recipient = rinometry_get_lead_recipient();
+            $lead_subject = __('New Rhinometric download request', 'rinometry');
+            $lead_message = sprintf(
+              "%s\n\n%s: %s\n%s: %s\n%s: %s\n%s: %s\n%s: %s",
+              __('A new download lead was submitted:', 'rinometry'),
+              __('Name', 'rinometry'),
+              $name,
+              __('Email', 'rinometry'),
+              $email,
+              __('Company', 'rinometry'),
+              $company ? $company : __('Not provided', 'rinometry'),
+              __('Use case', 'rinometry'),
+              $use_case ? $use_case : __('Not provided', 'rinometry'),
+              __('Source', 'rinometry'),
+              get_permalink()
+            );
+            wp_mail($recipient, $lead_subject, $lead_message, ['Reply-To: ' . $email]);
             $success = true;
+          }
         }
-    }
-}
+      }
 ?>
 <section class="section">
   <div class="container split">
     <div>
-      <h1 class="section-title"><?php esc_html_e('Download RHINOMETRIC', 'rinometry'); ?></h1>
+      <h1 class="section-title"><?php esc_html_e('Download Rhinometric', 'rinometry'); ?></h1>
       <p class="section-lead"><?php esc_html_e('Complete the form to receive your download link and installation guidance.', 'rinometry'); ?></p>
       <div class="card">
         <h2><?php esc_html_e('What happens next', 'rinometry'); ?></h2>
@@ -106,8 +120,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           <input id="company" name="company" type="text" value="<?php echo esc_attr($company); ?>">
         </div>
         <div class="field">
-          <label for="use_case"><?php esc_html_e('Primary use case', 'rinometry'); ?></label>
-          <textarea id="use_case" name="use_case" required><?php echo esc_textarea($use_case); ?></textarea>
+          <label for="use_case"><?php esc_html_e('Primary use case (recommended)', 'rinometry'); ?></label>
+          <textarea id="use_case" name="use_case"><?php echo esc_textarea($use_case); ?></textarea>
           <p class="helper"><?php esc_html_e('Example: observability for regulated on-prem workloads.', 'rinometry'); ?></p>
         </div>
         <?php wp_nonce_field('rinometry_download', 'rinometry_download_nonce'); ?>
