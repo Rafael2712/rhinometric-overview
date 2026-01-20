@@ -682,9 +682,6 @@ msgstr "Sitio web"
 msgid "Platform"
 msgstr "Plataforma"
 
-msgid "Security"
-msgstr "Seguridad"
-
 msgid "Roadmap"
 msgstr "Roadmap"
 
