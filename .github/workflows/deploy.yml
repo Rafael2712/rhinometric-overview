@@ -2,11 +2,16 @@ name: Deploy
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - wordpress-theme-rinometry/**
+      - rhinometric-theme.zip
+      - .github/workflows/build-zip.yml
+      - .github/workflows/deploy-wordpress-theme.yml
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Build and Test
         run: |
           docker build -t rhinometric/platform:${{ github.sha }} .

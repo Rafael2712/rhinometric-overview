@@ -3,24 +3,24 @@ name: CI/CD Pipeline
 on:
   push:
     branches: [ main, develop, staging ]
+    paths-ignore:
+      - wordpress-theme-rinometry/**
+      - rhinometric-theme.zip
+      - .github/workflows/build-zip.yml
+      - .github/workflows/deploy-wordpress-theme.yml
   pull_request:
     branches: [ main, staging ]
+    paths-ignore:
+      - wordpress-theme-rinometry/**
+      - rhinometric-theme.zip
+      - .github/workflows/build-zip.yml
+      - .github/workflows/deploy-wordpress-theme.yml
+  workflow_dispatch:
 
 env:
   NODE_VERSION: '16.20.2'
-    branches: [main, dev, release/*]
-    paths-ignore:
-      - wordpress-theme-rinometry/**
-      - rhinometric-theme.zip
-      - .github/workflows/build-zip.yml
-      - .github/workflows/deploy-wordpress-theme.yml
   IMAGE_NAME: ${{ github.repository }}
-    branches: [main, dev]
-    paths-ignore:
-      - wordpress-theme-rinometry/**
-      - rhinometric-theme.zip
-      - .github/workflows/build-zip.yml
-      - .github/workflows/deploy-wordpress-theme.yml
+  REGISTRY: ghcr.io
 
 jobs:
   # ===========================
