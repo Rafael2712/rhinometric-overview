@@ -45,9 +45,9 @@ jobs:
           script: |
             set -euo pipefail
             THEME_DIR="${{ secrets.WP_PATH }}/wp-content/themes"
-            mkdir -p "$THEME_DIR"
-            rm -rf "$THEME_DIR/wordpress-theme-rinometry"
-            unzip -o /tmp/rhinometric-theme.zip -d "$THEME_DIR"
+            sudo mkdir -p "$THEME_DIR"
+            sudo rm -rf "$THEME_DIR/wordpress-theme-rinometry"
+            sudo unzip -o /tmp/rhinometric-theme.zip -d "$THEME_DIR"
             if [ "${{ secrets.WP_CLI_ENABLED }}" = "true" ] && command -v wp >/dev/null 2>&1; then
-              wp theme activate wordpress-theme-rinometry --path="${{ secrets.WP_PATH }}" --url="${{ secrets.WP_URL }}"
+              sudo wp theme activate wordpress-theme-rinometry --path="${{ secrets.WP_PATH }}" --url="${{ secrets.WP_URL }}"
             fi
