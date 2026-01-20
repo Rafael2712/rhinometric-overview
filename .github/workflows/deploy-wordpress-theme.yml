@@ -48,84 +48,10 @@ jobs:
             echo "Missing wordpress-theme-rinometry directory" >&2
             exit 1
           fi
-            python3 - <<'PY'
-      import struct
-      from pathlib import Path
-
-      po_path = Path('wordpress-theme-rinometry/languages/rinometry-es_ES.po')
-      mo_path = Path('wordpress-theme-rinometry/languages/rinometry-es_ES.mo')
-
-      entries = []
-      msgid = None
-      msgstr = None
-      in_msgid = False
-      in_msgstr = False
-
-      for line in po_path.read_text(encoding='utf-8').splitlines():
-        line = line.strip()
-        if line.startswith('msgid '):
-          in_msgid = True
-          in_msgstr = False
-          msgid = line[6:].strip().strip('"')
-          msgstr = ''
-        elif line.startswith('msgstr '):
-          in_msgid = False
-          in_msgstr = True
-          msgstr = line[7:].strip().strip('"')
-        elif line.startswith('"'):
-          text = line.strip('"')
-          if in_msgid and msgid is not None:
-            msgid += text
-          elif in_msgstr and msgstr is not None:
-            msgstr += text
-        elif line == '':
-          if msgid is not None:
-            entries.append((msgid, msgstr))
-          msgid = None
-          msgstr = None
-          in_msgid = False
-          in_msgstr = False
-
-      if msgid is not None:
-        entries.append((msgid, msgstr))
-
-      entries.sort(key=lambda x: x[0])
-      ids = [e[0].encode('utf-8') for e in entries]
-      strs = [e[1].encode('utf-8') for e in entries]
-
-      N = len(entries)
-      O = 7 * 4
-      ids_offset = O
-      strs_offset = ids_offset + N * 8
-
-      ids_table = []
-      strs_table = []
-      current_offset = strs_offset + N * 8
-
-      id_strings = b''
-      for s in ids:
-        ids_table.append((len(s), current_offset))
-        id_strings += s + b'\x00'
-        current_offset += len(s) + 1
-
-      str_strings = b''
-      for s in strs:
-        strs_table.append((len(s), current_offset))
-        str_strings += s + b'\x00'
-        current_offset += len(s) + 1
-
-      output = []
-      output.append(struct.pack('Iiiiiii', 0x950412de, 0, N, ids_offset, strs_offset, 0, 0))
-      for length, offset in ids_table:
-        output.append(struct.pack('II', length, offset))
-      for length, offset in strs_table:
-        output.append(struct.pack('II', length, offset))
-      output.append(id_strings)
-      output.append(str_strings)
-
-      mo_path.write_bytes(b''.join(output))
-      print('Compiled', mo_path)
-      PY
+            sudo apt-get update
+            sudo apt-get install -y gettext
+            msgfmt -o wordpress-theme-rinometry/languages/rinometry-es_ES.mo \
+            wordpress-theme-rinometry/languages/rinometry-es_ES.po
           rm -f rhinometric-theme.zip
           zip -r rhinometric-theme.zip wordpress-theme-rinometry
 
