@@ -1,0 +1,31 @@
+name: Build WordPress Theme ZIP
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - wordpress-theme-rinometry/**
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build theme zip
+        run: |
+          if [ ! -d wordpress-theme-rinometry ]; then
+            echo "Missing wordpress-theme-rinometry directory" >&2
+            exit 1
+          fi
+          rm -f rhinometric-theme.zip
+          zip -r rhinometric-theme.zip wordpress-theme-rinometry
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rhinometric-theme
+          path: rhinometric-theme.zip

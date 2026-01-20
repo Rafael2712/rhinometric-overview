@@ -1,0 +1,53 @@
+name: Deploy WordPress Theme
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - rhinometric-theme.zip
+      - wordpress-theme-rinometry/**
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build theme zip
+        run: |
+          if [ ! -d wordpress-theme-rinometry ]; then
+            echo "Missing wordpress-theme-rinometry directory" >&2
+            exit 1
+          fi
+          rm -f rhinometric-theme.zip
+          zip -r rhinometric-theme.zip wordpress-theme-rinometry
+
+      - name: Upload theme zip
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          port: ${{ secrets.SSH_PORT }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: "rhinometric-theme.zip"
+          target: "/tmp"
+
+      - name: Deploy and activate theme
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          port: ${{ secrets.SSH_PORT }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            set -euo pipefail
+            THEME_DIR="${{ secrets.WP_PATH }}/wp-content/themes"
+            mkdir -p "$THEME_DIR"
+            rm -rf "$THEME_DIR/wordpress-theme-rinometry"
+            unzip -o /tmp/rhinometric-theme.zip -d "$THEME_DIR"
+            if [ "${{ secrets.WP_CLI_ENABLED }}" = "true" ] && command -v wp >/dev/null 2>&1; then
+              wp theme activate wordpress-theme-rinometry --path="${{ secrets.WP_PATH }}" --url="${{ secrets.WP_URL }}"
+            fi

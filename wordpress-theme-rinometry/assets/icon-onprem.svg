@@ -1,0 +1,8 @@
+<svg width="96" height="96" viewBox="0 0 96 96" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="On-prem icon">
+  <rect x="12" y="12" width="72" height="72" rx="16" fill="#EFF4FF" stroke="#2B6EF2" stroke-width="3"/>
+  <rect x="28" y="30" width="40" height="14" rx="4" fill="#2B6EF2"/>
+  <rect x="24" y="50" width="48" height="16" rx="4" fill="#F28B2B"/>
+  <circle cx="34" cy="58" r="3" fill="#FFFFFF"/>
+  <circle cx="46" cy="58" r="3" fill="#FFFFFF"/>
+  <circle cx="58" cy="58" r="3" fill="#FFFFFF"/>
+</svg>

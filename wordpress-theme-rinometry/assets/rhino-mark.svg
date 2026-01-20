@@ -1,0 +1,21 @@
+<svg width="320" height="320" viewBox="0 0 320 320" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="RHINOMETRIC rhino mark">
+  <defs>
+    <linearGradient id="rhinoGradient" x1="40" y1="40" x2="280" y2="280" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#2B6EF2"/>
+      <stop offset="1" stop-color="#F28B2B"/>
+    </linearGradient>
+  </defs>
+  <circle cx="160" cy="160" r="148" stroke="url(#rhinoGradient)" stroke-width="14" fill="#F6F7F9"/>
+  <ellipse cx="160" cy="175" rx="90" ry="88" fill="#E9EEF5" stroke="#2B6EF2" stroke-width="6"/>
+  <ellipse cx="160" cy="200" rx="58" ry="50" fill="#D7DEE8" stroke="#2B6EF2" stroke-width="4"/>
+  <circle cx="120" cy="160" r="10" fill="#0B0B0C"/>
+  <circle cx="200" cy="160" r="10" fill="#0B0B0C"/>
+  <path d="M152 118L178 118L186 145L144 145L152 118Z" fill="#BFC9D8" stroke="#2B6EF2" stroke-width="4"/>
+  <path d="M150 92L188 140L132 140L150 92Z" fill="#F28B2B" stroke="#2B6EF2" stroke-width="4"/>
+  <path d="M102 120L122 95L140 125L102 120Z" fill="#D7DEE8" stroke="#2B6EF2" stroke-width="4"/>
+  <path d="M218 120L198 95L180 125L218 120Z" fill="#D7DEE8" stroke="#2B6EF2" stroke-width="4"/>
+  <path d="M86 188C92 214 118 236 148 240" stroke="#2B6EF2" stroke-width="6" stroke-linecap="round"/>
+  <path d="M234 188C228 214 202 236 172 240" stroke="#2B6EF2" stroke-width="6" stroke-linecap="round"/>
+  <circle cx="136" cy="190" r="6" fill="#0B0B0C"/>
+  <circle cx="184" cy="190" r="6" fill="#0B0B0C"/>
+</svg>
