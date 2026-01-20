@@ -99,7 +99,15 @@ jobs:
             sudo mkdir -p "$THEME_DIR"
             rm -rf "$TMP_DIR"
             unzip -o /tmp/rhinometric-theme.zip -d /tmp
-            sudo rsync -a --delete "$TMP_DIR/wordpress-theme-rinometry/" "$THEME_DIR/$THEME_SLUG/"
+            if command -v rsync >/dev/null 2>&1; then
+              echo "Syncing theme with rsync"
+              sudo rsync -a --delete "$TMP_DIR/wordpress-theme-rinometry/" "$THEME_DIR/$THEME_SLUG/"
+            else
+              echo "rsync not found; falling back to cp -R"
+              sudo rm -rf "$THEME_DIR/$THEME_SLUG"
+              sudo mkdir -p "$THEME_DIR/$THEME_SLUG"
+              sudo cp -R "$TMP_DIR/wordpress-theme-rinometry/"* "$THEME_DIR/$THEME_SLUG/"
+            fi
 
             if [ "${{ secrets.WP_CLI_ENABLED }}" = "true" ]; then
               echo "Locating WP-CLI"
