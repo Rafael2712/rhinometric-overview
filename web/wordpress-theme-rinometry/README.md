@@ -57,3 +57,11 @@
 ## Notes
 - The theme does not touch Rhinometric core services.
 - Update placeholder content in Thank You page when installation docs are ready.
+
+## i18n validation
+- Before committing translations, run: `msgfmt -c -o /dev/null web/wordpress-theme-rinometry/languages/*.po`
+- Avoid duplicate `msgid` entries; keep a single definition per string.
+
+## TODO (future-safe alignment)
+- The theme folder and text domain use `rinometry`, while the product name is “Rhinometric”.
+- Plan a dedicated phase to align folder name, theme slug, and textdomain without breaking translations.

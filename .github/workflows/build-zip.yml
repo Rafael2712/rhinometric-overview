@@ -20,14 +20,23 @@ jobs:
           fetch-depth: 1
           submodules: false
 
+      - name: Validate translations
+        run: |
+          if [ ! -d web/wordpress-theme-rinometry/languages ]; then
+            echo "Missing languages directory: web/wordpress-theme-rinometry/languages" >&2
+            exit 1
+          fi
+          sudo apt-get update
+          sudo apt-get install -y gettext
+          echo "Validating .po files..."
+          msgfmt -c -o /dev/null web/wordpress-theme-rinometry/languages/*.po
+
       - name: Build theme zip
         run: |
           if [ ! -d web/wordpress-theme-rinometry ]; then
             echo "Missing web/wordpress-theme-rinometry directory" >&2
             exit 1
           fi
-            sudo apt-get update
-            sudo apt-get install -y gettext
           msgfmt -o web/wordpress-theme-rinometry/languages/rinometry-es_ES.mo \
             web/wordpress-theme-rinometry/languages/rinometry-es_ES.po
           rm -f rhinometric-theme.zip
