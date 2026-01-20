@@ -21,6 +21,30 @@ jobs:
             wordpress-theme-rinometry
           sparse-checkout-cone-mode: false
 
+      - name: Validate required secrets
+        shell: bash
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_PORT: ${{ secrets.SSH_PORT }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          WP_PATH: ${{ secrets.WP_PATH }}
+          WP_URL: ${{ secrets.WP_URL }}
+          WP_CLI_ENABLED: ${{ secrets.WP_CLI_ENABLED }}
+        run: |
+          set -euo pipefail
+          missing=0
+          for var in SSH_HOST SSH_PORT SSH_USER SSH_PRIVATE_KEY WP_PATH WP_URL WP_CLI_ENABLED; do
+            if [ -z "${!var:-}" ]; then
+              echo "Missing required secret: $var" >&2
+              missing=1
+            fi
+          done
+          if [ "$missing" -ne 0 ]; then
+            echo "One or more required secrets are missing. Add them in GitHub Actions secrets and re-run." >&2
+            exit 1
+          fi
+
       - name: Build theme zip
         run: |
           if [ ! -d wordpress-theme-rinometry ]; then
