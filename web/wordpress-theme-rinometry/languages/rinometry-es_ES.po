@@ -625,6 +625,72 @@ msgstr "Tu enlace de descarga está en camino. Usa los pasos de abajo para comen
 msgid "© %s Rhinometric. All rights reserved."
 msgstr "© %s Rhinometric. Todos los derechos reservados."
 
+msgid "On-prem. Unified metrics, logs, and traces. No vendor lock-in."
+msgstr "On‑prem. Métricas, logs y trazas unificadas. Sin bloqueo de proveedor."
+
+msgid "Features"
+msgstr "Características"
+
+msgid "Integrations"
+msgstr "Integraciones"
+
+msgid "Submission rejected. Please try again."
+msgstr "Envío rechazado. Por favor intenta de nuevo."
+
+msgid "Please wait a moment before submitting again."
+msgstr "Espera un momento antes de enviar de nuevo."
+
+msgid "We received your request on:"
+msgstr "Recibimos tu solicitud el:"
+
+msgid "Language"
+msgstr "Idioma"
+
+msgid "Submitted at"
+msgstr "Enviado el"
+
+msgid "Your Rhinometric demo request"
+msgstr "Tu solicitud de demo de Rhinometric"
+
+msgid "Thanks for requesting a demo of Rhinometric."
+msgstr "Gracias por solicitar una demo de Rhinometric."
+
+msgid "We will reach out shortly to coordinate a session."
+msgstr "Te contactaremos pronto para coordinar una sesión."
+
+msgid "Submitted at:"
+msgstr "Enviado el:"
+
+msgid "Helpful links: Download, Roadmap, Contact."
+msgstr "Enlaces útiles: Descarga, Roadmap, Contacto."
+
+msgid "We received your Rhinometric request"
+msgstr "Recibimos tu solicitud en Rhinometric"
+
+msgid "Thank you for contacting Rhinometric."
+msgstr "Gracias por contactar a Rhinometric."
+
+msgid "We will respond within 1–2 business days."
+msgstr "Responderemos en 1–2 días hábiles."
+
+msgid "Helpful links: Download, Roadmap, Request a demo."
+msgstr "Enlaces útiles: Descarga, Roadmap, Solicitar demo."
+
+msgid "Website"
+msgstr "Sitio web"
+
+msgid "Platform"
+msgstr "Plataforma"
+
+msgid "Security"
+msgstr "Seguridad"
+
+msgid "Roadmap"
+msgstr "Roadmap"
+
+msgid "Download"
+msgstr "Descarga"
+
 msgid "Rhinometric Leads Export"
 msgstr "Exportación de leads de Rhinometric"
 

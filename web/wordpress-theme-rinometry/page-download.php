@@ -7,6 +7,7 @@ $name = '';
 $email = '';
 $company = '';
 $use_case = '';
+$lang = rinometry_get_current_language();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!isset($_POST['rinometry_download_nonce']) || !wp_verify_nonce($_POST['rinometry_download_nonce'], 'rinometry_download')) {
@@ -16,12 +17,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $email = sanitize_email(wp_unslash($_POST['email'] ?? ''));
         $company = sanitize_text_field(wp_unslash($_POST['company'] ?? ''));
         $use_case = sanitize_textarea_field(wp_unslash($_POST['use_case'] ?? ''));
+        $honeypot = sanitize_text_field(wp_unslash($_POST['website'] ?? ''));
+
+        if ($honeypot !== '') {
+          $errors[] = __('Submission rejected. Please try again.', 'rinometry');
+        }
 
         if ($name === '') {
             $errors[] = __('Name is required.', 'rinometry');
         }
         if ($email === '' || !is_email($email)) {
             $errors[] = __('A valid email is required.', 'rinometry');
+        }
+
+        if (empty($errors) && !rinometry_check_rate_limit('download')) {
+          $errors[] = __('Please wait a moment before submitting again.', 'rinometry');
         }
 
         if (empty($errors)) {
@@ -42,18 +52,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $subject = __('Your Rhinometric download link', 'rinometry');
             $message = sprintf(
-                "%s\n\n%s\n%s\n\n%s",
-              __('Thanks for your interest in Rhinometric. Use the link below to download:', 'rinometry'),
+                "%s\n\n%s\n\n%s\n%s\n\n%s",
+                __('Thanks for your interest in Rhinometric. Use the link below to download:', 'rinometry'),
                 $download_url,
-                __('Need help installing? Visit the thank you page for next steps:', 'rinometry'),
-                $thank_you_url
+                __('We received your request on:', 'rinometry'),
+                current_time('mysql'),
+                __('Need help installing? Visit the thank you page for next steps:', 'rinometry') . "\n" . $thank_you_url
             );
 
             wp_mail($email, $subject, $message);
             $recipient = rinometry_get_lead_recipient();
             $lead_subject = __('New Rhinometric download request', 'rinometry');
             $lead_message = sprintf(
-              "%s\n\n%s: %s\n%s: %s\n%s: %s\n%s: %s\n%s: %s",
+              "%s\n\n%s: %s\n%s: %s\n%s: %s\n%s: %s\n%s: %s\n%s: %s\n%s: %s",
               __('A new download lead was submitted:', 'rinometry'),
               __('Name', 'rinometry'),
               $name,
@@ -63,6 +74,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
               $company ? $company : __('Not provided', 'rinometry'),
               __('Use case', 'rinometry'),
               $use_case ? $use_case : __('Not provided', 'rinometry'),
+              __('Language', 'rinometry'),
+              strtoupper($lang),
+              __('Submitted at', 'rinometry'),
+              current_time('mysql'),
               __('Source', 'rinometry'),
               get_permalink()
             );
@@ -87,7 +102,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       </div>
     </div>
     <div>
-      <form class="form" method="post" action="<?php echo esc_url(get_permalink()); ?>" novalidate>
+      <form class="form js-disable-on-submit" method="post" action="<?php echo esc_url(get_permalink()); ?>" novalidate>
         <h2><?php esc_html_e('Get the download', 'rinometry'); ?></h2>
         <?php if (!empty($errors)) : ?>
           <div class="error-list" role="alert" aria-live="assertive">
@@ -123,6 +138,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           <label for="use_case"><?php esc_html_e('Primary use case (recommended)', 'rinometry'); ?></label>
           <textarea id="use_case" name="use_case"><?php echo esc_textarea($use_case); ?></textarea>
           <p class="helper"><?php esc_html_e('Example: observability for regulated on-prem workloads.', 'rinometry'); ?></p>
+        </div>
+        <div class="field honeypot" aria-hidden="true">
+          <label for="website"><?php esc_html_e('Website', 'rinometry'); ?></label>
+          <input id="website" name="website" type="text" autocomplete="off" tabindex="-1">
         </div>
         <?php wp_nonce_field('rinometry_download', 'rinometry_download_nonce'); ?>
         <button class="btn btn-primary" type="submit"><?php esc_html_e('Send download link', 'rinometry'); ?></button>

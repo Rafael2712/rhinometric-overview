@@ -42,22 +42,22 @@ get_header();
     <p class="section-lead"><?php esc_html_e('Placeholder visuals for product screens. Replace with real screenshots when available.', 'rinometry'); ?></p>
     <div class="grid">
       <div class="card">
-        <img src="<?php echo esc_url(get_template_directory_uri() . '/assets/img/product-dashboard.svg'); ?>" alt="<?php esc_attr_e('Rhinometric dashboard screenshot placeholder', 'rinometry'); ?>">
+        <img src="<?php echo esc_url(get_template_directory_uri() . '/assets/img/product-dashboard.png'); ?>" alt="<?php esc_attr_e('Rhinometric dashboard screenshot placeholder', 'rinometry'); ?>" onerror="this.onerror=null;this.src='<?php echo esc_url(get_template_directory_uri() . '/assets/img/product-dashboard.svg'); ?>';">
         <h3><?php esc_html_e('Executive dashboard', 'rinometry'); ?></h3>
         <p><?php esc_html_e('High-level SLIs, SLO status, and incident posture.', 'rinometry'); ?></p>
       </div>
       <div class="card">
-        <img src="<?php echo esc_url(get_template_directory_uri() . '/assets/img/product-logs.svg'); ?>" alt="<?php esc_attr_e('Rhinometric logs screenshot placeholder', 'rinometry'); ?>">
+        <img src="<?php echo esc_url(get_template_directory_uri() . '/assets/img/product-logs.png'); ?>" alt="<?php esc_attr_e('Rhinometric logs screenshot placeholder', 'rinometry'); ?>" onerror="this.onerror=null;this.src='<?php echo esc_url(get_template_directory_uri() . '/assets/img/product-logs.svg'); ?>';">
         <h3><?php esc_html_e('Logs explorer', 'rinometry'); ?></h3>
         <p><?php esc_html_e('Search, filter, and correlate logs with trace context.', 'rinometry'); ?></p>
       </div>
       <div class="card">
-        <img src="<?php echo esc_url(get_template_directory_uri() . '/assets/img/product-traces.svg'); ?>" alt="<?php esc_attr_e('Rhinometric traces screenshot placeholder', 'rinometry'); ?>">
+        <img src="<?php echo esc_url(get_template_directory_uri() . '/assets/img/product-traces.png'); ?>" alt="<?php esc_attr_e('Rhinometric traces screenshot placeholder', 'rinometry'); ?>" onerror="this.onerror=null;this.src='<?php echo esc_url(get_template_directory_uri() . '/assets/img/product-traces.svg'); ?>';">
         <h3><?php esc_html_e('Trace analysis', 'rinometry'); ?></h3>
         <p><?php esc_html_e('Identify latency hotspots and service dependencies.', 'rinometry'); ?></p>
       </div>
       <div class="card">
-        <img src="<?php echo esc_url(get_template_directory_uri() . '/assets/img/product-alerts.svg'); ?>" alt="<?php esc_attr_e('Rhinometric alerts screenshot placeholder', 'rinometry'); ?>">
+        <img src="<?php echo esc_url(get_template_directory_uri() . '/assets/img/product-alerts.png'); ?>" alt="<?php esc_attr_e('Rhinometric alerts screenshot placeholder', 'rinometry'); ?>" onerror="this.onerror=null;this.src='<?php echo esc_url(get_template_directory_uri() . '/assets/img/product-alerts.svg'); ?>';">
         <h3><?php esc_html_e('Alert center', 'rinometry'); ?></h3>
         <p><?php esc_html_e('Route alerts with context to reduce MTTR.', 'rinometry'); ?></p>
       </div>

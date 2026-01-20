@@ -23,6 +23,19 @@ function rinometry_enqueue_assets() {
 }
 add_action('wp_enqueue_scripts', 'rinometry_enqueue_assets');
 
+function rinometry_output_favicon() {
+    if (has_site_icon()) {
+        return;
+    }
+
+    $icon = get_template_directory_uri() . '/assets/img/logo-rhinometric.png';
+    $icon_svg = get_template_directory_uri() . '/assets/img/logo-rhinometric.svg';
+    echo '<link rel="icon" href="' . esc_url($icon) . '" sizes="32x32" />' . "\n";
+    echo '<link rel="icon" href="' . esc_url($icon_svg) . '" type="image/svg+xml" />' . "\n";
+    echo '<link rel="apple-touch-icon" href="' . esc_url($icon) . '" />' . "\n";
+}
+add_action('wp_head', 'rinometry_output_favicon');
+
 function rinometry_register_cpt_download_leads() {
     register_post_type('download_lead', [
         'labels' => [
@@ -97,6 +110,48 @@ function rinometry_language_switcher() {
     echo '<a class="' . ($current_lang === 'en' ? 'is-active' : '') . '" href="' . esc_url(add_query_arg('lang', 'en', $current_url)) . '">EN</a>';
     echo '<a class="' . ($current_lang === 'es' ? 'is-active' : '') . '" href="' . esc_url(add_query_arg('lang', 'es', $current_url)) . '">ES</a>';
     echo '</div>';
+}
+
+function rinometry_home_anchor_url($anchor) {
+    return esc_url(home_url('/#' . ltrim($anchor, '#')));
+}
+
+function rinometry_primary_menu_fallback() {
+    $items = [
+        [
+            'label' => __('Platform', 'rinometry'),
+            'url' => get_permalink(get_page_by_path('platform')),
+        ],
+        [
+            'label' => __('Features', 'rinometry'),
+            'url' => rinometry_home_anchor_url('features'),
+        ],
+        [
+            'label' => __('Integrations', 'rinometry'),
+            'url' => rinometry_home_anchor_url('integrations'),
+        ],
+        [
+            'label' => __('Security', 'rinometry'),
+            'url' => get_permalink(get_page_by_path('security')),
+        ],
+        [
+            'label' => __('Roadmap', 'rinometry'),
+            'url' => get_permalink(get_page_by_path('roadmap')),
+        ],
+        [
+            'label' => __('Download', 'rinometry'),
+            'url' => get_permalink(get_page_by_path('download')),
+        ],
+    ];
+
+    echo '<ul>';
+    foreach ($items as $item) {
+        if (!$item['url']) {
+            continue;
+        }
+        echo '<li><a href="' . esc_url($item['url']) . '">' . esc_html($item['label']) . '</a></li>';
+    }
+    echo '</ul>';
 }
 
 function rinometry_get_current_language() {
@@ -291,3 +346,34 @@ function rinometry_export_leads_handler() {
     exit;
 }
 add_action('admin_post_rinometry_export_leads', 'rinometry_export_leads_handler');
+
+function rinometry_check_rate_limit($key, $seconds = 10) {
+        $ip = isset($_SERVER['REMOTE_ADDR']) ? sanitize_text_field(wp_unslash($_SERVER['REMOTE_ADDR'])) : 'unknown';
+        $transient_key = 'rino_rate_' . md5($key . '|' . $ip);
+        if (get_transient($transient_key)) {
+                return false;
+        }
+        set_transient($transient_key, 1, $seconds);
+        return true;
+}
+
+function rinometry_render_form_js() {
+        ?>
+        <script>
+            document.addEventListener('submit', function (event) {
+                var form = event.target;
+                if (!form || !form.classList.contains('js-disable-on-submit')) {
+                    return;
+                }
+                var button = form.querySelector('button[type="submit"]');
+                if (button) {
+                    button.setAttribute('disabled', 'disabled');
+                    button.setAttribute('aria-disabled', 'true');
+                    button.classList.add('is-loading');
+                }
+                form.setAttribute('aria-busy', 'true');
+            });
+        </script>
+        <?php
+}
+add_action('wp_footer', 'rinometry_render_form_js');

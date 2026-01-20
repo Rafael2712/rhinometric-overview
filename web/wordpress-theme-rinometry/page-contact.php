@@ -7,6 +7,7 @@ $name = '';
 $email = '';
 $company = '';
 $message = '';
+$lang = rinometry_get_current_language();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!isset($_POST['rinometry_contact_nonce']) || !wp_verify_nonce($_POST['rinometry_contact_nonce'], 'rinometry_contact')) {
@@ -16,6 +17,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $email = sanitize_email(wp_unslash($_POST['email'] ?? ''));
         $company = sanitize_text_field(wp_unslash($_POST['company'] ?? ''));
         $message = sanitize_textarea_field(wp_unslash($_POST['message'] ?? ''));
+        $honeypot = sanitize_text_field(wp_unslash($_POST['website'] ?? ''));
+
+        if ($honeypot !== '') {
+          $errors[] = __('Submission rejected. Please try again.', 'rinometry');
+        }
 
         if ($name === '') {
             $errors[] = __('Name is required.', 'rinometry');
@@ -27,22 +33,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $errors[] = __('Please include a short message.', 'rinometry');
         }
 
+        if (empty($errors) && !rinometry_check_rate_limit('contact')) {
+            $errors[] = __('Please wait a moment before submitting again.', 'rinometry');
+        }
+
         if (empty($errors)) {
             $subject = __('Rhinometric contact request', 'rinometry');
             $body = sprintf(
-              "%s\n\n%s: %s\n%s: %s\n%s: %s\n\n%s",
+              "%s\n\n%s: %s\n%s: %s\n%s: %s\n%s: %s\n%s: %s\n\n%s",
               __('New contact request received:', 'rinometry'),
               __('Name', 'rinometry'),
               $name,
               __('Email', 'rinometry'),
               $email,
               __('Company', 'rinometry'),
-              $company,
+              $company ? $company : __('Not provided', 'rinometry'),
+              __('Language', 'rinometry'),
+              strtoupper($lang),
+              __('Submitted at', 'rinometry'),
+              current_time('mysql'),
               $message
             );
 
             $recipient = rinometry_get_lead_recipient();
             wp_mail($recipient, $subject, $body, ['Reply-To: ' . $email]);
+            $user_subject = __('We received your Rhinometric request', 'rinometry');
+            $user_body = sprintf(
+              "%s\n\n%s\n%s\n\n%s",
+              __('Thank you for contacting Rhinometric.', 'rinometry'),
+              __('We will respond within 1–2 business days.', 'rinometry'),
+              __('Submitted at:', 'rinometry') . ' ' . current_time('mysql'),
+              __('Helpful links: Download, Roadmap, Request a demo.', 'rinometry')
+            );
+            wp_mail($email, $user_subject, $user_body);
             $success = true;
         }
     }
@@ -63,7 +86,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       </div>
     </div>
     <div>
-      <form class="form" method="post" action="<?php echo esc_url(get_permalink()); ?>" novalidate>
+      <form class="form js-disable-on-submit" method="post" action="<?php echo esc_url(get_permalink()); ?>" novalidate>
         <h2><?php esc_html_e('Contact form', 'rinometry'); ?></h2>
         <?php if (!empty($errors)) : ?>
           <div class="error-list" role="alert" aria-live="assertive">
@@ -96,6 +119,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <div class="field">
           <label for="message"><?php esc_html_e('Message', 'rinometry'); ?></label>
           <textarea id="message" name="message" required><?php echo esc_textarea($message); ?></textarea>
+        </div>
+        <div class="field honeypot" aria-hidden="true">
+          <label for="website"><?php esc_html_e('Website', 'rinometry'); ?></label>
+          <input id="website" name="website" type="text" autocomplete="off" tabindex="-1">
         </div>
         <?php wp_nonce_field('rinometry_contact', 'rinometry_contact_nonce'); ?>
         <button class="btn btn-primary" type="submit"><?php esc_html_e('Send request', 'rinometry'); ?></button>

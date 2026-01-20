@@ -25,16 +25,16 @@
    - Footer menu: Platform, Security, Roadmap, Contact
 
 ## Language setup (EN/ES)
-- Install a multilingual plugin (recommended: Polylang).
-- Add English as default language.
-- Add Spanish language and translate each page.
-- The header language switcher will use the plugin automatically.
+- EN is the default language.
+- ES is enabled via a language switcher that persists user choice in a cookie.
+- If you later install Polylang, the header switcher will use it automatically.
 
 ## Download flow
 - Form stores leads in WP Admin (Download Leads).
 - Email sends a download link from Settings option `rinometry_download_url`.
 - Lead notification goes to `rinometry_lead_recipient` (default: rafael.canelon@rhinometric.com).
 - Update the link in WP Admin via `Settings -> General` using a custom option or set it via code.
+- Leads can be exported via WP Admin → Tools → Rhinometric Leads Export.
 
 ## SEO
 - Each page outputs meta description + Open Graph.
@@ -42,16 +42,17 @@
 - WordPress core sitemap is enabled by default at `/wp-sitemap.xml`.
 
 ## Assets
-- Upload your logo and screenshots into `assets/img/`:
-   - logo-rhinometric.svg
-   - hero-illustration.svg
-   - product-dashboard.svg
-   - product-logs.svg
-   - product-traces.svg
-   - product-alerts.svg
-   - integration-otel.svg
-   - integration-prometheus.svg
-   - integration-logging.svg
+- Upload the official logo and screenshots into `assets/img/`:
+   - logo-rhinometric.png (official logo, used in header + favicon)
+   - logo-rhinometric.svg (fallback)
+   - logo-rhinometric-alt.svg (optional alt version with orange accent)
+   - hero-visual.png (optional)
+   - product-dashboard.png
+   - product-logs.png
+   - product-traces.png
+   - product-alerts.png
+   - integrations-grid.png (optional)
+- The theme ships with SVG placeholders. Replace them with PNGs when ready.
 
 ## Notes
 - The theme does not touch Rhinometric core services.

@@ -1,12 +1,13 @@
 <?php
 get_header();
 ?>
-<section class="hero">
+<section class="hero" id="home">
   <div class="container hero-grid">
     <div>
       <span class="badge"><?php esc_html_e('Unified Observability Platform', 'rinometry'); ?></span>
       <h1 class="section-title"><?php esc_html_e('Own your observability stack with on-prem control and enterprise-grade insights.', 'rinometry'); ?></h1>
       <p class="section-lead"><?php esc_html_e('Rhinometric brings metrics, logs, traces, and AI-assisted insights into a single, secure platform built for regulated industries and modern infrastructure teams.', 'rinometry'); ?></p>
+      <p class="section-note"><?php esc_html_e('On-prem. Unified metrics, logs, and traces. No vendor lock-in.', 'rinometry'); ?></p>
       <div class="header-actions" style="margin-top: 1.5rem;">
         <a class="btn btn-primary" href="<?php echo esc_url(get_permalink(get_page_by_path('download'))); ?>">
           <?php esc_html_e('Download Rhinometric', 'rinometry'); ?>
@@ -17,19 +18,31 @@ get_header();
       </div>
     </div>
     <div class="hero-card hero-visual" aria-label="<?php esc_attr_e('Platform highlights', 'rinometry'); ?>">
-      <img src="<?php echo esc_url(get_template_directory_uri() . '/assets/img/hero-illustration.svg'); ?>" alt="<?php esc_attr_e('Rhinometric platform hero illustration', 'rinometry'); ?>">
+      <img src="<?php echo esc_url(get_template_directory_uri() . '/assets/img/hero-visual.png'); ?>" alt="<?php esc_attr_e('Rhinometric platform hero illustration', 'rinometry'); ?>" onerror="this.onerror=null;this.src='<?php echo esc_url(get_template_directory_uri() . '/assets/img/hero-illustration.svg'); ?>';">
       <h2><?php esc_html_e('Why teams choose Rhinometric', 'rinometry'); ?></h2>
-      <ul>
-        <li><?php esc_html_e('Full visibility across metrics, logs, traces, and alerts.', 'rinometry'); ?></li>
-        <li><?php esc_html_e('On-prem or hybrid deployment with data sovereignty.', 'rinometry'); ?></li>
-        <li><?php esc_html_e('Enterprise security controls and audit-ready observability.', 'rinometry'); ?></li>
-        <li><?php esc_html_e('Fast time-to-value with guided dashboards and playbooks.', 'rinometry'); ?></li>
-      </ul>
+      <div class="mini-card-grid">
+        <div class="mini-card">
+          <span class="mini-icon" aria-hidden="true"></span>
+          <span><?php esc_html_e('Full visibility across metrics, logs, traces, and alerts.', 'rinometry'); ?></span>
+        </div>
+        <div class="mini-card">
+          <span class="mini-icon" aria-hidden="true"></span>
+          <span><?php esc_html_e('On-prem or hybrid deployment with data sovereignty.', 'rinometry'); ?></span>
+        </div>
+        <div class="mini-card">
+          <span class="mini-icon" aria-hidden="true"></span>
+          <span><?php esc_html_e('Enterprise security controls and audit-ready observability.', 'rinometry'); ?></span>
+        </div>
+        <div class="mini-card">
+          <span class="mini-icon" aria-hidden="true"></span>
+          <span><?php esc_html_e('Fast time-to-value with guided dashboards and playbooks.', 'rinometry'); ?></span>
+        </div>
+      </div>
     </div>
   </div>
 </section>
 
-<section class="section">
+<section class="section" id="features">
   <div class="container">
     <h2 class="section-title"><?php esc_html_e('Built for validation and acquisition', 'rinometry'); ?></h2>
     <p class="section-lead"><?php esc_html_e('Start with a trial download today and scale to enterprise licensing, checkout, and customer portal when you are ready.', 'rinometry'); ?></p>
@@ -50,7 +63,7 @@ get_header();
   </div>
 </section>
 
-<section class="section">
+<section class="section" id="integrations">
   <div class="container split">
     <div>
       <h2 class="section-title"><?php esc_html_e('Observability suite designed for ops teams', 'rinometry'); ?></h2>

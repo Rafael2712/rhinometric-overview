@@ -56,3 +56,69 @@ msgstr ""
 
 msgid "Unauthorized request."
 msgstr ""
+
+msgid "On-prem. Unified metrics, logs, and traces. No vendor lock-in."
+msgstr ""
+
+msgid "Features"
+msgstr ""
+
+msgid "Integrations"
+msgstr ""
+
+msgid "Submission rejected. Please try again."
+msgstr ""
+
+msgid "Please wait a moment before submitting again."
+msgstr ""
+
+msgid "We received your request on:"
+msgstr ""
+
+msgid "Language"
+msgstr ""
+
+msgid "Submitted at"
+msgstr ""
+
+msgid "Your Rhinometric demo request"
+msgstr ""
+
+msgid "Thanks for requesting a demo of Rhinometric."
+msgstr ""
+
+msgid "We will reach out shortly to coordinate a session."
+msgstr ""
+
+msgid "Submitted at:"
+msgstr ""
+
+msgid "Helpful links: Download, Roadmap, Contact."
+msgstr ""
+
+msgid "We received your Rhinometric request"
+msgstr ""
+
+msgid "Thank you for contacting Rhinometric."
+msgstr ""
+
+msgid "We will respond within 1–2 business days."
+msgstr ""
+
+msgid "Helpful links: Download, Roadmap, Request a demo."
+msgstr ""
+
+msgid "Website"
+msgstr ""
+
+msgid "Platform"
+msgstr ""
+
+msgid "Security"
+msgstr ""
+
+msgid "Roadmap"
+msgstr ""
+
+msgid "Download"
+msgstr ""

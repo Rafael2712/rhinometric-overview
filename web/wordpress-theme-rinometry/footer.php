@@ -14,7 +14,7 @@
           wp_nav_menu([
             'theme_location' => 'footer',
             'container' => false,
-            'fallback_cb' => false,
+            'fallback_cb' => 'rinometry_primary_menu_fallback',
             'items_wrap' => '<ul>%3$s</ul>',
           ]);
         ?>
@@ -22,7 +22,7 @@
     </div>
     <div>
       <h3><?php esc_html_e('Contact', 'rinometry'); ?></h3>
-      <p><?php esc_html_e('Email: hello@rhinometric.com', 'rinometry'); ?></p>
+      <p><a href="mailto:rafael.canelon@rhinometric.com">rafael.canelon@rhinometric.com</a></p>
       <p><?php esc_html_e('Request a demo to see the platform in action.', 'rinometry'); ?></p>
     </div>
   </div>
