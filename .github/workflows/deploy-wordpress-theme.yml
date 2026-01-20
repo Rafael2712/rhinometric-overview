@@ -15,6 +15,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          sparse-checkout: |
+            wordpress-theme-rinometry
+          sparse-checkout-cone-mode: false
 
       - name: Build theme zip
         run: |
