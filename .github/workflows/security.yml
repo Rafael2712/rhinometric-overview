@@ -18,6 +18,11 @@ on:
       - .github/workflows/build-zip.yml
       - .github/workflows/deploy-wordpress-theme.yml
 
+permissions:
+  contents: read
+  actions: read
+  security-events: write
+
 env:
   NODE_VERSION: '16.20.2'
 
