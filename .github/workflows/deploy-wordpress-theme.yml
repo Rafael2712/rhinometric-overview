@@ -20,6 +20,7 @@ jobs:
           fetch-depth: 1
           set-safe-directory: true
           persist-credentials: false
+          submodules: false
 
       - name: Validate required secrets
         shell: bash
