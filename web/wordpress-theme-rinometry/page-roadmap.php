@@ -20,17 +20,17 @@ get_header();
         <h3><?php esc_html_e('Commercial scale', 'rinometry'); ?></h3>
         <ul>
           <li><?php esc_html_e('Pricing and checkout workflow', 'rinometry'); ?></li>
-          <li><?php esc_html_e('Customer portal and license management [REVIEW]', 'rinometry'); ?></li>
-          <li><?php esc_html_e('Expanded integration library [REVIEW]', 'rinometry'); ?></li>
+          <li><?php esc_html_e('Customer portal and license management', 'rinometry'); ?></li>
+          <li><?php esc_html_e('Expanded integration library', 'rinometry'); ?></li>
         </ul>
       </div>
       <div class="card">
         <span class="badge"><?php esc_html_e('Later', 'rinometry'); ?></span>
         <h3><?php esc_html_e('Ecosystem expansion', 'rinometry'); ?></h3>
         <ul>
-          <li><?php esc_html_e('Automated compliance reporting [REVIEW]', 'rinometry'); ?></li>
-          <li><?php esc_html_e('Partner marketplace [REVIEW]', 'rinometry'); ?></li>
-          <li><?php esc_html_e('Advanced AI operations workflows [REVIEW]', 'rinometry'); ?></li>
+          <li><?php esc_html_e('Automated compliance reporting', 'rinometry'); ?></li>
+          <li><?php esc_html_e('Partner marketplace', 'rinometry'); ?></li>
+          <li><?php esc_html_e('Advanced AI operations workflows', 'rinometry'); ?></li>
         </ul>
       </div>
     </div>

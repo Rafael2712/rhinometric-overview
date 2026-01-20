@@ -40,8 +40,8 @@ msgstr "Detección y triage de anomalías asistidos por IA."
 msgid "Access control"
 msgstr "Control de acceso"
 
-msgid "Advanced AI operations workflows [REVIEW]"
-msgstr "Flujos avanzados de operaciones con IA [REVIEW]"
+msgid "Advanced AI operations workflows"
+msgstr "Flujos avanzados de operaciones con IA"
 
 msgid "Alert center"
 msgstr "Centro de alertas"
@@ -55,14 +55,14 @@ msgstr "Alertas con reducción de ruido y enrutamiento."
 msgid "Alerts icon"
 msgstr "Icono de alertas"
 
-msgid "Aligns with logging and tracing backends used by platform teams. [REVIEW]"
-msgstr "Se alinea con backends de logs y trazas usados por equipos de plataforma. [REVIEW]"
+msgid "Stream logs and traces into Rhinometric to unify troubleshooting and retention governance."
+msgstr "Ingiere logs y trazas en Rhinometric para unificar el diagnóstico y la gobernanza de retención."
 
 msgid "Audit visibility"
 msgstr "Visibilidad de auditoría"
 
-msgid "Automated compliance reporting [REVIEW]"
-msgstr "Reportes de cumplimiento automatizados [REVIEW]"
+msgid "Automated compliance reporting"
+msgstr "Reportes de cumplimiento automatizados"
 
 msgid "Built for validation and acquisition"
 msgstr "Diseñado para validación y adquisición"
@@ -112,8 +112,8 @@ msgstr "Contenido no encontrado"
 msgid "Custom dashboards for product teams."
 msgstr "Dashboards personalizados para equipos de producto."
 
-msgid "Customer portal and license management [REVIEW]"
-msgstr "Portal de clientes y gestión de licencias [REVIEW]"
+msgid "Customer portal and license management"
+msgstr "Portal de clientes y gestión de licencias"
 
 msgid "Dashboards and alerts"
 msgstr "Dashboards y alertas"
@@ -199,8 +199,8 @@ msgstr "Dashboard ejecutivo"
 msgid "Executive visibility on uptime and SLAs."
 msgstr "Visibilidad ejecutiva sobre uptime y SLAs."
 
-msgid "Expanded integration library [REVIEW]"
-msgstr "Biblioteca de integraciones ampliada [REVIEW]"
+msgid "Expanded integration library"
+msgstr "Biblioteca de integraciones ampliada"
 
 msgid "Explore"
 msgstr "Explorar"
@@ -244,8 +244,8 @@ msgstr "Identifica puntos críticos de latencia y dependencias de servicios."
 msgid "If needed, we can route you to the demo team."
 msgstr "Si es necesario, te derivamos al equipo de demos."
 
-msgid "Ingest standardized telemetry to preserve context across metrics, logs, and traces. [REVIEW]"
-msgstr "Ingesta telemetría estandarizada para preservar contexto entre métricas, logs y trazas. [REVIEW]"
+msgid "Ingest standardized telemetry through OpenTelemetry collectors to preserve context across metrics, logs, and traces."
+msgstr "Ingiere telemetría estandarizada a través de colectores OpenTelemetry para preservar contexto entre métricas, logs y trazas."
 
 msgid "Integration-ready"
 msgstr "Listo para integraciones"
@@ -376,8 +376,8 @@ msgstr "Dashboards, alertas y runbooks opinados para acelerar la respuesta a inc
 msgid "Own your observability stack with on-prem control and enterprise-grade insights."
 msgstr "Domina tu stack de observabilidad con control on‑prem y insights de nivel enterprise."
 
-msgid "Partner marketplace [REVIEW]"
-msgstr "Marketplace de partners [REVIEW]"
+msgid "Partner marketplace"
+msgstr "Marketplace de partners"
 
 msgid "Placeholder visuals for product screens. Replace with real screenshots when available."
 msgstr "Visuales placeholder para pantallas de producto. Reemplázalos por screenshots reales cuando estén disponibles."
@@ -397,8 +397,8 @@ msgstr "Corrige lo siguiente:"
 msgid "Please include a short message."
 msgstr "Incluye un mensaje breve."
 
-msgid "Positioned to coexist with Prometheus-style metrics and alerting workflows. [REVIEW]"
-msgstr "Diseñado para coexistir con métricas y alertas estilo Prometheus. [REVIEW]"
+msgid "Connect Prometheus-style metrics pipelines and reuse existing alerting rules when appropriate."
+msgstr "Conecta pipelines de métricas estilo Prometheus y reutiliza reglas de alertas existentes cuando sea apropiado."
 
 msgid "Prebuilt dashboards and alert rules help teams respond faster with less tuning."
 msgstr "Dashboards y reglas de alertas preconfiguradas ayudan a responder más rápido con menos ajuste."
@@ -535,8 +535,8 @@ msgstr "Empieza con una descarga de prueba hoy y escala a licenciamiento enterpr
 msgid "Support for hardened environments and on-prem controls."
 msgstr "Soporte para entornos endurecidos y controles on‑prem."
 
-msgid "Aligned with common telemetry standards and existing alerting workflows. [REVIEW]"
-msgstr "Alineado con estándares comunes de telemetría y flujos de alertas existentes. [REVIEW]"
+msgid "Aligned with common telemetry standards and compatible with existing alerting workflows."
+msgstr "Alineado con estándares comunes de telemetría y compatible con flujos de alertas existentes."
 
 msgid "Tell us about your environment and we will schedule a tailored walkthrough of Rhinometric."
 msgstr "Cuéntanos sobre tu entorno y agendaremos un recorrido guiado de Rhinometric."
@@ -624,3 +624,24 @@ msgstr "Tu enlace de descarga está en camino. Usa los pasos de abajo para comen
 
 msgid "© %s Rhinometric. All rights reserved."
 msgstr "© %s Rhinometric. Todos los derechos reservados."
+
+msgid "Rhinometric Leads Export"
+msgstr "Exportación de leads de Rhinometric"
+
+msgid "Download leads in CSV or JSON format."
+msgstr "Descarga leads en formato CSV o JSON."
+
+msgid "Download leads (CSV)"
+msgstr "Leads de descarga (CSV)"
+
+msgid "Download leads (JSON)"
+msgstr "Leads de descarga (JSON)"
+
+msgid "Demo leads (CSV)"
+msgstr "Leads de demo (CSV)"
+
+msgid "Demo leads (JSON)"
+msgstr "Leads de demo (JSON)"
+
+msgid "Unauthorized request."
+msgstr "Solicitud no autorizada."

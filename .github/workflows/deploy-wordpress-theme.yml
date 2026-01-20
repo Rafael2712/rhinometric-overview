@@ -6,8 +6,9 @@ on:
     branches:
       - main
     paths:
-      - rhinometric-theme.zip
-      - wordpress-theme-rinometry/**
+      - web/**
+      - .github/workflows/build-zip.yml
+      - .github/workflows/deploy-wordpress-theme.yml
 
 jobs:
   deploy:
@@ -44,16 +45,16 @@ jobs:
 
       - name: Build theme zip
         run: |
-          if [ ! -d wordpress-theme-rinometry ]; then
-            echo "Missing wordpress-theme-rinometry directory" >&2
+          if [ ! -d web/wordpress-theme-rinometry ]; then
+            echo "Missing web/wordpress-theme-rinometry directory" >&2
             exit 1
           fi
             sudo apt-get update
             sudo apt-get install -y gettext
-            msgfmt -o wordpress-theme-rinometry/languages/rinometry-es_ES.mo \
-            wordpress-theme-rinometry/languages/rinometry-es_ES.po
+          msgfmt -o web/wordpress-theme-rinometry/languages/rinometry-es_ES.mo \
+            web/wordpress-theme-rinometry/languages/rinometry-es_ES.po
           rm -f rhinometric-theme.zip
-          zip -r rhinometric-theme.zip wordpress-theme-rinometry
+          (cd web && zip -r ../rhinometric-theme.zip wordpress-theme-rinometry)
 
       - name: Upload theme zip
         uses: appleboy/scp-action@v0.1.7
@@ -78,7 +79,7 @@ jobs:
             WP_PATH="${{ secrets.WP_PATH }}"
             WP_URL="${{ secrets.WP_URL }}"
             THEME_DIR="$WP_PATH/wp-content/themes"
-            TMP_DIR="/tmp/rhinometric-theme"
+            TMP_DIR="/tmp/wordpress-theme-rinometry"
             THEME_SLUG="wordpress-theme-rinometry"
 
             echo "Validating paths and inputs"
@@ -101,12 +102,12 @@ jobs:
             unzip -o /tmp/rhinometric-theme.zip -d /tmp
             if command -v rsync >/dev/null 2>&1; then
               echo "Syncing theme with rsync"
-              sudo rsync -a --delete "$TMP_DIR/wordpress-theme-rinometry/" "$THEME_DIR/$THEME_SLUG/"
+              sudo rsync -a --delete "$TMP_DIR/" "$THEME_DIR/$THEME_SLUG/"
             else
               echo "rsync not found; falling back to cp -R"
               sudo rm -rf "$THEME_DIR/$THEME_SLUG"
               sudo mkdir -p "$THEME_DIR/$THEME_SLUG"
-              sudo cp -R "$TMP_DIR/wordpress-theme-rinometry/"* "$THEME_DIR/$THEME_SLUG/"
+              sudo cp -R "$TMP_DIR/"* "$THEME_DIR/$THEME_SLUG/"
             fi
 
             if [ "${{ secrets.WP_CLI_ENABLED }}" = "true" ]; then

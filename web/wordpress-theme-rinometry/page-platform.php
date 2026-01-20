@@ -72,7 +72,7 @@ get_header();
     </div>
     <div class="card">
       <h3><?php esc_html_e('Integration-ready', 'rinometry'); ?></h3>
-      <p><?php esc_html_e('Aligned with common telemetry standards and existing alerting workflows. [REVIEW]', 'rinometry'); ?></p>
+      <p><?php esc_html_e('Aligned with common telemetry standards and compatible with existing alerting workflows.', 'rinometry'); ?></p>
     </div>
   </div>
 </section>

@@ -1,0 +1,58 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: Rhinometric Enterprise 1.0.0\n"
+"POT-Creation-Date: 2026-01-20 00:00+0000\n"
+"Language: en_US\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+# Template file for Rhinometric theme translations.
+
+msgid "Advanced AI operations workflows"
+msgstr ""
+
+msgid "Automated compliance reporting"
+msgstr ""
+
+msgid "Customer portal and license management"
+msgstr ""
+
+msgid "Expanded integration library"
+msgstr ""
+
+msgid "Partner marketplace"
+msgstr ""
+
+msgid "Ingest standardized telemetry through OpenTelemetry collectors to preserve context across metrics, logs, and traces."
+msgstr ""
+
+msgid "Connect Prometheus-style metrics pipelines and reuse existing alerting rules when appropriate."
+msgstr ""
+
+msgid "Stream logs and traces into Rhinometric to unify troubleshooting and retention governance."
+msgstr ""
+
+msgid "Aligned with common telemetry standards and compatible with existing alerting workflows."
+msgstr ""
+
+msgid "Rhinometric Leads Export"
+msgstr ""
+
+msgid "Download leads in CSV or JSON format."
+msgstr ""
+
+msgid "Download leads (CSV)"
+msgstr ""
+
+msgid "Download leads (JSON)"
+msgstr ""
+
+msgid "Demo leads (CSV)"
+msgstr ""
+
+msgid "Demo leads (JSON)"
+msgstr ""
+
+msgid "Unauthorized request."
+msgstr ""

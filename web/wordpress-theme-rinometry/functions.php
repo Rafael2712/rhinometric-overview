@@ -91,14 +91,43 @@ function rinometry_language_switcher() {
         return;
     }
 
-    $current_locale = determine_locale();
-    $is_spanish = strpos($current_locale, 'es') === 0;
-
+    $current_lang = rinometry_get_current_language();
+    $current_url = home_url(add_query_arg([]));
     echo '<div class="language-switcher" aria-label="' . esc_attr__('Language selector', 'rinometry') . '">';
-    echo '<a class="' . ($is_spanish ? '' : 'is-active') . '" href="' . esc_url(home_url('/')) . '">EN</a>';
-    echo '<a class="' . ($is_spanish ? 'is-active' : '') . '" href="' . esc_url(home_url('/es/')) . '">ES</a>';
+    echo '<a class="' . ($current_lang === 'en' ? 'is-active' : '') . '" href="' . esc_url(add_query_arg('lang', 'en', $current_url)) . '">EN</a>';
+    echo '<a class="' . ($current_lang === 'es' ? 'is-active' : '') . '" href="' . esc_url(add_query_arg('lang', 'es', $current_url)) . '">ES</a>';
     echo '</div>';
 }
+
+function rinometry_get_current_language() {
+    $lang = isset($_COOKIE['rino_lang']) ? sanitize_text_field(wp_unslash($_COOKIE['rino_lang'])) : '';
+    return $lang === 'es' ? 'es' : 'en';
+}
+
+function rinometry_set_language_cookie() {
+    if (!isset($_GET['lang'])) {
+        return;
+    }
+
+    $lang = sanitize_text_field(wp_unslash($_GET['lang']));
+    if (!in_array($lang, ['en', 'es'], true)) {
+        return;
+    }
+
+    setcookie('rino_lang', $lang, time() + DAY_IN_SECONDS * 30, COOKIEPATH ?: '/', COOKIE_DOMAIN ?: '', is_ssl(), true);
+    $_COOKIE['rino_lang'] = $lang;
+
+    $redirect = remove_query_arg('lang');
+    wp_safe_redirect($redirect);
+    exit;
+}
+add_action('init', 'rinometry_set_language_cookie');
+
+function rinometry_filter_locale($locale) {
+    return rinometry_get_current_language() === 'es' ? 'es_ES' : 'en_US';
+}
+add_filter('locale', 'rinometry_filter_locale');
+add_filter('determine_locale', 'rinometry_filter_locale');
 
 function rinometry_get_download_url() {
     $configured = get_option('rinometry_download_url');
@@ -157,3 +186,108 @@ function rinometry_lead_recipient_field() {
     echo '<input type="email" id="rinometry_lead_recipient" name="rinometry_lead_recipient" value="' . $value . '" class="regular-text" />';
     echo '<p class="description">' . esc_html__('Lead notifications will be sent to this email.', 'rinometry') . '</p>';
 }
+
+function rinometry_register_lead_exports() {
+    add_management_page(
+        __('Rhinometric Leads Export', 'rinometry'),
+        __('Rhinometric Leads Export', 'rinometry'),
+        'manage_options',
+        'rhinometric-leads-export',
+        'rinometry_render_lead_export_page'
+    );
+}
+add_action('admin_menu', 'rinometry_register_lead_exports');
+
+function rinometry_render_lead_export_page() {
+    if (!current_user_can('manage_options')) {
+        return;
+    }
+
+    $base_url = admin_url('admin-post.php');
+    $nonce = wp_create_nonce('rinometry_export_leads');
+
+    $links = [
+        'download_csv' => add_query_arg([
+            'action' => 'rinometry_export_leads',
+            'type' => 'download',
+            'format' => 'csv',
+            '_wpnonce' => $nonce,
+        ], $base_url),
+        'download_json' => add_query_arg([
+            'action' => 'rinometry_export_leads',
+            'type' => 'download',
+            'format' => 'json',
+            '_wpnonce' => $nonce,
+        ], $base_url),
+        'demo_csv' => add_query_arg([
+            'action' => 'rinometry_export_leads',
+            'type' => 'demo',
+            'format' => 'csv',
+            '_wpnonce' => $nonce,
+        ], $base_url),
+        'demo_json' => add_query_arg([
+            'action' => 'rinometry_export_leads',
+            'type' => 'demo',
+            'format' => 'json',
+            '_wpnonce' => $nonce,
+        ], $base_url),
+    ];
+
+    echo '<div class="wrap">';
+    echo '<h1>' . esc_html__('Rhinometric Leads Export', 'rinometry') . '</h1>';
+    echo '<p>' . esc_html__('Download leads in CSV or JSON format.', 'rinometry') . '</p>';
+    echo '<ul>';
+    echo '<li><a href="' . esc_url($links['download_csv']) . '">' . esc_html__('Download leads (CSV)', 'rinometry') . '</a></li>';
+    echo '<li><a href="' . esc_url($links['download_json']) . '">' . esc_html__('Download leads (JSON)', 'rinometry') . '</a></li>';
+    echo '<li><a href="' . esc_url($links['demo_csv']) . '">' . esc_html__('Demo leads (CSV)', 'rinometry') . '</a></li>';
+    echo '<li><a href="' . esc_url($links['demo_json']) . '">' . esc_html__('Demo leads (JSON)', 'rinometry') . '</a></li>';
+    echo '</ul>';
+    echo '</div>';
+}
+
+function rinometry_export_leads_handler() {
+    if (!current_user_can('manage_options')) {
+        wp_die(__('Unauthorized request.', 'rinometry'));
+    }
+
+    check_admin_referer('rinometry_export_leads');
+
+    $type = sanitize_text_field(wp_unslash($_GET['type'] ?? 'download'));
+    $format = sanitize_text_field(wp_unslash($_GET['format'] ?? 'csv'));
+    $post_type = $type === 'demo' ? 'demo_lead' : 'download_lead';
+
+    $posts = get_posts([
+        'post_type' => $post_type,
+        'post_status' => ['private', 'publish', 'draft'],
+        'numberposts' => -1,
+        'orderby' => 'date',
+        'order' => 'DESC',
+    ]);
+
+    $rows = [];
+    foreach ($posts as $post) {
+        $rows[] = [
+            'name' => $post->post_title,
+            'email' => get_post_meta($post->ID, '_rino_email', true),
+            'company' => get_post_meta($post->ID, '_rino_company', true),
+            'use_case' => get_post_meta($post->ID, '_rino_use_case', true),
+            'message' => get_post_meta($post->ID, '_rino_message', true),
+            'created_at' => $post->post_date,
+        ];
+    }
+
+    if ($format === 'json') {
+        wp_send_json($rows);
+    }
+
+    header('Content-Type: text/csv; charset=utf-8');
+    header('Content-Disposition: attachment; filename=' . $post_type . '.csv');
+    $output = fopen('php://output', 'w');
+    fputcsv($output, ['name', 'email', 'company', 'use_case', 'message', 'created_at']);
+    foreach ($rows as $row) {
+        fputcsv($output, $row);
+    }
+    fclose($output);
+    exit;
+}
+add_action('admin_post_rinometry_export_leads', 'rinometry_export_leads_handler');

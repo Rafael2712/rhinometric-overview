@@ -90,7 +90,7 @@ get_header();
           <img class="icon" src="<?php echo esc_url(get_template_directory_uri() . '/assets/img/integration-otel.svg'); ?>" alt="<?php esc_attr_e('OpenTelemetry icon placeholder', 'rinometry'); ?>">
           <div>
             <h3><?php esc_html_e('OpenTelemetry pipelines', 'rinometry'); ?></h3>
-            <p><?php esc_html_e('Ingest standardized telemetry to preserve context across metrics, logs, and traces. [REVIEW]', 'rinometry'); ?></p>
+            <p><?php esc_html_e('Ingest standardized telemetry through OpenTelemetry collectors to preserve context across metrics, logs, and traces.', 'rinometry'); ?></p>
           </div>
         </div>
       </div>
@@ -99,7 +99,7 @@ get_header();
           <img class="icon" src="<?php echo esc_url(get_template_directory_uri() . '/assets/img/integration-prometheus.svg'); ?>" alt="<?php esc_attr_e('Prometheus icon placeholder', 'rinometry'); ?>">
           <div>
             <h3><?php esc_html_e('Metrics ecosystems', 'rinometry'); ?></h3>
-            <p><?php esc_html_e('Positioned to coexist with Prometheus-style metrics and alerting workflows. [REVIEW]', 'rinometry'); ?></p>
+            <p><?php esc_html_e('Connect Prometheus-style metrics pipelines and reuse existing alerting rules when appropriate.', 'rinometry'); ?></p>
           </div>
         </div>
       </div>
@@ -108,7 +108,7 @@ get_header();
           <img class="icon" src="<?php echo esc_url(get_template_directory_uri() . '/assets/img/integration-logging.svg'); ?>" alt="<?php esc_attr_e('Logging icon placeholder', 'rinometry'); ?>">
           <div>
             <h3><?php esc_html_e('Logs and traces stack', 'rinometry'); ?></h3>
-            <p><?php esc_html_e('Aligns with logging and tracing backends used by platform teams. [REVIEW]', 'rinometry'); ?></p>
+            <p><?php esc_html_e('Stream logs and traces into Rhinometric to unify troubleshooting and retention governance.', 'rinometry'); ?></p>
           </div>
         </div>
       </div>
