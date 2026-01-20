@@ -74,24 +74,74 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             set -euo pipefail
-            THEME_DIR="${{ secrets.WP_PATH }}/wp-content/themes"
+            echo "Starting deploy on host ${HOSTNAME}"
+            WP_PATH="${{ secrets.WP_PATH }}"
+            WP_URL="${{ secrets.WP_URL }}"
+            THEME_DIR="$WP_PATH/wp-content/themes"
             TMP_DIR="/tmp/rhinometric-theme"
+            THEME_SLUG="wordpress-theme-rinometry"
+
+            echo "Validating paths and inputs"
             if [ ! -f /tmp/rhinometric-theme.zip ]; then
               echo "Theme zip not found at /tmp/rhinometric-theme.zip" >&2
               exit 1
             fi
-            if [ ! -d "${{ secrets.WP_PATH }}" ]; then
-              echo "WP_PATH not found: ${{ secrets.WP_PATH }}" >&2
+            if [ ! -d "$WP_PATH" ]; then
+              echo "WP_PATH not found: $WP_PATH" >&2
               exit 1
             fi
             if ! sudo -n true 2>/dev/null; then
               echo "Sudo is required for theme deployment on this host." >&2
               exit 1
             fi
+
+            echo "Installing theme files"
             sudo mkdir -p "$THEME_DIR"
             rm -rf "$TMP_DIR"
             unzip -o /tmp/rhinometric-theme.zip -d /tmp
-            sudo rsync -a --delete "$TMP_DIR/wordpress-theme-rinometry/" "$THEME_DIR/wordpress-theme-rinometry/"
-            if [ "${{ secrets.WP_CLI_ENABLED }}" = "true" ] && command -v wp >/dev/null 2>&1; then
-              sudo wp theme activate wordpress-theme-rinometry --path="${{ secrets.WP_PATH }}" --url="${{ secrets.WP_URL }}"
+            sudo rsync -a --delete "$TMP_DIR/wordpress-theme-rinometry/" "$THEME_DIR/$THEME_SLUG/"
+
+            if [ "${{ secrets.WP_CLI_ENABLED }}" = "true" ]; then
+              echo "Locating WP-CLI"
+              WP_BIN=""
+              if command -v wp >/dev/null 2>&1; then
+                WP_BIN="wp"
+              elif [ -x /opt/bitnami/wp-cli/bin/wp ]; then
+                WP_BIN="/opt/bitnami/wp-cli/bin/wp"
+              elif [ -f /opt/bitnami/wordpress/wp-cli.phar ]; then
+                WP_BIN="php /opt/bitnami/wordpress/wp-cli.phar"
+              fi
+
+              if [ -z "$WP_BIN" ]; then
+                echo "WP-CLI not found in PATH or Bitnami default locations." >&2
+                exit 1
+              fi
+
+              echo "Activating theme: $THEME_SLUG"
+              sudo $WP_BIN theme activate "$THEME_SLUG" --path="$WP_PATH" --url="$WP_URL"
+
+              ensure_page() {
+                local slug="$1"
+                local title="$2"
+                local id
+                id=$(sudo $WP_BIN post list --post_type=page --name="$slug" --field=ID --path="$WP_PATH" --url="$WP_URL" || true)
+                if [ -z "$id" ]; then
+                  echo "Creating page: $slug"
+                  sudo $WP_BIN post create --post_type=page --post_status=publish --post_title="$title" --post_name="$slug" --path="$WP_PATH" --url="$WP_URL" >/dev/null
+                else
+                  echo "Page exists: $slug (ID: $id)"
+                  sudo $WP_BIN post update "$id" --post_status=publish --post_title="$title" --path="$WP_PATH" --url="$WP_URL" >/dev/null
+                fi
+              }
+
+              echo "Ensuring required pages exist"
+              ensure_page "download" "Download"
+              ensure_page "request-demo" "Request a Demo"
+              ensure_page "roadmap" "Roadmap"
+              ensure_page "contact" "Contact"
+              ensure_page "platform" "Platform"
+              ensure_page "observability-suite" "Observability Suite"
+            else
+              echo "WP_CLI_ENABLED is not true; skipping theme activation and page creation." >&2
+              exit 1
             fi
