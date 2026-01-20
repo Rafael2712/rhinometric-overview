@@ -51,6 +51,18 @@ jobs:
             set -euo pipefail
             THEME_DIR="${{ secrets.WP_PATH }}/wp-content/themes"
             TMP_DIR="/tmp/rhinometric-theme"
+            if [ ! -f /tmp/rhinometric-theme.zip ]; then
+              echo "Theme zip not found at /tmp/rhinometric-theme.zip" >&2
+              exit 1
+            fi
+            if [ ! -d "${{ secrets.WP_PATH }}" ]; then
+              echo "WP_PATH not found: ${{ secrets.WP_PATH }}" >&2
+              exit 1
+            fi
+            if ! sudo -n true 2>/dev/null; then
+              echo "Sudo is required for theme deployment on this host." >&2
+              exit 1
+            fi
             sudo mkdir -p "$THEME_DIR"
             rm -rf "$TMP_DIR"
             unzip -o /tmp/rhinometric-theme.zip -d /tmp
