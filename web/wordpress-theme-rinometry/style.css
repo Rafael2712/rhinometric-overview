@@ -10,7 +10,7 @@ Text Domain: rinometry
 */
 
 :root {
-  --bg: #f6f7f9;
+  --bg: #eef1f5;
   --surface: #ffffff;
   --text: #0b0b0c;
   --muted: #5a606b;
@@ -218,7 +218,7 @@ textarea:focus {
 }
 
 .hero {
-  padding: 3.5rem 0 3rem;
+  padding: 2.75rem 0 3rem;
 }
 
 .hero-grid {
@@ -342,11 +342,15 @@ textarea:focus {
   align-items: center;
   text-align: center;
   gap: 1rem;
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
 }
 
 .hero-visual img {
   width: min(380px, 90%);
   max-width: 420px;
+  object-fit: contain;
 }
 
 @media (max-width: 768px) {
