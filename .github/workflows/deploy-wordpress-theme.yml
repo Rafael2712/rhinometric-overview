@@ -46,6 +46,25 @@ jobs:
             exit 1
           fi
 
+      - name: Pre-deploy verify theme path
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          port: ${{ secrets.SSH_PORT }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            set -euo pipefail
+            WP_PATH="${{ secrets.WP_PATH }}"
+            THEME_SLUG="wordpress-theme-rinometry"
+            echo "WP_PATH=${WP_PATH}"
+            ls -la "${WP_PATH}"
+            ls -la "${WP_PATH}/wp-content/themes"
+            if [ ! -d "${WP_PATH}/wp-content/themes/${THEME_SLUG}" ]; then
+              echo "Theme folder not found in server path. Check WP_PATH or active theme." >&2
+              exit 1
+            fi
+
       - name: Build theme zip
         run: |
           if [ ! -d web/wordpress-theme-rinometry ]; then
@@ -155,5 +174,26 @@ jobs:
               ensure_page "observability-suite" "Observability Suite"
             else
               echo "WP_CLI_ENABLED is not true; skipping theme activation and page creation." >&2
+              exit 1
+            fi
+
+      - name: Post-deploy verify theme files
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          port: ${{ secrets.SSH_PORT }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            set -euo pipefail
+            WP_PATH="${{ secrets.WP_PATH }}"
+            THEME_SLUG="wordpress-theme-rinometry"
+            THEME_DIR="${WP_PATH}/wp-content/themes/${THEME_SLUG}"
+            if ! test -f "${THEME_DIR}/style.css"; then
+              echo "style.css not found in deployed theme directory." >&2
+              exit 1
+            fi
+            if ! grep -q "On-premise • No SaaS lock-in • Metrics + Logs + Traces" "${THEME_DIR}/front-page.php"; then
+              echo "Expected trust strip text not found in deployed theme." >&2
               exit 1
             fi
