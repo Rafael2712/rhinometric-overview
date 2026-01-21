@@ -69,7 +69,7 @@ get_header();
       </div>
       <div class="card">
           <h3><?php esc_html_e('Traces', 'rinometry'); ?></h3>
-          <p><?php esc_html_e('Tempo for tracing with OTLP-compatible pipelines.', 'rinometry'); ?></p>
+        <p><?php esc_html_e('Jaeger for tracing (OTLP compatible).', 'rinometry'); ?></p>
         </div>
         <div class="card">
           <h3><?php esc_html_e('Dashboards', 'rinometry'); ?></h3>
@@ -85,7 +85,7 @@ get_header();
         </div>
         <div class="card">
           <h3><?php esc_html_e('Automated backups', 'rinometry'); ?></h3>
-          <p><?php esc_html_e('Scheduled backups for Prometheus, Loki, Tempo, Grafana, and Postgres.', 'rinometry'); ?></p>
+          <p><?php esc_html_e('Scheduled backups for Prometheus, Loki, Jaeger, Grafana, and Postgres.', 'rinometry'); ?></p>
         </div>
         <div class="card">
           <h3><?php esc_html_e('Compose packaging', 'rinometry'); ?></h3>

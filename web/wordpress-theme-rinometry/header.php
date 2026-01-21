@@ -12,7 +12,6 @@
 <header class="site-header" role="banner">
   <div class="container header-inner">
     <a class="brand" href="<?php echo esc_url(home_url('/')); ?>">
-      <img class="brand-logo" src="<?php echo esc_url(get_template_directory_uri() . '/assets/img/logo-rhinometric.png'); ?>" alt="<?php esc_attr_e('Rhinometric logo', 'rinometry'); ?>" width="32" height="32" onerror="this.onerror=null;this.src='<?php echo esc_url(get_template_directory_uri() . '/assets/img/logo-rhinometric.svg'); ?>';">
       <span class="brand-text">Rhinometric</span>
     </a>
     <nav class="nav" role="navigation" aria-label="<?php esc_attr_e('Primary', 'rinometry'); ?>">
