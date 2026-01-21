@@ -68,12 +68,12 @@ a:focus {
 
 a:focus,
 button:focus,
-input:focus,
+  padding: 0.6rem 0 2rem;
 select:focus,
 textarea:focus {
   outline: 3px solid var(--focus);
   outline-offset: 2px;
-}
+  gap: 1.75rem;
 
 .skip-link {
   position: absolute;
@@ -91,19 +91,20 @@ textarea:focus {
 }
 
 .container {
-  width: min(1180px, 92%);
-  margin: 0 auto;
-}
-
+  gap: 0.5rem;
+  background: rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
+  padding: 1.4rem;
 .site-header {
   background: var(--surface);
   border-bottom: 1px solid var(--border);
-  position: sticky;
-  top: 0;
+  width: min(280px, 82%);
+  max-width: 320px;
   z-index: 40;
-}
+  background: rgba(255, 255, 255, 0.25);
 
-.header-inner {
+  padding: 0.35rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -116,11 +117,11 @@ textarea:focus {
   align-items: center;
   gap: 0.75rem;
   font-weight: 600;
-  color: #0b2b4a;
+  color: #0e2a47;
 }
 
 .brand-text {
-  font-size: 1.375rem;
+  font-size: 1.4375rem;
   font-weight: 600;
   letter-spacing: 0.2px;
 }
@@ -130,12 +131,6 @@ textarea:focus {
   height: 48px;
   border-radius: 8px;
   border: 1px solid var(--border);
-
-@media (min-width: 1024px) {
-  .hero-grid {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 0.92fr);
-  }
-}
   background: #ffffff;
 }
 
@@ -313,7 +308,7 @@ textarea:focus {
 .mini-card-grid {
   display: grid;
   gap: 0.4rem;
-  margin-top: 0.4rem;
+  margin-top: 0.5rem;
 }
 
 .mini-card {
@@ -534,7 +529,7 @@ textarea:focus {
     height: 44px;
   }
   .brand-text {
-    font-size: 1.05rem;
+    font-size: 1.25rem;
   }
 }
 
@@ -550,6 +545,20 @@ textarea:focus {
     height: 38px;
   }
   .brand-text {
-    font-size: 1rem;
+    font-size: 1.125rem;
   }
+}
+
+@media (min-width: 1024px) {
+  .hero-grid {
+    grid-template-columns: minmax(0, 1.25fr) minmax(0, 0.85fr);
+  }
+}
+
+.why-choose {
+  padding-top: 0.5rem;
+}
+
+.why-choose .mini-card-grid {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
 }

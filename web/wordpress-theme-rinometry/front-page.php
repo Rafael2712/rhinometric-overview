@@ -27,28 +27,33 @@ get_header();
     </div>
     <div class="hero-card hero-visual" aria-label="<?php esc_attr_e('Rhinometric hero logo', 'rinometry'); ?>">
       <img src="<?php echo esc_url(get_template_directory_uri() . '/assets/img/logo-rhinometric.png'); ?>" alt="<?php esc_attr_e('Rhinometric logo illustration', 'rinometry'); ?>" onerror="this.onerror=null;this.src='<?php echo esc_url(get_template_directory_uri() . '/assets/img/hero-illustration.svg'); ?>';">
-      <h2><?php esc_html_e('Why teams choose Rhinometric', 'rinometry'); ?></h2>
-      <div class="mini-card-grid">
-        <div class="mini-card">
-          <span class="mini-icon" aria-hidden="true"></span>
-            <span><?php esc_html_e('Unified signals across metrics, logs, and traces.', 'rinometry'); ?></span>
-        </div>
-        <div class="mini-card">
-          <span class="mini-icon" aria-hidden="true"></span>
-            <span><?php esc_html_e('On-prem by design for regulated environments.', 'rinometry'); ?></span>
-        </div>
-        <div class="mini-card">
-          <span class="mini-icon" aria-hidden="true"></span>
-            <span><?php esc_html_e('Operational clarity with Grafana + License UI.', 'rinometry'); ?></span>
-        </div>
-        <div class="mini-card">
-          <span class="mini-icon" aria-hidden="true"></span>
-            <span><?php esc_html_e('Anomaly detection to reduce noise and speed triage.', 'rinometry'); ?></span>
-          </div>
-          <div class="mini-card">
-            <span class="mini-icon" aria-hidden="true"></span>
-            <span><?php esc_html_e('Safe by architecture: observes, not in the transaction path.', 'rinometry'); ?></span>
-        </div>
+    </div>
+  </div>
+</section>
+
+<section class="section why-choose" aria-label="<?php esc_attr_e('Why teams choose Rhinometric', 'rinometry'); ?>">
+  <div class="container">
+    <h2 class="section-title"><?php esc_html_e('Why teams choose Rhinometric', 'rinometry'); ?></h2>
+    <div class="mini-card-grid">
+      <div class="mini-card">
+        <span class="mini-icon" aria-hidden="true"></span>
+        <span><?php esc_html_e('Unified signals across metrics, logs, and traces.', 'rinometry'); ?></span>
+      </div>
+      <div class="mini-card">
+        <span class="mini-icon" aria-hidden="true"></span>
+        <span><?php esc_html_e('On-prem by design for regulated environments.', 'rinometry'); ?></span>
+      </div>
+      <div class="mini-card">
+        <span class="mini-icon" aria-hidden="true"></span>
+        <span><?php esc_html_e('Operational clarity with Grafana + License UI.', 'rinometry'); ?></span>
+      </div>
+      <div class="mini-card">
+        <span class="mini-icon" aria-hidden="true"></span>
+        <span><?php esc_html_e('Anomaly detection to reduce noise and speed triage.', 'rinometry'); ?></span>
+      </div>
+      <div class="mini-card">
+        <span class="mini-icon" aria-hidden="true"></span>
+        <span><?php esc_html_e('Safe by architecture: observes, not in the transaction path.', 'rinometry'); ?></span>
       </div>
     </div>
   </div>
