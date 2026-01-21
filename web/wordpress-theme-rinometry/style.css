@@ -228,16 +228,33 @@ textarea:focus {
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   align-items: start;
 }
-
-.hero-card {
-  background: var(--surface);
-  padding: 2rem;
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  border: 1px solid var(--border);
+.hero-copy {
+  display: grid;
+.mock-header {
+  font-weight: 600;
+  color: var(--text);
 }
 
-.section {
+.mock-line {
+  height: 8px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(0, 133, 255, 0.12), rgba(15, 23, 42, 0.05));
+}
+
+.mock-widgets {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+  width: 100%;
+}
+
+.mock-widget {
+  height: 72px;
+  border-radius: 12px;
+  background: rgba(0, 133, 255, 0.08);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+}
   padding: 3.5rem 0;
 }
 
@@ -287,6 +304,31 @@ textarea:focus {
   margin-top: 0.75rem;
   font-size: 0.8rem;
   color: #6b7280;
+.mock-header {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.mock-line {
+  height: 8px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(0, 133, 255, 0.12), rgba(15, 23, 42, 0.05));
+}
+
+.mock-widgets {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+  width: 100%;
+}
+
+.mock-widget {
+  height: 72px;
+  border-radius: 12px;
+  background: rgba(0, 133, 255, 0.08);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+}
   text-align: left;
 }
 
@@ -295,6 +337,35 @@ textarea:focus {
   gap: 1.5rem;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   margin-top: 2rem;
+}
+.benefits-grid {
+  margin-top: 1.5rem;
+}
+
+.benefit-card {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.benefit-card .benefit-icon {
+  margin-top: 0.25rem;
+}
+
+.steps-grid {
+  margin-top: 1.5rem;
+}
+
+.early-access .card {
+  display: grid;
+  gap: 1rem;
+}
+
+.early-list {
+  margin: 0;
+  padding-left: 1.25rem;
+  color: var(--text);
+  display: grid;
+  gap: 0.5rem;
 }
 
 .benefits-list {
@@ -610,6 +681,13 @@ textarea:focus {
   display: grid;
   gap: 2rem;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.footer-simple {
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.9rem;
+  opacity: 0.9;
 }
 
 .footer-legal {

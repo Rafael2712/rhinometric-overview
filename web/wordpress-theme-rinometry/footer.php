@@ -2,74 +2,9 @@
 ?>
 </main>
 <footer class="site-footer" role="contentinfo">
-  <div class="container footer-grid">
-    <div>
-      <h2><?php esc_html_e('Rhinometric', 'rinometry'); ?></h2>
-      <p><?php esc_html_e('Enterprise-grade observability for metrics, logs, and traces with on-prem control.', 'rinometry'); ?></p>
-      <p class="footer-eu"><?php esc_html_e('Built with European compliance in mind.', 'rinometry'); ?></p>
-    </div>
-    <div>
-      <h3><?php esc_html_e('Explore', 'rinometry'); ?></h3>
-      <nav aria-label="<?php esc_attr_e('Footer', 'rinometry'); ?>">
-        <?php
-          wp_nav_menu([
-            'theme_location' => 'footer',
-            'container' => false,
-            'fallback_cb' => 'rinometry_primary_menu_fallback',
-            'items_wrap' => '<ul>%3$s</ul>',
-          ]);
-        ?>
-      </nav>
-    </div>
-    <div>
-      <h3><?php esc_html_e('Contact', 'rinometry'); ?></h3>
-      <p><a href="mailto:rafael.canelon@rhinometric.com">rafael.canelon@rhinometric.com</a></p>
-      <p><?php esc_html_e('Request a demo to see the platform in action.', 'rinometry'); ?></p>
-    </div>
-    <div>
-      <h3><?php esc_html_e('Legal', 'rinometry'); ?></h3>
-      <ul class="footer-legal">
-        <li><a href="<?php echo esc_url(home_url('/terms')); ?>"><?php esc_html_e('Terms & Conditions', 'rinometry'); ?></a></li>
-        <li><a href="<?php echo esc_url(home_url('/privacy-cookies')); ?>"><?php esc_html_e('Privacy & Cookies Policy', 'rinometry'); ?></a></li>
-      </ul>
-    </div>
-  </div>
-  <div class="container" style="margin-top: 2rem; font-size: 0.9rem; opacity: 0.8;">
+  <div class="container footer-simple">
     <p><?php esc_html_e('© Rhinometric. All rights reserved.', 'rinometry'); ?></p>
-    <p><?php esc_html_e('Contact: rafael.canelon@rhinometric.com', 'rinometry'); ?></p>
-  </div>
-  <div class="container deploy-info">
-    <?php
-      $deploy_info_path = get_template_directory() . '/deploy-info.json';
-      $deploy_line = 'Deployed: unknown';
-      if (file_exists($deploy_info_path)) {
-        $raw = file_get_contents($deploy_info_path);
-        $data = json_decode($raw, true);
-        if (is_array($data)) {
-          $sha = isset($data['sha']) ? trim((string) $data['sha']) : '';
-          $run_number = isset($data['run_number']) ? trim((string) $data['run_number']) : '';
-          $deployed_at = isset($data['deployed_at_utc']) ? trim((string) $data['deployed_at_utc']) : '';
-          if ($sha && $run_number && $deployed_at) {
-            $short_sha = substr($sha, 0, 7);
-            $deploy_line = sprintf('Deployed: %s · Run #%s · %s', $short_sha, $run_number, $deployed_at);
-          }
-        }
-      }
-    ?>
-    <p><?php echo esc_html($deploy_line); ?></p>
-  </div>
-  <div class="container cookie-banner" data-cookie-banner <?php echo rinometry_cookie_banner_enabled() ? '' : 'hidden'; ?> aria-hidden="true">
-    <div class="cookie-banner__inner">
-      <p><?php esc_html_e('This site uses cookies to improve your experience. Preferences will be available soon.', 'rinometry'); ?></p>
-      <div class="cookie-banner__actions">
-        <button class="btn btn-secondary" type="button" aria-label="<?php esc_attr_e('Cookie preferences', 'rinometry'); ?>">
-          <?php esc_html_e('Preferences', 'rinometry'); ?>
-        </button>
-        <button class="btn btn-primary" type="button" aria-label="<?php esc_attr_e('Accept cookies', 'rinometry'); ?>">
-          <?php esc_html_e('Accept', 'rinometry'); ?>
-        </button>
-      </div>
-    </div>
+    <p><?php esc_html_e('Contact: ', 'rinometry'); ?><a href="mailto:rafael.canelon@rhinometric.com">rafael.canelon@rhinometric.com</a></p>
   </div>
 </footer>
 <?php wp_footer(); ?>
