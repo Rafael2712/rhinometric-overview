@@ -116,7 +116,7 @@ textarea:focus {
   align-items: center;
   gap: 0.75rem;
   font-weight: 600;
-  color: #1f2937;
+  color: #111827;
 }
 
 .brand-text {
@@ -218,7 +218,7 @@ textarea:focus {
 }
 
 .hero {
-  padding: 5rem 0 4rem;
+  padding: 3.5rem 0 3rem;
 }
 
 .hero-grid {
@@ -345,7 +345,14 @@ textarea:focus {
 }
 
 .hero-visual img {
-  width: min(240px, 80%);
+  width: min(380px, 90%);
+  max-width: 420px;
+}
+
+@media (max-width: 768px) {
+  .brand-text {
+    font-size: 1.125rem;
+  }
 }
 
 .card h3 {
