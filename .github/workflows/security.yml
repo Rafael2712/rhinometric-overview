@@ -112,6 +112,15 @@ jobs:
     - name: 📥 Checkout code
       uses: actions/checkout@v4
 
+    - name: 🔐 Docker login (if credentials exist)
+      shell: bash
+      run: |
+        if [ -z "${{ secrets.DOCKER_USERNAME }}" ] || [ -z "${{ secrets.DOCKER_TOKEN }}" ]; then
+          echo "Skipping docker login: missing DOCKER_USERNAME/DOCKER_TOKEN secrets"
+        else
+          echo "${{ secrets.DOCKER_TOKEN }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+        fi
+
     - name: 🐳 Build Docker image for scanning
       run: |
         cd backend
