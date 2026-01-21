@@ -256,6 +256,16 @@ textarea:focus {
   margin-top: 0.75rem;
 }
 
+.hero-bullets {
+  margin: 1rem 0 0;
+  padding-left: 1.25rem;
+  color: var(--text);
+}
+
+.hero-bullets li {
+  margin: 0.35rem 0;
+}
+
 .grid {
   display: grid;
   gap: 1.5rem;
