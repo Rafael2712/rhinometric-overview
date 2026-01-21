@@ -123,6 +123,7 @@ get_header();
           <a class="btn btn-primary" href="<?php echo esc_url(get_permalink(get_page_by_path('download'))); ?>">
             <?php esc_html_e('Download Rhinometric', 'rinometry'); ?>
           </a>
+          <p class="section-note"><?php esc_html_e('Early access (3–6 months) + feedback-driven validation', 'rinometry'); ?></p>
         </div>
         <div class="card">
           <h3><?php esc_html_e('Request a demo', 'rinometry'); ?></h3>
@@ -130,6 +131,7 @@ get_header();
           <a class="btn btn-secondary" href="<?php echo esc_url(get_permalink(get_page_by_path('request-demo'))); ?>">
             <?php esc_html_e('Request a demo', 'rinometry'); ?>
           </a>
+          <p class="section-note"><?php esc_html_e('Guided evaluation for security/compliance and enterprise fit', 'rinometry'); ?></p>
         </div>
       </div>
   </div>
@@ -138,7 +140,7 @@ get_header();
 <section class="section">
   <div class="container">
     <h2 class="section-title"><?php esc_html_e('Integrations & tooling', 'rinometry'); ?></h2>
-    <p class="section-lead"><?php esc_html_e('Rhinometric is designed to work alongside common observability tooling without forcing a rip-and-replace. Mentioned tools are provided as context, not guaranteed integrations.', 'rinometry'); ?></p>
+    <p class="section-lead"><?php esc_html_e('Out of the box: Prometheus + Grafana + Loki + Jaeger (Traces: Jaeger, OTLP compatible).', 'rinometry'); ?></p>
     <div class="grid">
       <div class="card">
         <div class="card-media">
