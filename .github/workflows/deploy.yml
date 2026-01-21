@@ -12,12 +12,5 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Build and Test
-        run: |
-          docker build -t rhinometric/platform:${{ github.sha }} .
-          export LICENSE_SECRET='test'
-          python3 tools/generate_license.py --customer Test --type trial
-      - name: Push to Registry
-        run: |
-          echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
-          docker push rhinometric/platform:${{ github.sha }}
+      - name: Skip Docker deployment
+        run: echo "Docker steps removed; this workflow no longer builds or pushes images."
