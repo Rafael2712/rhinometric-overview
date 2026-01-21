@@ -247,52 +247,39 @@ textarea:focus {
 	align-self: center;
 }
 
-.hero-visual::after {
-	content: "";
-	position: absolute;
-	top: -8px;
-	right: -8px;
-	width: 180px;
-	height: 180px;
-	background-image: url("assets/img/logo-rhinometric.png");
-	background-size: contain;
-	background-repeat: no-repeat;
-	opacity: 0.08;
-	pointer-events: none;
-	z-index: 0;
-}
-
-.hero-visual > * {
-	position: relative;
-	z-index: 1;
-}
-
-.hero-logo-badge {
-	position: absolute;
-	top: 18px;
-	right: 18px;
-	width: 84px;
-	height: 84px;
-	border-radius: 999px;
-	background: rgba(255, 255, 255, 0.85);
-	display: grid;
-	place-items: center;
-	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
-	z-index: 2;
-	pointer-events: none;
-}
-
-.hero-logo-badge img {
-	width: 62px;
-	height: 62px;
-	object-fit: contain;
-	opacity: 0.95;
-}
-
 .mock-header {
 	font-weight: 600;
 	color: var(--text);
-	padding-right: 110px;
+}
+
+.console-preview {
+	position: relative;
+	overflow: hidden;
+}
+
+.console-badge {
+	position: absolute;
+	top: 18px;
+	right: 18px;
+	z-index: 5;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 72px;
+	height: 72px;
+	border-radius: 18px;
+	background: rgba(255, 255, 255, 0.85);
+	border: 1px solid rgba(0, 133, 255, 0.18);
+	box-shadow: 0 10px 26px rgba(15, 23, 42, 0.08);
+	backdrop-filter: blur(6px);
+	pointer-events: none;
+}
+
+.console-badge img {
+	width: 54px;
+	height: 54px;
+	object-fit: contain;
+	opacity: 1;
 }
 
 .mock-line {
@@ -665,23 +652,19 @@ textarea:focus {
 	.header-actions .btn {
 		width: 100%;
 	}
-	.hero-visual::after {
-		width: 120px;
-		height: 120px;
-		opacity: 0.06;
+}
+
+@media (max-width: 900px) {
+	.console-badge {
+		width: 60px;
+		height: 60px;
+		border-radius: 16px;
+		top: 14px;
+		right: 14px;
 	}
-	.hero-logo-badge {
-		width: 64px;
-		height: 64px;
-		top: 12px;
-		right: 12px;
-	}
-	.hero-logo-badge img {
+	.console-badge img {
 		width: 44px;
 		height: 44px;
-	}
-	.mock-header {
-		padding-right: 90px;
 	}
 }
 

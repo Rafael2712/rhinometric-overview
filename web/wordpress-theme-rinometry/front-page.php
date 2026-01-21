@@ -21,10 +21,10 @@ get_header();
         </a>
       </div>
     </div>
-    <div class="hero-card hero-visual" aria-label="<?php esc_attr_e('Rhinometric product preview', 'rinometry'); ?>">
-      <span class="hero-logo-badge" aria-hidden="true">
+    <div class="hero-card hero-visual console-preview" aria-label="<?php esc_attr_e('Rhinometric product preview', 'rinometry'); ?>">
+      <div class="console-badge" aria-hidden="true">
         <img src="<?php echo esc_url(get_template_directory_uri() . '/assets/img/logo-rhinometric.png'); ?>" alt="" />
-      </span>
+      </div>
       <div class="mock-header"><?php esc_html_e('Rhinometric Console Preview', 'rinometry'); ?></div>
       <div class="mock-line"></div>
       <div class="mock-line"></div>
