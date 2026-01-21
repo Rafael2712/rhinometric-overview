@@ -21,6 +21,9 @@ get_header();
           <?php esc_html_e('Request a demo', 'rinometry'); ?>
         </a>
       </div>
+      <p class="trust-strip">
+        <?php esc_html_e('On-premise • No SaaS lock-in • Metrics + Logs + Traces • Prometheus • Grafana • Loki • Jaeger • OpenTelemetry', 'rinometry'); ?>
+      </p>
     </div>
     <div class="hero-card hero-visual" aria-label="<?php esc_attr_e('Why teams choose Rhinometric', 'rinometry'); ?>">
       <img src="<?php echo esc_url(get_template_directory_uri() . '/assets/img/hero-visual.png'); ?>" alt="<?php esc_attr_e('Rhinometric platform hero illustration', 'rinometry'); ?>" onerror="this.onerror=null;this.src='<?php echo esc_url(get_template_directory_uri() . '/assets/img/hero-illustration.svg'); ?>';">

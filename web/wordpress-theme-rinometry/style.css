@@ -266,6 +266,14 @@ textarea:focus {
   margin: 0.35rem 0;
 }
 
+.trust-strip {
+  margin-top: 1rem;
+  font-size: 0.9rem;
+  color: #6b7280;
+  line-height: 1.5;
+  max-width: 720px;
+}
+
 .grid {
   display: grid;
   gap: 1.5rem;
