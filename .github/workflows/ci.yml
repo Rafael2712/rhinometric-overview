@@ -4,14 +4,14 @@ on:
   push:
     branches: [main, dev, release/*]
     paths-ignore:
-      - wordpress-theme-rinometry/**
+      - web/wordpress-theme-rinometry/**
       - rhinometric-theme.zip
       - .github/workflows/build-zip.yml
       - .github/workflows/deploy-wordpress-theme.yml
   pull_request:
     branches: [main, dev]
     paths-ignore:
-      - wordpress-theme-rinometry/**
+      - web/wordpress-theme-rinometry/**
       - rhinometric-theme.zip
       - .github/workflows/build-zip.yml
       - .github/workflows/deploy-wordpress-theme.yml

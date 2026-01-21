@@ -120,7 +120,7 @@ textarea:focus {
 }
 
 .brand-text {
-  font-size: 1.3125rem;
+  font-size: 1.375rem;
   font-weight: 600;
   letter-spacing: 0.2px;
 }
@@ -218,7 +218,7 @@ textarea:focus {
 }
 
 .hero {
-  padding: 1.75rem 0 3rem;
+  padding: 1.25rem 0 3rem;
 }
 
 .hero-grid {
@@ -359,7 +359,7 @@ textarea:focus {
 
 @media (max-width: 768px) {
   .brand-text {
-    font-size: 1.1875rem;
+    font-size: 1.25rem;
   }
 }
 

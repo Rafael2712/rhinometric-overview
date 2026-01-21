@@ -6,9 +6,7 @@ on:
     branches:
       - main
     paths:
-      - web/**
-      - .github/workflows/build-zip.yml
-      - .github/workflows/deploy-wordpress-theme.yml
+      - web/wordpress-theme-rinometry/**
 
 jobs:
   deploy:
