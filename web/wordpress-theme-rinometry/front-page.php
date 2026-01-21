@@ -34,6 +34,12 @@ get_header();
   </div>
 </section>
 
+<section class="section trust-strip" aria-label="<?php esc_attr_e('Trust strip', 'rinometry'); ?>">
+  <div class="container">
+    <p class="trust-strip-text"><?php esc_html_e('On-premise • No SaaS lock-in • Metrics + Logs + Traces', 'rinometry'); ?></p>
+  </div>
+</section>
+
 <section class="section section-alt" id="benefits">
   <div class="container">
     <h2 class="section-title"><?php esc_html_e('Why teams choose Rhinometric', 'rinometry'); ?></h2>
