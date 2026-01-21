@@ -26,11 +26,39 @@ get_header();
   <div class="container">
     <h2 class="section-title"><?php esc_html_e('Key benefits', 'rinometry'); ?></h2>
     <ul class="benefits-list">
-      <li><?php esc_html_e('On-prem control and data sovereignty.', 'rinometry'); ?></li>
-      <li><?php esc_html_e('Unified metrics, logs, and traces for faster triage.', 'rinometry'); ?></li>
-      <li><?php esc_html_e('Operational visibility with clear dashboards.', 'rinometry'); ?></li>
-      <li><?php esc_html_e('Reduce noise and focus on high-impact issues.', 'rinometry'); ?></li>
+      <li><span class="benefit-icon" aria-hidden="true"></span><?php esc_html_e('On-prem control and data sovereignty.', 'rinometry'); ?></li>
+      <li><span class="benefit-icon" aria-hidden="true"></span><?php esc_html_e('Unified metrics, logs, and traces for faster triage.', 'rinometry'); ?></li>
+      <li><span class="benefit-icon" aria-hidden="true"></span><?php esc_html_e('Operational visibility with clear dashboards.', 'rinometry'); ?></li>
+      <li><span class="benefit-icon" aria-hidden="true"></span><?php esc_html_e('Reduce noise and focus on high-impact issues.', 'rinometry'); ?></li>
     </ul>
+
+    <div class="tabs" data-tabs>
+      <div class="tab-list" role="tablist" aria-label="<?php esc_attr_e('Telemetry tabs', 'rinometry'); ?>">
+        <button class="tab-button is-active" role="tab" aria-selected="true" aria-controls="tab-metrics" id="tab-btn-metrics"><?php esc_html_e('Metrics', 'rinometry'); ?></button>
+        <button class="tab-button" role="tab" aria-selected="false" aria-controls="tab-logs" id="tab-btn-logs"><?php esc_html_e('Logs', 'rinometry'); ?></button>
+        <button class="tab-button" role="tab" aria-selected="false" aria-controls="tab-traces" id="tab-btn-traces"><?php esc_html_e('Traces', 'rinometry'); ?></button>
+      </div>
+      <div class="tab-panel is-active" role="tabpanel" id="tab-metrics" aria-labelledby="tab-btn-metrics">
+        <p><?php esc_html_e('Capture system and service performance with Prometheus-style metrics and clear dashboards.', 'rinometry'); ?></p>
+      </div>
+      <div class="tab-panel" role="tabpanel" id="tab-logs" aria-labelledby="tab-btn-logs">
+        <p><?php esc_html_e('Centralize logs for faster investigations and cross-signal context.', 'rinometry'); ?></p>
+      </div>
+      <div class="tab-panel" role="tabpanel" id="tab-traces" aria-labelledby="tab-btn-traces">
+        <p><?php esc_html_e('Trace requests end-to-end with OTLP-compatible pipelines.', 'rinometry'); ?></p>
+      </div>
+    </div>
+
+    <div class="accordion">
+      <details>
+        <summary><?php esc_html_e('On-premise security', 'rinometry'); ?></summary>
+        <p><?php esc_html_e('Keep telemetry inside your environment with controlled access and audit-ready operations.', 'rinometry'); ?></p>
+      </details>
+      <details>
+        <summary><?php esc_html_e('Integrations', 'rinometry'); ?></summary>
+        <p><?php esc_html_e('Connect existing telemetry sources without re-architecting your stack.', 'rinometry'); ?></p>
+      </details>
+    </div>
   </div>
 </section>
 
@@ -51,6 +79,20 @@ get_header();
         <p><?php esc_html_e('Identify issues quickly and respond with confidence.', 'rinometry'); ?></p>
       </div>
     </div>
+    <div class="grid placeholders-grid" aria-label="<?php esc_attr_e('Product placeholders', 'rinometry'); ?>">
+      <div class="card placeholder-card">
+        <div class="placeholder-frame" aria-hidden="true"></div>
+        <h3><?php esc_html_e('Grafana dashboard', 'rinometry'); ?></h3>
+      </div>
+      <div class="card placeholder-card">
+        <div class="placeholder-frame" aria-hidden="true"></div>
+        <h3><?php esc_html_e('Logs / Traces / Metrics', 'rinometry'); ?></h3>
+      </div>
+      <div class="card placeholder-card">
+        <div class="placeholder-frame" aria-hidden="true"></div>
+        <h3><?php esc_html_e('Rhinometric console', 'rinometry'); ?></h3>
+      </div>
+    </div>
   </div>
 </section>
 
@@ -65,5 +107,31 @@ get_header();
     </div>
   </div>
 </section>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('[data-tabs]').forEach(function (tabs) {
+      var buttons = tabs.querySelectorAll('.tab-button');
+      var panels = tabs.querySelectorAll('.tab-panel');
+      buttons.forEach(function (button) {
+        button.addEventListener('click', function () {
+          buttons.forEach(function (btn) {
+            btn.classList.remove('is-active');
+            btn.setAttribute('aria-selected', 'false');
+          });
+          panels.forEach(function (panel) {
+            panel.classList.remove('is-active');
+          });
+          button.classList.add('is-active');
+          button.setAttribute('aria-selected', 'true');
+          var target = tabs.querySelector('#' + button.getAttribute('aria-controls'));
+          if (target) {
+            target.classList.add('is-active');
+          }
+        });
+      });
+    });
+  });
+</script>
 <?php
 get_footer();

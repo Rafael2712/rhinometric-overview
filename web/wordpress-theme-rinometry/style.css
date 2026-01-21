@@ -14,9 +14,9 @@ Text Domain: rinometry
   --surface: #ffffff;
   --text: #0b0b0c;
   --muted: #5a606b;
-  --primary: #2b6ef2;
+  --primary: #0085ff;
   --primary-dark: #1f57c2;
-  --accent: #f28b2b;
+  --accent: #ff6a00;
   --accent-dark: #d56f1b;
   --border: #e3e6eb;
   --focus: #111827;
@@ -306,8 +306,104 @@ textarea:focus {
   max-width: 760px;
 }
 
+.benefits-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.benefit-icon {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  border: 2px solid var(--primary);
+  margin-top: 0.45rem;
+  flex: 0 0 auto;
+}
+
 .steps-grid {
   margin-top: 1.5rem;
+}
+
+.tabs {
+  margin-top: 1.25rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  padding: 1rem;
+  box-shadow: var(--shadow);
+}
+
+.tab-list {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.tab-button {
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  padding: 0.4rem 0.8rem;
+  border-radius: 999px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.tab-button.is-active {
+  background: rgba(0, 133, 255, 0.12);
+  border-color: rgba(0, 133, 255, 0.4);
+  color: var(--primary-dark);
+}
+
+.tab-panel {
+  margin-top: 0.75rem;
+  color: var(--muted);
+  display: none;
+}
+
+.tab-panel.is-active {
+  display: block;
+}
+
+.accordion {
+  margin-top: 1rem;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.accordion details {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0.75rem 1rem;
+}
+
+.accordion summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.accordion p {
+  margin: 0.5rem 0 0;
+  color: var(--muted);
+}
+
+.placeholders-grid {
+  margin-top: 1.5rem;
+}
+
+.placeholder-card {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.placeholder-frame {
+  height: 160px;
+  border-radius: 12px;
+  border: 1px dashed var(--border);
+  background: linear-gradient(135deg, rgba(0, 133, 255, 0.08), rgba(255, 106, 0, 0.06));
 }
 
 .early-access .card {
