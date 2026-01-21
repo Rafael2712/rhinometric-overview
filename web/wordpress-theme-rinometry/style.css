@@ -218,7 +218,7 @@ textarea:focus {
 }
 
 .hero {
-  padding: 1.25rem 0 3rem;
+  padding: 1rem 0 3rem;
 }
 
 .hero-grid {
@@ -276,6 +276,13 @@ textarea:focus {
   color: #6b7280;
   line-height: 1.5;
   max-width: 720px;
+}
+
+.deploy-info {
+  margin-top: 0.75rem;
+  font-size: 0.8rem;
+  color: #6b7280;
+  text-align: left;
 }
 
 .grid {

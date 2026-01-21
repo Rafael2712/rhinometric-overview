@@ -19,7 +19,12 @@ function rinometry_setup() {
 add_action('after_setup_theme', 'rinometry_setup');
 
 function rinometry_enqueue_assets() {
-    wp_enqueue_style('rinometry-style', get_stylesheet_uri(), [], '1.0.0');
+    wp_enqueue_style(
+        'rinometry-style',
+        get_stylesheet_uri(),
+        [],
+        filemtime(get_stylesheet_directory() . '/style.css')
+    );
 }
 add_action('wp_enqueue_scripts', 'rinometry_enqueue_assets');
 
