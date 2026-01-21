@@ -6,6 +6,7 @@
     <div>
       <h2><?php esc_html_e('Rhinometric', 'rinometry'); ?></h2>
       <p><?php esc_html_e('Enterprise-grade observability for metrics, logs, and traces with on-prem control.', 'rinometry'); ?></p>
+      <p class="footer-eu"><?php esc_html_e('Built with European compliance in mind.', 'rinometry'); ?></p>
     </div>
     <div>
       <h3><?php esc_html_e('Explore', 'rinometry'); ?></h3>
@@ -25,9 +26,17 @@
       <p><a href="mailto:rafael.canelon@rhinometric.com">rafael.canelon@rhinometric.com</a></p>
       <p><?php esc_html_e('Request a demo to see the platform in action.', 'rinometry'); ?></p>
     </div>
+    <div>
+      <h3><?php esc_html_e('Legal', 'rinometry'); ?></h3>
+      <ul class="footer-legal">
+        <li><a href="<?php echo esc_url(home_url('/terms')); ?>"><?php esc_html_e('Terms & Conditions', 'rinometry'); ?></a></li>
+        <li><a href="<?php echo esc_url(home_url('/privacy-cookies')); ?>"><?php esc_html_e('Privacy & Cookies Policy', 'rinometry'); ?></a></li>
+      </ul>
+    </div>
   </div>
   <div class="container" style="margin-top: 2rem; font-size: 0.9rem; opacity: 0.8;">
-    <p><?php echo esc_html(sprintf(__('© %s Rhinometric. All rights reserved.', 'rinometry'), date('Y'))); ?></p>
+    <p><?php esc_html_e('© Rhinometric. All rights reserved.', 'rinometry'); ?></p>
+    <p><?php esc_html_e('Contact: rafael.canelon@rhinometric.com', 'rinometry'); ?></p>
   </div>
   <div class="container deploy-info">
     <?php
@@ -48,6 +57,19 @@
       }
     ?>
     <p><?php echo esc_html($deploy_line); ?></p>
+  </div>
+  <div class="container cookie-banner" data-cookie-banner <?php echo rinometry_cookie_banner_enabled() ? '' : 'hidden'; ?> aria-hidden="true">
+    <div class="cookie-banner__inner">
+      <p><?php esc_html_e('This site uses cookies to improve your experience. Preferences will be available soon.', 'rinometry'); ?></p>
+      <div class="cookie-banner__actions">
+        <button class="btn btn-secondary" type="button" aria-label="<?php esc_attr_e('Cookie preferences', 'rinometry'); ?>">
+          <?php esc_html_e('Preferences', 'rinometry'); ?>
+        </button>
+        <button class="btn btn-primary" type="button" aria-label="<?php esc_attr_e('Accept cookies', 'rinometry'); ?>">
+          <?php esc_html_e('Accept', 'rinometry'); ?>
+        </button>
+      </div>
+    </div>
   </div>
 </footer>
 <?php wp_footer(); ?>

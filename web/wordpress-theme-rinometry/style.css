@@ -350,6 +350,15 @@ textarea:focus {
   cursor: pointer;
 }
 
+.tab-button:focus-visible,
+.accordion summary:focus-visible,
+.footer-legal a:focus-visible,
+.language-switcher a:focus-visible,
+.cookie-banner__actions button:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
 .tab-button.is-active {
   background: rgba(0, 133, 255, 0.12);
   border-color: rgba(0, 133, 255, 0.4);
@@ -601,6 +610,46 @@ textarea:focus {
   display: grid;
   gap: 2rem;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.footer-legal {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.footer-eu {
+  color: #cbd5f5;
+  margin-top: 0.75rem;
+}
+
+.cookie-banner {
+  margin-top: 1.5rem;
+}
+
+.cookie-banner__inner {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(15, 23, 42, 0.75);
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+}
+
+.cookie-banner__inner p {
+  margin: 0;
+  color: #e2e8f0;
+  max-width: 680px;
+}
+
+.cookie-banner__actions {
+  display: flex;
+  gap: 0.75rem;
 }
 
 .language-switcher {

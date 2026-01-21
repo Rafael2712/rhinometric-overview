@@ -28,6 +28,10 @@ function rinometry_enqueue_assets() {
 }
 add_action('wp_enqueue_scripts', 'rinometry_enqueue_assets');
 
+function rinometry_cookie_banner_enabled() {
+    return false;
+}
+
 function rinometry_output_favicon() {
     if (has_site_icon()) {
         return;
