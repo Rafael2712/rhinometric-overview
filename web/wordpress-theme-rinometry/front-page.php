@@ -34,7 +34,7 @@ get_header();
   </div>
 </section>
 
-<section class="section" id="benefits">
+<section class="section section-alt" id="benefits">
   <div class="container">
     <h2 class="section-title"><?php esc_html_e('Why teams choose Rhinometric', 'rinometry'); ?></h2>
     <div class="grid benefits-grid">
@@ -62,14 +62,17 @@ get_header();
     <h2 class="section-title"><?php esc_html_e('How it works', 'rinometry'); ?></h2>
     <div class="grid steps-grid">
       <div class="card">
+        <span class="step-icon" aria-hidden="true"></span>
         <h3><?php esc_html_e('Deploy on‑prem', 'rinometry'); ?></h3>
         <p><?php esc_html_e('Install inside your environment with full control.', 'rinometry'); ?></p>
       </div>
       <div class="card">
+        <span class="step-icon" aria-hidden="true"></span>
         <h3><?php esc_html_e('Connect telemetry sources', 'rinometry'); ?></h3>
         <p><?php esc_html_e('Ingest metrics, logs, and traces quickly.', 'rinometry'); ?></p>
       </div>
       <div class="card">
+        <span class="step-icon" aria-hidden="true"></span>
         <h3><?php esc_html_e('Monitor + alert', 'rinometry'); ?></h3>
         <p><?php esc_html_e('Detect issues fast and respond with confidence.', 'rinometry'); ?></p>
       </div>
@@ -77,9 +80,10 @@ get_header();
   </div>
 </section>
 
-<section class="section early-access" id="early-access">
+<section class="section section-alt early-access" id="early-access">
   <div class="container">
     <div class="card">
+      <span class="early-access-tag"><?php esc_html_e('Early Access', 'rinometry'); ?></span>
       <h2 class="section-title"><?php esc_html_e('Early Adopter Program', 'rinometry'); ?></h2>
       <ul class="early-list">
         <li><?php esc_html_e('Early access to the platform.', 'rinometry'); ?></li>
