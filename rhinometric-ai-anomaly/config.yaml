@@ -207,125 +207,73 @@ metrics:
       critical: 500000000
     sensitivity: "low"
 
-  # Application Metrics
-  - name: "http_request_rate"
-    display_name: "HTTP Request Rate"
-    description: "HTTP requests per second"
-    query: 'sum(rate(http_requests_total[5m]))'
-    enabled: true
-    priority: "high"
-    models:
-      - isolation_forest
-      - lof
-      - statistical
-    thresholds:
-      warning: 1000
-      critical: 5000
-    sensitivity: "medium"  # Changed from high - reduce noise from normal spikes
-    
-  - name: "http_error_rate"
-    display_name: "HTTP Error Rate"
-    description: "HTTP 5xx errors per second"
-    query: 'sum(rate(http_requests_total{status=~"5.."}[5m]))'
-    enabled: true
-    priority: "critical"
-    models:
-      - isolation_forest
-      - lof
-      - statistical
-    thresholds:
-      warning: 1
-      critical: 10
-    sensitivity: "high"
-    alert_on_any_anomaly: true
-    
-  - name: "http_latency_p95"
-    display_name: "HTTP P95 Latency"
-    description: "95th percentile request latency"
-    query: 'histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket[5m])))'
-    enabled: true
-    priority: "high"
-    models:
-      - isolation_forest
-      - lof
-      - statistical
-    thresholds:
-      warning: 1.0  # seconds
-      critical: 5.0
-    sensitivity: "medium"  # Changed from high - p95 naturally spiky
-    
-  - name: "http_latency_p99"
-    display_name: "HTTP P99 Latency"
-    description: "99th percentile request latency"
-    query: 'histogram_quantile(0.99, sum by (le) (rate(http_request_duration_seconds_bucket[5m])))'
-    enabled: true
-    priority: "high"
-    models:
-      - isolation_forest
-      - statistical
-    thresholds:
-      warning: 0.1   # LOWERED FOR TESTING - forces detection
-      critical: 0.5  # LOWERED FOR TESTING
-    sensitivity: "high"  # Increased sensitivity for demo
+  # ========================================================================
+  # HTTP METRICS DISABLED - Console Backend no exporta http_requests_total en v2.5.0
+  # TODO v2.6.0: Habilitar cuando Console Backend implemente prometheus_client
+  # ========================================================================
+  # - name: "http_request_rate"
+  #   display_name: "HTTP Request Rate"
+  #   description: "HTTP requests per second"
+  #   query: 'sum(rate(http_requests_total[5m]))'
+  #   enabled: false
+  #   priority: "high"
+  #
+  # - name: "http_error_rate"
+  #   display_name: "HTTP Error Rate"
+  #   description: "HTTP 5xx errors per second"
+  #   query: 'sum(rate(http_requests_total{status=~"5.."}[5m]))'
+  #   enabled: false
+  #   priority: "critical"
+  #
+  # - name: "http_latency_p95"
+  #   display_name: "HTTP P95 Latency"
+  #   description: "95th percentile request latency"
+  #   query: 'histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket[5m])))'
+  #   enabled: false
+  #   priority: "high"
+  #
+  # - name: "http_latency_p99"
+  #   display_name: "HTTP P99 Latency"
+  #   description: "99th percentile request latency"
+  #   query: 'histogram_quantile(0.99, sum by (le) (rate(http_request_duration_seconds_bucket[5m])))'
+  #   enabled: false
+  #   priority: "high"
 
-  # Database Metrics
-  - name: "postgres_connections"
-    display_name: "PostgreSQL Active Connections"
-    description: "Number of active database connections (aggregated)"
-    query: 'sum(pg_stat_activity_count{state="active"})'
-    enabled: true
-    priority: "medium"
-    models:
-      - isolation_forest
-      - statistical
-    thresholds:
-      warning: 50
-      critical: 90
-    sensitivity: "medium"
-    
-  - name: "postgres_query_duration"
-    display_name: "PostgreSQL Query Duration"
-    description: "Average query execution time"
-    query: 'rate(pg_stat_statements_total_time[5m]) / rate(pg_stat_statements_calls[5m])'
-    enabled: true
-    priority: "high"
-    models:
-      - isolation_forest
-      - lof
-      - statistical
-    thresholds:
-      warning: 100  # ms
-      critical: 1000
-    sensitivity: "medium"
+  # ========================================================================
+  # DATABASE METRICS DISABLED - Sin postgres-exporter en v2.5.0
+  # TODO v2.6.0: Habilitar cuando se añada postgres-exporter y pg_stat_statements
+  # ========================================================================
+  # - name: "postgres_connections"
+  #   display_name: "PostgreSQL Active Connections"
+  #   description: "Number of active database connections (aggregated)"
+  #   query: 'sum(pg_stat_activity_count{state="active"})'
+  #   enabled: false
+  #   priority: "medium"
+  #
+  # - name: "postgres_query_duration"
+  #   display_name: "PostgreSQL Query Duration"
+  #   description: "Average query execution time"
+  #   query: 'rate(pg_stat_statements_total_time[5m]) / rate(pg_stat_statements_calls[5m])'
+  #   enabled: false
+  #   priority: "high"
 
-  # Redis Metrics
-  - name: "redis_memory_usage"
-    display_name: "Redis Memory Usage"
-    description: "Redis memory usage in MB"
-    query: 'redis_memory_used_bytes / 1024 / 1024'
-    enabled: true
-    priority: "medium"
-    models:
-      - isolation_forest
-      - statistical
-    thresholds:
-      warning: 500
-      critical: 1000
-    sensitivity: "low"
-    
-  - name: "redis_hit_rate"
-    display_name: "Redis Cache Hit Rate"
-    description: "Redis cache hit ratio"
-    query: 'rate(redis_keyspace_hits_total[5m]) / (rate(redis_keyspace_hits_total[5m]) + rate(redis_keyspace_misses_total[5m]))'
-    enabled: true
-    priority: "high"
-    models:
-      - statistical
-    thresholds:
-      warning: 0.8  # 80% hit rate
-      critical: 0.5  # 50% hit rate
-    sensitivity: "medium"
-    invert_threshold: true  # Alert when below threshold
+  # ========================================================================
+  # REDIS METRICS DISABLED - Sin redis-exporter en v2.5.0
+  # TODO v2.6.0: Habilitar cuando se añada redis-exporter
+  # ========================================================================
+  # - name: "redis_memory_usage"
+  #   display_name: "Redis Memory Usage"
+  #   description: "Redis memory usage in MB"
+  #   query: 'redis_memory_used_bytes / 1024 / 1024'
+  #   enabled: false
+  #   priority: "medium"
+  #
+  # - name: "redis_hit_rate"
+  #   display_name: "Redis Cache Hit Rate"
+  #   description: "Redis cache hit ratio"
+  #   query: 'rate(redis_keyspace_hits_total[5m]) / (rate(redis_keyspace_hits_total[5m]) + rate(redis_keyspace_misses_total[5m]))'
+  #   enabled: false
+  #   priority: "high"
 
   # Custom Application Metrics
   - name: "license_validation_rate"
