@@ -12,6 +12,11 @@ if (function_exists('switch_to_locale')) {
   switch_to_locale($rino_lang === 'es' ? 'es_ES' : 'en_US');
 }
 
+if (function_exists('unload_textdomain')) {
+  unload_textdomain('rinometry');
+}
+load_theme_textdomain('rinometry', get_template_directory() . '/languages');
+
 get_header();
 ?>
 <section class="hero" id="home">
