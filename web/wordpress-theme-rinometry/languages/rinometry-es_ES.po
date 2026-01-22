@@ -253,6 +253,9 @@ msgstr "The Rhino Guide: Documentación paso a paso de despliegue y operación p
 msgid "AI-assisted anomaly signals (early): Surface unusual patterns across Prometheus metrics to reduce alert noise and speed up triage. Rhinometric highlights anomalies and trends so teams can investigate faster — without sending data outside your network."
 msgstr "Señales de anomalía asistidas por IA (early): Detecta patrones inusuales en métricas de Prometheus para reducir ruido de alertas y acelerar el triage. Rhinometric resalta anomalías y tendencias para investigar más rápido — sin sacar datos fuera de tu red."
 
+msgid "Tooling: Prometheus (signals) + Grafana (visualization)."
+msgstr "Herramientas: Prometheus (señales) + Grafana (visualización)."
+
 msgid "Installation support. Operational autonomy."
 msgstr "Soporte de instalación. Autonomía operativa."
 
@@ -363,6 +366,9 @@ msgstr "Organizaciones que evitan observabilidad SaaS por soberanía del dato"
 
 msgid "Visualization"
 msgstr "Visualización"
+
+msgid "AI"
+msgstr "IA"
 
 msgid "Metrics — Prometheus + exporters with ready dashboards."
 msgstr "Métricas — Prometheus + exporters con dashboards listos."

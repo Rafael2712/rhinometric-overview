@@ -200,6 +200,7 @@ get_header();
         <button class="tab-button" role="tab" aria-selected="false" aria-controls="tab-logs" id="tab-btn-logs"><?php esc_html_e('Logs', 'rinometry'); ?></button>
         <button class="tab-button" role="tab" aria-selected="false" aria-controls="tab-traces" id="tab-btn-traces"><?php esc_html_e('Traces', 'rinometry'); ?></button>
         <button class="tab-button" role="tab" aria-selected="false" aria-controls="tab-alerts" id="tab-btn-alerts"><?php esc_html_e('Visualization', 'rinometry'); ?></button>
+        <button class="tab-button" role="tab" aria-selected="false" aria-controls="tab-ai" id="tab-btn-ai"><?php esc_html_e('AI', 'rinometry'); ?></button>
       </div>
       <div class="tab-panel is-active" role="tabpanel" id="tab-metrics" aria-labelledby="tab-btn-metrics">
         <ul>
@@ -226,9 +227,14 @@ get_header();
         <ul>
           <li><?php esc_html_e('Dashboards — Grafana preloaded views: Start diagnosing faster with guided dashboards and a unified navigation experience.', 'rinometry'); ?></li>
           <li><?php esc_html_e('The Rhino Guide: Step-by-step deployment and operational documentation to keep your team autonomous from day one.', 'rinometry'); ?></li>
-          <li><?php esc_html_e('AI-assisted anomaly signals (early): Surface unusual patterns across Prometheus metrics to reduce alert noise and speed up triage. Rhinometric highlights anomalies and trends so teams can investigate faster — without sending data outside your network.', 'rinometry'); ?></li>
         </ul>
         <p class="section-note"><?php esc_html_e('Tooling: Grafana.', 'rinometry'); ?></p>
+      </div>
+      <div class="tab-panel" role="tabpanel" id="tab-ai" aria-labelledby="tab-btn-ai">
+        <ul>
+          <li><?php esc_html_e('AI-assisted anomaly signals (early): Surface unusual patterns across Prometheus metrics to reduce alert noise and speed up triage. Rhinometric highlights anomalies and trends so teams can investigate faster — without sending data outside your network.', 'rinometry'); ?></li>
+        </ul>
+        <p class="section-note"><?php esc_html_e('Tooling: Prometheus (signals) + Grafana (visualization).', 'rinometry'); ?></p>
       </div>
     </div>
   </div>
