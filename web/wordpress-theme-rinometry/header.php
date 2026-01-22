@@ -12,7 +12,7 @@
 <header class="site-header" role="banner">
   <div class="container header-inner">
     <a class="brand" href="<?php echo esc_url(home_url('/')); ?>">
-      <span class="brand-text">Rhinometric</span>
+      <img class="brand-logo" src="<?php echo esc_url(get_template_directory_uri() . '/assets/img/logo-header.png'); ?>" alt="<?php esc_attr_e('Rhinometric', 'rinometry'); ?>" />
     </a>
     <nav class="nav" role="navigation" aria-label="<?php esc_attr_e('Primary', 'rinometry'); ?>">
       <?php

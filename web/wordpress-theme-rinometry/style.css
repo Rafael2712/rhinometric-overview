@@ -121,6 +121,13 @@ textarea:focus {
 	color: #0e2a47;
 }
 
+.brand-logo {
+	height: 32px;
+	width: auto;
+	max-width: 200px;
+	display: block;
+}
+
 .brand-text {
 	font-size: 1.4375rem;
 	font-weight: 600;
@@ -214,22 +221,12 @@ textarea:focus {
 
 .hero {
 	padding: 3rem 0 2.5rem;
-	background: linear-gradient(135deg, #f4f7fb 0%, #eef4ff 45%, #f7f9fc 100%);
+	background:
+		radial-gradient(circle at 15% 20%, rgba(0, 133, 255, 0.14), rgba(0, 133, 255, 0) 55%),
+		radial-gradient(circle at 85% 0%, rgba(0, 133, 255, 0.12), rgba(0, 133, 255, 0) 50%),
+		#eef2f6;
 	position: relative;
 	overflow: hidden;
-}
-
-.hero::before {
-	content: '';
-	position: absolute;
-	left: clamp(-120px, -10vw, -40px);
-	top: clamp(-60px, -5vw, -20px);
-	width: clamp(420px, 45vw, 640px);
-	height: clamp(420px, 45vw, 640px);
-	background: radial-gradient(circle, rgba(0, 133, 255, 0.18), rgba(0, 133, 255, 0) 65%);
-	opacity: 0.7;
-	pointer-events: none;
-	z-index: 0;
 }
 
 .hero-grid {
@@ -295,6 +292,13 @@ textarea:focus {
 
 .console-preview-section .container {
 	max-width: 1200px;
+}
+
+.footer-logo {
+	width: min(220px, 70%);
+	margin: 0 auto 0.75rem;
+	display: block;
+	filter: drop-shadow(0 10px 22px rgba(15, 23, 42, 0.18));
 }
 
 .mock-line {
@@ -664,6 +668,9 @@ textarea:focus {
 	.brand-text {
 		font-size: 1.25rem;
 	}
+	.brand-logo {
+		height: 30px;
+	}
 	.section {
 		padding: 3rem 0;
 	}
@@ -693,6 +700,9 @@ textarea:focus {
 	}
 	.brand-text {
 		font-size: 1.125rem;
+	}
+	.brand-logo {
+		height: 28px;
 	}
 }
 
