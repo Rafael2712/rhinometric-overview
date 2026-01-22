@@ -1,4 +1,17 @@
 <?php
+$rino_lang = '';
+if (isset($_GET['lang'])) {
+  $rino_lang = sanitize_text_field(wp_unslash($_GET['lang'])) === 'es' ? 'es' : 'en';
+  setcookie('rino_lang', $rino_lang, time() + DAY_IN_SECONDS * 30, COOKIEPATH ?: '/', COOKIE_DOMAIN ?: '', is_ssl(), true);
+  $_COOKIE['rino_lang'] = $rino_lang;
+} elseif (isset($_COOKIE['rino_lang'])) {
+  $rino_lang = sanitize_text_field(wp_unslash($_COOKIE['rino_lang'])) === 'es' ? 'es' : 'en';
+}
+
+if (function_exists('switch_to_locale')) {
+  switch_to_locale($rino_lang === 'es' ? 'es_ES' : 'en_US');
+}
+
 get_header();
 ?>
 <section class="hero" id="home">
