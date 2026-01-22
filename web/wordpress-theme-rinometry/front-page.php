@@ -208,6 +208,7 @@ get_header();
         <ul>
           <li><?php esc_html_e('Dashboards — Grafana preloaded views: Start diagnosing faster with guided dashboards and a unified navigation experience.', 'rinometry'); ?></li>
           <li><?php esc_html_e('The Rhino Guide: Step-by-step deployment and operational documentation to keep your team autonomous from day one.', 'rinometry'); ?></li>
+          <li><?php esc_html_e('AI-assisted anomaly signals (early): Surface unusual patterns across Prometheus metrics to reduce alert noise and speed up triage. Rhinometric highlights anomalies and trends so teams can investigate faster — without sending data outside your network.', 'rinometry'); ?></li>
         </ul>
         <p class="section-note"><?php esc_html_e('Tooling: Grafana.', 'rinometry'); ?></p>
       </div>

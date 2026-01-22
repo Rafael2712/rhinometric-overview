@@ -250,6 +250,9 @@ msgstr "Dashboards — vistas precargadas en Grafana: Empieza a diagnosticar má
 msgid "The Rhino Guide: Step-by-step deployment and operational documentation to keep your team autonomous from day one."
 msgstr "The Rhino Guide: Documentación paso a paso de despliegue y operación para autonomía desde el primer día."
 
+msgid "AI-assisted anomaly signals (early): Surface unusual patterns across Prometheus metrics to reduce alert noise and speed up triage. Rhinometric highlights anomalies and trends so teams can investigate faster — without sending data outside your network."
+msgstr "Señales de anomalía asistidas por IA (early): Detecta patrones inusuales en métricas de Prometheus para reducir ruido de alertas y acelerar el triage. Rhinometric resalta anomalías y tendencias para investigar más rápido — sin sacar datos fuera de tu red."
+
 msgid "Installation support. Operational autonomy."
 msgstr "Soporte de instalación. Autonomía operativa."
 
