@@ -409,8 +409,6 @@ msgstr "Integraciones y herramientas"
 msgid "Language selector"
 msgstr "Selector de idioma"
 
-msgid "Later"
-msgstr "Después"
 
 msgid "Lead notifications will be sent to this email."
 msgstr "Las notificaciones de leads se enviarán a este email."
@@ -475,14 +473,10 @@ msgstr "Nueva solicitud de contacto recibida:"
 msgid "New demo request received:"
 msgstr "Nueva solicitud de demo recibida:"
 
-msgid "Next"
-msgstr "Siguiente"
 
 msgid "Not provided"
 msgstr "No proporcionado"
 
-msgid "Now"
-msgstr "Ahora"
 
 msgid "Observability Suite"
 msgstr "Suite de observabilidad"
