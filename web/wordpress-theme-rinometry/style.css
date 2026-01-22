@@ -125,9 +125,11 @@ textarea:focus {
 }
 
 .site-header .site-brand img,
-.site-header .header-logo img {
-	height: 42px;
+.site-header .header-logo img,
+.rm-header-logo {
+	height: clamp(34px, 3vw, 52px);
 	width: auto;
+	max-width: 100%;
 	display: block;
 	object-fit: contain;
 }
@@ -297,9 +299,11 @@ textarea:focus {
 	max-width: 1200px;
 }
 
-.footer-logo img {
-	height: 90px;
+.footer-logo img,
+.rm-footer-logo {
+	height: clamp(44px, 5vw, 90px);
 	width: auto;
+	max-width: 100%;
 	display: block;
 	margin: 0 auto 18px;
 	object-fit: contain;
