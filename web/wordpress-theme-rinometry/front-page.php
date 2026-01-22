@@ -17,10 +17,10 @@ get_header();
       </ul>
       <div class="header-actions" style="margin-top: 1.5rem;">
         <a class="btn btn-primary" href="mailto:rafael.canelon@rhinometric.com">
-          <?php esc_html_e('Get Early Access (3–6 months)', 'rinometry'); ?>
+          <?php esc_html_e('3–6 months free for early adopters (validation program)', 'rinometry'); ?>
         </a>
         <a class="btn btn-secondary" href="mailto:rafael.canelon@rhinometric.com">
-          <?php esc_html_e('Request a Demo', 'rinometry'); ?>
+          <?php esc_html_e('Guided session with the team', 'rinometry'); ?>
         </a>
       </div>
     </div>
@@ -175,6 +175,7 @@ get_header();
 <section class="section section-alt" id="out-of-the-box">
   <div class="container">
     <h2 class="section-title"><?php esc_html_e('What you get out of the box', 'rinometry'); ?></h2>
+    <p class="section-lead"><?php esc_html_e('A curated on-prem observability stack — packaged, configured, and ready to run inside your infrastructure.', 'rinometry'); ?></p>
     <div class="tabs" data-tabs>
       <div class="tab-list" role="tablist" aria-label="<?php esc_attr_e('Technical tabs', 'rinometry'); ?>">
         <button class="tab-button is-active" role="tab" aria-selected="true" aria-controls="tab-metrics" id="tab-btn-metrics"><?php esc_html_e('Metrics', 'rinometry'); ?></button>
@@ -184,29 +185,29 @@ get_header();
       </div>
       <div class="tab-panel is-active" role="tabpanel" id="tab-metrics" aria-labelledby="tab-btn-metrics">
         <ul>
-          <li><?php esc_html_e('Metrics — Prometheus + exporters with ready dashboards.', 'rinometry'); ?></li>
-          <li><?php esc_html_e('Ready dashboards for faster adoption.', 'rinometry'); ?></li>
+          <li><?php esc_html_e('Metrics — Prometheus + exporters: Collect infrastructure and service metrics with proven standards, ready for Grafana dashboards.', 'rinometry'); ?></li>
+          <li><?php esc_html_e('Storage & performance layer — PostgreSQL + Redis: Reliable persistence and performance foundations included as part of the stack.', 'rinometry'); ?></li>
         </ul>
         <p class="section-note"><?php esc_html_e('Tooling: Prometheus.', 'rinometry'); ?></p>
       </div>
       <div class="tab-panel" role="tabpanel" id="tab-logs" aria-labelledby="tab-btn-logs">
         <ul>
-          <li><?php esc_html_e('Logs — Loki + Promtail for centralized troubleshooting.', 'rinometry'); ?></li>
-          <li><?php esc_html_e('Centralized log review across services.', 'rinometry'); ?></li>
+          <li><?php esc_html_e('Logs — Loki + Promtail: Centralize and query logs across services without jumping between servers.', 'rinometry'); ?></li>
+          <li><?php esc_html_e('Automated backups (platform-level): Backup mechanisms included to protect your observability data and configuration.', 'rinometry'); ?></li>
         </ul>
         <p class="section-note"><?php esc_html_e('Tooling: Loki.', 'rinometry'); ?></p>
       </div>
       <div class="tab-panel" role="tabpanel" id="tab-traces" aria-labelledby="tab-btn-traces">
         <ul>
-          <li><?php esc_html_e('Traces — Jaeger for distributed request visibility.', 'rinometry'); ?></li>
-          <li><?php esc_html_e('See request paths across services.', 'rinometry'); ?></li>
+          <li><?php esc_html_e('Traces — Jaeger distributed tracing: Follow a request across microservices and pinpoint latency bottlenecks or failing components.', 'rinometry'); ?></li>
+          <li><?php esc_html_e('Rhinometric Console: A simplified control plane for platform health, license visibility, and quick access to the stack.', 'rinometry'); ?></li>
         </ul>
         <p class="section-note"><?php esc_html_e('Tooling: Jaeger.', 'rinometry'); ?></p>
       </div>
       <div class="tab-panel" role="tabpanel" id="tab-alerts" aria-labelledby="tab-btn-alerts">
         <ul>
-          <li><?php esc_html_e('Visualization — Grafana with preloaded views for faster diagnosis.', 'rinometry'); ?></li>
-          <li><?php esc_html_e('Rhinometric Console — simplified status, license visibility, and quick access to the stack.', 'rinometry'); ?></li>
+          <li><?php esc_html_e('Dashboards — Grafana preloaded views: Start diagnosing faster with guided dashboards and a unified navigation experience.', 'rinometry'); ?></li>
+          <li><?php esc_html_e('The Rhino Guide: Step-by-step deployment and operational documentation to keep your team autonomous from day one.', 'rinometry'); ?></li>
         </ul>
         <p class="section-note"><?php esc_html_e('Tooling: Grafana.', 'rinometry'); ?></p>
       </div>
@@ -216,19 +217,19 @@ get_header();
 
 <section class="section" id="expected-outcomes">
   <div class="container">
-    <h2 class="section-title"><?php esc_html_e('Anomaly detection without the learning curve', 'rinometry'); ?></h2>
+    <h2 class="section-title"><?php esc_html_e('Installation support. Operational autonomy.', 'rinometry'); ?></h2>
     <div class="grid benefits-grid">
       <div class="card benefit-card">
         <span class="benefit-icon" aria-hidden="true"></span>
-        <p><?php esc_html_e('Rhinometric includes an anomaly engine that surfaces unusual behavior.', 'rinometry'); ?></p>
+        <p><?php esc_html_e('Our commitment is to keep your observability platform functional and stable.', 'rinometry'); ?></p>
       </div>
       <div class="card benefit-card">
         <span class="benefit-icon" aria-hidden="true"></span>
-        <p><?php esc_html_e('Spikes in latency, CPU, or errors are highlighted from Prometheus metrics.', 'rinometry'); ?></p>
+        <p><?php esc_html_e('We provide expert support for the initial deployment and Rhinometric stack reliability. Since Rhinometric is fully on-premise, we don’t access customer data.', 'rinometry'); ?></p>
       </div>
       <div class="card benefit-card">
         <span class="benefit-icon" aria-hidden="true"></span>
-        <p><?php esc_html_e('Detect incidents earlier with less manual investigation.', 'rinometry'); ?></p>
+        <p><?php esc_html_e('Application-level debugging and incident resolution remain customer-owned — Rhinometric provides the visibility your team needs to act independently.', 'rinometry'); ?></p>
       </div>
     </div>
   </div>

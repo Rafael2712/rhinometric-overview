@@ -217,6 +217,51 @@ msgstr "Operación predecible y retención bajo tu control."
 msgid "Get Early Access (3–6 months)"
 msgstr "Acceso anticipado (3–6 meses)"
 
+msgid "3–6 months free for early adopters (validation program)"
+msgstr "3–6 meses gratis para early adopters (programa de validación)"
+
+msgid "Guided session with the team"
+msgstr "Sesión guiada con el equipo"
+
+msgid "A curated on-prem observability stack — packaged, configured, and ready to run inside your infrastructure."
+msgstr "Un stack de observabilidad on-prem curado — empaquetado, configurado y listo para ejecutarse dentro de tu infraestructura."
+
+msgid "Metrics — Prometheus + exporters: Collect infrastructure and service metrics with proven standards, ready for Grafana dashboards."
+msgstr "Métricas — Prometheus + exporters: Recolecta métricas de infraestructura y servicios con estándares consolidados, listas para dashboards en Grafana."
+
+msgid "Storage & performance layer — PostgreSQL + Redis: Reliable persistence and performance foundations included as part of the stack."
+msgstr "Capa de almacenamiento y rendimiento — PostgreSQL + Redis: Persistencia fiable y base de rendimiento incluidas como parte del stack."
+
+msgid "Logs — Loki + Promtail: Centralize and query logs across services without jumping between servers."
+msgstr "Logs — Loki + Promtail: Centraliza y consulta logs entre servicios sin saltar entre servidores."
+
+msgid "Automated backups (platform-level): Backup mechanisms included to protect your observability data and configuration."
+msgstr "Backups automáticos (a nivel plataforma): Mecanismos de respaldo incluidos para proteger datos y configuración de observabilidad."
+
+msgid "Traces — Jaeger distributed tracing: Follow a request across microservices and pinpoint latency bottlenecks or failing components."
+msgstr "Trazas — Jaeger (trazabilidad distribuida): Sigue una petición entre microservicios y detecta cuellos de botella o fallos por componente."
+
+msgid "Rhinometric Console: A simplified control plane for platform health, license visibility, and quick access to the stack."
+msgstr "Consola Rhinometric: Panel simplificado para salud de plataforma, visibilidad de licencia y acceso rápido al stack."
+
+msgid "Dashboards — Grafana preloaded views: Start diagnosing faster with guided dashboards and a unified navigation experience."
+msgstr "Dashboards — vistas precargadas en Grafana: Empieza a diagnosticar más rápido con dashboards guiados y navegación unificada."
+
+msgid "The Rhino Guide: Step-by-step deployment and operational documentation to keep your team autonomous from day one."
+msgstr "The Rhino Guide: Documentación paso a paso de despliegue y operación para autonomía desde el primer día."
+
+msgid "Installation support. Operational autonomy."
+msgstr "Soporte de instalación. Autonomía operativa."
+
+msgid "Our commitment is to keep your observability platform functional and stable."
+msgstr "Nuestro compromiso es que tu plataforma de observabilidad esté funcional y estable."
+
+msgid "We provide expert support for the initial deployment and Rhinometric stack reliability. Since Rhinometric is fully on-premise, we don’t access customer data."
+msgstr "Ofrecemos soporte experto para el despliegue inicial y la fiabilidad del stack Rhinometric. Al ser 100% on-premise, no accedemos a datos del cliente."
+
+msgid "Application-level debugging and incident resolution remain customer-owned — Rhinometric provides the visibility your team needs to act independently."
+msgstr "La depuración de aplicaciones y resolución de incidencias queda bajo responsabilidad del equipo interno — Rhinometric aporta la visibilidad necesaria para actuar con autonomía."
+
 msgid "Data sovereignty"
 msgstr "Soberanía de datos"
 
