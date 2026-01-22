@@ -199,6 +199,159 @@ msgstr "Dashboard ejecutivo"
 msgid "Executive visibility on uptime and SLAs."
 msgstr "Visibilidad ejecutiva sobre uptime y SLAs."
 
+msgid "Own your observability stack. On-premise. Fully controlled."
+msgstr "Controla tu observabilidad. On-premise. Totalmente bajo tu dominio."
+
+msgid "Deploy a curated platform for metrics, logs, and traces inside your infrastructure — without sending operational data to external SaaS. Built for regulated and on-prem environments."
+msgstr "Despliega una plataforma curada de métricas, logs y trazas dentro de tu infraestructura — sin enviar datos operativos a un SaaS externo. Diseñado para entornos regulados y on-prem."
+
+msgid "Data stays inside your infrastructure (no SaaS ingestion)."
+msgstr "Los datos se quedan dentro de tu infraestructura (sin ingesta SaaS)."
+
+msgid "Faster triage with guided dashboards and anomaly signals."
+msgstr "Diagnóstico más rápido con dashboards guiados y señales de anomalías."
+
+msgid "Predictable operations and retention under your control."
+msgstr "Operación predecible y retención bajo tu control."
+
+msgid "Get Early Access (3–6 months)"
+msgstr "Acceso anticipado (3–6 meses)"
+
+msgid "Data sovereignty"
+msgstr "Soberanía de datos"
+
+msgid "Unified signals: metrics, logs, and traces in one stack."
+msgstr "Señales unificadas: métricas, logs y trazas en un solo stack."
+
+msgid "Faster triage"
+msgstr "Diagnóstico más rápido"
+
+msgid "Faster triage with guided dashboards and anomaly signals. Predictable operations and retention under your control. Designed for compliance-driven and security-sensitive teams."
+msgstr "Diagnóstico más rápido con dashboards guiados y señales de anomalías. Operación predecible y retención bajo tu control. Diseñado para equipos con foco en cumplimiento y seguridad."
+
+msgid "Deploy fast. Operate with confidence."
+msgstr "Despliegue rápido. Operación con confianza."
+
+msgid "Automated installer"
+msgstr "Instalador automatizado"
+
+msgid "Automated installer validates requirements and checks ports."
+msgstr "Instalador automatizado que valida requisitos y revisa puertos."
+
+msgid "Secure configuration"
+msgstr "Configuración segura"
+
+msgid "Generates secure credentials and configuration files."
+msgstr "Genera credenciales seguras y archivos de configuración."
+
+msgid "Docker Compose + health checks"
+msgstr "Docker Compose + health checks"
+
+msgid "Bootstraps the stack via Docker Compose. Runs health checks to confirm the platform is ready."
+msgstr "Levanta el stack con Docker Compose. Ejecuta health checks para confirmar que está listo."
+
+msgid "Roadmap (planned)"
+msgstr "Roadmap (planificado)"
+
+msgid "Now"
+msgstr "Ahora"
+
+msgid "Early access & validation"
+msgstr "Acceso anticipado y validación"
+
+msgid "Next"
+msgstr "Siguiente"
+
+msgid "Guided onboarding & dashboards"
+msgstr "Onboarding guiado y dashboards"
+
+msgid "Automated reporting & deeper integrations"
+msgstr "Reporting automatizado e integraciones"
+
+msgid "Later"
+msgstr "Más adelante"
+
+msgid "More self-serve workflows for non-expert users"
+msgstr "Flujos self-serve para perfiles no expertos"
+
+msgid "Early Adopter Program (3–6 months)"
+msgstr "Programa Early Adopter (3–6 meses)"
+
+msgid "We’re onboarding a limited number of on-prem organizations to validate Rhinometric in real environments."
+msgstr "Estamos incorporando un número limitado de organizaciones on-prem para validar Rhinometric en entornos reales."
+
+msgid "Full access for 3–6 months at no cost"
+msgstr "Acceso completo durante 3–6 meses sin costo"
+
+msgid "Priority onboarding support for installation"
+msgstr "Soporte prioritario de onboarding para la instalación"
+
+msgid "Direct feedback channel with the team"
+msgstr "Canal directo de feedback con el equipo"
+
+msgid "Influence upcoming roadmap priorities"
+msgstr "Influencia sobre el roadmap y prioridades"
+
+msgid "Join the program: rafael.canelon@rhinometric.com"
+msgstr "Únete al programa: rafael.canelon@rhinometric.com"
+
+msgid "Built for teams that can’t compromise on control"
+msgstr "Pensado para equipos que no pueden ceder control"
+
+msgid "Regulated industries"
+msgstr "Industrias reguladas"
+
+msgid "Finance, healthcare, government"
+msgstr "Finanzas, salud, gobierno"
+
+msgid "DevOps/SRE teams"
+msgstr "Equipos DevOps/SRE"
+
+msgid "Operating on-prem infrastructure"
+msgstr "Con infraestructura on-prem"
+
+msgid "Organizations avoiding SaaS observability due to data sovereignty"
+msgstr "Organizaciones que evitan observabilidad SaaS por soberanía del dato"
+
+msgid "Visualization"
+msgstr "Visualización"
+
+msgid "Metrics — Prometheus + exporters with ready dashboards."
+msgstr "Métricas — Prometheus + exporters con dashboards listos."
+
+msgid "Ready dashboards for faster adoption."
+msgstr "Dashboards listos para adopción más rápida."
+
+msgid "Logs — Loki + Promtail for centralized troubleshooting."
+msgstr "Logs — Loki + Promtail para troubleshooting centralizado."
+
+msgid "Centralized log review across services."
+msgstr "Revisión centralizada de logs entre servicios."
+
+msgid "Traces — Jaeger for distributed request visibility."
+msgstr "Trazas — Jaeger para visibilidad distribuida de requests."
+
+msgid "See request paths across services."
+msgstr "Ver rutas de requests entre servicios."
+
+msgid "Visualization — Grafana with preloaded views for faster diagnosis."
+msgstr "Visualización — Grafana con vistas precargadas para diagnóstico rápido."
+
+msgid "Rhinometric Console — simplified status, license visibility, and quick access to the stack."
+msgstr "Consola Rhinometric — estado simplificado, visibilidad de licencia y acceso rápido al stack."
+
+msgid "Anomaly detection without the learning curve"
+msgstr "Detección de anomalías sin curva de aprendizaje"
+
+msgid "Rhinometric includes an anomaly engine that surfaces unusual behavior."
+msgstr "Rhinometric incluye un motor de anomalías que resalta comportamientos inusuales."
+
+msgid "Spikes in latency, CPU, or errors are highlighted from Prometheus metrics."
+msgstr "Picos de latencia, CPU o errores se resaltan a partir de métricas de Prometheus."
+
+msgid "Detect incidents earlier with less manual investigation."
+msgstr "Detecta incidencias antes y con menos investigación manual."
+
 msgid "Expanded integration library"
 msgstr "Biblioteca de integraciones ampliada"
 
