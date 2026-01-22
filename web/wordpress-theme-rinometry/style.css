@@ -121,10 +121,10 @@ textarea:focus {
 	color: #0e2a47;
 }
 
-.brand-logo {
-	height: 32px;
+.header-logo img {
+	height: 40px;
 	width: auto;
-	max-width: 200px;
+	max-width: 220px;
 	display: block;
 }
 
@@ -171,41 +171,40 @@ textarea:focus {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	border-radius: 12px;
-	padding: 0.75rem 1.35rem;
+	height: 46px;
+	padding: 0 20px;
+	border-radius: 999px;
 	font-weight: 600;
 	border: 1px solid transparent;
 	cursor: pointer;
 	text-align: center;
-	min-height: 44px;
-}
-
-.site-header .btn {
-	min-height: 40px;
-	padding: 0.55rem 1.05rem;
-	font-size: 0.95rem;
+	text-decoration: none;
+	transition: transform 0.08s ease, box-shadow 0.12s ease;
 }
 .btn-primary {
-	background: var(--primary);
+	background: #0085ff;
 	color: #ffffff;
+	border: 1px solid transparent;
+	box-shadow: 0 6px 16px rgba(0, 133, 255, 0.18);
 }
 
 .btn-primary:hover,
 .btn-primary:focus {
-	background: var(--primary-dark);
-	color: #ffffff;
+	transform: translateY(-1px);
+	box-shadow: 0 10px 22px rgba(0, 133, 255, 0.22);
 }
 
 .btn-secondary {
-	background: transparent;
-	color: var(--accent);
-	border-color: var(--accent);
+	background: #ff6a00;
+	color: #ffffff;
+	border: 1px solid transparent;
+	box-shadow: 0 6px 16px rgba(255, 106, 0, 0.18);
 }
 
 .btn-secondary:hover,
 .btn-secondary:focus {
-	color: var(--accent-dark);
-	border-color: var(--accent-dark);
+	transform: translateY(-1px);
+	box-shadow: 0 10px 22px rgba(255, 106, 0, 0.22);
 }
 
 .btn-accent {
@@ -220,11 +219,8 @@ textarea:focus {
 }
 
 .hero {
-	padding: 3rem 0 2.5rem;
-	background:
-		radial-gradient(circle at 15% 20%, rgba(0, 133, 255, 0.14), rgba(0, 133, 255, 0) 55%),
-		radial-gradient(circle at 85% 0%, rgba(0, 133, 255, 0.12), rgba(0, 133, 255, 0) 50%),
-		#eef2f6;
+	padding: 72px 0;
+	background: linear-gradient(135deg, #f7f9fc 0%, #ffffff 35%, #eef5ff 100%);
 	position: relative;
 	overflow: hidden;
 }
@@ -239,25 +235,24 @@ textarea:focus {
 }
 
 .hero-brand {
-	position: relative;
 	display: flex;
 	justify-content: center;
 	align-items: center;
-	padding: clamp(12px, 2vw, 24px);
-	order: 2;
+	padding: clamp(16px, 2.5vw, 28px);
+	order: 1;
 }
 
 .hero-logo {
-	width: clamp(320px, 34vw, 420px);
+	width: clamp(300px, 34vw, 420px);
 	height: auto;
 	max-width: 100%;
 	object-fit: contain;
-	filter: drop-shadow(0 18px 40px rgba(15, 23, 42, 0.12));
+	filter: drop-shadow(0 18px 34px rgba(15, 23, 42, 0.18));
 }
 
 .hero-content {
 	align-self: center;
-	order: 1;
+	order: 2;
 }
 
 .hero-copy {
@@ -668,14 +663,11 @@ textarea:focus {
 	.brand-text {
 		font-size: 1.25rem;
 	}
-	.brand-logo {
-		height: 30px;
+	.header-logo img {
+		height: 34px;
 	}
 	.section {
 		padding: 3rem 0;
-	}
-	.header-actions .btn {
-		width: 100%;
 	}
 }
 
@@ -701,8 +693,8 @@ textarea:focus {
 	.brand-text {
 		font-size: 1.125rem;
 	}
-	.brand-logo {
-		height: 28px;
+	.header-logo img {
+		height: 32px;
 	}
 }
 
