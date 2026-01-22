@@ -60,27 +60,45 @@ a {
 	color: var(--primary);
 	text-decoration: none;
 }
+		position: relative;
+		overflow: hidden;
 
 a:hover,
+	.hero::before {
+		content: '';
+		position: absolute;
+		left: clamp(-120px, -10vw, -40px);
+		top: clamp(-60px, -5vw, -20px);
+		width: clamp(420px, 45vw, 640px);
+		height: clamp(420px, 45vw, 640px);
+		background: radial-gradient(circle, rgba(0, 133, 255, 0.18), rgba(0, 133, 255, 0) 65%);
+		opacity: 0.7;
+		pointer-events: none;
+		z-index: 0;
+	}
 a:focus {
 	color: var(--primary-dark);
 }
 
 a:focus,
 button:focus,
+		position: relative;
+		z-index: 1;
 input:focus,
 select:focus,
 textarea:focus {
 	outline: 3px solid var(--focus);
 	outline-offset: 2px;
 }
+		padding: clamp(12px, 2vw, 24px);
 
 .skip-link {
 	position: absolute;
-	left: -999px;
+		width: clamp(320px, 36vw, 420px);
 	top: 0;
 	background: #ffffff;
 	padding: 0.75rem 1rem;
+		filter: drop-shadow(0 18px 40px rgba(15, 23, 42, 0.12));
 	border: 2px solid var(--focus);
 	z-index: 9999;
 }
@@ -99,7 +117,7 @@ textarea:focus {
 
 .site-header {
 	background: var(--surface);
-	border-bottom: 1px solid var(--border);
+		margin: 0.45rem 0;
 	position: sticky;
 	top: 0;
 	z-index: 40;
@@ -110,7 +128,7 @@ textarea:focus {
 	align-items: center;
 	justify-content: space-between;
 	gap: 1rem;
-	padding: 0.6rem 0;
+		font-size: clamp(2rem, 3vw, 2.75rem);
 }
 
 .brand {
@@ -642,6 +660,15 @@ textarea:focus {
 @media (max-width: 900px) {
 	.hero-logo {
 		width: clamp(220px, 60vw, 320px);
+	}
+	.hero-grid {
+		grid-template-columns: 1fr;
+	}
+	.hero-content {
+		order: 1;
+	}
+	.hero-brand {
+		order: 2;
 	}
 }
 
