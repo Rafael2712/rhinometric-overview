@@ -3,7 +3,10 @@ get_header();
 ?>
 <section class="hero" id="home">
   <div class="container hero-grid">
-    <div class="hero-copy">
+    <div class="hero-brand" aria-hidden="true">
+      <img class="hero-logo" src="<?php echo esc_url(get_template_directory_uri() . '/assets/img/logo-rhinometric.png'); ?>" alt="" />
+    </div>
+    <div class="hero-copy hero-content">
       <span class="badge"><?php esc_html_e('Unified Observability Platform', 'rinometry'); ?></span>
       <h1 class="section-title"><?php esc_html_e('Own your observability stack — fully on-premise', 'rinometry'); ?></h1>
       <p class="section-lead"><?php esc_html_e('A unified, on-prem observability platform built for modern infrastructure teams.', 'rinometry'); ?></p>
@@ -21,11 +24,13 @@ get_header();
         </a>
       </div>
     </div>
-    <div class="hero-card hero-visual console-preview" aria-label="<?php esc_attr_e('Rhinometric product preview', 'rinometry'); ?>">
-      <div class="console-header">
-        <img class="console-logo" src="<?php echo esc_url(get_template_directory_uri() . '/assets/img/logo-rhinometric.png'); ?>" alt="" aria-hidden="true" />
-        <div class="mock-header"><?php esc_html_e('Rhinometric Console Preview', 'rinometry'); ?></div>
-      </div>
+  </div>
+</section>
+
+<section class="section section-alt console-preview-section" aria-label="<?php esc_attr_e('Rhinometric Console Preview', 'rinometry'); ?>">
+  <div class="container">
+    <div class="card console-preview-card">
+      <div class="mock-header"><?php esc_html_e('Rhinometric Console Preview', 'rinometry'); ?></div>
       <div class="mock-line"></div>
       <div class="mock-line"></div>
       <div class="mock-line"></div>
