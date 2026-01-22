@@ -127,7 +127,7 @@ textarea:focus {
 .site-header .site-brand img,
 .site-header .header-logo img,
 .rm-header-logo {
-	height: clamp(44px, 4vw, 68px);
+	height: clamp(56px, 5vw, 82px);
 	width: auto;
 	max-width: 100%;
 	display: block;
@@ -301,7 +301,7 @@ textarea:focus {
 
 .footer-logo img,
 .rm-footer-logo {
-	height: clamp(70px, 7vw, 140px);
+	height: clamp(110px, 10vw, 200px);
 	width: auto;
 	max-width: 100%;
 	display: block;
