@@ -171,6 +171,12 @@ textarea:focus {
 	margin-left: auto;
 }
 
+.site-header .btn {
+	height: 42px;
+	padding: 0 18px;
+	font-size: 0.95rem;
+}
+
 .btn {
 	display: inline-flex;
 	align-items: center;
@@ -219,12 +225,10 @@ textarea:focus {
 
 .hero {
 	padding: 72px 0;
-	background: linear-gradient(
-		135deg,
-		#f7f9fc 0%,
-		#ffffff 35%,
-		#eef5ff 100%
-	);
+	background:
+		radial-gradient(circle at top left, rgba(0, 133, 255, 0.12), transparent 55%),
+		radial-gradient(circle at bottom right, rgba(0, 133, 255, 0.10), transparent 55%),
+		linear-gradient(135deg, #f7f9fc 0%, #f3f6fb 55%, #eaf2ff 100%);
 	position: relative;
 	overflow: hidden;
 }
