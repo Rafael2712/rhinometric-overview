@@ -219,8 +219,9 @@ services:
     environment:
       GF_SECURITY_ADMIN_USER: ${GRAFANA_USER:-admin}
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
-      GF_SERVER_ROOT_URL: http://89.167.6.43:3002/api/grafana
-      GF_SERVER_SERVE_FROM_SUB_PATH: "true"
+      # CRITICAL: ROOT_URL must be empty or http://rhinometric-grafana:3000 for internal access
+      GF_SERVER_ROOT_URL: ""
+      GF_SERVER_SERVE_FROM_SUB_PATH: "false"
       GF_SERVER_DOMAIN: 89.167.6.43
       GF_SERVER_ENFORCE_DOMAIN: "false"
       GF_SERVER_ENABLE_GZIP: "true"
@@ -232,9 +233,11 @@ services:
       GF_NEWS_NEWS_FEED_ENABLED: "false"
       GF_PATHS_PLUGINS: /var/lib/grafana/plugins
       GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS: rhinometric-dashboard-builder-iframe,rhinometric-api-connector-iframe
+      # Anonymous access with ADMIN role for testing
       GF_AUTH_ANONYMOUS_ENABLED: "true"
       GF_AUTH_ANONYMOUS_ORG_NAME: Main Org.
-      GF_AUTH_ANONYMOUS_ORG_ROLE: Editor
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
+      GF_AUTH_DISABLE_LOGIN_FORM: "true"
       # Security settings for embedding
       GF_SECURITY_ALLOW_EMBEDDING: "true"
       GF_SECURITY_COOKIE_SAMESITE: "none"
