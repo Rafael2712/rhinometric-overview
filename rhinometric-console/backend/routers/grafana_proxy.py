@@ -56,7 +56,7 @@ def is_path_allowed(path: str, user: UserModel) -> bool:
     
     return False
 
-@router.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
+@router.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"])
 async def grafana_proxy(
     path: str,
     request: Request,

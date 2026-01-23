@@ -61,9 +61,10 @@ export function DashboardsPage() {
   }
 
   const openInGrafana = (dashboard: Dashboard) => {
-    // Use RBAC proxy instead of direct Grafana access
-    const separator = dashboard.url.includes('?') ? '&' : '?'
-    const grafanaUrl = `/api/grafana${dashboard.url}${separator}token=${token}`
+    // Normalize path - dashboard.url already contains full path from /d/...
+    const cleanPath = dashboard.url.startsWith('/') ? dashboard.url : '/' + dashboard.url
+    const separator = cleanPath.includes('?') ? '&' : '?'
+    const grafanaUrl = `/api/grafana${cleanPath}${separator}token=${token}`
     window.open(grafanaUrl, '_blank', 'noopener,noreferrer')
   }
 
