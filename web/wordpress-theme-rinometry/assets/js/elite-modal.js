@@ -17,8 +17,26 @@
   var focusableSelectors = 'a[href], button:not([disabled]), textarea, input:not([type="hidden"]), select, [tabindex]:not([tabindex="-1"])';
   var lastFocusedElement = null;
   var submitting = false;
-  var defaultSubmitLabel = submitButton ? submitButton.getAttribute('data-default-label') || submitButton.textContent : '';
-  var loadingSubmitLabel = submitButton ? submitButton.getAttribute('data-loading-label') || submitButton.textContent : '';
+  function getDefaultSubmitLabel() {
+    if (!submitButton) {
+      return '';
+    }
+    return submitButton.getAttribute('data-default-label') || submitButton.textContent || '';
+  }
+
+  function getLoadingSubmitLabel() {
+    if (!submitButton) {
+      return '';
+    }
+    return submitButton.getAttribute('data-loading-label') || submitButton.textContent || '';
+  }
+
+  function getServerErrorMessage() {
+    if (!form) {
+      return '';
+    }
+    return form.dataset.errorServer || '';
+  }
 
   function lockScroll() {
     document.documentElement.classList.add('modal-open');
@@ -131,13 +149,17 @@
     submitButton.disabled = !form.checkValidity();
   }
 
-  function setSubmittingState(isSubmitting) {
-    submitting = isSubmitting;
+  function syncSubmitButtonCopy() {
     if (!submitButton) {
       return;
     }
-    submitButton.textContent = isSubmitting ? loadingSubmitLabel : defaultSubmitLabel;
-    submitButton.disabled = isSubmitting || !form.checkValidity();
+    submitButton.textContent = submitting ? getLoadingSubmitLabel() : getDefaultSubmitLabel();
+    submitButton.disabled = submitting || (form ? !form.checkValidity() : false);
+  }
+
+  function setSubmittingState(isSubmitting) {
+    submitting = isSubmitting;
+    syncSubmitButtonCopy();
   }
 
   function resetFormState() {
@@ -306,13 +328,12 @@
           return;
         }
         var errors = data && data.errors ? data.errors : null;
-        var message = data && data.message ? data.message : (form ? form.dataset.errorServer : '');
+        var message = data && data.message ? data.message : getServerErrorMessage();
         handleSubmissionError(message, errors);
       })
       .catch(function () {
         setSubmittingState(false);
-        var message = form ? form.dataset.errorServer || '' : '';
-        handleSubmissionError(message);
+        handleSubmissionError(getServerErrorMessage());
       });
   }
 
@@ -320,7 +341,7 @@
     if (!container || !form || !submitButton) {
       return;
     }
-    updateSubmitState();
+    syncSubmitButtonCopy();
     triggers.forEach(function (trigger) {
       trigger.addEventListener('click', openModal);
     });
@@ -332,6 +353,7 @@
     form.addEventListener('submit', submitForm);
     form.addEventListener('input', handleFieldInput);
     form.addEventListener('change', handleFieldInput);
+    window.addEventListener('rinometry:language-change', syncSubmitButtonCopy);
   }
 
   init();

@@ -92,7 +92,7 @@ $rinometry_frontpage_strings = [
     'tabs.visual.point2' => 'The Rhino Guide: Step-by-step deployment and operational documentation to keep your team autonomous from day one.',
     'tabs.visual.point3' => 'Tooling: Grafana.',
     'tabs.visual.caption' => 'Guided Grafana dashboards plus the Rhino Guide keep teams autonomous from day one.',
-    'tabs.ai.label' => 'AI',
+    'tabs.ai.label' => 'AI / Anomalies',
     'tabs.ai.point1' => 'AI-assisted anomaly signals (early): Surface unusual patterns across Prometheus metrics to reduce alert noise and speed up triage. Rhinometric highlights anomalies and trends so teams can investigate faster—without sending data outside your network.',
     'tabs.ai.point2' => 'Tooling: Prometheus + Rhinometric Anomaly Engine (early).',
     'tabs.ai.caption' => 'AI-assisted Prometheus anomalies with Rhino overlays for faster triage.',
@@ -181,7 +181,7 @@ $rinometry_frontpage_strings = [
     'tabs.visual.point2' => 'The Rhino Guide: documentación paso a paso de despliegue y operación para que tu equipo sea autónomo desde el día uno.',
     'tabs.visual.point3' => 'Herramientas: Grafana.',
     'tabs.visual.caption' => 'Dashboards guiados de Grafana más Rhino Guide para operar con autonomía desde el día uno.',
-    'tabs.ai.label' => 'IA',
+    'tabs.ai.label' => 'IA / Anomalías',
     'tabs.ai.point1' => 'Señales de anomalía asistidas por IA (early): detecta patrones inusuales sobre métricas de Prometheus para reducir el ruido de alertas y acelerar el triage. Rhinometric resalta anomalías y tendencias sin sacar datos de tu red.',
     'tabs.ai.point2' => 'Herramientas: Prometheus + Rhinometric Anomaly Engine (early).',
     'tabs.ai.caption' => 'Anomalías asistidas por IA sobre Prometheus con overlays Rhino para acelerar el triage.',
@@ -323,12 +323,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['rh_elite_modal'])) {
     </div>
     <div class="hero-copy hero-content">
       <div class="hero-language-switcher">
-        <nav class="language-switcher" aria-label="<?php echo esc_attr($rinometry_frontpage_translate('language.selector')); ?>">
+        <nav class="language-switcher" aria-label="<?php echo esc_attr($rinometry_frontpage_translate('language.selector')); ?>" data-i18n="language.selector" data-i18n-attr="aria-label">
           <a
             href="<?php echo esc_url($rinometry_frontpage_lang_links['en']); ?>"
             data-lang="en"
             class="lang-option <?php echo $rinometry_frontpage_language === 'en' ? 'lang-active' : ''; ?>"
             <?php echo $rinometry_frontpage_language === 'en' ? 'aria-current="true"' : ''; ?>
+            data-i18n="language.en"
           >
             <?php echo esc_html($rinometry_frontpage_translate('language.en')); ?>
           </a>
@@ -337,6 +338,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['rh_elite_modal'])) {
             data-lang="es"
             class="lang-option <?php echo $rinometry_frontpage_language === 'es' ? 'lang-active' : ''; ?>"
             <?php echo $rinometry_frontpage_language === 'es' ? 'aria-current="true"' : ''; ?>
+            data-i18n="language.es"
           >
             <?php echo esc_html($rinometry_frontpage_translate('language.es')); ?>
           </a>
@@ -610,6 +612,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['rh_elite_modal'])) {
     });
   });
 </script>
+<?php
+$rinometry_frontpage_json_flags = JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE;
+?>
+<script>
+  window.__RHINO_I18N__ = window.__RHINO_I18N__ || {};
+  window.__RHINO_I18N__.translations = <?php echo wp_json_encode($rinometry_frontpage_strings, $rinometry_frontpage_json_flags); ?>;
+  window.__RHINO_I18N__.initialLang = '<?php echo esc_js($rinometry_frontpage_language); ?>';
+  window.__RHINO_I18N__.fallbackLang = 'en';
+  window.__RHINO_I18N__.cookieName = '<?php echo esc_js($rinometry_frontpage_cookie_name); ?>';
+  window.__RHINO_I18N__.storageKey = 'rhino_lang';
+  window.__RHINO_I18N__.queryParam = 'lang';
+</script>
+<script src="<?php echo esc_url(get_template_directory_uri() . '/assets/js/frontpage-i18n.js'); ?>" defer></script>
 <div class="elite-modal-backdrop" data-elite-modal hidden>
   <div class="elite-modal-container" role="dialog" aria-modal="true" aria-labelledby="elite-modal-title" aria-describedby="elite-modal-subtitle" tabindex="-1">
     <button type="button" class="elite-modal-close" data-elite-modal-close aria-label="<?php echo esc_attr($rinometry_frontpage_translate('modal.close')); ?>">
@@ -666,7 +681,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['rh_elite_modal'])) {
       </form>
       <div class="elite-modal-success" role="status" aria-live="polite" hidden>
         <h4 data-i18n="modal.success.title"><?php echo esc_html($rinometry_frontpage_translate('modal.success.title')); ?></h4>
-        <p class="elite-modal-success-text"><?php echo esc_html($rinometry_frontpage_translate('modal.success.message')); ?></p>
+        <p class="elite-modal-success-text" data-i18n="modal.success.message"><?php echo esc_html($rinometry_frontpage_translate('modal.success.message')); ?></p>
       </div>
     </div>
   </div>
