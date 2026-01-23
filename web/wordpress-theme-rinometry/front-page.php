@@ -5,17 +5,17 @@
       <img class="hero-logo" src="<?php echo esc_url(get_template_directory_uri() . '/assets/img/logo-rhinometric.png'); ?>" alt="" />
     </div>
     <div class="hero-copy hero-content">
-      <span class="badge" data-i18n="hero.badge">Unified Observability Platform</span>
-      <h1 class="section-title" data-i18n="hero.title">Own your observability stack. On-premise. Fully controlled.</h1>
-      <p class="section-lead" data-i18n="hero.lead">Deploy a curated platform for metrics, logs, and traces inside your infrastructure — without sending operational data to external SaaS. Built for regulated and on-prem environments.</p>
+      <span class="badge" data-i18n="hero.badge">Motor On-Prem Observability</span>
+      <h1 class="section-title" data-i18n="hero.title">Observabilidad On-Premise: Tu Infraestructura, Tus Reglas.</h1>
+      <p class="section-lead" data-i18n="hero.lead">Despliega en minutos un stack profesional de métricas, logs y trazas. Sin datos saliendo de tu red, sin cargos por transferencia de nube y con soberanía total.</p>
       <ul class="hero-bullets">
-        <li data-i18n="hero.bullet1">Data stays inside your infrastructure (no SaaS ingestion).</li>
-        <li data-i18n="hero.bullet2">Faster triage with guided dashboards and anomaly signals.</li>
-        <li data-i18n="hero.bullet3">Predictable operations and retention under your control.</li>
+        <li data-i18n="hero.bullet1">Motor instalado en tu DC o edge, listo para producción.</li>
+        <li data-i18n="hero.bullet2">Costos predecibles: cero cloud egress, cero sorpresas.</li>
+        <li data-i18n="hero.bullet3">Cumplimiento y control operativo bajo tus propias reglas.</li>
       </ul>
       <div class="header-actions" style="margin-top: 1.5rem;">
-        <a class="btn btn-primary" href="mailto:rafael.canelon@rhinometric.com" data-i18n="hero.ctaPrimary">3–6 months free for early adopters (validation program)</a>
-        <a class="btn btn-secondary" href="mailto:rafael.canelon@rhinometric.com" data-i18n="hero.ctaSecondary">Guided session with the team</a>
+        <a class="btn btn-primary" href="#early-access" data-i18n="hero.ctaPrimary">Programa Early Adopter</a>
+        <a class="btn btn-secondary" href="#out-of-the-box" data-i18n="hero.ctaSecondary">Especificaciones Técnicas</a>
       </div>
     </div>
   </div>
@@ -36,91 +36,150 @@
   </div>
 </section>
 
-<section class="section trust-strip" aria-label="Trust strip" data-i18n="trust.aria" data-i18n-attr="aria-label">
+<section class="section section-alt" id="out-of-the-box">
   <div class="container">
-    <p class="trust-strip-text" data-i18n="trust.copy">On-premise • No SaaS lock-in • Metrics + Logs + Traces</p>
+    <h2 class="section-title" data-i18n="engine.title">The Full-Stack Observability Engine.</h2>
+    <p class="section-lead" data-i18n="engine.lead">Everything you need to monitor, trace, and secure your private infrastructure—pre-configured for production and absolute data sovereignty.</p>
+    <div class="feature-showcase" data-feature-tabs>
+      <div class="feature-nav" role="tablist" aria-label="Technical tabs" data-i18n="tabs.aria" data-i18n-attr="aria-label">
+        <button type="button" class="feature-tab is-active" role="tab" aria-selected="true" aria-controls="feature-panel-metrics" id="feature-tab-metrics" data-feature-tab="feature-panel-metrics">
+          <span class="feature-tab-icon feature-tab-icon--metrics" aria-hidden="true"></span>
+          <div class="feature-tab-copy">
+            <span class="feature-tab-label" data-i18n="tabs.metrics.label">Metrics</span>
+            <span class="feature-tab-point" data-i18n="tabs.metrics.point1">Infrastructure & Service Health — Prometheus: High-density monitoring based on industry standards, optimized to detect failures in milliseconds.</span>
+            <span class="feature-tab-point" data-i18n="tabs.metrics.point2">High-Performance Persistence — PostgreSQL + Redis: Pre-configured storage layers for ultra-fast queries and total data reliability.</span>
+          </div>
+        </button>
+        <button type="button" class="feature-tab" role="tab" aria-selected="false" aria-controls="feature-panel-logs" id="feature-tab-logs" data-feature-tab="feature-panel-logs">
+          <span class="feature-tab-icon feature-tab-icon--logs" aria-hidden="true"></span>
+          <div class="feature-tab-copy">
+            <span class="feature-tab-label" data-i18n="tabs.logs.label">Logs</span>
+            <span class="feature-tab-point" data-i18n="tabs.logs.point1">Private Log Centralization — Loki: Index terabytes of logs without a single byte leaving your network or incurring cloud egress fees.</span>
+            <span class="feature-tab-point" data-i18n="tabs.logs.point2">Full-Text Intelligence: Search and filter data in real-time for audits, security, and critical troubleshooting.</span>
+          </div>
+        </button>
+        <button type="button" class="feature-tab" role="tab" aria-selected="false" aria-controls="feature-panel-traces" id="feature-tab-traces" data-feature-tab="feature-panel-traces">
+          <span class="feature-tab-icon feature-tab-icon--traces" aria-hidden="true"></span>
+          <div class="feature-tab-copy">
+            <span class="feature-tab-label" data-i18n="tabs.traces.label">Traces</span>
+            <span class="feature-tab-point" data-i18n="tabs.traces.point1">Microservices Visibility — Jaeger: Identify bottlenecks and latent failures in distributed systems with native tracing.</span>
+            <span class="feature-tab-point" data-i18n="tabs.traces.point2">Dependency Mapping: Visualize service interactions to find the root cause of errors in seconds.</span>
+          </div>
+        </button>
+        <button type="button" class="feature-tab" role="tab" aria-selected="false" aria-controls="feature-panel-visual" id="feature-tab-visual" data-feature-tab="feature-panel-visual">
+          <span class="feature-tab-icon feature-tab-icon--visual" aria-hidden="true"></span>
+          <div class="feature-tab-copy">
+            <span class="feature-tab-label" data-i18n="tabs.visualization.label">Visualization</span>
+            <span class="feature-tab-point" data-i18n="tabs.visual.point1">Decision-Ready Dashboards — Grafana: Visual intelligence with factory-optimized panels for instant visibility.</span>
+          </div>
+        </button>
+        <button type="button" class="feature-tab" role="tab" aria-selected="false" aria-controls="feature-panel-ai" id="feature-tab-ai" data-feature-tab="feature-panel-ai">
+          <span class="feature-tab-icon feature-tab-icon--ai" aria-hidden="true"></span>
+          <div class="feature-tab-copy">
+            <span class="feature-tab-label" data-i18n="tabs.ai.label">AI</span>
+            <span class="feature-tab-point" data-i18n="tabs.ai.point1">Proactive Anomaly Detection: Smart engine that identifies deviations and unusual patterns before they turn into service outages.</span>
+          </div>
+        </button>
+      </div>
+      <div class="feature-display">
+        <div class="feature-panel is-active" id="feature-panel-metrics" role="tabpanel" aria-labelledby="feature-tab-metrics">
+          <div class="feature-badge" data-i18n="feature.badge">100% Private / On-Premise</div>
+          <div class="feature-visual feature-visual--metrics">
+            <div class="visual-dashboard">
+              <div class="visual-gauge"></div>
+              <div class="visual-gauge visual-gauge--secondary"></div>
+              <div class="visual-bars">
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+              </div>
+            </div>
+          </div>
+          <p class="feature-caption" data-i18n="tabs.metrics.caption">Dark-mode Grafana dashboards with live CPU/RAM gauges tuned for private fleets.</p>
+        </div>
+        <div class="feature-panel" id="feature-panel-logs" role="tabpanel" aria-labelledby="feature-tab-logs">
+          <div class="feature-badge" data-i18n="feature.badge">100% Private / On-Premise</div>
+          <div class="feature-visual feature-visual--logs">
+            <div class="visual-terminal">
+              <div class="terminal-line"></div>
+              <div class="terminal-line"></div>
+              <div class="terminal-line terminal-line--highlight"></div>
+              <div class="terminal-line"></div>
+              <div class="terminal-line"></div>
+            </div>
+          </div>
+          <p class="feature-caption" data-i18n="tabs.logs.caption">Private Loki console with streaming ERROR filters and zero cloud egress.</p>
+        </div>
+        <div class="feature-panel" id="feature-panel-traces" role="tabpanel" aria-labelledby="feature-tab-traces">
+          <div class="feature-badge" data-i18n="feature.badge">100% Private / On-Premise</div>
+          <div class="feature-visual feature-visual--traces">
+            <div class="visual-graph">
+              <span class="graph-node graph-node--main"></span>
+              <span class="graph-node"></span>
+              <span class="graph-node"></span>
+              <span class="graph-node"></span>
+              <span class="graph-node"></span>
+            </div>
+          </div>
+          <p class="feature-caption" data-i18n="tabs.traces.caption">Jaeger dependency map connecting critical microservices across air-gapped clusters.</p>
+        </div>
+        <div class="feature-panel" id="feature-panel-visual" role="tabpanel" aria-labelledby="feature-tab-visual">
+          <div class="feature-badge" data-i18n="feature.badge">100% Private / On-Premise</div>
+          <div class="feature-visual feature-visual--visual">
+            <div class="visual-panels">
+              <div class="panel-row">
+                <span></span>
+                <span></span>
+                <span></span>
+              </div>
+              <div class="panel-row panel-row--wide"></div>
+              <div class="panel-row">
+                <span></span>
+                <span></span>
+              </div>
+            </div>
+          </div>
+          <p class="feature-caption" data-i18n="tabs.visual.caption">Factory-optimized Grafana layouts with Rhinometric navigation and theming.</p>
+        </div>
+        <div class="feature-panel" id="feature-panel-ai" role="tabpanel" aria-labelledby="feature-tab-ai">
+          <div class="feature-badge" data-i18n="feature.badge">100% Private / On-Premise</div>
+          <div class="feature-visual feature-visual--ai">
+            <div class="visual-anomaly">
+              <span class="anomaly-baseline"></span>
+              <span class="anomaly-spike"></span>
+            </div>
+          </div>
+          <p class="feature-caption" data-i18n="tabs.ai.caption">Baseline signals with highlighted anomaly spikes and Rhino alert overlays.</p>
+        </div>
+      </div>
+    </div>
+    <p class="engine-footnote" data-i18n="engine.footnote">Based on open standards. Zero vendor lock-in. Air-Gapped Ready. You own your configuration forever.</p>
   </div>
 </section>
 
-<section class="section section-alt" id="benefits">
+<section class="section" id="critical-sectors">
   <div class="container">
-    <h2 class="section-title" data-i18n="benefits.title">Why teams choose Rhinometric</h2>
-    <div class="grid benefits-grid">
-      <div class="card benefit-card">
-        <span class="benefit-icon" aria-hidden="true"></span>
-        <h3 data-i18n="benefits.card1.title">Data sovereignty</h3>
-        <p data-i18n="benefits.card1.text">Data stays inside your infrastructure (no SaaS ingestion).</p>
-      </div>
-      <div class="card benefit-card">
-        <span class="benefit-icon" aria-hidden="true"></span>
-        <h3 data-i18n="benefits.card2.title">Unified signals</h3>
-        <p data-i18n="benefits.card2.text">Unified signals: metrics, logs, and traces in one stack.</p>
-      </div>
-      <div class="card benefit-card">
-        <span class="benefit-icon" aria-hidden="true"></span>
-        <h3 data-i18n="benefits.card3.title">Faster triage</h3>
-        <p data-i18n="benefits.card3.text">Faster triage with guided dashboards and anomaly signals. Predictable operations and retention under your control. Designed for compliance-driven and security-sensitive teams.</p>
-      </div>
-    </div>
+    <h2 class="section-title" data-i18n="critical.title">Built for critical sectors</h2>
+    <p class="section-lead" data-i18n="critical.body">Built for zero-risk tolerance sectors. If your company operates in Fintech, Health, Defense, or Industrial IoT, Rhinometric guarantees that 100% of telemetry stays on your servers. Regulatory compliance (GDPR/HIPAA) and total security in Air-Gapped environments.</p>
   </div>
 </section>
 
-<section class="section" id="how-it-works">
+<section class="section section-alt" id="installation-support">
   <div class="container">
-    <h2 class="section-title" data-i18n="deploy.title">Deploy fast. Operate with confidence.</h2>
-    <div class="grid steps-grid">
-      <div class="card">
-        <span class="step-icon" aria-hidden="true"></span>
-        <h3 data-i18n="deploy.card1.title">Automated installer</h3>
-        <p data-i18n="deploy.card1.text">Automated installer validates requirements and checks ports.</p>
-      </div>
-      <div class="card">
-        <span class="step-icon" aria-hidden="true"></span>
-        <h3 data-i18n="deploy.card2.title">Secure configuration</h3>
-        <p data-i18n="deploy.card2.text">Generates secure credentials and configuration files.</p>
-      </div>
-      <div class="card">
-        <span class="step-icon" aria-hidden="true"></span>
-        <h3 data-i18n="deploy.card3.title">Docker Compose + health checks</h3>
-        <p data-i18n="deploy.card3.text">Bootstraps the stack via Docker Compose. Runs health checks to confirm the platform is ready.</p>
-      </div>
-    </div>
+    <h2 class="section-title" data-i18n="install.title">Installation support & autonomy</h2>
+    <p class="section-lead" data-i18n="install.body">We build the engine; you keep the keys. We guarantee a perfect setup and stack stability. With the included Rhino Guide, your team gains the knowledge to operate with full independence, eliminating reliance on external consulting.</p>
   </div>
 </section>
 
-<section class="section section-alt" id="roadmap">
+<section class="section" id="why-rhinometric">
   <div class="container">
-    <h2 class="section-title" data-i18n="roadmap.title">Roadmap (planned)</h2>
-    <div class="timeline">
-      <div class="timeline-item">
-        <span class="timeline-dot" aria-hidden="true"></span>
-        <div>
-          <h3 data-i18n="roadmap.now.title">Now</h3>
-          <p data-i18n="roadmap.now.text">Early access & validation</p>
-        </div>
-      </div>
-      <div class="timeline-item">
-        <span class="timeline-dot" aria-hidden="true"></span>
-        <div>
-          <h3 data-i18n="roadmap.next1.title">Next</h3>
-          <p data-i18n="roadmap.next1.text">Guided onboarding & dashboards</p>
-        </div>
-      </div>
-      <div class="timeline-item">
-        <span class="timeline-dot" aria-hidden="true"></span>
-        <div>
-          <h3 data-i18n="roadmap.next2.title">Next</h3>
-          <p data-i18n="roadmap.next2.text">Automated reporting & deeper integrations</p>
-        </div>
-      </div>
-      <div class="timeline-item">
-        <span class="timeline-dot" aria-hidden="true"></span>
-        <div>
-          <h3 data-i18n="roadmap.later.title">Later</h3>
-          <p data-i18n="roadmap.later.text">More self-serve workflows for non-expert users</p>
-        </div>
-      </div>
-    </div>
+    <h2 class="section-title" data-i18n="why.title">Why choose Rhinometric</h2>
+    <ul class="early-list">
+      <li data-i18n="why.item1">Zero Cloud Egress Fees: Save thousands by eliminating the cost of transferring data to external clouds.</li>
+      <li data-i18n="why.item2">No Vendor Lock-in: Based on open standards. You own the software and the configuration forever.</li>
+      <li data-i18n="why.item3">Time-to-Market: What takes a senior team months to configure, we deliver in an afternoon.</li>
+    </ul>
   </div>
 </section>
 
@@ -128,134 +187,57 @@
   <div class="container">
     <div class="card">
       <span class="early-access-tag" data-i18n="early.tag">Early Access</span>
-      <h2 class="section-title" data-i18n="early.title">Early Adopter Program (3–6 months)</h2>
-      <p class="section-lead" data-i18n="early.lead">We're onboarding a limited number of on-prem organizations to validate Rhinometric in real environments.</p>
-      <ul class="early-list">
-        <li data-i18n="early.item1">Full access for 3–6 months at no cost</li>
-        <li data-i18n="early.item2">Priority onboarding support for installation</li>
-        <li data-i18n="early.item3">Direct feedback channel with the team</li>
-        <li data-i18n="early.item4">Influence upcoming roadmap priorities</li>
-      </ul>
-      <a class="btn btn-primary" href="mailto:rafael.canelon@rhinometric.com" data-i18n="early.cta">Join the program: rafael.canelon@rhinometric.com</a>
+      <h2 class="section-title" data-i18n="early.title">Looking for the first 10 pioneers.</h2>
+      <p class="section-lead" data-i18n="early.lead">Be part of the Rhinometric launch. We offer 3 months of full access and priority deployment support for free in exchange for your technical feedback. Secure your infrastructure today.</p>
+      <a class="btn btn-primary" href="mailto:rafael.canelon@rhinometric.com" data-i18n="early.cta">Apply to Program - 10 Spots Available</a>
     </div>
   </div>
 </section>
-
-<section class="section" id="who-its-for">
-  <div class="container">
-    <h2 class="section-title" data-i18n="audience.title">Built for teams that can't compromise on control</h2>
-    <div class="grid benefits-grid">
-      <div class="card benefit-card">
-        <span class="benefit-icon" aria-hidden="true"></span>
-        <h3 data-i18n="audience.card1.title">Regulated industries</h3>
-        <p data-i18n="audience.card1.text">Finance, healthcare, government.</p>
-      </div>
-      <div class="card benefit-card">
-        <span class="benefit-icon" aria-hidden="true"></span>
-        <h3 data-i18n="audience.card2.title">DevOps/SRE teams</h3>
-        <p data-i18n="audience.card2.text">Operating on-prem infrastructure.</p>
-      </div>
-      <div class="card benefit-card">
-        <span class="benefit-icon" aria-hidden="true"></span>
-        <h3 data-i18n="audience.card3.title">Data sovereignty</h3>
-        <p data-i18n="audience.card3.text">Organizations avoiding SaaS observability due to data sovereignty.</p>
-      </div>
-    </div>
-  </div>
-</section>
-
-<section class="section section-alt" id="out-of-the-box">
-  <div class="container">
-    <h2 class="section-title" data-i18n="ootb.title">What you get out of the box</h2>
-    <p class="section-lead" data-i18n="ootb.lead">A curated on-prem observability stack — packaged, configured, and ready to run inside your infrastructure.</p>
-    <div class="tabs" data-tabs>
-      <div class="tab-list" role="tablist" aria-label="Technical tabs" data-i18n="tabs.aria" data-i18n-attr="aria-label">
-        <button class="tab-button is-active" role="tab" aria-selected="true" aria-controls="tab-metrics" id="tab-btn-metrics" data-i18n="tabs.metrics.label">Metrics</button>
-        <button class="tab-button" role="tab" aria-selected="false" aria-controls="tab-logs" id="tab-btn-logs" data-i18n="tabs.logs.label">Logs</button>
-        <button class="tab-button" role="tab" aria-selected="false" aria-controls="tab-traces" id="tab-btn-traces" data-i18n="tabs.traces.label">Traces</button>
-        <button class="tab-button" role="tab" aria-selected="false" aria-controls="tab-alerts" id="tab-btn-alerts" data-i18n="tabs.visualization.label">Visualization</button>
-        <button class="tab-button" role="tab" aria-selected="false" aria-controls="tab-ai" id="tab-btn-ai" data-i18n="tabs.ai.label">AI</button>
-      </div>
-      <div class="tab-panel is-active" role="tabpanel" id="tab-metrics" aria-labelledby="tab-btn-metrics">
-        <ul>
-          <li data-i18n="tabs.metrics.item1">Metrics — Prometheus + exporters: Collect infrastructure and service metrics with proven standards, ready for Grafana dashboards.</li>
-          <li data-i18n="tabs.metrics.item2">Storage & performance layer — PostgreSQL + Redis: Reliable persistence and performance foundations included as part of the stack.</li>
-        </ul>
-        <p class="section-note" data-i18n="tabs.metrics.tooling">Tooling: Prometheus.</p>
-      </div>
-      <div class="tab-panel" role="tabpanel" id="tab-logs" aria-labelledby="tab-btn-logs">
-        <ul>
-          <li data-i18n="tabs.logs.item1">Logs — Loki + Promtail: Centralize and query logs across services without jumping between servers.</li>
-          <li data-i18n="tabs.logs.item2">Automated backups (platform-level): Backup mechanisms included to protect your observability data and configuration.</li>
-        </ul>
-        <p class="section-note" data-i18n="tabs.logs.tooling">Tooling: Loki.</p>
-      </div>
-      <div class="tab-panel" role="tabpanel" id="tab-traces" aria-labelledby="tab-btn-traces">
-        <ul>
-          <li data-i18n="tabs.traces.item1">Traces — Jaeger distributed tracing: Follow a request across microservices and pinpoint latency bottlenecks or failing components.</li>
-          <li data-i18n="tabs.traces.item2">Rhinometric Console: A simplified control plane for platform health, license visibility, and quick access to the stack.</li>
-        </ul>
-        <p class="section-note" data-i18n="tabs.traces.tooling">Tooling: Jaeger.</p>
-      </div>
-      <div class="tab-panel" role="tabpanel" id="tab-alerts" aria-labelledby="tab-btn-alerts">
-        <ul>
-          <li data-i18n="tabs.visual.item1">Dashboards — Grafana preloaded views: Start diagnosing faster with guided dashboards and a unified navigation experience.</li>
-          <li data-i18n="tabs.visual.item2">The Rhino Guide: Step-by-step deployment and operational documentation to keep your team autonomous from day one.</li>
-        </ul>
-        <p class="section-note" data-i18n="tabs.visual.tooling">Tooling: Grafana.</p>
-      </div>
-      <div class="tab-panel" role="tabpanel" id="tab-ai" aria-labelledby="tab-btn-ai">
-        <ul>
-          <li data-i18n="tabs.ai.item1">AI-assisted anomaly signals (early): Surface unusual patterns across Prometheus metrics to reduce alert noise and speed up triage.</li>
-          <li data-i18n="tabs.ai.item2">Rhinometric highlights anomalies and trends so teams can investigate faster — without sending data outside your network.</li>
-        </ul>
-        <p class="section-note" data-i18n="tabs.ai.tooling">Tooling: Prometheus (signals) + Grafana (visualization).</p>
-      </div>
-    </div>
-  </div>
-</section>
-
-<section class="section" id="expected-outcomes">
-  <div class="container">
-    <h2 class="section-title" data-i18n="outcomes.title">Installation support. Operational autonomy.</h2>
-    <div class="grid benefits-grid">
-      <div class="card benefit-card">
-        <span class="benefit-icon" aria-hidden="true"></span>
-        <p data-i18n="outcomes.card1.text">Our commitment is to keep your observability platform functional and stable.</p>
-      </div>
-      <div class="card benefit-card">
-        <span class="benefit-icon" aria-hidden="true"></span>
-        <p data-i18n="outcomes.card2.text">We provide expert support for the initial deployment and Rhinometric stack reliability. Since Rhinometric is fully on-premise, we don't access customer data.</p>
-      </div>
-      <div class="card benefit-card">
-        <span class="benefit-icon" aria-hidden="true"></span>
-        <p data-i18n="outcomes.card3.text">Application-level debugging and incident resolution remain customer-owned — Rhinometric provides the visibility your team needs to act independently.</p>
-      </div>
-    </div>
-  </div>
-</section>
-
 <script>
   document.addEventListener('DOMContentLoaded', function () {
-    document.querySelectorAll('[data-tabs]').forEach(function (tabs) {
-      var buttons = tabs.querySelectorAll('.tab-button');
-      var panels = tabs.querySelectorAll('.tab-panel');
-      buttons.forEach(function (button) {
-        button.addEventListener('click', function () {
-          buttons.forEach(function (btn) {
-            btn.classList.remove('is-active');
-            btn.setAttribute('aria-selected', 'false');
-          });
-          panels.forEach(function (panel) {
+    document.querySelectorAll('[data-feature-tabs]').forEach(function (container) {
+      var tabs = container.querySelectorAll('.feature-tab');
+      var panels = container.querySelectorAll('.feature-panel');
+
+      function activate(tab) {
+        if (!tab || tab.classList.contains('is-active')) {
+          return;
+        }
+        tabs.forEach(function (btn) {
+          btn.classList.remove('is-active');
+          btn.setAttribute('aria-selected', 'false');
+        });
+        tab.classList.add('is-active');
+        tab.setAttribute('aria-selected', 'true');
+
+        var targetId = tab.getAttribute('data-feature-tab');
+        panels.forEach(function (panel) {
+          if (panel.id === targetId) {
+            panel.classList.add('is-active');
+            panel.removeAttribute('aria-hidden');
+          } else {
             panel.classList.remove('is-active');
-          });
-          button.classList.add('is-active');
-          button.setAttribute('aria-selected', 'true');
-          var target = tabs.querySelector('#' + button.getAttribute('aria-controls'));
-          if (target) {
-            target.classList.add('is-active');
+            panel.setAttribute('aria-hidden', 'true');
           }
         });
+      }
+
+      tabs.forEach(function (tab) {
+        tab.addEventListener('click', function () {
+          activate(tab);
+        });
+        tab.addEventListener('keydown', function (event) {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            activate(tab);
+          }
+        });
+      });
+
+      panels.forEach(function (panel) {
+        if (!panel.classList.contains('is-active')) {
+          panel.setAttribute('aria-hidden', 'true');
+        }
       });
     });
   });
