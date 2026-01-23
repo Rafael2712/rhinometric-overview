@@ -156,18 +156,27 @@ async def login(
     
     Password is verified using bcrypt hashing.
     """
+    print(f"🔑 LOGIN ATTEMPT - Username: {form_data.username}, Password length: {len(form_data.password)}")
+    
     # Find user by username
     user = db.query(UserModel).filter(UserModel.username == form_data.username).first()
     
     if not user:
+        print(f"❌ User not found: {form_data.username}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
     
+    print(f"✅ User found: {user.username}, Hash: {user.password_hash[:30]}...")
+    
     # Verify password with bcrypt
-    if not user.verify_password(form_data.password):
+    password_valid = user.verify_password(form_data.password)
+    print(f"🔐 Password verification result: {password_valid}")
+    
+    if not password_valid:
+        print(f"❌ Password invalid for user: {form_data.username}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
