@@ -4,7 +4,7 @@
     en: {
       'hero.badge': 'On-Prem Observability Engine',
       'hero.title': 'On-Premise Observability: Your Infrastructure, Your Rules.',
-      'hero.lead': 'Deploy a professional stack of metrics, logs, and traces in minutes. No data leaving your network, no cloud egress fees, and total sovereignty.',
+      'hero.lead': 'Own your observability. Deploy a high-performance engine for metrics, logs, and traces—fully isolated, production-ready, and with zero-data egress. Secure your infrastructure without the SaaS tax.',
       'hero.bullet1': 'Engine installed in your data center or edge, production-ready.',
       'hero.bullet2': 'Predictable costs: zero cloud egress, zero billing surprises.',
       'hero.bullet3': 'Compliance and operational control on your own terms.',
@@ -58,7 +58,7 @@
     es: {
       'hero.badge': 'Motor de Observabilidad On-Prem',
       'hero.title': 'Observabilidad On-Premise: Tu Infraestructura, Tus Reglas.',
-      'hero.lead': 'Despliega en minutos un stack profesional de métricas, logs y trazas. Sin datos saliendo de tu red, sin cargos por transferencia de nube y con soberanía total.',
+      'hero.lead': 'Toma el control absoluto de tu observabilidad. Despliega un motor de alto rendimiento para métricas, logs y trazas—totalmente aislado, listo para producción y sin costos de transferencia a la nube. Protege tu infraestructura sin pagar el "impuesto" de las plataformas SaaS.',
       'hero.bullet1': 'Motor instalado en tu data center o edge, listo para producción.',
       'hero.bullet2': 'Costos predecibles: cero cloud egress, cero sorpresas en la factura.',
       'hero.bullet3': 'Cumplimiento y control operativo bajo tus propias reglas.',
