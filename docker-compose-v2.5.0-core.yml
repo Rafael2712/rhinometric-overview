@@ -479,6 +479,7 @@ services:
       JAEGER_URL: "http://jaeger:16686"
       ADMIN_USERNAME: "${ADMIN_USERNAME:-admin}"
       ADMIN_PASSWORD: "${ADMIN_PASSWORD:-admin}"
+      DATABASE_URL: "postgresql://rhinometric:${POSTGRES_PASSWORD:-rhinometric}@postgres:5432/rhinometric"
       OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4317"
       OTEL_SERVICE_NAME: "rhinometric-console-backend"
       OTEL_TRACES_EXPORTER: "otlp"
