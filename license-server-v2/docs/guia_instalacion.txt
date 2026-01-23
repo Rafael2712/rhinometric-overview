@@ -1,0 +1,102 @@
+═══════════════════════════════════════════════════════════════
+ RHINOMETRIC v2.1.0 - GUÍA DE INSTALACIÓN
+═══════════════════════════════════════════════════════════════
+
+REQUISITOS DEL SISTEMA:
+-----------------------
+- Docker Engine 24.0+ o superior
+- Docker Compose 2.20+ o superior
+- Sistema Operativo: Linux, macOS, Windows (con WSL2)
+- CPU: 4 cores mínimo (8 recomendados)
+- RAM: 8GB mínimo (16GB recomendados)
+- Disco: 20GB libres mínimo (50GB recomendados)
+- Puertos disponibles: 3000, 5000, 8080, 9090, 3100, 3200
+
+INSTALACIÓN RÁPIDA (Linux/macOS):
+----------------------------------
+1. Descargar el paquete de instalación:
+   curl -O https://rhinometric.com/downloads/rhinometric-trial-v2.1.0.tar.gz
+
+2. Extraer archivos:
+   tar -xzf rhinometric-trial-v2.1.0.tar.gz
+   cd rhinometric-trial-v2.1.0-universal
+
+3. Ejecutar instalador:
+   chmod +x install.sh
+   ./install.sh
+
+4. Verificar instalación:
+   docker ps
+   (Debe mostrar 15+ contenedores en estado "Up")
+
+5. Acceder al sistema:
+   http://localhost:3000
+   Usuario: admin
+   Contraseña: rhinometric
+
+INSTALACIÓN EN WINDOWS:
+------------------------
+1. Instalar Docker Desktop para Windows
+2. Habilitar WSL2 integration
+3. Descargar paquete desde https://rhinometric.com
+4. Extraer en carpeta deseada
+5. Ejecutar: .\install.ps1 (PowerShell) o ./install.sh (WSL/Git Bash)
+
+VERIFICACIÓN POST-INSTALACIÓN:
+-------------------------------
+# Verificar contenedores activos
+docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+
+# Verificar salud de servicios
+curl http://localhost:5000/api/health
+
+# Ver logs si hay problemas
+docker logs rhinometric-grafana --tail 50
+docker logs rhinometric-prometheus --tail 50
+
+SERVICIOS PRINCIPALES:
+----------------------
+- Grafana:         http://localhost:3000
+- Prometheus:      http://localhost:9090
+- Loki:            http://localhost:3100
+- Tempo:           http://localhost:3200
+- License Server:  http://localhost:5000
+- License UI:      http://localhost:8092
+
+CONFIGURACIÓN AVANZADA:
+-----------------------
+1. Variables de entorno (.env):
+   - POSTGRES_PASSWORD: Contraseña PostgreSQL
+   - REDIS_PASSWORD: Contraseña Redis
+   - SMTP_PASSWORD: Para notificaciones email
+
+2. Volúmenes de datos:
+   ~/rhinometric_data_v2.1/
+
+3. Retención de logs:
+   Editar docker-compose-v2.1.0.yml
+   Buscar: RETENTION_DAYS
+
+DESINSTALLACIÓN:
+----------------
+cd rhinometric-trial-v2.1.0-universal
+docker compose -f docker-compose-v2.1.0.yml down -v
+rm -rf ~/rhinometric_data_v2.1
+
+SOLUCIÓN DE PROBLEMAS:
+----------------------
+- Puerto ocupado: Verificar con 'netstat -tulpn | grep :3000'
+- Falta memoria: Aumentar Docker resources en configuración
+- Logs no aparecen: Reiniciar Promtail con 'docker restart rhinometric-promtail'
+- Grafana no carga: Verificar permisos en ~/rhinometric_data_v2.1/grafana
+
+SOPORTE TÉCNICO:
+----------------
+Email: rafael.canelon@rhinometric.com
+Web: https://rhinometric.com/support
+Documentación completa: https://docs.rhinometric.com
+
+═══════════════════════════════════════════════════════════════
+Rhinometric - Enterprise Observability Platform
+© 2025 Todos los derechos reservados
+═══════════════════════════════════════════════════════════════

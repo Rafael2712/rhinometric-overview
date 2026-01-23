@@ -1,0 +1,54 @@
+═══════════════════════════════════════════════════════════════
+ RHINOMETRIC v2.1.0 - MANUAL DE USUARIO
+═══════════════════════════════════════════════════════════════
+
+Su licencia está activa y lista para usar.
+
+ACCESO AL SISTEMA:
+------------------
+- Grafana: http://localhost:3000
+  Usuario: admin
+  Contraseña: rhinometric
+
+- Prometheus: http://localhost:9090
+- Loki: http://localhost:3100
+- Tempo: http://localhost:3200
+
+CARACTERÍSTICAS PRINCIPALES:
+-----------------------------
+✓ Monitoreo de infraestructura completa
+✓ Trazas distribuidas con Tempo
+✓ Logs centralizados con Loki
+✓ Métricas en tiempo real con Prometheus
+✓ Alertas personalizables
+✓ Dashboards pre-configurados empresariales
+✓ API Monitoring con conectores universales
+✓ Escalabilidad horizontal
+✓ Retención de datos configurable
+
+DASHBOARDS INCLUIDOS:
+---------------------
+1. Overview General - Vista ejecutiva del sistema
+2. Infrastructure Monitoring - Servidores y recursos
+3. Application Performance - Latencia y throughput
+4. Database Metrics - PostgreSQL, Redis
+5. Logs & Traces Navigation - Búsqueda avanzada
+
+PRIMEROS PASOS:
+---------------
+1. Acceder a Grafana (puerto 3000)
+2. Explorar dashboards preconfigurados
+3. Configurar alertas personalizadas
+4. Conectar APIs externas vía License Server
+5. Revisar logs en tiempo real
+
+SOPORTE TÉCNICO:
+----------------
+Email: rafael.canelon@rhinometric.com
+Web: https://rhinometric.com
+Documentación: https://docs.rhinometric.com
+
+═══════════════════════════════════════════════════════════════
+Rhinometric - Enterprise Observability Platform
+© 2025 Todos los derechos reservados
+═══════════════════════════════════════════════════════════════
