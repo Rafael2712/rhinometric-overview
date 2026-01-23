@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Network, Clock, Search, Filter, Download, ExternalLink, AlertCircle } from 'lucide-react'
 import { useAuthStore } from '../lib/auth/store'
+import { openGrafanaExplore } from '../utils/grafana'
 
 interface Span {
   spanID: string
@@ -430,12 +431,13 @@ export function TracesPage() {
                 <div className="flex gap-3">
                   <button 
                     onClick={() => {
-                      const jaegerUrl = `/api/grafana/explore?orgId=1&left=${encodeURIComponent(JSON.stringify({
+                      // Open Grafana Explore directly (v2.5.1 - direct links strategy)
+                      const exploreUrl = `?orgId=1&left=${encodeURIComponent(JSON.stringify({
                         datasource: 'jaeger',
                         queries: [{ refId: 'A', query: selectedTrace.traceID }],
                         range: { from: 'now-1h', to: 'now' }
-                      }))}&token=${token}`
-                      window.open(jaegerUrl, '_blank')
+                      }))}`
+                      openGrafanaExplore(exploreUrl)
                     }}
                     className="btn flex-1 flex items-center justify-center gap-2"
                   >

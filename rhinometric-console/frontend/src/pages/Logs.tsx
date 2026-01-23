@@ -2,6 +2,7 @@ import { FileText, Search, Download, RefreshCw, Filter, Clock } from 'lucide-rea
 import { useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useAuthStore } from '../lib/auth/store'
+import { openGrafanaExplore } from '../utils/grafana'
 
 interface LogEntry {
   timestamp: string
@@ -160,13 +161,13 @@ export function LogsPage() {
                 logql += ` |= "${searchQuery}"`
               }
 
-              // Build Grafana Explore URL with Loki datasource using proxy
-              const grafanaUrl = `/api/grafana/explore?orgId=1&left=${encodeURIComponent(JSON.stringify({
+              // Open Grafana Explore directly (v2.5.1 - direct links strategy)
+              const exploreUrl = `?orgId=1&left=${encodeURIComponent(JSON.stringify({
                 datasource: 'loki',
                 queries: [{ refId: 'A', expr: logql }],
                 range: { from: `now-${timeRange}`, to: 'now' }
-              }))}&token=${token}`
-              window.open(grafanaUrl, '_blank')
+              }))}`
+              openGrafanaExplore(exploreUrl)
             }}
             className="btn btn-secondary flex items-center gap-2"
           >

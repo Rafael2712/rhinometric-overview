@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { ExternalLink, Folder, Tag } from 'lucide-react'
 import { useAuthStore } from '../lib/auth/store'
+import { openGrafanaDashboard } from '../utils/grafana'
 
 interface Dashboard {
   uid: string
@@ -61,11 +62,8 @@ export function DashboardsPage() {
   }
 
   const openInGrafana = (dashboard: Dashboard) => {
-    // Normalize path - dashboard.url already contains full path from /d/...
-    const cleanPath = dashboard.url.startsWith('/') ? dashboard.url : '/' + dashboard.url
-    const separator = cleanPath.includes('?') ? '&' : '?'
-    const grafanaUrl = `/api/grafana${cleanPath}${separator}token=${token}`
-    window.open(grafanaUrl, '_blank', 'noopener,noreferrer')
+    // Open Grafana directly on port 3000 (v2.5.1 - direct links strategy)
+    openGrafanaDashboard(dashboard.uid, 'kiosk=tv')
   }
 
   const filteredDashboards = dashboards.filter(dashboard =>
