@@ -8,45 +8,13 @@ if (isset($_GET['lang'])) {
   }
 }
 
-$rinometry_frontpage_cookie_name = 'rhino_lang';
+$rinometry_frontpage_cookie_name = 'rhino_lang_preference';
+$rinometry_frontpage_storage_key = 'rhino_lang';
 $rinometry_frontpage_legacy_cookie = 'rino_lang';
 $rinometry_frontpage_language = 'en';
 
 if ($rinometry_frontpage_lang_param) {
   $rinometry_frontpage_language = $rinometry_frontpage_lang_param;
-} elseif (isset($_COOKIE[$rinometry_frontpage_cookie_name]) && in_array($_COOKIE[$rinometry_frontpage_cookie_name], $rinometry_frontpage_supported_languages, true)) {
-  $rinometry_frontpage_language = sanitize_key(wp_unslash($_COOKIE[$rinometry_frontpage_cookie_name]));
-} elseif (isset($_COOKIE[$rinometry_frontpage_legacy_cookie]) && in_array($_COOKIE[$rinometry_frontpage_legacy_cookie], $rinometry_frontpage_supported_languages, true)) {
-  $rinometry_frontpage_language = sanitize_key(wp_unslash($_COOKIE[$rinometry_frontpage_legacy_cookie]));
-}
-
-$rinometry_frontpage_cookie_expires = time() + (DAY_IN_SECONDS * 30);
-$rinometry_frontpage_cookie_path = COOKIEPATH ? COOKIEPATH : '/';
-$rinometry_frontpage_cookie_domain = COOKIE_DOMAIN ? COOKIE_DOMAIN : '';
-$rinometry_frontpage_cookie_secure = is_ssl();
-$rinometry_frontpage_cookie_http_only = true;
-
-if ($rinometry_frontpage_lang_param || !isset($_COOKIE[$rinometry_frontpage_cookie_name]) || $_COOKIE[$rinometry_frontpage_cookie_name] !== $rinometry_frontpage_language) {
-  setcookie(
-    $rinometry_frontpage_cookie_name,
-    $rinometry_frontpage_language,
-    $rinometry_frontpage_cookie_expires,
-    $rinometry_frontpage_cookie_path,
-    $rinometry_frontpage_cookie_domain,
-    $rinometry_frontpage_cookie_secure,
-    $rinometry_frontpage_cookie_http_only
-  );
-}
-if ($rinometry_frontpage_lang_param || !isset($_COOKIE[$rinometry_frontpage_legacy_cookie]) || $_COOKIE[$rinometry_frontpage_legacy_cookie] !== $rinometry_frontpage_language) {
-  setcookie(
-    $rinometry_frontpage_legacy_cookie,
-    $rinometry_frontpage_language,
-    $rinometry_frontpage_cookie_expires,
-    $rinometry_frontpage_cookie_path,
-    $rinometry_frontpage_cookie_domain,
-    $rinometry_frontpage_cookie_secure,
-    $rinometry_frontpage_cookie_http_only
-  );
 }
 
 $rinometry_frontpage_strings = [
@@ -92,10 +60,11 @@ $rinometry_frontpage_strings = [
     'tabs.visual.point2' => 'The Rhino Guide: Step-by-step deployment and operational documentation to keep your team autonomous from day one.',
     'tabs.visual.point3' => 'Tooling: Grafana.',
     'tabs.visual.caption' => 'Guided Grafana dashboards plus the Rhino Guide keep teams autonomous from day one.',
-    'tabs.ai.label' => 'AI / Anomalies',
-    'tabs.ai.point1' => 'AI-assisted anomaly signals (early): Surface unusual patterns across Prometheus metrics to reduce alert noise and speed up triage. Rhinometric highlights anomalies and trends so teams can investigate faster—without sending data outside your network.',
-    'tabs.ai.point2' => 'Tooling: Prometheus + Rhinometric Anomaly Engine (early).',
-    'tabs.ai.caption' => 'AI-assisted Prometheus anomalies with Rhino overlays for faster triage.',
+    'tabs.ai.label' => 'AI Anomalies',
+    'tabs.ai.point1' => 'AI-assisted anomaly signals (early): Detect unusual patterns across Prometheus metrics to reduce alert noise and speed up triage — without sending data outside your network.',
+    'tabs.ai.point2' => 'Highlights trends and anomalies so teams investigate faster in private environments.',
+    'tabs.ai.point3' => 'Tooling: Prometheus + Grafana (signals).',
+    'tabs.ai.caption' => 'Private anomaly overlays keep Prometheus signals quiet and on-prem for faster triage.',
     'feature.badge' => '100% Private / On-Premise',
     'critical.title' => 'Built for critical sectors',
     'critical.body' => 'Built for zero-risk tolerance sectors. If your company operates in Fintech, Health, Defense, or Industrial IoT, Rhinometric guarantees that 100% of telemetry stays on your servers. Regulatory compliance (GDPR/HIPAA) and total security in Air-Gapped environments.',
@@ -146,7 +115,7 @@ $rinometry_frontpage_strings = [
   'es' => [
     'hero.badge' => 'Motor de Observabilidad On-Prem',
     'hero.title' => 'Observabilidad On-Premise: Tu Infraestructura, Tus Reglas.',
-    'hero.lead' => 'Toma el control absoluto de tu observabilidad. Despliega un motor de alto rendimiento para métricas, logs y trazas—totalmente aislado, listo para producción y sin costos de transferencia a la nube. Protege tu infraestructura sin pagar el “impuesto” de las plataformas SaaS.',
+    'hero.lead' => 'Toma el control absoluto de tu observabilidad. Despliega un motor de alto rendimiento para métricas, logs y trazas—totalmente aislado, listo para producción y sin costos de transferencia a la nube. Protege tu infraestructura sin pagar el "impuesto" de las plataformas SaaS.',
     'hero.bullet1' => 'Motor instalado en tu data center o edge, listo para producción.',
     'hero.bullet2' => 'Costos predecibles: cero cloud egress, cero sorpresas en la factura.',
     'hero.bullet3' => 'Cumplimiento y control operativo bajo tus propias reglas.',
@@ -185,10 +154,11 @@ $rinometry_frontpage_strings = [
     'tabs.visual.point2' => 'The Rhino Guide: documentación paso a paso de despliegue y operación para que tu equipo sea autónomo desde el día uno.',
     'tabs.visual.point3' => 'Herramientas: Grafana.',
     'tabs.visual.caption' => 'Dashboards guiados de Grafana más Rhino Guide para operar con autonomía desde el día uno.',
-    'tabs.ai.label' => 'IA / Anomalías',
-    'tabs.ai.point1' => 'Señales de anomalía asistidas por IA (early): detecta patrones inusuales sobre métricas de Prometheus para reducir el ruido de alertas y acelerar el triage. Rhinometric resalta anomalías y tendencias sin sacar datos de tu red.',
-    'tabs.ai.point2' => 'Herramientas: Prometheus + Rhinometric Anomaly Engine (early).',
-    'tabs.ai.caption' => 'Anomalías asistidas por IA sobre Prometheus con overlays Rhino para acelerar el triage.',
+    'tabs.ai.label' => 'IA Anomalías',
+    'tabs.ai.point1' => 'Señales de anomalías asistidas por IA (early): detecta patrones inusuales en métricas de Prometheus para reducir ruido de alertas y acelerar el triage — sin enviar datos fuera de tu red.',
+    'tabs.ai.point2' => 'Destaca tendencias y anomalías para que los equipos investiguen más rápido en entornos privados.',
+    'tabs.ai.point3' => 'Herramientas: Prometheus + Grafana (señales).',
+    'tabs.ai.caption' => 'Overlays privados resaltan señales de Prometheus para triage más silencioso y veloz.',
     'feature.badge' => '100% Privado / On-Premise',
     'critical.title' => 'Soberanía y Cumplimiento',
     'critical.body' => 'Diseñado para sectores con tolerancia cero al riesgo. Si operas en Fintech, Salud, Defensa o IoT Industrial, Rhinometric garantiza que el 100% de la telemetría permanezca en tus servidores. Cumplimiento normativo (GDPR/HIPAA) y seguridad total en entornos Air-Gapped.',
@@ -458,6 +428,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['rh_elite_modal'])) {
             <span class="feature-tab-label" data-i18n="tabs.ai.label"><?php echo esc_html($rinometry_frontpage_translate('tabs.ai.label')); ?></span>
             <span class="feature-tab-point" data-i18n="tabs.ai.point1"><?php echo esc_html($rinometry_frontpage_translate('tabs.ai.point1')); ?></span>
             <span class="feature-tab-point" data-i18n="tabs.ai.point2"><?php echo esc_html($rinometry_frontpage_translate('tabs.ai.point2')); ?></span>
+            <span class="feature-tab-point" data-i18n="tabs.ai.point3"><?php echo esc_html($rinometry_frontpage_translate('tabs.ai.point3')); ?></span>
           </div>
         </button>
       </div>
@@ -624,6 +595,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['rh_elite_modal'])) {
 </script>
 <?php
 $rinometry_frontpage_json_flags = JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE;
+$rinometry_frontpage_cookies_to_clear = array_values(array_unique([
+  $rinometry_frontpage_cookie_name,
+  $rinometry_frontpage_legacy_cookie,
+  'rhino_lang',
+  'rino_lang',
+]));
 ?>
 <script>
   window.__RHINO_I18N__ = window.__RHINO_I18N__ || {};
@@ -631,8 +608,80 @@ $rinometry_frontpage_json_flags = JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | 
   window.__RHINO_I18N__.initialLang = '<?php echo esc_js($rinometry_frontpage_language); ?>';
   window.__RHINO_I18N__.fallbackLang = 'en';
   window.__RHINO_I18N__.cookieName = '<?php echo esc_js($rinometry_frontpage_cookie_name); ?>';
-  window.__RHINO_I18N__.storageKey = 'rhino_lang';
+  window.__RHINO_I18N__.storageKey = '<?php echo esc_js($rinometry_frontpage_storage_key); ?>';
   window.__RHINO_I18N__.queryParam = 'lang';
+</script>
+<script>
+  (function () {
+    var config = window.__RHINO_I18N__ || {};
+    var translations = config.translations || {};
+    var supported = Object.keys(translations);
+    if (!supported.length) {
+      return;
+    }
+    var fallback = 'en';
+    if (supported.indexOf(fallback) === -1) {
+      fallback = supported[0];
+    }
+    var storageKey = config.storageKey || 'rhino_lang';
+    var queryParam = config.queryParam || 'lang';
+    var cookiesToClear = <?php echo wp_json_encode($rinometry_frontpage_cookies_to_clear, $rinometry_frontpage_json_flags); ?>;
+
+    function isSupported(lang) {
+      return typeof lang === 'string' && supported.indexOf(lang) !== -1;
+    }
+
+    function clearCookies() {
+      (cookiesToClear || []).forEach(function (name) {
+        if (!name) {
+          return;
+        }
+        document.cookie = name + '=; Max-Age=0; path=/; SameSite=Lax';
+      });
+    }
+
+    function readQueryLang() {
+      try {
+        var params = new URLSearchParams(window.location.search);
+        var candidate = params.get(queryParam);
+        if (typeof candidate === 'string') {
+          candidate = candidate.toLowerCase();
+        }
+        return isSupported(candidate) ? candidate : null;
+      } catch (err) {
+        var legacyMatch = window.location.search.match(new RegExp(queryParam + '=([a-z]{2})', 'i'));
+        if (legacyMatch && legacyMatch[1]) {
+          var legacyCandidate = legacyMatch[1].toLowerCase();
+          return isSupported(legacyCandidate) ? legacyCandidate : null;
+        }
+        return null;
+      }
+    }
+
+    function readStoredLang() {
+      try {
+        var stored = window.localStorage.getItem(storageKey);
+        if (typeof stored === 'string') {
+          stored = stored.toLowerCase();
+        }
+        return isSupported(stored) ? stored : null;
+      } catch (err) {
+        return null;
+      }
+    }
+
+    clearCookies();
+    var langFromQuery = readQueryLang();
+    if (langFromQuery) {
+      try {
+        window.localStorage.setItem(storageKey, langFromQuery);
+      } catch (err) {}
+    }
+    var langFromStorage = langFromQuery ? null : readStoredLang();
+    var resolved = langFromQuery || langFromStorage || fallback;
+    config.initialLang = resolved;
+    config.preferredLangSource = langFromQuery ? 'query' : (langFromStorage ? 'storage' : 'default');
+  })();
 </script>
 <script src="<?php echo esc_url(get_template_directory_uri() . '/assets/js/frontpage-i18n.js'); ?>" defer></script>
 <div class="elite-modal-backdrop" data-elite-modal hidden>
