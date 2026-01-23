@@ -129,8 +129,8 @@ async def grafana_proxy(
             detail=f"Access denied. Your role ({', '.join(current_user.get_roles())}) does not have permission to access this Grafana resource."
         )
     
-    # Build Grafana URL - include /api/grafana prefix because Grafana SERVE_FROM_SUB_PATH expects it
-    grafana_url = f"{settings.GRAFANA_URL}/api/grafana/{path}"
+    # Build Grafana URL - use SERVICE NAME for Docker DNS
+    grafana_url = f"http://rhinometric-grafana:3000/api/grafana/{path}"
     
     # Add kiosk mode for VIEWER and OPERATOR (hide Grafana UI chrome)
     if current_user.has_role("VIEWER") or current_user.has_role("OPERATOR"):
