@@ -59,6 +59,9 @@ $rinometry_frontpage_strings = [
     'hero.bullet3' => 'Compliance and operational control on your own terms.',
     'hero.ctaPrimary' => 'Early Adopter Program',
     'hero.ctaSecondary' => 'Technical Specifications',
+    'language.selector' => 'Language selector',
+    'language.en' => 'EN',
+    'language.es' => 'ES',
     'how.aria' => 'How it works',
     'how.step1.label' => 'One-Command Deploy',
     'how.step1.text' => 'Deploy the full stack on your infrastructure via Docker in minutes.',
@@ -145,6 +148,9 @@ $rinometry_frontpage_strings = [
     'hero.bullet3' => 'Cumplimiento y control operativo bajo tus propias reglas.',
     'hero.ctaPrimary' => 'Programa Early Adopter',
     'hero.ctaSecondary' => 'Especificaciones Técnicas',
+    'language.selector' => 'Selector de idioma',
+    'language.en' => 'EN',
+    'language.es' => 'ES',
     'how.aria' => 'Cómo funciona',
     'how.step1.label' => 'One-Command Deploy',
     'how.step1.text' => 'Despliega el stack completo en tu infraestructura mediante Docker en minutos.',
@@ -230,6 +236,11 @@ $rinometry_frontpage_translate = function ($key) use ($rinometry_frontpage_langu
   return $dictionary[$key] ?? ($fallback[$key] ?? $key);
 };
 
+$rinometry_frontpage_lang_links = [
+  'en' => add_query_arg('lang', 'en'),
+  'es' => add_query_arg('lang', 'es'),
+];
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['rh_elite_modal'])) {
   $modal_errors = [];
   if (!isset($_POST['rh_elite_modal_nonce']) || !wp_verify_nonce(wp_unslash($_POST['rh_elite_modal_nonce']), 'rh_elite_modal')) {
@@ -311,6 +322,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['rh_elite_modal'])) {
       <img class="hero-logo" src="<?php echo esc_url(get_template_directory_uri() . '/assets/img/logo-rhinometric.png'); ?>" alt="" />
     </div>
     <div class="hero-copy hero-content">
+      <div class="hero-language-switcher">
+        <nav class="language-switcher" aria-label="<?php echo esc_attr($rinometry_frontpage_translate('language.selector')); ?>">
+          <a
+            href="<?php echo esc_url($rinometry_frontpage_lang_links['en']); ?>"
+            data-lang="en"
+            class="lang-option <?php echo $rinometry_frontpage_language === 'en' ? 'lang-active' : ''; ?>"
+            <?php echo $rinometry_frontpage_language === 'en' ? 'aria-current="true"' : ''; ?>
+          >
+            <?php echo esc_html($rinometry_frontpage_translate('language.en')); ?>
+          </a>
+          <a
+            href="<?php echo esc_url($rinometry_frontpage_lang_links['es']); ?>"
+            data-lang="es"
+            class="lang-option <?php echo $rinometry_frontpage_language === 'es' ? 'lang-active' : ''; ?>"
+            <?php echo $rinometry_frontpage_language === 'es' ? 'aria-current="true"' : ''; ?>
+          >
+            <?php echo esc_html($rinometry_frontpage_translate('language.es')); ?>
+          </a>
+        </nav>
+      </div>
       <span class="badge" data-i18n="hero.badge"><?php echo esc_html($rinometry_frontpage_translate('hero.badge')); ?></span>
       <h1 class="section-title" data-i18n="hero.title"><?php echo esc_html($rinometry_frontpage_translate('hero.title')); ?></h1>
       <p class="section-lead" data-i18n="hero.lead"><?php echo esc_html($rinometry_frontpage_translate('hero.lead')); ?></p>
