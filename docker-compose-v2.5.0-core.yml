@@ -223,7 +223,7 @@ services:
       - GF_SERVER_HTTP_ADDR=0.0.0.0
       - GF_SERVER_DOMAIN=89.167.6.43
       - GF_SERVER_ROOT_URL=http://89.167.6.43:3002/api/grafana/
-      - GF_SERVER_SERVE_FROM_SUB_PATH=false
+      - GF_SERVER_SERVE_FROM_SUB_PATH=true
     ports:
       - "3000:3000"
     volumes:
