@@ -21,6 +21,34 @@
   </div>
 </section>
 
+<section class="how-it-works" id="how-it-works" aria-label="How it works" data-i18n="how.aria" data-i18n-attr="aria-label">
+  <div class="container">
+    <div class="how-steps" role="list">
+      <div class="how-step" role="listitem">
+        <span class="how-icon how-icon--deploy" aria-hidden="true"></span>
+        <div class="how-copy">
+          <p class="how-step-label" data-i18n="how.step1.label">One-Command Deploy</p>
+          <p class="how-step-text" data-i18n="how.step1.text">Deploy the full stack on your infrastructure via Docker in minutes.</p>
+        </div>
+      </div>
+      <div class="how-step" role="listitem">
+        <span class="how-icon how-icon--ingest" aria-hidden="true"></span>
+        <div class="how-copy">
+          <p class="how-step-label" data-i18n="how.step2.label">Local Ingestion</p>
+          <p class="how-step-text" data-i18n="how.step2.text">Your metrics and logs are collected and processed locally. Nothing leaves your network.</p>
+        </div>
+      </div>
+      <div class="how-step" role="listitem">
+        <span class="how-icon how-icon--insight" aria-hidden="true"></span>
+        <div class="how-copy">
+          <p class="how-step-label" data-i18n="how.step3.label">Private Insights</p>
+          <p class="how-step-text" data-i18n="how.step3.text">Visualize and analyze your data with total sovereignty and zero latency.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
 <section class="section section-alt console-preview-section" aria-label="Rhinometric Console Preview" data-i18n="console.aria" data-i18n-attr="aria-label">
   <div class="container">
     <div class="card console-preview-card">

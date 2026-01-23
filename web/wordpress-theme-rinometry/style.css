@@ -334,6 +334,87 @@ textarea:focus {
 	top: 0.55rem;
 }
 
+.how-it-works {
+	padding: clamp(20px, 3vw, 32px) 0;
+	background: rgba(255, 255, 255, 0.7);
+	border-top: 1px solid rgba(15, 23, 42, 0.05);
+	border-bottom: 1px solid rgba(15, 23, 42, 0.05);
+}
+
+.how-steps {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+	gap: clamp(16px, 3vw, 32px);
+	align-items: stretch;
+	min-height: 160px;
+}
+
+.how-step {
+	display: flex;
+	align-items: flex-start;
+	gap: 0.9rem;
+	padding: 0.75rem 1rem;
+	border-radius: 18px;
+	background: linear-gradient(145deg, rgba(255, 255, 255, 0.9), rgba(239, 246, 255, 0.85));
+	box-shadow: 0 12px 24px rgba(15, 23, 42, 0.07);
+	border: 1px solid rgba(15, 23, 42, 0.05);
+}
+
+.how-icon {
+	width: 52px;
+	height: 52px;
+	border-radius: 16px;
+	background: rgba(0, 133, 255, 0.12);
+	border: 1px solid rgba(0, 133, 255, 0.25);
+	position: relative;
+	flex-shrink: 0;
+}
+
+.how-icon::after {
+	content: '';
+	position: absolute;
+	left: 50%;
+	top: 50%;
+	transform: translate(-50%, -50%);
+	width: 20px;
+	height: 20px;
+	border-radius: 6px;
+	background: rgba(0, 133, 255, 0.35);
+}
+
+.how-icon--ingest {
+	background: rgba(255, 170, 64, 0.15);
+	border-color: rgba(255, 170, 64, 0.35);
+}
+
+.how-icon--insight {
+	background: rgba(0, 196, 140, 0.15);
+	border-color: rgba(0, 196, 140, 0.35);
+}
+
+.how-step-label {
+	margin: 0;
+	font-weight: 600;
+	color: #0b1b3d;
+}
+
+.how-step-text {
+	margin: 0.2rem 0 0;
+	color: #4a5772;
+	font-size: 0.95rem;
+}
+
+@media (max-width: 720px) {
+	.how-step {
+		flex-direction: column;
+		text-align: left;
+	}
+	.how-icon {
+		width: 44px;
+		height: 44px;
+	}
+}
+
 .console-preview-card {
 	display: grid;
 	gap: 0.5rem;
