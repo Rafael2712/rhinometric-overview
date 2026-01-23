@@ -31,7 +31,7 @@ Text Domain: rinometry
 html {
 	font-size: 16px;
 	scroll-behavior: smooth;
-	background: #f7f9fc;
+	background: linear-gradient(140deg, #f6f8ff 0%, #eef3ff 55%, #e1ebff 100%);
 	min-height: 100vh;
 }
 
@@ -49,7 +49,7 @@ body {
 	margin: 0;
 	font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 	color: var(--text);
-	background: #f7f9fc;
+	background: linear-gradient(140deg, #f6f8ff 0%, #eef3ff 55%, #e1ebff 100%);
 	min-height: 100vh;
 	line-height: 1.6;
 }
@@ -101,8 +101,10 @@ textarea:focus {
 }
 
 .site-header {
-	background: #ffffff;
-	border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+	background: rgba(255, 255, 255, 0.92);
+	border-bottom: 1px solid rgba(15, 23, 42, 0.05);
+	box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
+	backdrop-filter: blur(12px);
 	position: sticky;
 	top: 0;
 	z-index: 40;
@@ -113,7 +115,7 @@ textarea:focus {
 	align-items: center;
 	justify-content: space-between;
 	gap: 1rem;
-	padding: 0.6rem 0;
+	padding: 0.8rem 0;
 }
 
 .brand {
@@ -135,9 +137,10 @@ textarea:focus {
 }
 
 .brand-text {
-	font-size: 1.4375rem;
+	font-size: 1.5rem;
 	font-weight: 600;
-	letter-spacing: 0.2px;
+	letter-spacing: 0.3px;
+	color: #0d2250;
 }
 
 .nav {
@@ -191,27 +194,37 @@ textarea:focus {
 	cursor: pointer;
 	text-align: center;
 	text-decoration: none;
+	box-shadow: 0 12px 24px rgba(15, 23, 42, 0.08);
+	transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.btn:hover,
+.btn:focus-visible {
+	transform: translateY(-1px);
+	box-shadow: 0 18px 28px rgba(15, 23, 42, 0.12);
 }
 .btn-primary {
-	background: #0085ff;
+	background: linear-gradient(120deg, #6ec2ff 0%, #0b6bff 100%);
 	color: #ffffff;
+	box-shadow: 0 18px 32px rgba(11, 107, 255, 0.25);
 }
 
 .btn-primary:hover,
 .btn-primary:focus {
-	background: var(--primary-dark);
+	background: linear-gradient(120deg, #81cbff 0%, #084fcb 100%);
 	color: #ffffff;
 }
 
 .btn-secondary {
-	background: #ff6a00;
-	color: #ffffff;
+	background: linear-gradient(120deg, #ffd36f 0%, #ff8a1f 100%);
+	color: #3b1f00;
+	box-shadow: 0 18px 32px rgba(255, 138, 31, 0.25);
 }
 
 .btn-secondary:hover,
 .btn-secondary:focus {
-	background: var(--accent-dark);
-	color: #ffffff;
+	background: linear-gradient(120deg, #ffe08d 0%, #ff7a18 100%);
+	color: #3b1f00;
 }
 
 .btn-accent {
@@ -226,13 +239,22 @@ textarea:focus {
 }
 
 .hero {
-	padding: 72px 0;
-	background:
-		radial-gradient(circle at top left, rgba(0, 133, 255, 0.12), transparent 55%),
-		radial-gradient(circle at bottom right, rgba(0, 133, 255, 0.10), transparent 55%),
-		linear-gradient(135deg, #f7f9fc 0%, #f3f6fb 55%, #eaf2ff 100%);
+	padding: clamp(64px, 8vw, 96px) 0;
+	background: linear-gradient(130deg, rgba(255, 255, 255, 0.95) 0%, rgba(242, 247, 255, 0.92) 55%, rgba(225, 235, 255, 0.95) 100%);
 	position: relative;
 	overflow: hidden;
+	box-shadow: 0 25px 60px rgba(15, 23, 42, 0.12);
+}
+
+.hero::before {
+	content: '';
+	position: absolute;
+	inset: 0;
+	background:
+		radial-gradient(circle at 15% 20%, rgba(0, 133, 255, 0.18), transparent 50%),
+		radial-gradient(circle at 85% 80%, rgba(0, 133, 255, 0.25), transparent 50%);
+	opacity: 0.9;
+	z-index: 0;
 }
 
 .hero-grid {
@@ -250,6 +272,22 @@ textarea:focus {
 	align-items: center;
 	padding: clamp(16px, 2.5vw, 28px);
 	order: 1;
+	position: relative;
+	isolation: isolate;
+}
+
+.hero-brand::before {
+	content: '';
+	position: absolute;
+	width: clamp(280px, 32vw, 460px);
+	height: clamp(280px, 32vw, 460px);
+	border-radius: 50%;
+	background: radial-gradient(circle, rgba(255, 255, 255, 0.95) 15%, rgba(219, 234, 255, 0.9) 60%, rgba(180, 206, 255, 0.7) 100%);
+	box-shadow: 0 30px 60px rgba(30, 64, 175, 0.25);
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	z-index: 0;
 }
 
 .hero-logo {
@@ -257,7 +295,9 @@ textarea:focus {
 	height: auto;
 	max-width: 100%;
 	object-fit: contain;
-	filter: drop-shadow(0 18px 34px rgba(15, 23, 42, 0.18));
+	filter: drop-shadow(0 22px 35px rgba(15, 23, 42, 0.2));
+	position: relative;
+	z-index: 1;
 }
 
 .hero-content {
@@ -272,12 +312,26 @@ textarea:focus {
 
 .hero-bullets {
 	margin: 1rem 0 0;
-	padding-left: 1.25rem;
+	padding-left: 0;
 	color: var(--text);
+	list-style: none;
 }
 
 .hero-bullets li {
 	margin: 0.45rem 0;
+	padding-left: 1.5rem;
+	position: relative;
+}
+
+.hero-bullets li::before {
+	content: '';
+	width: 9px;
+	height: 9px;
+	border-radius: 50%;
+	background: linear-gradient(120deg, #5ab0ff, #0070ff);
+	position: absolute;
+	left: 0;
+	top: 0.55rem;
 }
 
 .console-preview-card {
@@ -335,21 +389,25 @@ textarea:focus {
 }
 
 .section-alt {
-	background: rgba(255, 255, 255, 0.65);
-	border-top: 1px solid rgba(15, 23, 42, 0.06);
-	border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+	background: rgba(255, 255, 255, 0.85);
+	border-top: 1px solid rgba(15, 23, 42, 0.05);
+	border-bottom: 1px solid rgba(15, 23, 42, 0.05);
+	box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
 }
 
 .trust-strip {
 	padding: 1.5rem 0 2rem;
+	background: linear-gradient(120deg, rgba(13, 34, 80, 0.05), rgba(10, 111, 255, 0.08));
+	border: none;
 }
 
 .trust-strip-text {
 	margin: 0;
 	text-align: center;
 	font-weight: 600;
-	color: var(--text);
-	letter-spacing: 0.2px;
+	color: #0b2357;
+	letter-spacing: 0.3px;
+	text-transform: uppercase;
 }
 
 .section-title {
@@ -360,7 +418,13 @@ textarea:focus {
 
 .hero .section-title {
 	margin-top: 0;
-	font-size: clamp(2rem, 3vw, 2.75rem);
+	font-size: clamp(2.3rem, 3.6vw, 3rem);
+	font-weight: 700;
+}
+
+.hero .section-lead {
+	color: #4c5670;
+	font-size: 1.1rem;
 }
 
 .section-lead {
@@ -378,21 +442,32 @@ textarea:focus {
 }
 
 .card {
-	background: rgba(255, 255, 255, 0.85);
+	background: linear-gradient(180deg, rgba(255, 255, 255, 0.95) 0%, rgba(241, 246, 255, 0.9) 100%);
 	padding: 1.5rem;
-	border-radius: 16px;
-	border: 1px solid rgba(15, 23, 42, 0.08);
-	box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
+	border-radius: 20px;
+	border: 1px solid rgba(15, 23, 42, 0.06);
+	box-shadow: 0 18px 35px rgba(15, 23, 42, 0.08);
 }
 
 .badge {
-	display: inline-block;
-	background: rgba(0, 133, 255, 0.12);
-	color: var(--primary-dark);
+	display: inline-flex;
+	align-items: center;
+	gap: 0.3rem;
+	background: linear-gradient(120deg, #e3edff 0%, #f5f8ff 100%);
+	color: #1f3a8a;
 	border-radius: 999px;
-	padding: 0.25rem 0.75rem;
+	padding: 0.3rem 0.95rem;
 	font-size: 0.85rem;
 	font-weight: 600;
+	border: 1px solid rgba(31, 58, 138, 0.15);
+}
+
+.badge::before {
+	content: '';
+	width: 6px;
+	height: 6px;
+	border-radius: 50%;
+	background: linear-gradient(120deg, #6ec2ff, #0b6bff);
 }
 
 .benefits-grid {
@@ -517,9 +592,10 @@ textarea:focus {
 	flex-wrap: wrap;
 	gap: 0.5rem;
 	padding: 0.4rem;
-	border-radius: 12px;
-	background: rgba(255, 255, 255, 0.6);
-	border: 1px solid rgba(15, 23, 42, 0.08);
+	border-radius: 14px;
+	background: rgba(255, 255, 255, 0.75);
+	border: 1px solid rgba(15, 23, 42, 0.06);
+	box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5), 0 10px 24px rgba(15, 23, 42, 0.08);
 }
 
 .tab-button {
@@ -527,17 +603,18 @@ textarea:focus {
 	border: 1px solid transparent;
 	background: transparent;
 	color: var(--muted);
-	padding: 0.5rem 0.9rem;
-	border-radius: 10px;
+	padding: 0.5rem 1rem;
+	border-radius: 999px;
 	font-weight: 600;
 	cursor: pointer;
+	transition: color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
 }
 
 .tab-button.is-active {
-	background: #ffffff;
+	background: linear-gradient(120deg, #ffffff, #eff4ff);
 	color: var(--text);
 	border-color: rgba(15, 23, 42, 0.12);
-	box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
+	box-shadow: 0 10px 20px rgba(15, 23, 42, 0.12);
 }
 
 .tab-panel {
@@ -604,7 +681,8 @@ textarea:focus {
 	font-weight: 600;
 }
 
-.language-switcher .is-active {
+.language-switcher .is-active,
+.language-switcher .lang-active {
 	color: var(--primary);
 	border-color: var(--primary);
 }
