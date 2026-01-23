@@ -160,12 +160,12 @@ export function LogsPage() {
                 logql += ` |= "${searchQuery}"`
               }
 
-              // Build Grafana Explore URL with Loki datasource
-              const grafanaUrl = `http://localhost:3000/explore?orgId=1&left=${encodeURIComponent(JSON.stringify({
+              // Build Grafana Explore URL with Loki datasource using proxy
+              const grafanaUrl = `/api/grafana/explore?orgId=1&left=${encodeURIComponent(JSON.stringify({
                 datasource: 'loki',
                 queries: [{ refId: 'A', expr: logql }],
                 range: { from: `now-${timeRange}`, to: 'now' }
-              }))}`
+              }))}&token=${token}`
               window.open(grafanaUrl, '_blank')
             }}
             className="btn btn-secondary flex items-center gap-2"

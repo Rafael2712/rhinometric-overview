@@ -430,11 +430,11 @@ export function TracesPage() {
                 <div className="flex gap-3">
                   <button 
                     onClick={() => {
-                      const jaegerUrl = `http://localhost:3000/explore?orgId=1&left=${encodeURIComponent(JSON.stringify({
+                      const jaegerUrl = `/api/grafana/explore?orgId=1&left=${encodeURIComponent(JSON.stringify({
                         datasource: 'jaeger',
                         queries: [{ refId: 'A', query: selectedTrace.traceID }],
                         range: { from: 'now-1h', to: 'now' }
-                      }))}`
+                      }))}&token=${token}`
                       window.open(jaegerUrl, '_blank')
                     }}
                     className="btn flex-1 flex items-center justify-center gap-2"
