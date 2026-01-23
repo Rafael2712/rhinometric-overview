@@ -191,7 +191,7 @@ jobs:
               echo "style.css not found in deployed theme directory." >&2
               exit 1
             fi
-            if ! grep -q "On-premise • No SaaS lock-in • Metrics + Logs + Traces" "${THEME_DIR}/front-page.php"; then
-              echo "Expected trust strip text not found in deployed theme." >&2
+            if ! grep -q 'data-i18n="hero.lead"' "${THEME_DIR}/front-page.php"; then
+              echo "Hero lead binding not found in deployed theme." >&2
               exit 1
             fi
