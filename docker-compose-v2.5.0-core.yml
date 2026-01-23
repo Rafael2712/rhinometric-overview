@@ -220,10 +220,6 @@ services:
       - GF_SECURITY_ALLOW_EMBEDDING=true
       - GF_AUTH_ANONYMOUS_ENABLED=true
       - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
-      - GF_SERVER_HTTP_ADDR=0.0.0.0
-      - GF_SERVER_DOMAIN=89.167.6.43
-      - GF_SERVER_ROOT_URL=%(protocol)s://%(domain)s:%(http_port)s/
-      - GF_INSTALL_PLUGINS=""
     ports:
       - "3000:3000"
     volumes:
