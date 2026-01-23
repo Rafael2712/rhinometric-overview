@@ -223,25 +223,12 @@ services:
       - GF_SERVER_HTTP_ADDR=0.0.0.0
       - GF_SERVER_DOMAIN=89.167.6.43
       - GF_SERVER_ROOT_URL=%(protocol)s://%(domain)s:%(http_port)s/
-      - GF_SERVER_SERVE_FROM_SUB_PATH=false
       - GF_INSTALL_PLUGINS=""
-      - GF_SERVER_NAME=Rhinometric Observability Platform
-      - GF_BRANDING_TITLE=Rhinometric
-      - GF_NEWS_NEWS_FEED_ENABLED=false
-      - GF_PATHS_PLUGINS=/var/lib/grafana/plugins
-      - GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS=rhinometric-dashboard-builder-iframe,rhinometric-api-connector-iframe
     ports:
       - "3000:3000"
     volumes:
       - grafana-data:/var/lib/grafana
       - ./grafana/provisioning:/etc/grafana/provisioning:ro
-      - ./grafana-plugins-simple/rhinometric-dashboard-builder:/var/lib/grafana/plugins/rhinometric-dashboard-builder-iframe:ro
-      - ./grafana-plugins-simple/rhinometric-api-connector:/var/lib/grafana/plugins/rhinometric-api-connector-iframe:ro
-      - ./grafana-branding:/branding:ro
-      - ./grafana-branding/apply-branding.sh:/docker-entrypoint-initdb.d/apply-branding.sh:ro
-      - ./licenses:/opt/rhinometric/license:ro
-      - ./security:/security:ro
-      - ./entrypoint-grafana-licensed.sh:/entrypoint-licensed.sh:ro
     networks:
       - rhinometric_network_v22
     depends_on:
