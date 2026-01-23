@@ -158,9 +158,10 @@ async def grafana_proxy(
             )
             
             # Build response headers without content-length to avoid issues
+            # CRITICAL: Remove Location header to prevent redirect loops
             response_headers = {
                 key: value for key, value in response.headers.items()
-                if key.lower() not in ["content-length", "transfer-encoding"]
+                if key.lower() not in ["content-length", "transfer-encoding", "location"]
             }
             
             # Rewrite HTML content to fix resource paths
