@@ -146,22 +146,28 @@ async def grafana_proxy(
     # Forward request to Grafana
     async with httpx.AsyncClient(timeout=30.0) as client:
         try:
+            # Prepare headers with X-Forwarded-* for proper proxy handling
+            proxy_headers = {
+                key: value for key, value in request.headers.items()
+                if key.lower() not in ["host", "authorization", "content-length"]
+            }
+            # Add forwarding headers
+            proxy_headers["X-Forwarded-For"] = request.client.host if request.client else "unknown"
+            proxy_headers["X-Forwarded-Proto"] = "http"
+            proxy_headers["X-Forwarded-Host"] = "89.167.6.43:3002"
+            
             response = await client.request(
                 method=request.method,
                 url=grafana_url,
-                headers={
-                    key: value for key, value in request.headers.items()
-                    if key.lower() not in ["host", "authorization", "content-length"]  # Remove problematic headers
-                },
+                headers=proxy_headers,
                 content=body if body else None,
                 params=request.query_params,
             )
             
-            # Build response headers without content-length to avoid issues
-            # CRITICAL: Remove Location header to prevent redirect loops
+            # Build response headers without problematic ones
             response_headers = {
                 key: value for key, value in response.headers.items()
-                if key.lower() not in ["content-length", "transfer-encoding", "location"]
+                if key.lower() not in ["content-length", "transfer-encoding", "location", "content-security-policy", "x-frame-options"]
             }
             
             # Rewrite HTML content to fix resource paths
