@@ -473,6 +473,7 @@ services:
       AI_ANOMALY_URL: "http://rhinometric-ai-anomaly:8085"
       LICENSE_VALIDATOR_URL: "http://rhinometric-license-server-v2:5000"
       RHINOMETRIC_LICENSE_KEY: "DC67oXWd93slMMKSvsMVl3U1-pmiirCRvvBuXDwPH-Y"
+      LICENSE_VALIDATOR_URL: "http://54.197.192.198:5000"
       ALERTMANAGER_URL: "http://alertmanager:9093"
       GRAFANA_URL: "http://grafana:3000"
       LOKI_URL: "http://loki:3100"
