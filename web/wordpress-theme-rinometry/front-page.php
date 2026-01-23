@@ -37,7 +37,6 @@ if ($rinometry_frontpage_lang_param || !isset($_COOKIE[$rinometry_frontpage_cook
     $rinometry_frontpage_cookie_http_only
   );
 }
-
 if ($rinometry_frontpage_lang_param || !isset($_COOKIE[$rinometry_frontpage_legacy_cookie]) || $_COOKIE[$rinometry_frontpage_legacy_cookie] !== $rinometry_frontpage_language) {
   setcookie(
     $rinometry_frontpage_legacy_cookie,
@@ -107,6 +106,35 @@ $rinometry_frontpage_strings = [
     'early.title' => 'Looking for the first 10 pioneers.',
     'early.lead' => 'Be part of the Rhinometric launch. We offer 3 months of full access and priority deployment support for free in exchange for your technical feedback. Secure your infrastructure today.',
     'early.cta' => 'Apply to Program - 10 Spots Available',
+    'modal.title' => 'Join our Strategic Partner Program.',
+    'modal.subtitle' => 'We are selecting 10 companies to eliminate external SaaS dependency. Get 3 months of Rhinometric Full-Stack and direct engineering support for your deployment.',
+    'modal.email.label' => 'Work Email',
+    'modal.sector.label' => 'Sector',
+    'modal.infrastructure.label' => 'Infrastructure',
+    'modal.pain.label' => 'What is your main challenge?',
+    'modal.select.placeholder' => 'Select an option',
+    'modal.sector.fintech' => 'Fintech',
+    'modal.sector.healthcare' => 'Healthcare',
+    'modal.sector.industrial' => 'Industrial/IoT',
+    'modal.sector.gov' => 'Gov/Defense',
+    'modal.sector.other' => 'Other',
+    'modal.infrastructure.onprem' => 'On-Premise',
+    'modal.infrastructure.baremetal' => 'Bare Metal',
+    'modal.infrastructure.edge' => 'Edge',
+    'modal.infrastructure.hybrid' => 'Hybrid/Cloud',
+    'modal.pain.costs' => 'Reduce cloud costs',
+    'modal.pain.privacy' => 'Data privacy',
+    'modal.pain.private' => 'Private network monitoring',
+    'modal.submit' => 'Request Priority Access',
+    'modal.loading' => 'Sending…',
+    'modal.success.title' => 'Request received',
+    'modal.success.message' => 'Thank you. Your profile has been submitted for technical review. An engineer will reach out within 24 hours to schedule your architectural session.',
+    'modal.error.required' => 'This field is required.',
+    'modal.error.email' => 'Enter a valid corporate email.',
+    'modal.error.server' => 'We could not submit your request. Please try again in a few minutes.',
+    'modal.error.security' => 'Security validation failed. Refresh the page and try again.',
+    'modal.error.listTitle' => 'Please review the following',
+    'modal.close' => 'Close dialog',
   ],
   'es' => [
     'hero.badge' => 'Motor de Observabilidad On-Prem',
@@ -164,6 +192,35 @@ $rinometry_frontpage_strings = [
     'early.title' => 'Buscamos a los 10 primeros pioneros.',
     'early.lead' => 'Sé parte del lanzamiento de Rhinometric. Ofrecemos 3 meses de acceso completo y soporte de despliegue prioritario gratis a cambio de tu feedback técnico. Asegura tu infraestructura hoy.',
     'early.cta' => 'Aplicar al Programa - 10 Plazas Libres',
+    'modal.title' => 'Únete al Programa de Partners Estratégicos.',
+    'modal.subtitle' => 'Estamos seleccionando 10 empresas para eliminar la dependencia de SaaS externos. Obtén 3 meses de Rhinometric Full-Stack y soporte directo de ingeniería para tu despliegue.',
+    'modal.email.label' => 'Email Corporativo',
+    'modal.sector.label' => 'Sector',
+    'modal.infrastructure.label' => 'Infraestructura',
+    'modal.pain.label' => '¿Cuál es tu mayor desafío hoy?',
+    'modal.select.placeholder' => 'Selecciona una opción',
+    'modal.sector.fintech' => 'Fintech',
+    'modal.sector.healthcare' => 'Healthcare',
+    'modal.sector.industrial' => 'Industrial/IoT',
+    'modal.sector.gov' => 'Gob/Defensa',
+    'modal.sector.other' => 'Otro',
+    'modal.infrastructure.onprem' => 'On-Premise',
+    'modal.infrastructure.baremetal' => 'Bare Metal',
+    'modal.infrastructure.edge' => 'Edge',
+    'modal.infrastructure.hybrid' => 'Híbrida/Cloud',
+    'modal.pain.costs' => 'Reducir costos de nube',
+    'modal.pain.privacy' => 'Privacidad de datos',
+    'modal.pain.private' => 'Monitorización en redes privadas',
+    'modal.submit' => 'Solicitar Acceso Prioritario',
+    'modal.loading' => 'Enviando…',
+    'modal.success.title' => 'Solicitud recibida',
+    'modal.success.message' => 'Gracias. Tu perfil ha sido enviado a revisión técnica. Un ingeniero se pondrá en contacto contigo en menos de 24h para coordinar tu sesión de arquitectura.',
+    'modal.error.required' => 'Este campo es obligatorio.',
+    'modal.error.email' => 'Ingresa un email corporativo válido.',
+    'modal.error.server' => 'No pudimos enviar tu solicitud. Intenta nuevamente en unos minutos.',
+    'modal.error.security' => 'Fallo la validación de seguridad. Refresca la página e intenta otra vez.',
+    'modal.error.listTitle' => 'Revisa lo siguiente',
+    'modal.close' => 'Cerrar diálogo',
   ],
 ];
 
@@ -172,6 +229,79 @@ $rinometry_frontpage_translate = function ($key) use ($rinometry_frontpage_langu
   $dictionary = isset($rinometry_frontpage_strings[$rinometry_frontpage_language]) ? $rinometry_frontpage_strings[$rinometry_frontpage_language] : $fallback;
   return $dictionary[$key] ?? ($fallback[$key] ?? $key);
 };
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['rh_elite_modal'])) {
+  $modal_errors = [];
+  if (!isset($_POST['rh_elite_modal_nonce']) || !wp_verify_nonce(wp_unslash($_POST['rh_elite_modal_nonce']), 'rh_elite_modal')) {
+    wp_send_json_error([
+      'message' => $rinometry_frontpage_translate('modal.error.security'),
+    ], 403);
+  }
+
+  $email = isset($_POST['elite_email']) ? sanitize_email(wp_unslash($_POST['elite_email'])) : '';
+  $sector = isset($_POST['elite_sector']) ? sanitize_text_field(wp_unslash($_POST['elite_sector'])) : '';
+  $infrastructure = isset($_POST['elite_infrastructure']) ? sanitize_text_field(wp_unslash($_POST['elite_infrastructure'])) : '';
+  $pain_point = isset($_POST['elite_pain_point']) ? sanitize_text_field(wp_unslash($_POST['elite_pain_point'])) : '';
+  $honeypot = isset($_POST['elite_company']) ? sanitize_text_field(wp_unslash($_POST['elite_company'])) : '';
+
+  $sector_options = ['fintech', 'healthcare', 'industrial', 'gov', 'other'];
+  $infrastructure_options = ['onprem', 'baremetal', 'edge', 'hybrid'];
+  $pain_options = ['costs', 'privacy', 'private'];
+
+  if ($honeypot !== '') {
+    wp_send_json_error([
+      'message' => $rinometry_frontpage_translate('modal.error.security'),
+    ], 400);
+  }
+
+  if ($email === '' || !is_email($email)) {
+    $modal_errors['elite_email'] = $rinometry_frontpage_translate('modal.error.email');
+  }
+  if ($sector === '' || !in_array($sector, $sector_options, true)) {
+    $modal_errors['elite_sector'] = $rinometry_frontpage_translate('modal.error.required');
+  }
+  if ($infrastructure === '' || !in_array($infrastructure, $infrastructure_options, true)) {
+    $modal_errors['elite_infrastructure'] = $rinometry_frontpage_translate('modal.error.required');
+  }
+  if ($pain_point === '' || !in_array($pain_point, $pain_options, true)) {
+    $modal_errors['elite_pain_point'] = $rinometry_frontpage_translate('modal.error.required');
+  }
+
+  if (!empty($modal_errors)) {
+    wp_send_json_error([
+      'errors' => $modal_errors,
+      'message' => $rinometry_frontpage_translate('modal.error.listTitle'),
+    ], 422);
+  }
+
+  $recipient = 'rafael.canelon@rhinometric.com';
+  $subject = '[Rhinometric] Elite Early Adopter Lead';
+  $body = sprintf(
+    "Strategic Partner Lead (%s)\nEmail: %s\nSector: %s\nInfrastructure: %s\nPain Point: %s\nLanguage: %s\nSubmitted: %s\nReferrer: %s\nIP: %s",
+    strtoupper($rinometry_frontpage_language),
+    $email,
+    $rinometry_frontpage_translate('modal.sector.' . $sector),
+    $rinometry_frontpage_translate('modal.infrastructure.' . $infrastructure),
+    $rinometry_frontpage_translate('modal.pain.' . $pain_point),
+    strtoupper($rinometry_frontpage_language),
+    current_time('mysql'),
+    home_url(add_query_arg([])),
+    isset($_SERVER['REMOTE_ADDR']) ? sanitize_text_field(wp_unslash($_SERVER['REMOTE_ADDR'])) : 'unknown'
+  );
+
+  $headers = ['Reply-To: ' . $email];
+  $sent = wp_mail($recipient, $subject, $body, $headers);
+
+  if (!$sent) {
+    wp_send_json_error([
+      'message' => $rinometry_frontpage_translate('modal.error.server'),
+    ], 500);
+  }
+
+  wp_send_json_success([
+    'message' => $rinometry_frontpage_translate('modal.success.message'),
+  ]);
+}
 
 ?>
 <?php get_header(); ?>
@@ -190,7 +320,7 @@ $rinometry_frontpage_translate = function ($key) use ($rinometry_frontpage_langu
         <li data-i18n="hero.bullet3"><?php echo esc_html($rinometry_frontpage_translate('hero.bullet3')); ?></li>
       </ul>
       <div class="header-actions" style="margin-top: 1.5rem;">
-        <a class="btn btn-primary" href="#early-access" data-i18n="hero.ctaPrimary"><?php echo esc_html($rinometry_frontpage_translate('hero.ctaPrimary')); ?></a>
+        <a class="btn btn-primary" href="#elite-modal" data-elite-modal-trigger="true" data-i18n="hero.ctaPrimary"><?php echo esc_html($rinometry_frontpage_translate('hero.ctaPrimary')); ?></a>
         <a class="btn btn-secondary" href="#out-of-the-box" data-i18n="hero.ctaSecondary"><?php echo esc_html($rinometry_frontpage_translate('hero.ctaSecondary')); ?></a>
       </div>
     </div>
@@ -396,7 +526,7 @@ $rinometry_frontpage_translate = function ($key) use ($rinometry_frontpage_langu
       <span class="early-access-tag" data-i18n="early.tag"><?php echo esc_html($rinometry_frontpage_translate('early.tag')); ?></span>
       <h2 class="section-title" data-i18n="early.title"><?php echo esc_html($rinometry_frontpage_translate('early.title')); ?></h2>
       <p class="section-lead" data-i18n="early.lead"><?php echo esc_html($rinometry_frontpage_translate('early.lead')); ?></p>
-      <a class="btn btn-primary" href="mailto:rafael.canelon@rhinometric.com" data-i18n="early.cta"><?php echo esc_html($rinometry_frontpage_translate('early.cta')); ?></a>
+      <a class="btn btn-primary" href="#elite-modal" data-elite-modal-trigger="true" data-i18n="early.cta"><?php echo esc_html($rinometry_frontpage_translate('early.cta')); ?></a>
     </div>
   </div>
 </section>
@@ -449,4 +579,66 @@ $rinometry_frontpage_translate = function ($key) use ($rinometry_frontpage_langu
     });
   });
 </script>
+<div class="elite-modal-backdrop" data-elite-modal hidden>
+  <div class="elite-modal-container" role="dialog" aria-modal="true" aria-labelledby="elite-modal-title" aria-describedby="elite-modal-subtitle" tabindex="-1">
+    <button type="button" class="elite-modal-close" data-elite-modal-close aria-label="<?php echo esc_attr($rinometry_frontpage_translate('modal.close')); ?>">
+      <span aria-hidden="true">&times;</span>
+    </button>
+    <div class="elite-modal-content">
+      <h3 id="elite-modal-title" class="elite-modal-title" data-i18n="modal.title"><?php echo esc_html($rinometry_frontpage_translate('modal.title')); ?></h3>
+      <p id="elite-modal-subtitle" class="elite-modal-subtitle" data-i18n="modal.subtitle"><?php echo esc_html($rinometry_frontpage_translate('modal.subtitle')); ?></p>
+      <div class="elite-modal-feedback" role="status" aria-live="polite"></div>
+      <div class="elite-modal-errors" role="alert" aria-live="assertive"></div>
+      <form class="elite-modal-form" method="post" action="<?php echo esc_url(home_url('/')); ?>" novalidate data-error-required="<?php echo esc_attr($rinometry_frontpage_translate('modal.error.required')); ?>" data-error-email="<?php echo esc_attr($rinometry_frontpage_translate('modal.error.email')); ?>" data-error-server="<?php echo esc_attr($rinometry_frontpage_translate('modal.error.server')); ?>" data-loading-label="<?php echo esc_attr($rinometry_frontpage_translate('modal.loading')); ?>" data-submit-label="<?php echo esc_attr($rinometry_frontpage_translate('modal.submit')); ?>" data-success-title="<?php echo esc_attr($rinometry_frontpage_translate('modal.success.title')); ?>">
+        <div class="field">
+          <label for="elite-email" data-i18n="modal.email.label"><?php echo esc_html($rinometry_frontpage_translate('modal.email.label')); ?></label>
+          <input type="email" id="elite-email" name="elite_email" autocomplete="email" required>
+        </div>
+        <div class="field">
+          <label for="elite-sector" data-i18n="modal.sector.label"><?php echo esc_html($rinometry_frontpage_translate('modal.sector.label')); ?></label>
+          <select id="elite-sector" name="elite_sector" required>
+            <option value="" selected disabled data-i18n="modal.select.placeholder"><?php echo esc_html($rinometry_frontpage_translate('modal.select.placeholder')); ?></option>
+            <option value="fintech" data-i18n="modal.sector.fintech"><?php echo esc_html($rinometry_frontpage_translate('modal.sector.fintech')); ?></option>
+            <option value="healthcare" data-i18n="modal.sector.healthcare"><?php echo esc_html($rinometry_frontpage_translate('modal.sector.healthcare')); ?></option>
+            <option value="industrial" data-i18n="modal.sector.industrial"><?php echo esc_html($rinometry_frontpage_translate('modal.sector.industrial')); ?></option>
+            <option value="gov" data-i18n="modal.sector.gov"><?php echo esc_html($rinometry_frontpage_translate('modal.sector.gov')); ?></option>
+            <option value="other" data-i18n="modal.sector.other"><?php echo esc_html($rinometry_frontpage_translate('modal.sector.other')); ?></option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="elite-infrastructure" data-i18n="modal.infrastructure.label"><?php echo esc_html($rinometry_frontpage_translate('modal.infrastructure.label')); ?></label>
+          <select id="elite-infrastructure" name="elite_infrastructure" required>
+            <option value="" selected disabled data-i18n="modal.select.placeholder"><?php echo esc_html($rinometry_frontpage_translate('modal.select.placeholder')); ?></option>
+            <option value="onprem" data-i18n="modal.infrastructure.onprem"><?php echo esc_html($rinometry_frontpage_translate('modal.infrastructure.onprem')); ?></option>
+            <option value="baremetal" data-i18n="modal.infrastructure.baremetal"><?php echo esc_html($rinometry_frontpage_translate('modal.infrastructure.baremetal')); ?></option>
+            <option value="edge" data-i18n="modal.infrastructure.edge"><?php echo esc_html($rinometry_frontpage_translate('modal.infrastructure.edge')); ?></option>
+            <option value="hybrid" data-i18n="modal.infrastructure.hybrid"><?php echo esc_html($rinometry_frontpage_translate('modal.infrastructure.hybrid')); ?></option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="elite-pain" data-i18n="modal.pain.label"><?php echo esc_html($rinometry_frontpage_translate('modal.pain.label')); ?></label>
+          <select id="elite-pain" name="elite_pain_point" required>
+            <option value="" selected disabled data-i18n="modal.select.placeholder"><?php echo esc_html($rinometry_frontpage_translate('modal.select.placeholder')); ?></option>
+            <option value="costs" data-i18n="modal.pain.costs"><?php echo esc_html($rinometry_frontpage_translate('modal.pain.costs')); ?></option>
+            <option value="privacy" data-i18n="modal.pain.privacy"><?php echo esc_html($rinometry_frontpage_translate('modal.pain.privacy')); ?></option>
+            <option value="private" data-i18n="modal.pain.private"><?php echo esc_html($rinometry_frontpage_translate('modal.pain.private')); ?></option>
+          </select>
+        </div>
+        <div class="field honeypot" aria-hidden="true">
+          <label for="elite-company">Company</label>
+          <input type="text" id="elite-company" name="elite_company" tabindex="-1" autocomplete="off">
+        </div>
+        <input type="hidden" name="rh_elite_modal" value="1">
+        <input type="hidden" name="current_lang" value="<?php echo esc_attr($rinometry_frontpage_language); ?>">
+        <?php wp_nonce_field('rh_elite_modal', 'rh_elite_modal_nonce'); ?>
+        <button class="btn btn-primary" type="submit" disabled data-default-label="<?php echo esc_attr($rinometry_frontpage_translate('modal.submit')); ?>" data-loading-label="<?php echo esc_attr($rinometry_frontpage_translate('modal.loading')); ?>" data-i18n="modal.submit"><?php echo esc_html($rinometry_frontpage_translate('modal.submit')); ?></button>
+      </form>
+      <div class="elite-modal-success" role="status" aria-live="polite" hidden>
+        <h4 data-i18n="modal.success.title"><?php echo esc_html($rinometry_frontpage_translate('modal.success.title')); ?></h4>
+        <p class="elite-modal-success-text"><?php echo esc_html($rinometry_frontpage_translate('modal.success.message')); ?></p>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="<?php echo esc_url(get_template_directory_uri() . '/assets/js/elite-modal.js'); ?>" defer></script>
 <?php get_footer(); ?>
