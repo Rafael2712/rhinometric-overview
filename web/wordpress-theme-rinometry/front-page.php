@@ -128,6 +128,10 @@ $rinometry_frontpage_strings = [
     'modal.pain.costs' => 'Reduce cloud costs',
     'modal.pain.privacy' => 'Data privacy',
     'modal.pain.private' => 'Private network monitoring',
+    'modal.role.label' => 'Role / Title',
+    'modal.role.placeholder' => 'e.g., Head of SRE',
+    'modal.role.help' => 'Optional. Helps us align the engineering team for your scope.',
+    'modal.field.optional' => 'Optional',
     'modal.submit' => 'Request Priority Access',
     'modal.loading' => 'Sending…',
     'modal.success.title' => 'Request received',
@@ -217,6 +221,10 @@ $rinometry_frontpage_strings = [
     'modal.pain.costs' => 'Reducir costos de nube',
     'modal.pain.privacy' => 'Privacidad de datos',
     'modal.pain.private' => 'Monitorización en redes privadas',
+    'modal.role.label' => 'Cargo / Rol',
+    'modal.role.placeholder' => 'ej: Líder de SRE',
+    'modal.role.help' => 'Opcional. Nos ayuda a asignar el equipo de ingeniería correcto.',
+    'modal.field.optional' => 'Opcional',
     'modal.submit' => 'Solicitar Acceso Prioritario',
     'modal.loading' => 'Enviando…',
     'modal.success.title' => 'Solicitud recibida',
@@ -253,6 +261,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['rh_elite_modal'])) {
   $sector = isset($_POST['elite_sector']) ? sanitize_text_field(wp_unslash($_POST['elite_sector'])) : '';
   $infrastructure = isset($_POST['elite_infrastructure']) ? sanitize_text_field(wp_unslash($_POST['elite_infrastructure'])) : '';
   $pain_point = isset($_POST['elite_pain_point']) ? sanitize_text_field(wp_unslash($_POST['elite_pain_point'])) : '';
+  $role = isset($_POST['elite_role']) ? sanitize_text_field(wp_unslash($_POST['elite_role'])) : '';
   $honeypot = isset($_POST['elite_company']) ? sanitize_text_field(wp_unslash($_POST['elite_company'])) : '';
 
   $sector_options = ['fintech', 'healthcare', 'industrial', 'gov', 'other'];
@@ -288,9 +297,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['rh_elite_modal'])) {
   $recipient = 'rafael.canelon@rhinometric.com';
   $subject = '[Rhinometric] Elite Early Adopter Lead';
   $body = sprintf(
-    "Strategic Partner Lead (%s)\nEmail: %s\nSector: %s\nInfrastructure: %s\nPain Point: %s\nLanguage: %s\nSubmitted: %s\nReferrer: %s\nIP: %s",
+    "Strategic Partner Lead (%s)\nEmail: %s\nRole: %s\nSector: %s\nInfrastructure: %s\nPain Point: %s\nLanguage: %s\nSubmitted: %s\nReferrer: %s\nIP: %s",
     strtoupper($rinometry_frontpage_language),
     $email,
+    ($role !== '' ? $role : __('Not provided', 'rinometry')),
     $rinometry_frontpage_translate('modal.sector.' . $sector),
     $rinometry_frontpage_translate('modal.infrastructure.' . $infrastructure),
     $rinometry_frontpage_translate('modal.pain.' . $pain_point),
@@ -635,40 +645,55 @@ $rinometry_frontpage_json_flags = JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | 
       <p id="elite-modal-subtitle" class="elite-modal-subtitle" data-i18n="modal.subtitle"><?php echo esc_html($rinometry_frontpage_translate('modal.subtitle')); ?></p>
       <div class="elite-modal-feedback" role="status" aria-live="polite"></div>
       <div class="elite-modal-errors" role="alert" aria-live="assertive"></div>
-      <form class="elite-modal-form" method="post" action="<?php echo esc_url(home_url('/')); ?>" novalidate data-error-required="<?php echo esc_attr($rinometry_frontpage_translate('modal.error.required')); ?>" data-error-email="<?php echo esc_attr($rinometry_frontpage_translate('modal.error.email')); ?>" data-error-server="<?php echo esc_attr($rinometry_frontpage_translate('modal.error.server')); ?>" data-loading-label="<?php echo esc_attr($rinometry_frontpage_translate('modal.loading')); ?>" data-submit-label="<?php echo esc_attr($rinometry_frontpage_translate('modal.submit')); ?>" data-success-title="<?php echo esc_attr($rinometry_frontpage_translate('modal.success.title')); ?>">
-        <div class="field">
-          <label for="elite-email" data-i18n="modal.email.label"><?php echo esc_html($rinometry_frontpage_translate('modal.email.label')); ?></label>
-          <input type="email" id="elite-email" name="elite_email" autocomplete="email" required>
-        </div>
-        <div class="field">
-          <label for="elite-sector" data-i18n="modal.sector.label"><?php echo esc_html($rinometry_frontpage_translate('modal.sector.label')); ?></label>
-          <select id="elite-sector" name="elite_sector" required>
-            <option value="" selected disabled data-i18n="modal.select.placeholder"><?php echo esc_html($rinometry_frontpage_translate('modal.select.placeholder')); ?></option>
-            <option value="fintech" data-i18n="modal.sector.fintech"><?php echo esc_html($rinometry_frontpage_translate('modal.sector.fintech')); ?></option>
-            <option value="healthcare" data-i18n="modal.sector.healthcare"><?php echo esc_html($rinometry_frontpage_translate('modal.sector.healthcare')); ?></option>
-            <option value="industrial" data-i18n="modal.sector.industrial"><?php echo esc_html($rinometry_frontpage_translate('modal.sector.industrial')); ?></option>
-            <option value="gov" data-i18n="modal.sector.gov"><?php echo esc_html($rinometry_frontpage_translate('modal.sector.gov')); ?></option>
-            <option value="other" data-i18n="modal.sector.other"><?php echo esc_html($rinometry_frontpage_translate('modal.sector.other')); ?></option>
-          </select>
-        </div>
-        <div class="field">
-          <label for="elite-infrastructure" data-i18n="modal.infrastructure.label"><?php echo esc_html($rinometry_frontpage_translate('modal.infrastructure.label')); ?></label>
-          <select id="elite-infrastructure" name="elite_infrastructure" required>
-            <option value="" selected disabled data-i18n="modal.select.placeholder"><?php echo esc_html($rinometry_frontpage_translate('modal.select.placeholder')); ?></option>
-            <option value="onprem" data-i18n="modal.infrastructure.onprem"><?php echo esc_html($rinometry_frontpage_translate('modal.infrastructure.onprem')); ?></option>
-            <option value="baremetal" data-i18n="modal.infrastructure.baremetal"><?php echo esc_html($rinometry_frontpage_translate('modal.infrastructure.baremetal')); ?></option>
-            <option value="edge" data-i18n="modal.infrastructure.edge"><?php echo esc_html($rinometry_frontpage_translate('modal.infrastructure.edge')); ?></option>
-            <option value="hybrid" data-i18n="modal.infrastructure.hybrid"><?php echo esc_html($rinometry_frontpage_translate('modal.infrastructure.hybrid')); ?></option>
-          </select>
-        </div>
-        <div class="field">
-          <label for="elite-pain" data-i18n="modal.pain.label"><?php echo esc_html($rinometry_frontpage_translate('modal.pain.label')); ?></label>
-          <select id="elite-pain" name="elite_pain_point" required>
-            <option value="" selected disabled data-i18n="modal.select.placeholder"><?php echo esc_html($rinometry_frontpage_translate('modal.select.placeholder')); ?></option>
-            <option value="costs" data-i18n="modal.pain.costs"><?php echo esc_html($rinometry_frontpage_translate('modal.pain.costs')); ?></option>
-            <option value="privacy" data-i18n="modal.pain.privacy"><?php echo esc_html($rinometry_frontpage_translate('modal.pain.privacy')); ?></option>
-            <option value="private" data-i18n="modal.pain.private"><?php echo esc_html($rinometry_frontpage_translate('modal.pain.private')); ?></option>
-          </select>
+      <form class="elite-modal-form" method="post" action="<?php echo esc_url(home_url('/')); ?>" novalidate data-error-required="<?php echo esc_attr($rinometry_frontpage_translate('modal.error.required')); ?>" data-error-email="<?php echo esc_attr($rinometry_frontpage_translate('modal.error.email')); ?>" data-error-server="<?php echo esc_attr($rinometry_frontpage_translate('modal.error.server')); ?>" data-errors-title="<?php echo esc_attr($rinometry_frontpage_translate('modal.error.listTitle')); ?>" data-loading-label="<?php echo esc_attr($rinometry_frontpage_translate('modal.loading')); ?>" data-submit-label="<?php echo esc_attr($rinometry_frontpage_translate('modal.submit')); ?>" data-success-title="<?php echo esc_attr($rinometry_frontpage_translate('modal.success.title')); ?>">
+        <div class="elite-modal-grid">
+          <div class="field">
+            <label for="elite-email" data-i18n="modal.email.label"><?php echo esc_html($rinometry_frontpage_translate('modal.email.label')); ?></label>
+            <input type="email" id="elite-email" name="elite_email" autocomplete="email" inputmode="email" required>
+            <p class="field-error" data-field-error="elite_email" aria-live="polite"></p>
+          </div>
+          <div class="field">
+            <div class="field-label">
+              <label for="elite-role" data-i18n="modal.role.label"><?php echo esc_html($rinometry_frontpage_translate('modal.role.label')); ?></label>
+              <span class="field-optional-pill" data-i18n="modal.field.optional"><?php echo esc_html($rinometry_frontpage_translate('modal.field.optional')); ?></span>
+            </div>
+            <input type="text" id="elite-role" name="elite_role" data-i18n="modal.role.placeholder" data-i18n-attr="placeholder" placeholder="<?php echo esc_attr($rinometry_frontpage_translate('modal.role.placeholder')); ?>">
+            <p class="field-hint" data-i18n="modal.role.help"><?php echo esc_html($rinometry_frontpage_translate('modal.role.help')); ?></p>
+            <p class="field-error" data-field-error="elite_role" aria-live="polite"></p>
+          </div>
+          <div class="field">
+            <label for="elite-sector" data-i18n="modal.sector.label"><?php echo esc_html($rinometry_frontpage_translate('modal.sector.label')); ?></label>
+            <select id="elite-sector" name="elite_sector" required>
+              <option value="" selected disabled data-i18n="modal.select.placeholder"><?php echo esc_html($rinometry_frontpage_translate('modal.select.placeholder')); ?></option>
+              <option value="fintech" data-i18n="modal.sector.fintech"><?php echo esc_html($rinometry_frontpage_translate('modal.sector.fintech')); ?></option>
+              <option value="healthcare" data-i18n="modal.sector.healthcare"><?php echo esc_html($rinometry_frontpage_translate('modal.sector.healthcare')); ?></option>
+              <option value="industrial" data-i18n="modal.sector.industrial"><?php echo esc_html($rinometry_frontpage_translate('modal.sector.industrial')); ?></option>
+              <option value="gov" data-i18n="modal.sector.gov"><?php echo esc_html($rinometry_frontpage_translate('modal.sector.gov')); ?></option>
+              <option value="other" data-i18n="modal.sector.other"><?php echo esc_html($rinometry_frontpage_translate('modal.sector.other')); ?></option>
+            </select>
+            <p class="field-error" data-field-error="elite_sector" aria-live="polite"></p>
+          </div>
+          <div class="field">
+            <label for="elite-infrastructure" data-i18n="modal.infrastructure.label"><?php echo esc_html($rinometry_frontpage_translate('modal.infrastructure.label')); ?></label>
+            <select id="elite-infrastructure" name="elite_infrastructure" required>
+              <option value="" selected disabled data-i18n="modal.select.placeholder"><?php echo esc_html($rinometry_frontpage_translate('modal.select.placeholder')); ?></option>
+              <option value="onprem" data-i18n="modal.infrastructure.onprem"><?php echo esc_html($rinometry_frontpage_translate('modal.infrastructure.onprem')); ?></option>
+              <option value="baremetal" data-i18n="modal.infrastructure.baremetal"><?php echo esc_html($rinometry_frontpage_translate('modal.infrastructure.baremetal')); ?></option>
+              <option value="edge" data-i18n="modal.infrastructure.edge"><?php echo esc_html($rinometry_frontpage_translate('modal.infrastructure.edge')); ?></option>
+              <option value="hybrid" data-i18n="modal.infrastructure.hybrid"><?php echo esc_html($rinometry_frontpage_translate('modal.infrastructure.hybrid')); ?></option>
+            </select>
+            <p class="field-error" data-field-error="elite_infrastructure" aria-live="polite"></p>
+          </div>
+          <div class="field">
+            <label for="elite-pain" data-i18n="modal.pain.label"><?php echo esc_html($rinometry_frontpage_translate('modal.pain.label')); ?></label>
+            <select id="elite-pain" name="elite_pain_point" required>
+              <option value="" selected disabled data-i18n="modal.select.placeholder"><?php echo esc_html($rinometry_frontpage_translate('modal.select.placeholder')); ?></option>
+              <option value="costs" data-i18n="modal.pain.costs"><?php echo esc_html($rinometry_frontpage_translate('modal.pain.costs')); ?></option>
+              <option value="privacy" data-i18n="modal.pain.privacy"><?php echo esc_html($rinometry_frontpage_translate('modal.pain.privacy')); ?></option>
+              <option value="private" data-i18n="modal.pain.private"><?php echo esc_html($rinometry_frontpage_translate('modal.pain.private')); ?></option>
+            </select>
+            <p class="field-error" data-field-error="elite_pain_point" aria-live="polite"></p>
+          </div>
         </div>
         <div class="field honeypot" aria-hidden="true">
           <label for="elite-company">Company</label>
@@ -677,7 +702,9 @@ $rinometry_frontpage_json_flags = JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | 
         <input type="hidden" name="rh_elite_modal" value="1">
         <input type="hidden" name="current_lang" value="<?php echo esc_attr($rinometry_frontpage_language); ?>">
         <?php wp_nonce_field('rh_elite_modal', 'rh_elite_modal_nonce'); ?>
-        <button class="btn btn-primary" type="submit" disabled data-default-label="<?php echo esc_attr($rinometry_frontpage_translate('modal.submit')); ?>" data-loading-label="<?php echo esc_attr($rinometry_frontpage_translate('modal.loading')); ?>" data-i18n="modal.submit"><?php echo esc_html($rinometry_frontpage_translate('modal.submit')); ?></button>
+        <div class="elite-modal-actions">
+          <button class="btn btn-primary" type="submit" disabled data-default-label="<?php echo esc_attr($rinometry_frontpage_translate('modal.submit')); ?>" data-loading-label="<?php echo esc_attr($rinometry_frontpage_translate('modal.loading')); ?>" data-i18n="modal.submit"><?php echo esc_html($rinometry_frontpage_translate('modal.submit')); ?></button>
+        </div>
       </form>
       <div class="elite-modal-success" role="status" aria-live="polite" hidden>
         <h4 data-i18n="modal.success.title"><?php echo esc_html($rinometry_frontpage_translate('modal.success.title')); ?></h4>

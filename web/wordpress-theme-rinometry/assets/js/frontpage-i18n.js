@@ -155,6 +155,7 @@
       ['errorRequired', 'modal.error.required'],
       ['errorEmail', 'modal.error.email'],
       ['errorServer', 'modal.error.server'],
+      ['errorsTitle', 'modal.error.listTitle'],
       ['loadingLabel', 'modal.loading'],
       ['submitLabel', 'modal.submit'],
       ['successTitle', 'modal.success.title']

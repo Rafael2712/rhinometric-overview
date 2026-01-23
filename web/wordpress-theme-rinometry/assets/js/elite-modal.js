@@ -91,6 +91,31 @@
     errorsBox.innerHTML = '';
   }
 
+  function getFieldErrorNode(fieldName) {
+    if (!form || !fieldName) {
+      return null;
+    }
+    return form.querySelector('[data-field-error="' + fieldName + '"]');
+  }
+
+  function clearFieldError(fieldName) {
+    var node = getFieldErrorNode(fieldName);
+    if (node) {
+      node.textContent = '';
+      node.classList.remove('is-visible');
+    }
+  }
+
+  function clearAllFieldErrors() {
+    if (!form) {
+      return;
+    }
+    form.querySelectorAll('[data-field-error]').forEach(function (node) {
+      node.textContent = '';
+      node.classList.remove('is-visible');
+    });
+  }
+
   function hideErrors() {
     clearErrorSummary();
     if (!form) {
@@ -100,6 +125,7 @@
       field.classList.remove('is-invalid');
       field.removeAttribute('aria-invalid');
     });
+    clearAllFieldErrors();
   }
 
   function showErrors(summary, fieldErrors) {
@@ -135,6 +161,13 @@
     }
     if (errorsBox && message) {
       errorsBox.classList.add('is-visible');
+    }
+    if (message) {
+      var inlineError = getFieldErrorNode(fieldName);
+      if (inlineError) {
+        inlineError.textContent = message;
+        inlineError.classList.add('is-visible');
+      }
     }
   }
 
@@ -243,6 +276,9 @@
     }
     target.classList.remove('is-invalid');
     target.removeAttribute('aria-invalid');
+    if (target.name) {
+      clearFieldError(target.name);
+    }
     clearErrorSummary();
     resetFeedback();
     updateSubmitState();
@@ -265,8 +301,9 @@
   }
 
   function handleSubmissionError(serverMessage, fieldMap) {
+    var summaryMessage = serverMessage || (form && form.dataset.errorsTitle ? form.dataset.errorsTitle : '');
     if (feedback) {
-      feedback.textContent = serverMessage || '';
+      feedback.textContent = summaryMessage;
     }
     var errorList = [];
     if (fieldMap) {
@@ -277,7 +314,7 @@
         }
       });
     }
-    showErrors(serverMessage, errorList);
+    showErrors(summaryMessage, errorList);
     var focusField = fieldMap ? Object.keys(fieldMap)[0] : null;
     if (focusField) {
       var el = form.elements.namedItem(focusField);
