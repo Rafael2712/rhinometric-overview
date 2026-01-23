@@ -22,10 +22,11 @@ Text Domain: rinometry
 	--focus: #111827;
 	--shadow: 0 12px 24px rgba(15, 23, 42, 0.08);
 	--radius: 14px;
-}
 
-* {
-	box-sizing: border-box;
+.section-title {
+	font-size: clamp(2rem, 4vw, 3.5rem);
+	margin-bottom: 0.5rem;
+	line-height: 1.2;
 }
 
 html {
@@ -52,6 +53,7 @@ body {
 	background: linear-gradient(140deg, #f6f8ff 0%, #eef3ff 55%, #e1ebff 100%);
 	min-height: 100vh;
 	line-height: 1.6;
+	overflow-x: hidden;
 }
 
 img {
@@ -94,10 +96,9 @@ textarea:focus {
 }
 
 .container {
-	width: 100%;
-	max-width: 1200px;
-	margin: 0 auto;
-	padding: 0 clamp(24px, 4vw, 40px);
+	width: min(92%, 1200px);
+	margin-inline: auto;
+	padding-inline: clamp(16px, 4vw, 32px);
 }
 
 .site-header {
@@ -129,7 +130,7 @@ textarea:focus {
 .site-header .site-brand img,
 .site-header .header-logo img,
 .rm-header-logo {
-	height: clamp(56px, 5vw, 82px);
+	height: clamp(34px, 4vw, 46px);
 	width: auto;
 	max-width: 100%;
 	display: block;
@@ -170,10 +171,11 @@ textarea:focus {
 
 .header-actions {
 	display: flex;
-	gap: 0.6rem;
+	gap: clamp(0.5rem, 1.5vw, 1rem);
 	align-items: center;
 	justify-content: flex-end;
 	margin-left: auto;
+	flex-wrap: wrap;
 }
 
 .site-header .btn {
@@ -239,8 +241,7 @@ textarea:focus {
 }
 
 .hero {
-	padding: clamp(64px, 8vw, 96px) 0;
-	background: linear-gradient(130deg, rgba(255, 255, 255, 0.95) 0%, rgba(242, 247, 255, 0.92) 55%, rgba(225, 235, 255, 0.95) 100%);
+	padding-block: clamp(2rem, 5vw, 4rem);
 	position: relative;
 	overflow: hidden;
 	box-shadow: 0 25px 60px rgba(15, 23, 42, 0.12);
@@ -259,8 +260,8 @@ textarea:focus {
 
 .hero-grid {
 	display: grid;
-	gap: 1.75rem;
-	grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: clamp(1rem, 2vw, 2.5rem);
 	align-items: center;
 	position: relative;
 	z-index: 1;
@@ -271,9 +272,9 @@ textarea:focus {
 	justify-content: center;
 	align-items: center;
 	padding: clamp(16px, 2.5vw, 28px);
-	order: 1;
 	position: relative;
 	isolation: isolate;
+	order: 2;
 }
 
 .hero-brand::before {
@@ -298,16 +299,26 @@ textarea:focus {
 	filter: drop-shadow(0 22px 35px rgba(15, 23, 42, 0.2));
 	position: relative;
 	z-index: 1;
+	display: block;
 }
 
 .hero-content {
 	align-self: center;
-	order: 2;
+	order: 1;
 }
 
 .hero-copy {
 	display: grid;
-	gap: 0.75rem;
+	gap: clamp(0.75rem, 2vw, 1.25rem);
+}
+
+.hero .header-actions {
+	justify-content: flex-start;
+	gap: clamp(0.65rem, 2vw, 1rem);
+}
+
+.hero .header-actions .btn {
+	min-width: 180px;
 }
 
 .hero-language-switcher {
@@ -323,6 +334,21 @@ textarea:focus {
 @media (max-width: 640px) {
 	.hero-language-switcher {
 		justify-content: flex-start;
+	}
+}
+
+@media (max-width: 768px) {
+	.hero-grid {
+		grid-template-columns: 1fr;
+	}
+	.hero .header-actions {
+		flex-direction: column;
+		align-items: stretch;
+		width: 100%;
+	}
+	.hero .header-actions .btn {
+		width: 100%;
+		min-width: 0;
 	}
 }
 
@@ -351,7 +377,7 @@ textarea:focus {
 }
 
 .how-it-works {
-	padding: clamp(20px, 3vw, 32px) 0;
+	padding-block: clamp(2rem, 4vw, 3rem);
 	background: rgba(255, 255, 255, 0.7);
 	border-top: 1px solid rgba(15, 23, 42, 0.05);
 	border-bottom: 1px solid rgba(15, 23, 42, 0.05);
@@ -450,9 +476,10 @@ textarea:focus {
 	max-width: 1200px;
 }
 
+
 .footer-logo img,
 .rm-footer-logo {
-	height: clamp(110px, 10vw, 200px);
+	height: clamp(44px, 6vw, 72px);
 	width: auto;
 	max-width: 100%;
 	display: block;
@@ -756,7 +783,7 @@ body.modal-open {
 }
 
 .section {
-	padding: 4rem 0;
+	padding-block: clamp(2rem, 5vw, 4rem);
 }
 
 .section-alt {
@@ -767,7 +794,7 @@ body.modal-open {
 }
 
 .trust-strip {
-	padding: 1.5rem 0 2rem;
+	padding-block: clamp(2rem, 4vw, 3rem);
 	background: linear-gradient(120deg, rgba(13, 34, 80, 0.05), rgba(10, 111, 255, 0.08));
 	border: none;
 }
@@ -781,34 +808,34 @@ body.modal-open {
 	text-transform: uppercase;
 }
 
-.section-title {
-	font-size: clamp(1.8rem, 2.4vw, 2.2rem);
+	. section-title ???
+	font-size: clamp(2rem, 4vw, 3.5rem);
 	margin-bottom: 0.5rem;
 	line-height: 1.2;
 }
 
 .hero .section-title {
 	margin-top: 0;
-	font-size: clamp(2.3rem, 3.6vw, 3rem);
+	font-size: clamp(2rem, 4vw, 3.5rem);
 	font-weight: 700;
 }
 
 .hero .section-lead {
 	color: #4c5670;
-	font-size: 1.1rem;
+	font-size: clamp(1rem, 1.5vw, 1.25rem);
 }
 
 .section-lead {
 	color: var(--muted);
 	max-width: 720px;
-	font-size: 1.05rem;
+	font-size: clamp(1rem, 1.5vw, 1.25rem);
 	line-height: 1.6;
 }
 
 .grid {
 	display: grid;
-	gap: 1.25rem;
-	grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+	gap: clamp(1rem, 2vw, 2rem);
+	grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
 	margin-top: 2rem;
 }
 
@@ -1462,7 +1489,7 @@ body.modal-open {
 .site-footer {
 	background: #1f4f73;
 	color: rgba(255, 255, 255, 0.88);
-	padding: 56px 0;
+	padding: clamp(2rem, 5vw, 4rem) 0;
 	margin-top: 3rem;
 	text-align: center;
 }
@@ -1578,12 +1605,6 @@ body.modal-open {
 	.header-logo img {
 		height: 34px;
 	}
-	.footer-logo img {
-		height: 70px;
-	}
-	.section {
-		padding: 3rem 0;
-	}
 }
 
 @media (max-width: 900px) {
@@ -1610,9 +1631,6 @@ body.modal-open {
 	}
 	.header-logo img {
 		height: 32px;
-	}
-	.footer-logo img {
-		height: 60px;
 	}
 }
 
