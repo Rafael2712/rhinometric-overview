@@ -14,8 +14,8 @@ COMPOSE_FILE="/opt/rhinometric/docker-compose-trial.yml"
 # Configuración de DB (ajustar según docker-compose)
 DB_CONTAINER="rhinometric-postgres"
 DB_NAME="rhinometric"
-DB_USER="postgres"
-DB_PASSWORD="rhinometric_secure_2024"
+DB_USER="rhinometric"
+DB_PASSWORD="WSDyl7435nuXyvNsmfECyVS68aE5k6Gk"
 
 # Crear directorio de backup
 mkdir -p "$BACKUP_DIR"
