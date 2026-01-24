@@ -2,6 +2,7 @@ import { AlertTriangle, TrendingUp, Filter, Download, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useAuthStore } from '../lib/auth/store'
+import { openGrafanaExplore } from '../utils/grafana'
 
 interface Anomaly {
   metric_name: string
@@ -315,13 +316,13 @@ export function AnomaliesPage() {
                     // Get the actual Prometheus query
                     const prometheusQuery = metricMap[selectedAnomaly.metric_name] || selectedAnomaly.metric_name
                     
-                    // Build Grafana Explore URL with proper encoding (datasource UID debe ser 'prometheus' minúsculas) - usando RBAC proxy
-                    const grafanaUrl = `/api/grafana/explore?orgId=1&left=${encodeURIComponent(JSON.stringify({
+                    // Open Grafana Explore directly (v2.5.1 - direct links strategy)
+                    const exploreUrl = `?orgId=1&left=${encodeURIComponent(JSON.stringify({
                       datasource: 'prometheus',
                       queries: [{ refId: 'A', expr: prometheusQuery }],
                       range: { from: 'now-6h', to: 'now' }
-                    }))}&token=${token}`
-                    window.open(grafanaUrl, '_blank')
+                    }))}`
+                    openGrafanaExplore(exploreUrl)
                   }}
                 >
                   View in Grafana

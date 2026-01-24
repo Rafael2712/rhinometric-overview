@@ -2,6 +2,7 @@ import { Bell, Filter, Download, Clock, AlertTriangle, CheckCircle2, XCircle } f
 import { useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useAuthStore } from '../lib/auth/store'
+import { openGrafanaExplore } from '../utils/grafana'
 
 interface Alert {
   fingerprint: string
@@ -288,13 +289,13 @@ export function AlertsPage() {
                       prometheusQuery = `up{instance="${instance}"}`
                     }
                     
-                    // Build Grafana Explore URL con datasource UID 'prometheus' - usando RBAC proxy
-                    const grafanaUrl = `/api/grafana/explore?orgId=1&left=${encodeURIComponent(JSON.stringify({
+                    // Open Grafana Explore directly (v2.5.1 - direct links strategy)
+                    const exploreUrl = `?orgId=1&left=${encodeURIComponent(JSON.stringify({
                       datasource: 'prometheus',
                       queries: [{ refId: 'A', expr: prometheusQuery }],
                       range: { from: 'now-1h', to: 'now' }
-                    }))}&token=${token}`
-                    window.open(grafanaUrl, '_blank')
+                    }))}`
+                    openGrafanaExplore(exploreUrl)
                   }}
                 >
                   View in Grafana
