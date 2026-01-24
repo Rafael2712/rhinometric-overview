@@ -5,6 +5,10 @@ from database import engine, check_db_connection
 from models.user import Base as UserBase
 from models.role import Base as RoleBase
 
+# Observability imports
+from telemetry import setup_telemetry
+from metrics import PrometheusMiddleware, metrics_endpoint, update_db_pool_metrics
+
 # Import routers
 from routers import auth, kpis, license, anomalies, alerts, logs, traces, dashboards, settings as settings_router, users, grafana_proxy
 
@@ -13,6 +17,20 @@ app = FastAPI(
     version=settings.API_VERSION,
     description="API Gateway for Rhinometric Console - Enterprise Observability Platform"
 )
+
+# ============================================================================
+# OBSERVABILITY SETUP
+# ============================================================================
+
+# Setup OpenTelemetry tracing
+setup_telemetry(app, service_name="rhinometric-console-backend", service_version=settings.API_VERSION)
+
+# Add Prometheus metrics middleware
+app.add_middleware(PrometheusMiddleware, app_name="rhinometric-console-backend")
+
+# ============================================================================
+# STARTUP & SHUTDOWN EVENTS
+# ============================================================================
 
 # Startup event - Initialize database connection
 @app.on_event("startup")
@@ -26,10 +44,14 @@ async def startup_event():
     else:
         print("✅ Database connected successfully")
     
+    # Update DB pool metrics
+    update_db_pool_metrics(engine)
+    
     # NOTE: Tables should already exist from migration script
     # If you need to create tables automatically (not recommended for production):
     # UserBase.metadata.create_all(bind=engine)
     # RoleBase.metadata.create_all(bind=engine)
+
 
 # CORS Configuration
 app.add_middleware(
@@ -51,7 +73,8 @@ async def root():
 
 @app.get("/health")
 async def health():
-    """Detailed health check"""
+    """Detailed health check with DB pool metrics"""
+    update_db_pool_metrics(engine)  # Update metrics on health check
     return {
         "status": "healthy",
         "services": {
@@ -61,6 +84,11 @@ async def health():
             "alertmanager": settings.ALERTMANAGER_URL
         }
     }
+
+@app.get("/metrics")
+async def metrics(request: Request):
+    """Prometheus metrics endpoint"""
+    return await metrics_endpoint(request)
 
 @app.get("/debug-headers")
 async def debug_headers(request: Request):
