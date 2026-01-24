@@ -192,7 +192,7 @@
         "tooltip": {"mode": "single", "sort": "none"}
       },
       "targets": [
-        {"expr": "pg_stat_database_numbackends{datname=\"rhinometric_trial\"}", "legendFormat": "Active Connections", "refId": "A"}
+        {"expr": "pg_stat_database_numbackends{datname=\"rhinometric\"}", "legendFormat": "Active Connections", "refId": "A"}
       ],
       "title": "Postgres Connections",
       "type": "timeseries",
@@ -212,8 +212,8 @@
         "tooltip": {"mode": "single", "sort": "none"}
       },
       "targets": [
-        {"expr": "rate(pg_stat_database_xact_commit{datname=\"rhinometric_trial\"}[5m])", "legendFormat": "Commits/s", "refId": "A"},
-        {"expr": "rate(pg_stat_database_xact_rollback{datname=\"rhinometric_trial\"}[5m])", "legendFormat": "Rollbacks/s", "refId": "B"}
+        {"expr": "rate(pg_stat_database_xact_commit{datname=\"rhinometric\"}[5m])", "legendFormat": "Commits/s", "refId": "A"},
+        {"expr": "rate(pg_stat_database_xact_rollback{datname=\"rhinometric\"}[5m])", "legendFormat": "Rollbacks/s", "refId": "B"}
       ],
       "title": "Postgres Transactions",
       "type": "timeseries",
