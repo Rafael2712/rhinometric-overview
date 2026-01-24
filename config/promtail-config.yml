@@ -10,7 +10,72 @@ clients:
   - url: http://loki:3100/loki/api/v1/push
 
 scrape_configs:
-  # Static configuration for Docker container logs (compatible with Windows/WSL2)
+  # ============================================================================
+  # RHINOMETRIC CONSOLE BACKEND - JSON Structured Logs
+  # ============================================================================
+  - job_name: console_backend
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: console-backend
+          service: console-backend
+          __path__: /var/lib/docker/containers/*/*.log
+    
+    # Only process logs from console-backend container
+    relabel_configs:
+      - source_labels: ['__path__']
+        regex: '.*/([a-f0-9]{64})/.*'
+        target_label: container_id
+    
+    pipeline_stages:
+      # 1. Parse outer Docker JSON wrapper
+      - json:
+          expressions:
+            log_line: log
+            stream: stream
+            docker_time: time
+      
+      # 2. Parse inner JSON structured log from application
+      - json:
+          expressions:
+            timestamp: timestamp
+            level: level
+            service: service
+            logger: logger
+            message: message
+            request_id: request_id
+            trace_id: trace_id
+            span_id: span_id
+            user_id: user_id
+            endpoint: endpoint
+            method: method
+            status_code: status_code
+            duration_ms: duration_ms
+            error_code: error_code
+          source: log_line
+      
+      # 3. Extract labels for filtering in Grafana
+      - labels:
+          level:
+          service:
+          endpoint:
+          method:
+          status_code:
+          trace_id:
+      
+      # 4. Set timestamp from application log
+      - timestamp:
+          source: timestamp
+          format: RFC3339
+      
+      # 5. Output the structured message
+      - output:
+          source: message
+  
+  # ============================================================================
+  # DOCKER CONTAINERS - Generic logs for other services
+  # ============================================================================
   - job_name: docker_containers
     static_configs:
       - targets:
@@ -57,12 +122,3 @@ scrape_configs:
       - timestamp:
           source: time
           format: RFC3339Nano
-
-  # Optional: System logs (if you want to add host logs later)
-  # - job_name: system_logs
-  #   static_configs:
-  #     - targets:
-  #         - localhost
-  #       labels:
-  #         job: system_logs
-  #         __path__: /var/log/*.log
