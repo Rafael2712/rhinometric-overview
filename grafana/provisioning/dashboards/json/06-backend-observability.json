@@ -64,7 +64,13 @@
               {"color": "yellow", "value": 0.1},
               {"color": "red", "value": 0.5}
             ]
-          }
+          },
+          "links": [
+            {
+              "title": "Ver logs lentos en Loki (>100ms)",
+              "url": "/explore?left={\"datasource\":\"loki\",\"queries\":[{\"expr\":\"{service=\\\"console-backend\\\"} |= \\\"duration_ms\\\" | json | duration_ms > 100\",\"refId\":\"A\"}],\"range\":{\"from\":\"${__from}\",\"to\":\"${__to}\"}}"
+            }
+          ]
         }
       }
     },
@@ -95,7 +101,13 @@
               {"color": "yellow", "value": 0.1},
               {"color": "red", "value": 1}
             ]
-          }
+          },
+          "links": [
+            {
+              "title": "Ver logs ERROR en Loki",
+              "url": "/explore?left={\"datasource\":\"loki\",\"queries\":[{\"expr\":\"{service=\\\"console-backend\\\",level=\\\"ERROR\\\"}\",\"refId\":\"A\"}],\"range\":{\"from\":\"${__from}\",\"to\":\"${__to}\"}}"
+            }
+          ]
         }
       }
     },
@@ -199,7 +211,13 @@
       "fieldConfig": {
         "defaults": {
           "custom": {"drawStyle": "line", "lineWidth": 2, "fillOpacity": 10},
-          "unit": "short"
+          "unit": "short",
+          "links": [
+            {
+              "title": "Ver logs consultas DB en Loki",
+              "url": "/explore?left={\"datasource\":\"loki\",\"queries\":[{\"expr\":\"{service=\\\"console-backend\\\"} |~ \\\"(SELECT|INSERT|UPDATE|DELETE)\\\"\",\"refId\":\"A\"}],\"range\":{\"from\":\"${__from}\",\"to\":\"${__to}\"}}"
+            }
+          ]
         }
       }
     },
@@ -260,7 +278,13 @@
       "fieldConfig": {
         "defaults": {
           "custom": {"drawStyle": "line", "lineWidth": 2, "fillOpacity": 10},
-          "unit": "reqps"
+          "unit": "reqps",
+          "links": [
+            {
+              "title": "Ver logs endpoint ${__field.labels.endpoint} en Loki",
+              "url": "/explore?left={\"datasource\":\"loki\",\"queries\":[{\"expr\":\"{service=\\\"console-backend\\\",endpoint=\\\"${__field.labels.endpoint}\\\"}\",\"refId\":\"A\"}],\"range\":{\"from\":\"${__from}\",\"to\":\"${__to}\"}}"
+            }
+          ]
         }
       }
     },
