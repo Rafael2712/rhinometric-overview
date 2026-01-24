@@ -94,14 +94,31 @@ scrape_configs:
     metrics_path: '/api/metrics'
     scrape_interval: 10s
 
-  # DISABLED: postgres-exporter not configured
-  # - job_name: 'postgres-exporter'
-  #   static_configs:
-  #     - targets: ['postgres-exporter:9187']
-  #       labels:
-  #         tier: 'database'
-  #         service: 'postgres'
-  #   scrape_interval: 30s
+  - job_name: 'console-backend'
+    static_configs:
+      - targets: ['rhinometric-console-backend:8105']
+        labels:
+          tier: 'application'
+          service: 'console-backend'
+          component: 'backend'
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['rhinometric-postgres-exporter:9187']
+        labels:
+          tier: 'database'
+          service: 'postgres'
+    scrape_interval: 15s
+
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['rhinometric-redis-exporter:9121']
+        labels:
+          tier: 'database'
+          service: 'redis'
+    scrape_interval: 15s
 
   # ═══════════════════════════════════════════════════════════════════════
   #  TIER 3: API CONNECTIVITY (DISABLED - Services not in docker-compose) (DISABLED - Services not in docker-compose)
