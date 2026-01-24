@@ -29,7 +29,7 @@ scrape_configs:
 
   - job_name: 'console-backend'
     static_configs:
-      - targets: ['rhinometric-console-backend:8100']
+      - targets: ['rhinometric-console-backend:8105']
     scrape_interval: 10s
     metrics_path: /metrics
 
@@ -81,7 +81,7 @@ scrape_configs:
           - http://jaeger:14269
           - http://license-server-v2:5000/api/health
           - http://rhinometric-ai-anomaly:8085/health
-          - http://rhinometric-console-backend:8100/health
+          - http://rhinometric-console-backend:8105/health
           - http://alertmanager:9093/-/healthy
     relabel_configs:
       - source_labels: [__address__]

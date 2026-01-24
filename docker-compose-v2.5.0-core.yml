@@ -44,6 +44,8 @@ services:
     container_name: rhinometric-postgres-exporter
     environment:
       DATA_SOURCE_NAME: "postgresql://rhinometric:${POSTGRES_PASSWORD:-rhinometric}@postgres:5432/rhinometric?sslmode=disable"
+    ports:
+      - "9187:9187"
     networks:
       - rhinometric_network_v22
     restart: unless-stopped
@@ -83,6 +85,8 @@ services:
     environment:
       REDIS_ADDR: "redis:6379"
       REDIS_PASSWORD: "${REDIS_PASSWORD:-rhinometric}"
+    ports:
+      - "9121:9121"
     networks:
       - rhinometric_network_v22
     restart: unless-stopped
