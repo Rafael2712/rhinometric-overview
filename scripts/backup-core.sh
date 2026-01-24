@@ -36,13 +36,13 @@ echo "[$(date)] ✅ PostgreSQL backup completed: postgres.dump.gz"
 
 # 2. Backup de Grafana data
 echo "[$(date)] Backing up Grafana data..."
-GRAFANA_VOLUME=$(docker volume inspect rhinometric-grafana-data --format '{{.Mountpoint}}' 2>/dev/null || echo "/var/lib/docker/volumes/rhinometric-grafana-data/_data")
+GRAFANA_VOLUME=$(docker volume inspect rhinometric_grafana-data --format '{{.Mountpoint}}' 2>/dev/null || echo "")
 
-if [ -d "$GRAFANA_VOLUME" ]; then
+if [ -n "$GRAFANA_VOLUME" ] && [ -d "$GRAFANA_VOLUME" ]; then
   tar -czf "$BACKUP_DIR/grafana.tar.gz" -C "$GRAFANA_VOLUME" .
   echo "[$(date)] ✅ Grafana backup completed: grafana.tar.gz"
 else
-  echo "[$(date)] ⚠️  Grafana volume not found at $GRAFANA_VOLUME"
+  echo "[$(date)] ⚠️  Grafana volume not found"
 fi
 
 # 3. Backup de configuraciones
