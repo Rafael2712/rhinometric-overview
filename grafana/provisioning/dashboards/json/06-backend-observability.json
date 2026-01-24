@@ -249,18 +249,18 @@
       "gridPos": {"h": 8, "w": 12, "x": 0, "y": 22},
       "id": 10,
       "options": {
-        "legend": {"calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true},
+        "legend": {"calcs": ["last"], "displayMode": "table", "placement": "right", "showLegend": true},
         "tooltip": {"mode": "multi", "sort": "desc"}
       },
       "targets": [
-        {"expr": "rate(api_auth_attempts_total{job=\"console-backend\"}[5m])", "legendFormat": "{{result}}", "refId": "A"}
+        {"expr": "topk(10, rate(http_requests_total{job=\"console-backend\"}[5m]))", "legendFormat": "{{method}} {{endpoint}}", "refId": "A"}
       ],
-      "title": "Auth Attempts",
+      "title": "Top API Endpoints (req/s)",
       "type": "timeseries",
       "fieldConfig": {
         "defaults": {
           "custom": {"drawStyle": "line", "lineWidth": 2, "fillOpacity": 10},
-          "unit": "ops"
+          "unit": "reqps"
         }
       }
     },
@@ -269,18 +269,18 @@
       "gridPos": {"h": 8, "w": 12, "x": 12, "y": 22},
       "id": 11,
       "options": {
-        "legend": {"calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true},
+        "legend": {"calcs": ["last"], "displayMode": "table", "placement": "right", "showLegend": true},
         "tooltip": {"mode": "multi", "sort": "desc"}
       },
       "targets": [
-        {"expr": "rate(api_license_validations_total{job=\"console-backend\"}[5m])", "legendFormat": "{{status}}", "refId": "A"}
+        {"expr": "sum by(status_code) (rate(http_requests_total{job=\"console-backend\"}[5m]))", "legendFormat": "{{status_code}}", "refId": "A"}
       ],
-      "title": "License Validations",
+      "title": "HTTP Status Codes (req/s)",
       "type": "timeseries",
       "fieldConfig": {
         "defaults": {
           "custom": {"drawStyle": "line", "lineWidth": 2, "fillOpacity": 10},
-          "unit": "ops"
+          "unit": "reqps"
         }
       }
     }
