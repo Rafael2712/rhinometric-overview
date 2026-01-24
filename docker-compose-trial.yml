@@ -53,6 +53,22 @@ services:
           cpus: '1.0'
           memory: 2G
 
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:latest
+    container_name: rhinometric-postgres-exporter
+    environment:
+      DATA_SOURCE_NAME: "postgresql://postgres:${POSTGRES_PASSWORD:-trial_rhinometric_2024}@postgres:5432/rhinometric_trial?sslmode=disable"
+    networks:
+      - rhinometric_network
+    restart: unless-stopped
+    depends_on:
+      - postgres
+    deploy:
+      resources:
+        limits:
+          cpus: '0.1'
+          memory: 128M
+
   redis:
     image: redis:alpine
     container_name: rhinometric-redis
@@ -67,6 +83,22 @@ services:
         limits:
           cpus: '0.2'
           memory: 256M
+
+  redis-exporter:
+    image: oliver006/redis_exporter:latest
+    container_name: rhinometric-redis-exporter
+    environment:
+      REDIS_ADDR: "redis:6379"
+    networks:
+      - rhinometric_network
+    restart: unless-stopped
+    depends_on:
+      - redis
+    deploy:
+      resources:
+        limits:
+          cpus: '0.1'
+          memory: 64M
 
   # =================================
   # TIER 3: OBSERVABILIDAD CORE

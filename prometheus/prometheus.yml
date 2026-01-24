@@ -33,6 +33,16 @@ scrape_configs:
     scrape_interval: 10s
     metrics_path: /metrics
 
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['rhinometric-postgres-exporter:9187']
+    scrape_interval: 15s
+
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['rhinometric-redis-exporter:9121']
+    scrape_interval: 15s
+
   - job_name: 'license-server-v2'
     static_configs:
       - targets: ['license-server-v2:5000']

@@ -39,6 +39,22 @@ services:
           memory: 512M
     restart: unless-stopped
 
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:latest
+    container_name: rhinometric-postgres-exporter
+    environment:
+      DATA_SOURCE_NAME: "postgresql://rhinometric:${POSTGRES_PASSWORD:-rhinometric}@postgres:5432/rhinometric?sslmode=disable"
+    networks:
+      - rhinometric_network_v22
+    restart: unless-stopped
+    depends_on:
+      - postgres
+    deploy:
+      resources:
+        limits:
+          cpus: '0.1'
+          memory: 128M
+
   redis:
     image: redis:7.2-alpine
     container_name: rhinometric-redis
@@ -60,6 +76,23 @@ services:
           cpus: '0.2'
           memory: 256M
     restart: unless-stopped
+
+  redis-exporter:
+    image: oliver006/redis_exporter:latest
+    container_name: rhinometric-redis-exporter
+    environment:
+      REDIS_ADDR: "redis:6379"
+      REDIS_PASSWORD: "${REDIS_PASSWORD:-rhinometric}"
+    networks:
+      - rhinometric_network_v22
+    restart: unless-stopped
+    depends_on:
+      - redis
+    deploy:
+      resources:
+        limits:
+          cpus: '0.1'
+          memory: 64M
 
   # ========================================
   # LICENSE MANAGEMENT (ON-PREMISE)
