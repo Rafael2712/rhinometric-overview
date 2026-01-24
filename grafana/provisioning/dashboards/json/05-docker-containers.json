@@ -120,26 +120,26 @@
       },
       "targets": [
         {
-          "expr": "sum(rate(container_cpu_usage_seconds_total{id=~\"/docker/.*\"}[5m])) by (name) * 100",
+          "expr": "sum(rate(container_cpu_usage_seconds_total{id=~\"/system.slice/docker-.+\",job=\"cadvisor\"}[5m])) by (id) * 100",
           "format": "table",
           "instant": true,
           "legendFormat": "{{id}}",
           "refId": "A"
         },
         {
-          "expr": "container_memory_usage_bytes{id=~\"/docker/.*\"} / 1024 / 1024",
+          "expr": "container_memory_usage_bytes{id=~\"/system.slice/docker-.+\",job=\"cadvisor\"} / 1024 / 1024",
           "format": "table",
           "instant": true,
           "refId": "B"
         },
         {
-          "expr": "container_spec_memory_limit_bytes{id=~\"/docker/.*\"} / 1024 / 1024",
+          "expr": "container_spec_memory_limit_bytes{id=~\"/system.slice/docker-.+\",job=\"cadvisor\"} / 1024 / 1024",
           "format": "table",
           "instant": true,
           "refId": "C"
         },
         {
-          "expr": "time() - container_start_time_seconds{id=~\"/docker/.*\"}",
+          "expr": "time() - container_start_time_seconds{id=~\"/system.slice/docker-.+\",job=\"cadvisor\"}",
           "format": "table",
           "instant": true,
           "refId": "D"
@@ -207,7 +207,7 @@
       },
       "targets": [
         {
-          "expr": "sum(rate(container_cpu_usage_seconds_total{id=~\"/docker/.*\"}[5m])) by (name) * 100",
+          "expr": "sum(rate(container_cpu_usage_seconds_total{id=~\"/system.slice/docker-.+\",job=\"cadvisor\"}[5m])) by (id) * 100",
           "legendFormat": "{{id}}",
           "refId": "A"
         }
@@ -248,7 +248,7 @@
       },
       "targets": [
         {
-          "expr": "container_memory_usage_bytes{id=~\"/docker/.*\"}",
+          "expr": "container_memory_usage_bytes{id=~\"/system.slice/docker-.+\",job=\"cadvisor\"}",
           "legendFormat": "{{id}}",
           "refId": "A"
         }
@@ -281,12 +281,12 @@
       "id": 5,
       "targets": [
         {
-          "expr": "rate(container_fs_reads_bytes_total{id=~\"/docker/.*\"}[5m])",
+          "expr": "rate(container_fs_reads_bytes_total{id=~\"/system.slice/docker-.+\",job=\"cadvisor\"}[5m])",
           "legendFormat": "Read {{id}}",
           "refId": "A"
         },
         {
-          "expr": "rate(container_fs_writes_bytes_total{id=~\"/docker/.*\"}[5m])",
+          "expr": "rate(container_fs_writes_bytes_total{id=~\"/system.slice/docker-.+\",job=\"cadvisor\"}[5m])",
           "legendFormat": "Write {{id}}",
           "refId": "B"
         }
@@ -338,7 +338,7 @@
       },
       "targets": [
         {
-          "expr": "sum(rate(container_cpu_cfs_throttled_seconds_total{id=~\"/docker/.*\"}[5m])) by (name)",
+          "expr": "sum(rate(container_cpu_cfs_throttled_seconds_total{id=~\"/system.slice/docker-.+\",job=\"cadvisor\"}[5m])) by (id)",
           "legendFormat": "{{id}}",
           "refId": "A"
         }
@@ -389,7 +389,7 @@
       },
       "targets": [
         {
-          "expr": "changes(container_start_time_seconds{id=~\"/docker/.*\"}[1h])",
+          "expr": "changes(container_start_time_seconds{id=~\"/system.slice/docker-.+\",job=\"cadvisor\"}[1h])",
           "legendFormat": "{{id}}",
           "refId": "A"
         }
@@ -432,7 +432,7 @@
       },
       "targets": [
         {
-          "expr": "time() - container_start_time_seconds{id=~\"/docker/.*\"}",
+          "expr": "time() - container_start_time_seconds{id=~\"/system.slice/docker-.+\",job=\"cadvisor\"}",
           "legendFormat": "{{id}}",
           "refId": "A"
         }
