@@ -8,6 +8,11 @@ from models.role import Base as RoleBase
 # Observability imports
 from telemetry import setup_telemetry
 from metrics import PrometheusMiddleware, metrics_endpoint, update_db_pool_metrics
+from logging_config import setup_json_logging, get_logger, set_request_context, clear_request_context, log_request
+
+# Initialize JSON structured logging
+setup_json_logging(service_name="console-backend", log_level=settings.LOG_LEVEL if hasattr(settings, 'LOG_LEVEL') else "INFO")
+logger = get_logger(__name__)
 
 # Import routers
 from routers import auth, kpis, license, anomalies, alerts, logs, traces, dashboards, settings as settings_router, users, grafana_proxy
@@ -39,13 +44,17 @@ async def startup_event():
     # Check database connection
     db_ok = check_db_connection()
     if not db_ok:
-        print("⚠️  WARNING: Database connection failed")
-        print("⚠️  RBAC features will not work properly")
+        logger.warning("Database connection failed - RBAC features unavailable", extra={"db_status": "failed"})
     else:
-        print("✅ Database connected successfully")
+        logger.info("Database connected successfully", extra={"db_status": "connected"})
     
     # Update DB pool metrics
     update_db_pool_metrics(engine)
+    
+    logger.info("Console backend started", extra={
+        "service_version": settings.API_VERSION,
+        "environment": "production"
+    })
     
     # NOTE: Tables should already exist from migration script
     # If you need to create tables automatically (not recommended for production):
@@ -61,6 +70,77 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ============================================================================
+# LOGGING CONTEXT MIDDLEWARE (correlate logs with traces)
+# ============================================================================
+@app.middleware("http")
+async def logging_correlation_middleware(request: Request, call_next):
+    """Extract trace context and set logging correlation"""
+    import uuid
+    from time import time
+    from opentelemetry import trace
+    
+    # Generate request ID
+    request_id = str(uuid.uuid4())
+    
+    # Get trace context from OpenTelemetry
+    span = trace.get_current_span()
+    span_context = span.get_span_context()
+    
+    if span_context and span_context.is_valid:
+        trace_id = format(span_context.trace_id, '032x')
+        span_id = format(span_context.span_id, '016x')
+    else:
+        trace_id = None
+        span_id = None
+    
+    # Set context for logging
+    set_request_context(
+        request_id=request_id,
+        trace_id=trace_id,
+        span_id=span_id
+    )
+    
+    # Process request
+    start_time = time()
+    try:
+        response = await call_next(request)
+        duration_ms = (time() - start_time) * 1000
+        
+        # Log request
+        log_request(
+            logger,
+            method=request.method,
+            endpoint=str(request.url.path),
+            status_code=response.status_code,
+            duration_ms=duration_ms
+        )
+        
+        # Add correlation headers to response
+        response.headers["X-Request-ID"] = request_id
+        if trace_id:
+            response.headers["X-Trace-ID"] = trace_id
+        
+        return response
+    
+    except Exception as e:
+        duration_ms = (time() - start_time) * 1000
+        logger.error(f"Request failed: {str(e)}", extra={
+            "method": request.method,
+            "endpoint": str(request.url.path),
+            "duration_ms": duration_ms,
+            "error_code": "INTERNAL_ERROR"
+        }, exc_info=True)
+        raise
+    
+    finally:
+        # Clear context
+        clear_request_context()
+
+# ============================================================================
+# ROUTES
+# ============================================================================
 
 @app.get("/")
 async def root():
