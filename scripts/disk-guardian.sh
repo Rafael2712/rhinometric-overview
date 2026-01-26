@@ -22,6 +22,12 @@ THRESHOLD_WARNING=85         # Solo alertar
 MOUNTPOINT="/"
 ALERTMANAGER_URL="http://localhost:9093"
 LOG_PREFIX="[$(date '+%Y-%m-%d %H:%M:%S')] DISK-GUARDIAN"
+DOCKER_BIN="/usr/bin/docker"  # Ruta absoluta para cron
+
+# Verificar que docker está disponible
+if [ ! -x "${DOCKER_BIN}" ]; then
+    DOCKER_BIN=$(which docker 2>/dev/null || echo "docker")
+fi
 
 # Obtener uso actual de disco
 CURRENT_USE=$(df ${MOUNTPOINT} | grep ${MOUNTPOINT} | awk '{print $5}' | sed 's/%//')
@@ -56,15 +62,15 @@ emergency_stop() {
     echo "${LOG_PREFIX} - Activating emergency measures..."
     
     # Detener promtail (logs)
-    if docker ps --format '{{.Names}}' | grep -q "rhinometric-promtail"; then
+    if ${DOCKER_BIN} ps --format '{{.Names}}' | grep -q "rhinometric-promtail"; then
         echo "${LOG_PREFIX} - Stopping rhinometric-promtail (log ingestion)..."
-        docker stop rhinometric-promtail || echo "${LOG_PREFIX} - WARNING: Could not stop promtail"
+        ${DOCKER_BIN} stop rhinometric-promtail || echo "${LOG_PREFIX} - WARNING: Could not stop promtail"
     fi
     
     # Detener otel-collector (traces)
-    if docker ps --format '{{.Names}}' | grep -q "rhinometric-otel-collector"; then
+    if ${DOCKER_BIN} ps --format '{{.Names}}' | grep -q "rhinometric-otel-collector"; then
         echo "${LOG_PREFIX} - Stopping rhinometric-otel-collector (trace ingestion)..."
-        docker stop rhinometric-otel-collector || echo "${LOG_PREFIX} - WARNING: Could not stop otel-collector"
+        ${DOCKER_BIN} stop rhinometric-otel-collector || echo "${LOG_PREFIX} - WARNING: Could not stop otel-collector"
     fi
     
     # Enviar alerta crítica
@@ -75,7 +81,8 @@ emergency_stop() {
     
     echo "${LOG_PREFIX} - Emergency measures activated. Waiting for human intervention."
     echo "${LOG_PREFIX} - Services NOT affected: postgres, redis, backend, frontend, grafana, prometheus"
-    echo "${LOG_PREFIX} - To resume: docker start rhinometric-promtail rhinometric-otel-collector"
+    echo "${LOG_PREFIX} - To resume: ${DOCKER_BIN} start rhinometric-promtail rhinometric-otel-collector"
+    echo "${LOG_PREFIX} - NOTE: If Alertmanager is not running on localhost:9093, alert will not be sent (non-critical)"
 }
 
 # Verificar nivel crítico (>= 90%)
