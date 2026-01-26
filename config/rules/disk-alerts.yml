@@ -1,0 +1,106 @@
+groups:
+  - name: disk
+    interval: 30s
+    rules:
+      # Alerta WARNING: Disco > 70% usado
+      - alert: DiskUsageWarning
+        expr: (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) < 0.30
+        for: 10m
+        labels:
+          severity: warning
+          component: infrastructure
+          tier: core
+        annotations:
+          summary: "⚠️ Disco en WARNING - Uso > 70% en {{ $labels.instance }}"
+          description: |
+            Espacio disponible: {{ $value | humanizePercentage }}
+            Revisar STORAGE_POLICY.md para ajustes de retención.
+            
+            Comandos diagnóstico:
+            - du -sh ~/rhinometric_data_v2.2/*
+            - du -sh /var/lib/docker/containers
+            - docker system df -v
+
+      # Alerta CRITICAL: Disco > 85% usado
+      - alert: DiskUsageCritical
+        expr: (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) < 0.15
+        for: 5m
+        labels:
+          severity: critical
+          component: infrastructure
+          tier: core
+        annotations:
+          summary: "🚨 DISCO CRÍTICO - Uso > 85% en {{ $labels.instance }}"
+          description: |
+            Espacio disponible: {{ $value | humanizePercentage }}
+            
+            ⚠️ DISK GUARDIAN activará medidas de emergencia si alcanza 90%:
+            - Detendrá promtail (logs)
+            - Detendrá otel-collector (traces)
+            - NO afectará servicios del cliente
+            
+            ACCIÓN INMEDIATA REQUERIDA:
+            1. Verificar componente con mayor crecimiento:
+               du -sh ~/rhinometric_data_v2.2/* | sort -hr
+            2. Considerar reducir retención:
+               - Loki: 7d → 5d → 3d
+               - Prometheus: 30d → 15d
+               - Jaeger: 72h → 48h → 24h
+            3. Limpiar logs Docker antiguos:
+               truncate -s 0 /var/lib/docker/containers/*/*.log
+
+      # Alerta PREDICTIVA: Disco se llenará en < 4 horas
+      - alert: DiskFillRate
+        expr: predict_linear(node_filesystem_avail_bytes{mountpoint="/"}[1h], 4 * 3600) < 0
+        for: 30m
+        labels:
+          severity: warning
+          component: infrastructure
+        annotations:
+          summary: "⏱️ Disco se llenará en < 4 horas en {{ $labels.instance }}"
+          description: |
+            Proyección lineal basada en tasa de crecimiento de última hora.
+            
+            Investigar crecimiento anormal:
+            1. Ver logs recientes: journalctl -xe --since "1 hour ago"
+            2. Componentes con mayor crecimiento:
+               watch -n 5 'du -sh ~/rhinometric_data_v2.2/*'
+            3. Verificar Disk Guardian: tail -f /var/log/disk-guardian.log
+
+      # Alerta: Logs Docker creciendo sin control
+      - alert: DockerLogsExcessive
+        expr: sum(container_fs_usage_bytes{container_label_com_docker_compose_project="rhinometric"}) > 5e9
+        for: 15m
+        labels:
+          severity: warning
+          component: docker
+        annotations:
+          summary: "⚠️ Logs Docker > 5GB en {{ $labels.instance }}"
+          description: |
+            Logs Docker acumulados exceden 5 GB.
+            
+            Verificar rotación configurada:
+            - cat /etc/docker/daemon.json
+            - Debe tener: max-size=50m, max-file=3
+            
+            Si no está configurado, aplicar:
+            - scripts/install-storage-policies.sh
+            - systemctl restart docker
+
+      # Alerta: Loki creciendo muy rápido
+      - alert: LokiStorageGrowthHigh
+        expr: rate(loki_ingester_received_chunks[1h]) > 1000
+        for: 30m
+        labels:
+          severity: warning
+          component: loki
+        annotations:
+          summary: "⚠️ Loki ingestion rate muy alta en {{ $labels.instance }}"
+          description: |
+            Loki está recibiendo > 1000 chunks/s.
+            
+            Verificar retención configurada:
+            - grep retention config/loki-config.yml
+            - Debe tener: retention_period: 168h (7d)
+            
+            Considerar reducir a 5d o 3d si volumen es muy alto.
