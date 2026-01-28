@@ -10,7 +10,7 @@
  */
 
 const GRAFANA_PUBLIC_URL =
-  import.meta.env.VITE_GRAFANA_PUBLIC_URL || "http://89.167.6.43:3000";
+  import.meta.env.VITE_GRAFANA_PUBLIC_URL || "http://89.167.15.73:3000";
 
 /**
  * Abre un dashboard de Grafana en nueva pestaña
