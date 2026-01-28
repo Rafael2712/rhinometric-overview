@@ -1,0 +1,34 @@
+groups:
+  - name: ai_anomaly_alerts
+    interval: 30s
+    rules:
+      - alert: AIAnomalyServiceDown
+        expr: up{job="ai-anomaly"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          service: ai-anomaly
+          tier: intelligence
+        annotations:
+          summary: "AI Anomaly Detection Service is DOWN"
+          description: "AI-powered anomaly detection service has been unreachable for more than 2 minutes."
+          
+      - alert: AIAnomalyNoAPITraffic
+        expr: rate(rhinometric_anomaly_api_requests_total{job="ai-anomaly"}[15m]) == 0
+        for: 15m
+        labels:
+          severity: warning
+          service: ai-anomaly
+        annotations:
+          summary: "AI Anomaly service receiving no API requests"
+          description: "No requests to AI anomaly service in the last 15 minutes. Integration may be broken."
+          
+      - alert: AIAnomalyHighActiveAnomalies
+        expr: rhinometric_ai_anomalies_active > 50
+        for: 10m
+        labels:
+          severity: warning
+          service: ai-anomaly
+        annotations:
+          summary: "High number of active anomalies detected"
+          description: "More than 50 active anomalies detected. This could indicate a widespread system issue."
