@@ -75,8 +75,8 @@ processors:
 
 exporters:
   # Export traces to Tempo
-  otlp/tempo:
-    endpoint: tempo:4317
+  otlp/jaeger:
+    endpoint: rhinometric-jaeger:4317
     tls:
       insecure: true
     sending_queue:
@@ -109,7 +109,7 @@ service:
     traces:
       receivers: [otlp, jaeger]
       processors: [memory_limiter, resource, attributes, batch]
-      exporters: [otlp/tempo, logging]
+      exporters: [otlp/jaeger, logging]
 
     # Metrics pipeline (generated from traces)
     metrics:
