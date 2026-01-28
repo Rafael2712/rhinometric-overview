@@ -1,4 +1,12 @@
 version: '3.8'
+
+# Global logging configuration for all services
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "50m"
+    max-file: "3"
+
 services:
   license-server-v2:
     build:
@@ -40,6 +48,7 @@ services:
         limits:
           cpus: '0.4'
           memory: 512M
+    logging: *default-logging
     restart: unless-stopped
   license-ui:
     build:
@@ -95,6 +104,7 @@ services:
         limits:
           cpus: '0.5'
           memory: 512M
+    logging: *default-logging
     restart: unless-stopped
   redis:
     image: redis:7.2-alpine
@@ -122,6 +132,7 @@ services:
         limits:
           cpus: '0.2'
           memory: 256M
+    logging: *default-logging
     restart: unless-stopped
   prometheus:
     image: prom/prometheus:v2.53.0
@@ -158,6 +169,7 @@ services:
         limits:
           cpus: '0.8'
           memory: 1536M
+    logging: *default-logging
     restart: unless-stopped
   loki:
     image: grafana/loki:3.0.0
@@ -230,6 +242,7 @@ services:
         limits:
           cpus: '0.5'
           memory: 512M
+    logging: *default-logging
     restart: unless-stopped
   grafana:
     image: grafana/grafana:10.4.0
@@ -287,6 +300,7 @@ services:
         limits:
           cpus: '0.6'
           memory: 800M
+    logging: *default-logging
     restart: unless-stopped
   otel-collector:
     image: otel/opentelemetry-collector-contrib:0.91.0
@@ -403,6 +417,11 @@ services:
     - rhinometric_network_v22
     depends_on:
     - loki
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "3"
     healthcheck:
       test:
       - CMD
