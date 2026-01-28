@@ -1,0 +1,56 @@
+groups:
+  - name: license_server_alerts
+    interval: 30s
+    rules:
+      - alert: LicenseServerDown
+        expr: up{job="license-server-v2"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: license-server
+          tier: business-critical
+        annotations:
+          summary: "License Server is DOWN"
+          description: "License validation service has been unreachable for more than 1 minute. This affects all customer license validations."
+          impact: "HIGH - Customers cannot validate licenses"
+          
+      - alert: LicenseServerHighErrorRate
+        expr: |
+          (
+            sum(rate(http_requests_total{job="license-server-v2", status=~"5.."}[5m]))
+            /
+            sum(rate(http_requests_total{job="license-server-v2"}[5m]))
+          ) > 0.05
+        for: 2m
+        labels:
+          severity: critical
+          service: license-server
+        annotations:
+          summary: "License Server error rate > 5%"
+          description: "License server is returning {{ $value | humanizePercentage }} errors in the last 5 minutes."
+          impact: "MEDIUM - Some license validations failing"
+
+      - alert: LicenseServerHighLatency
+        expr: |
+          histogram_quantile(0.95, 
+            sum(rate(http_request_duration_highr_seconds_bucket{job="license-server-v2"}[5m])) by (le)
+          ) > 1.0
+        for: 5m
+        labels:
+          severity: warning
+          service: license-server
+        annotations:
+          summary: "License Server P95 latency > 1s"
+          description: "License validation P95 latency is {{ $value | humanizeDuration }}, exceeding 1 second threshold."
+          impact: "LOW - Slow license validations may affect user experience"
+          
+      - alert: LicenseServerNoTraffic
+        expr: rate(http_requests_total{job="license-server-v2"}[10m]) == 0
+        for: 10m
+        labels:
+          severity: warning
+          service: license-server
+        annotations:
+          summary: "License Server receiving no traffic"
+          description: "No license validation requests in the last 10 minutes. This might indicate a connectivity issue."
+          impact: "UNKNOWN - No validations being performed"
