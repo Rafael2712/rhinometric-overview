@@ -155,7 +155,7 @@ async def grafana_proxy(
             # Add forwarding headers
             proxy_headers["X-Forwarded-For"] = request.client.host if request.client else "unknown"
             proxy_headers["X-Forwarded-Proto"] = "http"
-            proxy_headers["X-Forwarded-Host"] = "89.167.6.43:3002"
+            proxy_headers["X-Forwarded-Host"] = "89.167.15.73:3002"
             
             response = await client.request(
                 method=request.method,

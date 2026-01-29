@@ -1,7 +1,11 @@
+# ══════════════════════════════════════════════════════════════
+#  HTTP API ALERTS - Console Backend
+# ══════════════════════════════════════════════════════════════
 groups:
   - name: http_api_alerts
     interval: 30s
     rules:
+      # Alert when P95 latency exceeds 1 second for 5 minutes
       - alert: HighHttpLatencyP95
         expr: >
           histogram_quantile(
@@ -18,10 +22,10 @@ groups:
           tier: api
         annotations:
           summary: "High HTTP P95 latency in console-backend"
-          description: "P95 HTTP latency is {{ $value | humanizeDuration }} for endpoint {{ $labels.endpoint }} (threshold: 1s)"
-          dashboard_link: "http://grafana:3000/d/api-performance-console-backend?var-endpoint={{ $labels.endpoint }}&from=now-1h&to=now"
-          runbook_url: "https://docs.rhinometric.com/runbooks/high-http-latency"
+          description: "P95 HTTP latency is {{ $value }}s for endpoint {{ $labels.endpoint }} (threshold: 1s)"
+          dashboard_link: "http://grafana:3000/d/api-performance-console-backend"
 
+      # Alert when 5xx error rate exceeds 5% for 2 minutes
       - alert: HighHttpErrorRate
         expr: >
           (
@@ -38,12 +42,11 @@ groups:
         annotations:
           summary: "High HTTP 5xx error rate in console-backend"
           description: "5xx error rate is {{ $value | humanizePercentage }} in the last 5 minutes (threshold: 5%)"
-          dashboard_link: "http://grafana:3000/d/api-performance-console-backend?from=now-15m&to=now"
           runbook_url: "https://docs.rhinometric.com/runbooks/high-error-rate"
 
+      # Informational alert for high request rate
       - alert: HighHttpRequestRate
-        expr: >
-          sum(rate(http_requests_total{job="console-backend"}[1m])) > 100
+        expr: sum(rate(http_requests_total{job="console-backend"}[1m])) > 100
         for: 5m
         labels:
           severity: info
@@ -52,5 +55,4 @@ groups:
           tier: api
         annotations:
           summary: "High HTTP request rate in console-backend"
-          description: "Request rate is {{ $value | humanize }} req/s (threshold: 100 req/s)"
-          dashboard_link: "http://grafana:3000/d/api-performance-console-backend?from=now-30m&to=now"
+          description: "Request rate is {{ $value }} req/s (threshold: 100 req/s)"

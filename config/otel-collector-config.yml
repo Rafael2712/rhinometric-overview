@@ -74,7 +74,7 @@ processors:
         action: insert
 
 exporters:
-  # Export traces to Jaeger (via OTLP)
+  # Export traces to Tempo
   otlp/jaeger:
     endpoint: rhinometric-jaeger:4317
     tls:

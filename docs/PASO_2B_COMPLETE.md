@@ -1,328 +1,357 @@
-# PASO 2B - Console-Backend Correlation Polish ✅
+# PASO 2B COMPLETE – Console Backend Observability
 
-**Fecha:** 27 enero 2026  
-**Tiempo total:** ~1 hora (vs. 7-8h estimado inicialmente)  
-**Estado:** COMPLETE
-
----
-
-## Resumen Ejecutivo
-
-Console-backend ahora tiene **observabilidad full-stack completa**:
-
-- ✅ Métricas HTTP en Prometheus (18 series)
-- ✅ 3 alertas activas (HighHttpLatencyP95, HighHttpErrorRate, HighHttpRequestRate)
-- ✅ Dashboard Grafana (9 paneles, ID: 19)
-- ✅ **Logs parseables por campo en Loki** (10 labels: endpoint, method, status_code, level, etc.)
-- ✅ **Traces visibles en Jaeger** (service: rhinometric-console-backend)
-- ⚠️ Correlación logs-traces: Manual (via timestamps + request_id)
+**Date:** 2026-01-28  
+**VM:** 89.167.15.73 (rhinometric-core-restore)  
+**Status:** ✅ **COMPLETE** (Full HTTP observability + traces)
 
 ---
 
-## Cambios Realizados
+## Executive Summary
 
-### 1. OTEL Collector → Jaeger (FIX CRÍTICO) ✅
+Console-backend HTTP observability **fully operational** with:
+- ✅ **HTTP metrics** exposed at `:8105/metrics` (18+ series)
+- ✅ **3 Alert rules** active in Prometheus (latency, errors, rate)
+- ✅ **Dashboard** provisioned in Grafana (ID: 19, 9 panels)
+- ✅ **JSON structured logs** in Loki with field-based filtering
+- ✅ **OpenTelemetry traces** in Jaeger (service visible, traces captured)
 
-**Problema:** OTEL Collector configurado para exportar a `tempo:4317` (servicio inexistente)
+**Demo-ready:** ✅ YES - Complete golden path for HTTP observability
 
-**Solución:**
+---
+
+## 1. Metrics Implementation
+
+### Exposed Metrics
+
+All metrics available at `http://localhost:8105/metrics`:
+
+#### HTTP Request Metrics
+```
+http_requests_total{method, endpoint, status_code}
+http_request_duration_seconds_bucket{method, endpoint, le}
+http_request_size_bytes_bucket{method, endpoint, le}
+http_response_size_bytes_bucket{method, endpoint, le}
+http_errors_total{method, endpoint, status_code, error_type}
+http_requests_in_progress{method, endpoint}
+```
+
+#### Business Metrics
+```
+api_auth_attempts_total{status}
+api_license_validations_total{result}
+db_connections_active{job="console-backend"}
+db_connections_idle{job="console-backend"}
+```
+
+### Verification
+```bash
+curl http://localhost:8105/metrics | grep http_requests_total
+curl 'http://localhost:9090/api/v1/query?query=http_requests_total{job="console-backend"}'
+```
+
+---
+
+## 2. Alert Rules
+
+**File:** `/opt/rhinometric/config/rules/http-api-alerts.yml`
+
+### Alert 1: HighHttpLatencyP95
+- **Threshold:** P95 > 1 second for 5 minutes
+- **Severity:** warning
+- **Query:** `histogram_quantile(0.95, sum by (le, endpoint) (rate(http_request_duration_seconds_bucket{job="console-backend"}[5m]))) > 1`
+
+### Alert 2: HighHttpErrorRate
+- **Threshold:** 5xx rate > 5% for 2 minutes
+- **Severity:** critical
+- **Query:** `(sum(rate(...status_code=~"5..")) / sum(rate(...))) > 0.05`
+
+### Alert 3: HighHttpRequestRate
+- **Threshold:** > 100 req/s for 5 minutes
+- **Severity:** info
+- **Query:** `sum(rate(http_requests_total{job="console-backend"}[1m])) > 100`
+
+### Verification
+```bash
+curl 'http://localhost:9090/api/v1/rules' | python3 -m json.tool | grep -A5 http_api_alerts
+```
+
+**Current state:** All alerts inactive (thresholds not breached)
+
+---
+
+## 3. Grafana Dashboard
+
+**Title:** API Performance – Console Backend  
+**UID:** `api-performance-console-backend`  
+**Grafana ID:** 19  
+**URL:** http://89.167.15.73:3000/d/api-performance-console-backend  
+**File:** `/opt/rhinometric/grafana/dashboards/api-performance-console-backend.json`
+
+### Dashboard Panels (9 total)
+
+#### Row 1: Overview
+1. **HTTP Request Rate (QPS) by Endpoint**
+   - Query: `sum(rate(http_requests_total{job="console-backend"}[1m])) by (endpoint)`
+   - Type: Time series
+
+2. **HTTP Error Rate (%)**
+   - Query: `100 * sum(rate(...status_code=~"5..")) / sum(rate(...))`
+   - Type: Gauge with thresholds (green<1%, yellow 1-3%, orange 3-5%, red>5%)
+
+3. **Total Requests (5m)**
+   - Query: `sum(increase(http_requests_total{job="console-backend"}[5m]))`
+   - Type: Stat
+
+4. **In Progress**
+   - Query: `sum(http_requests_in_progress{job="console-backend"})`
+   - Type: Stat with thresholds
+
+#### Row 2: Latency & Status
+5. **Requests by Status Code**
+   - Query: `sum(rate(http_requests_total{job="console-backend"}[1m])) by (status_code)`
+   - Type: Time series (stacked)
+   - Color overrides: 2xx=green, 4xx=orange, 5xx=red
+
+6. **HTTP Latency Percentiles (p50/p95/p99)**
+   - Queries: `histogram_quantile(0.50/0.95/0.99, ...)`
+   - Type: Time series
+
+#### Row 3: Detailed Analysis
+7. **Top Slowest Endpoints**
+   - Query: `topk(10, histogram_quantile(0.95, ...))`
+   - Type: Table
+
+8. **HTTP Request/Response Size (P95)**
+   - Queries: P95 of request/response size buckets
+   - Type: Time series
+
+9. **DB Connection Pool**
+   - Queries: `db_connections_active`, `db_connections_idle`
+   - Type: Time series (stacked)
+
+### Verification
+```bash
+curl -s 'http://admin:admin@localhost:3000/api/dashboards/uid/api-performance-console-backend' | python3 -m json.tool | head -20
+```
+
+---
+
+## 4. Logs in Loki
+
+**Status:** ✅ JSON parsing operational
+
+### Extracted Labels
+```
+endpoint, method, status_code, level, service, request_id
+```
+
+### Sample Queries
+```logql
+# All console-backend logs
+{service="console-backend"}
+
+# Filter by endpoint
+{service="console-backend",endpoint="/health"}
+
+# Filter by status code
+{service="console-backend",status_code="200"}
+
+# Filter by method
+{service="console-backend",method="GET"}
+
+# Field-based filtering (after JSON parsing)
+{service="console-backend"} | json | status_code >= 500
+{service="console-backend"} | json | duration_ms > 1000
+```
+
+### Verification
+```bash
+curl 'http://localhost:3100/loki/api/v1/label'
+curl -G 'http://localhost:3100/loki/api/v1/query' --data-urlencode 'query={service="console-backend"}' --data-urlencode 'limit=5'
+```
+
+---
+
+## 5. Traces in Jaeger
+
+**Status:** ✅ OTEL Collector → Jaeger operational
+
+### Configuration
+
+**File:** `/opt/rhinometric/config/otel-collector-config.yml`
+
 ```yaml
-# File: /opt/rhinometric/config/otel-collector-config.yml
 exporters:
-  otlp/jaeger:  # ← Changed from otlp/tempo
-    endpoint: rhinometric-jaeger:4317  # ← Changed from tempo:4317
+  otlp/jaeger:
+    endpoint: rhinometric-jaeger:4317
     tls:
       insecure: true
 
 service:
   pipelines:
     traces:
-      exporters: [otlp/jaeger, logging]  # ← Changed from [otlp/tempo, logging]
+      receivers: [otlp, jaeger]
+      processors: [memory_limiter, resource, attributes, batch]
+      exporters: [otlp/jaeger, logging]
 ```
 
-**Comandos:**
+### Verification
 ```bash
-# Backup
-ssh root@89.167.6.43 "cp /opt/rhinometric/config/otel-collector-config.yml /opt/rhinometric/config/otel-collector-config.yml.backup-20260127"
-
-# Upload modified config
-scp config/otel-collector-config.yml root@89.167.6.43:/opt/rhinometric/config/
-
-# Restart
-ssh root@89.167.6.43 "docker restart rhinometric-otel-collector"
-```
-
-**Verificación:**
-```bash
-# Check Jaeger services
-curl http://localhost:16686/api/services | jq '.data'
-# Output: ["jaeger-all-in-one", "rhinometric-console-backend"] ✅
+# Check services in Jaeger
+curl http://localhost:16686/api/services
+# Expected: ["jaeger-all-in-one", "rhinometric-console-backend"]
 
 # Check traces
 curl 'http://localhost:16686/api/traces?service=rhinometric-console-backend&limit=1'
-# Traces found with traceID: a1292c69102e62e3530839560f1305c2 ✅
 ```
 
-**Resultado:** Traces ahora visibles en Jaeger UI (http://89.167.6.43:16686)
+**Result:** ✅ Service visible, traces captured
+
+**Jaeger UI:** http://89.167.15.73:16686
 
 ---
 
-### 2. Promtail JSON Parsing (YA CONFIGURADO) ✅
+## 6. Changes Applied (Git History)
 
-**Descubrimiento:** La configuración completa ya existía desde sesión anterior (24 enero)
-
-**Config verificada:**
-```yaml
-# File: /opt/rhinometric/config/promtail-config.yml
-scrape_configs:
-  - job_name: console_backend  # ← Dedicated job for console-backend
-    pipeline_stages:
-      - json:  # Parse Docker JSON wrapper
-          expressions:
-            log_line: log
-      
-      - json:  # Parse application JSON from log_line
-          source: log_line
-          expressions:
-            timestamp: timestamp
-            level: level
-            service: service
-            endpoint: endpoint
-            method: method
-            status_code: status_code
-            duration_ms: duration_ms
-            request_id: request_id
-            trace_id: trace_id
-            span_id: span_id
-      
-      - labels:  # Extract as Loki labels for filtering
-          level:
-          service:
-          endpoint:
-          method:
-          status_code:
-          trace_id:
-      
-      - timestamp:
-          source: timestamp
-          format: RFC3339
+### Commit 1: Baseline
+```
+a02b406 - baseline: VM restore from snapshot RHINOMETRIC-CORE-POST-INCIDENT-CLEAN (2026-01-28)
 ```
 
-**Verificación:**
+### Commit 2: OTEL→Jaeger Fix
+```
+e21225a - fix(otel): change exporter from tempo to jaeger for trace export
+```
+**Files:** `config/otel-collector-config.yml`  
+**Backup:** `config/otel-collector-config.yml.backup-20260128-105617`
+
+### Commit 3: Alert Rules
+```
+0285440 - feat(alerts): add HTTP API alert rules for console-backend
+```
+**Files:** `config/rules/http-api-alerts.yml` (NEW)
+
+### Commit 4: Dashboard
+```
+a840682 - feat(dashboard): add API Performance dashboard for console-backend with 9 panels
+```
+**Files:** `grafana/dashboards/api-performance-console-backend.json` (NEW)
+
+---
+
+## 7. Verification Commands
+
+### Full Health Check
 ```bash
-# List extracted labels
-curl 'http://localhost:3100/loki/api/v1/label' | jq '.data'
-# Found: endpoint, method, status_code, level, service, trace_id (10 labels) ✅
+# Container status
+docker compose -f docker-compose-v2.5.0.yml ps
 
-# Test filtering by endpoint + method
-curl -G 'http://localhost:3100/loki/api/v1/query' \
-  --data-urlencode 'query={service="console-backend",method="GET",endpoint="/health"}'
-# Returns matching logs ✅
+# Service health
+curl http://localhost:8105/health
+curl http://localhost:9090/-/healthy
+curl http://localhost:3000/api/health
 
-# Test filtering by status_code
-curl -G 'http://localhost:3100/loki/api/v1/query' \
-  --data-urlencode 'query={service="console-backend"} | json | status_code >= 200'
-# Returns logs with parsed status_code ✅
+# Metrics
+curl http://localhost:8105/metrics | grep http_requests_total
 
-# Count requests per endpoint (last 5 min)
-curl -G 'http://localhost:3100/loki/api/v1/query_range' \
-  --data-urlencode 'query=count_over_time({service="console-backend",status_code="200"}[5m])' \
-  --data-urlencode 'start='$(date -d '5 min ago' +%s)'000000000' \
-  --data-urlencode 'end='$(date +%s)'000000000'
-# Returns time series by endpoint: /api/kpis, /health, /metrics, etc. ✅
+# Prometheus targets
+curl 'http://localhost:9090/api/v1/targets' | python3 -m json.tool | grep console-backend
+
+# Alert rules
+curl 'http://localhost:9090/api/v1/rules' | python3 -m json.tool | grep -A20 http_api_alerts
+
+# Jaeger services
+curl http://localhost:16686/api/services
+
+# Loki labels
+curl http://localhost:3100/loki/api/v1/label
+
+# Dashboard
+curl -s 'http://admin:admin@localhost:3000/api/search?query=API' | python3 -m json.tool
 ```
-
-**Resultado:** Logs parseables por cualquier campo JSON, filtros y agregaciones funcionando
 
 ---
 
-### 3. Correlación Logs-Traces ⚠️ PARCIAL
+## 8. Known Limitations
 
-**Estado:** Correlación manual posible, automática no disponible
+### ❌ trace_id NOT in logs
+- Logs do NOT include `trace_id` field
+- Manual correlation required (timestamp + request_id)
+- Automatic log↔trace correlation not available
+- **Reason:** Code changes deferred to test environment
 
-**Problema identificado:**
-- Console-backend NO emite campo `trace_id` en sus logs JSON
-- Promtail está configurado para extraerlo, pero el campo no existe en los logs
+### Workaround
+1. Find trace in Jaeger by time range
+2. Match timestamps between Jaeger span and Loki logs
+3. Use `request_id` as secondary correlation key
 
-**Ejemplo de log real:**
-```json
-{
-  "timestamp": "2026-01-27T12:23:15.970911Z",
-  "level": "INFO",
-  "service": "console-backend",
-  "message": "GET /health 200 (1.38ms)",
-  "request_id": "42e51546-eb45-4b3c-824a-da0215bfa24a",
-  "endpoint": "/health",
-  "method": "GET",
-  "status_code": 200,
-  "duration_ms": 1.38
-  // ❌ MISSING: "trace_id" field
-}
-```
-
-**Solución temporal:** Correlación manual
-1. Buscar trace en Jaeger por rango de tiempo
-2. Identificar timestamp del span
-3. Buscar log en Loki con timestamp cercano + mismo endpoint
-4. Usar `request_id` como clave secundaria
-
-**Mejora futura (opcional):** Modificar `logging_config.py` para incluir trace_id:
+### Future Enhancement
+Add `trace_id` to logs in **test environment** first:
 ```python
 from opentelemetry import trace
-
-def log_request(...):
-    span = trace.get_current_span()
-    trace_id = format(span.get_span_context().trace_id, '032x')
-    
-    log_data = {
-        # ... existing fields ...
-        "trace_id": trace_id,  # ← Add this
-        "span_id": format(span.get_span_context().span_id, '016x')
-    }
+trace_id = trace.get_current_span().get_span_context().trace_id
+# Add to log record
 ```
-
-**Decisión:** NO implementar ahora
-- Paso 2B está funcionalmente completo sin esto
-- Correlación manual es suficiente para demos
-- Requiere modificar código (preferible hacer junto con Paso 3 para license-server)
 
 ---
 
-## Verificación End-to-End
+## 9. Rollback Procedures
 
-### Flujo Completo Verificado
-
+### Revert OTEL Collector
 ```bash
-# 1. Generate traffic
-curl http://89.167.6.43:8105/api/kpis
-
-# 2. Check metric incremented
-curl -s 'http://89.167.6.43:9090/api/v1/query?query=http_requests_total{job="console-backend",endpoint="/api/kpis"}' | jq '.data.result[0].value[1]'
-# Returns: "12345" (incremented) ✅
-
-# 3. Check log in Loki
-curl -G 'http://89.167.6.43:3100/loki/api/v1/query' \
-  --data-urlencode 'query={service="console-backend",endpoint="/api/kpis"}' \
-  --data-urlencode 'limit=1'
-# Returns: Log entry with status_code=200, method=GET ✅
-
-# 4. Check trace in Jaeger
-curl 'http://89.167.6.43:16686/api/traces?service=rhinometric-console-backend&limit=1' | jq '.data[0].traceID'
-# Returns: "a1292c69102e62e3530839560f1305c2" ✅
-
-# 5. Check dashboard updated
-# Visit: http://89.167.6.43:3000/d/console-backend-http/console-backend-http-monitoring
-# Verify: QPS panel shows spike ✅
+cp /opt/rhinometric/config/otel-collector-config.yml.backup-20260128-105617 \
+   /opt/rhinometric/config/otel-collector-config.yml
+docker compose -f docker-compose-v2.5.0.yml restart otel-collector
 ```
 
-**Resultado:** ✅ Flujo completo funcional (metrics → logs → traces → dashboard)
-
----
-
-## Estado por Cable
-
-| Cable                          | Estado     | Tiempo | Notas                                    |
-|--------------------------------|------------|--------|------------------------------------------|
-| 1. OTEL Collector → Jaeger     | ✅ FIXED   | 30 min | Config change + restart + verification   |
-| 2. Promtail JSON parsing       | ✅ WORKING | 15 min | Ya configurado, solo verificación       |
-| 3. trace_id en logs            | ⚠️ PARTIAL | 0 min  | No prioritario, correlación manual OK   |
-| **TOTAL PASO 2B**              | **✅ DONE**| **45 min** | vs. 7-8h estimado originalmente      |
-
----
-
-## Impacto en Roadmap
-
-### Tiempo Ahorrado
-- **Estimado original:** 7-8 horas (2h OTEL + 2h Promtail + 1h trace_id + 2h testing)
-- **Tiempo real:** 1 hora (30m fix + 15m verificación + 15m docs)
-- **Ahorro:** ~6-7 horas
-
-### Razones del Ahorro
-1. Promtail ya estaba configurado (sesión 24 enero)
-2. OTEL fix más simple de lo esperado (solo endpoint change)
-3. Jaeger y Promtail ya corriendo correctamente, solo faltaba routing
-
-### Próximos Pasos
-
-**Paso 3: License-Server Observability (8-12h)**
-- Replicar patrón de console-backend (versión simplificada)
-- Métricas: license_validations_total, license_check_duration
-- Alertas: LicenseServerDown, HighValidationLatency
-- Dashboard: 4-5 paneles (QPS, latency, validation success rate)
-- Logs JSON: Si tiempo permite
-- Traces: NO (no es servicio crítico para trazas)
-
-**Paso 4: AI-Anomaly Basic Health (6-8h)**
-- Métricas básicas: inference_latency, predictions_total
-- Alertas: AnomalyEngineDown, SlowInferences
-- Dashboard mínimo: Health + performance
-- Sin logs estructurados ni traces
-
-**Paso 5: Executive Overview Dashboard (4-6h)**
-- KPIs agregados: Platform uptime, incidents, hosts monitored
-- Para audiencia: CTO, CFO, management
-- Basado en datos de console-backend + license-server + ai-anomaly
-
----
-
-## Console-Backend: Golden Path Example
-
-Console-backend ahora es el **ejemplo de referencia** para observabilidad:
-
-✅ **Métricas:** 18 series Prometheus (requests, latency, errors)  
-✅ **Alertas:** 3 reglas (latency P95, error rate, request rate)  
-✅ **Dashboard:** 9 paneles Grafana (QPS, latency heatmap, errors, status codes)  
-✅ **Logs:** Parseables por endpoint, method, status_code en Loki  
-✅ **Traces:** Visibles en Jaeger con spans completos  
-✅ **Documentación:** OBSERVABILITY_CONSOLE_BACKEND.md (800+ líneas)
-
-**Este patrón se replicará (versión light) a license-server y ai-anomaly.**
-
----
-
-## Comandos Útiles
-
-### Ver traces de console-backend
+### Remove Alert Rules
 ```bash
-# Jaeger UI
-http://89.167.6.43:16686
-
-# Buscar servicio
-curl http://89.167.6.43:16686/api/services | jq '.data'
-
-# Ver últimas 10 traces
-curl 'http://89.167.6.43:16686/api/traces?service=rhinometric-console-backend&limit=10' | jq '.data[].traceID'
+rm /opt/rhinometric/config/rules/http-api-alerts.yml
+docker exec rhinometric-prometheus kill -HUP 1
 ```
 
-### Queries Loki útiles
+### Remove Dashboard
 ```bash
-# All logs de console-backend
-{service="console-backend"}
-
-# Solo errores (status >= 400)
-{service="console-backend"} | json | status_code >= 400
-
-# Solo endpoint /api/kpis
-{service="console-backend",endpoint="/api/kpis"}
-
-# Requests lentos (> 100ms)
-{service="console-backend"} | json | duration_ms > 100
-
-# Count por endpoint (últimos 5 min)
-count_over_time({service="console-backend",status_code="200"}[5m])
+curl -X DELETE 'http://admin:admin@localhost:3000/api/dashboards/uid/api-performance-console-backend'
+rm /opt/rhinometric/grafana/dashboards/api-performance-console-backend.json
 ```
 
-### Verificar OTEL Collector
+### Git Revert
 ```bash
-# Check exporter logs
-docker logs rhinometric-otel-collector --tail 50 | grep TracesExporter
-
-# Should see: "resource spans": N, "spans": N (no errors)
+cd /opt/rhinometric
+git log --oneline  # Find commit to revert
+git revert <commit-hash>
 ```
 
 ---
 
-**Conclusión:** Paso 2B ✅ COMPLETE  
-Console-backend = primer servicio con observabilidad full-stack working end-to-end.
+## 10. Next Steps (Paso 3)
 
-**Próximo sprint:** Paso 3 (license-server, versión simplificada del patrón).
+### License Server Observability
+Apply same pattern to `rhinometric-license-server-v2`:
+1. Verify metrics exposed (`:5000/metrics`)
+2. Create alert rules for license validation errors
+3. Create dashboard for license operations
+4. Verify OTEL traces
+
+### AI Anomaly Service Observability
+Apply same pattern to `rhinometric-ai-anomaly`:
+1. Verify metrics exposed (`:8085/metrics`)
+2. Create alert rules for anomaly detection failures
+3. Create dashboard for AI service health
+4. Verify OTEL traces
+
+### Executive Overview Dashboard
+Create high-level dashboard combining:
+- Console-backend health
+- License server health
+- AI anomaly health
+- Infrastructure metrics
+- Alert summary
+
+---
+
+**Document Version:** 1.0  
+**Last Updated:** 2026-01-28 11:15 UTC  
+**Status:** ✅ Production-ready  
+**Author:** GitHub Copilot (Claude Sonnet 4.5)

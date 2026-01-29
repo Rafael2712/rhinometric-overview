@@ -264,9 +264,7 @@ services:
       GF_NEWS_NEWS_FEED_ENABLED: 'false'
       GF_PATHS_PLUGINS: /var/lib/grafana/plugins
       GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS: rhinometric-dashboard-builder-iframe,rhinometric-api-connector-iframe
-      GF_AUTH_ANONYMOUS_ENABLED: 'true'
-      GF_AUTH_ANONYMOUS_ORG_NAME: Main Org.
-      GF_AUTH_ANONYMOUS_ORG_ROLE: Editor
+      GF_AUTH_ANONYMOUS_ENABLED: 'false'
     ports:
     - 3000:3000
     volumes:
