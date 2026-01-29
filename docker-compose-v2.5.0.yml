@@ -906,8 +906,8 @@ services:
     build: ./webhook-collector-webhook-github-prod
     container_name: rhinometric-webhook-collector-webhook-github-prod
     expose:
-
-      - "9328"    environment:
+      - "9328"
+      environment:
       METRICS_PORT: '9328'
       WEBHOOK_PORT: '8091'
       WEBHOOK_PATH: /webhook/events
@@ -922,10 +922,10 @@ services:
     build: ./webhook-collector-webhook-github-production
     container_name: rhinometric-webhook-collector-webhook-github-production
     expose:
-
       - "8093"
 
-      - "9329"    environment:
+      - "9329"
+      environment:
       METRICS_PORT: '9329'
       WEBHOOK_PORT: '8092'
       WEBHOOK_PATH: /webhook/github
@@ -940,8 +940,8 @@ services:
     build: ./webhook-collector-test-debug
     container_name: rhinometric-webhook-collector-test-debug
     expose:
-
-      - "9326"    environment:
+      - "9326"
+      environment:
       METRICS_PORT: '9326'
       WEBHOOK_PORT: '8097'
       WEBHOOK_PATH: /webhook/test
@@ -957,10 +957,10 @@ services:
     build: ./webhook-collector-github-production
     container_name: rhinometric-webhook-collector-github-production
     expose:
-
       - "8099"
 
-      - "9330"    environment:
+      - "9330"
+      environment:
       METRICS_PORT: "9330"
       WEBHOOK_PORT: "8099"
       WEBHOOK_PATH: "/webhook/github"
@@ -976,10 +976,10 @@ services:
     build: ./webhook-collector-tu-nombre-webhook
     container_name: rhinometric-webhook-collector-tu-nombre-webhook
     expose:
-
       - "8100"
 
-      - "9331"    environment:
+      - "9331"
+      environment:
       METRICS_PORT: "9331"
       WEBHOOK_PORT: "8100"
       WEBHOOK_PATH: "/webhook/events"
@@ -995,8 +995,8 @@ services:
     build: ./database-collector-rhinometric-postgres-monitor
     container_name: rhinometric-database-collector-rhinometric-postgres-monitor
     expose:
-
-      - "9332"    environment:
+      - "9332"
+      environment:
       METRICS_PORT: "9332"
       DB_TYPE: "postgresql"
       DB_HOST: "rhinometric-postgres"
@@ -1028,8 +1028,8 @@ services:
     build: ./database-collector-rhinometric-postgres-tables
     container_name: rhinometric-database-collector-rhinometric-postgres-tables
     expose:
-
-      - "9333"    environment:
+      - "9333"
+      environment:
       METRICS_PORT: "9333"
       DB_TYPE: "postgresql"
       DB_HOST: "rhinometric-postgres"
@@ -1052,8 +1052,8 @@ services:
     build: ./database-collector-rhinometric-postgres-connections
     container_name: rhinometric-database-collector-rhinometric-postgres-connections
     expose:
-
-      - "9334"    environment:
+      - "9334"
+      environment:
       METRICS_PORT: "9334"
       DB_TYPE: "postgresql"
       DB_HOST: "rhinometric-postgres"
@@ -1074,8 +1074,8 @@ services:
     build: ./database-collector-rhinometric-postgres-locks
     container_name: rhinometric-database-collector-rhinometric-postgres-locks
     expose:
-
-      - "9335"    environment:
+      - "9335"
+      environment:
       METRICS_PORT: "9335"
       DB_TYPE: "postgresql"
       DB_HOST: "rhinometric-postgres"
@@ -1096,8 +1096,8 @@ services:
     build: ./database-collector-rhinometric-postgres-size
     container_name: rhinometric-database-collector-rhinometric-postgres-size
     expose:
-
-      - "9336"    environment:
+      - "9336"
+      environment:
       METRICS_PORT: "9336"
       DB_TYPE: "postgresql"
       DB_HOST: "rhinometric-postgres"
@@ -1120,8 +1120,8 @@ services:
     build: ./database-collector-rhinometric-postgres-transactions
     container_name: rhinometric-database-collector-rhinometric-postgres-transactions
     expose:
-
-      - "9337"    environment:
+      - "9337"
+      environment:
       METRICS_PORT: "9337"
       DB_TYPE: "postgresql"
       DB_HOST: "rhinometric-postgres"
@@ -1142,8 +1142,8 @@ services:
     build: ./database-collector-rhinometric-postgres-sessions
     container_name: rhinometric-database-collector-rhinometric-postgres-sessions
     expose:
-
-      - "9338"    environment:
+      - "9338"
+      environment:
       METRICS_PORT: "9338"
       DB_TYPE: "postgresql"
       DB_HOST: "rhinometric-postgres"
@@ -1164,8 +1164,8 @@ services:
     build: ./database-collector-rhinometric-postgres-queries
     container_name: rhinometric-database-collector-rhinometric-postgres-queries
     expose:
-
-      - "9339"    environment:
+      - "9339"
+      environment:
       METRICS_PORT: "9339"
       DB_TYPE: "postgresql"
       DB_HOST: "rhinometric-postgres"
@@ -1186,8 +1186,8 @@ services:
     build: ./database-collector-rhinometric-postgres-replica-lag
     container_name: rhinometric-database-collector-rhinometric-postgres-replica-lag
     expose:
-
-      - "9340"    environment:
+      - "9340"
+      environment:
       METRICS_PORT: "9340"
       DB_TYPE: "postgresql"
       DB_HOST: "rhinometric-postgres"
@@ -1208,8 +1208,8 @@ services:
     build: ./database-collector-test-final-verification
     container_name: rhinometric-database-collector-test-final-verification
     expose:
-
-      - "9341"    environment:
+      - "9341"
+      environment:
       METRICS_PORT: "9341"
       DB_TYPE: "postgresql"
       DB_HOST: "rhinometric-postgres"
@@ -1230,8 +1230,8 @@ services:
     build: ./database-collector-test-verification-final
     container_name: rhinometric-database-collector-test-verification-final
     expose:
-
-      - "9342"    environment:
+      - "9342"
+      environment:
       METRICS_PORT: "9342"
       DB_TYPE: "postgresql"
       DB_HOST: "rhinometric-postgres"
@@ -1252,8 +1252,8 @@ services:
     build: ./database-collector-postgres-active-sessions
     container_name: rhinometric-database-collector-postgres-active-sessions
     expose:
-
-      - "9343"    environment:
+      - "9343"
+      environment:
       METRICS_PORT: "9343"
       DB_TYPE: "postgresql"
       DB_HOST: "rhinometric-postgres"
@@ -1274,8 +1274,8 @@ services:
     build: ./database-collector-postgres-connection-test
     container_name: rhinometric-database-collector-postgres-connection-test
     expose:
-
-      - "9344"    environment:
+      - "9344"
+      environment:
       METRICS_PORT: "9344"
       DB_TYPE: "postgresql"
       DB_HOST: "rhinometric-postgres"
@@ -1296,8 +1296,8 @@ services:
     build: ./database-collector-postgres-final-professional
     container_name: rhinometric-database-collector-postgres-final-professional
     expose:
-
-      - "9345"    environment:
+      - "9345"
+      environment:
       METRICS_PORT: "9345"
       DB_TYPE: "postgresql"
       DB_HOST: "rhinometric-postgres"
@@ -1323,8 +1323,8 @@ services:
     build: ./database-collector-postgres-slow-queries
     container_name: rhinometric-database-collector-postgres-slow-queries
     expose:
-
-      - "9346"    environment:
+      - "9346"
+      environment:
       METRICS_PORT: "9346"
       DB_TYPE: "postgresql"
       DB_HOST: "rhinometric-postgres"
@@ -1350,8 +1350,8 @@ services:
     build: ./database-collector-postgres-production-ready
     container_name: rhinometric-database-collector-postgres-production-ready
     expose:
-
-      - "9347"    environment:
+      - "9347"
+      environment:
       METRICS_PORT: "9347"
       DB_TYPE: "postgresql"
       DB_HOST: "rhinometric-postgres"
