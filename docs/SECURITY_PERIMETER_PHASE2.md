@@ -627,7 +627,311 @@ location /grafana/ {
 
 ---
 
-## 📌 Notas Importantes
+## � PASO 5: Plan de Deployment (PENDIENTE - Ejecutar en VM)
+
+### Estado Actual
+
+**✅ COMPLETADO en local:**
+- Nginx configurado (nginx/nginx.conf - 243 líneas)
+- Docker Compose modificado (46 servicios con expose:)
+- Grafana ajustado para subpath
+- Credenciales Basic Auth generadas
+- Código commiteado y pushed: `af76e94`
+
+**⏸️ PENDIENTE ejecutar en VM:**
+- Git pull en VM
+- Docker compose down/up
+- Verificaciones de acceso
+- Validación de seguridad
+
+### 5.0 - Pre-requisitos
+
+**Snapshot de seguridad:**
+- ✅ Existe: `GOLD-CORE-V2.7.0-NOTIFICATIONS-OK`
+- Opcional: Crear `GOLD-CORE-V2.8.0-PRE-NGINX` antes de deployment
+
+**Acceso SSH:**
+```bash
+ssh rhinometric-restore
+# O: ssh user@89.167.15.73
+```
+
+### 5.1 - Sincronizar Código en VM
+
+```bash
+# En la VM:
+cd /opt/rhinometric
+
+# Comprobar estado
+git status
+
+# Sincronizar
+git fetch origin
+git checkout feature/use-direct-grafana-links
+git pull origin feature/use-direct-grafana-links
+
+# Verificar cambios aplicados
+grep -c "ports:" docker-compose-v2.5.0.yml   # Debe dar: 1 (solo nginx)
+grep -c "expose:" docker-compose-v2.5.0.yml  # Debe dar: 46+
+
+# Verificar nginx.conf existe
+ls -lh nginx/nginx.conf
+ls -lh nginx/.htpasswd
+
+# Verificar commit
+git log --oneline -1  # Debe mostrar: af76e94 feat(security): FASE 2...
+```
+
+### 5.2 - Deployment Controlado
+
+```bash
+# En la VM:
+cd /opt/rhinometric
+
+# 1) Ver estado actual
+docker compose ps
+
+# 2) Bajar stack completo
+docker compose down
+
+# 3) Subir con nueva configuración
+docker compose up -d
+
+# 4) Ver nuevo estado
+docker compose ps
+
+# Esperar ~60 segundos para que healthchecks pasen
+sleep 60 && docker compose ps
+```
+
+**Logs a revisar si hay problemas:**
+
+```bash
+# Nginx (CRÍTICO)
+docker logs rhinometric-nginx --tail 100
+
+# Servicios principales
+docker logs rhinometric-grafana --tail 50
+docker logs rhinometric-console-frontend --tail 50
+docker logs rhinometric-console-backend --tail 50
+
+# Si hay errores de conexión
+docker logs rhinometric-prometheus --tail 30
+docker logs rhinometric-alertmanager --tail 30
+```
+
+**Estados esperados:**
+- `rhinometric-nginx` → **healthy**
+- `rhinometric-console-frontend` → **healthy**
+- `rhinometric-console-backend` → **healthy**
+- `rhinometric-grafana` → **healthy**
+- Resto de servicios → **running** (mínimo)
+
+### 5.3 - Verificaciones de Acceso
+
+#### A. Consola Principal
+
+```bash
+# Desde navegador:
+http://89.167.15.73/
+
+# Debe cargar la UI de Rhinometric Console
+# Sin errores 502 Bad Gateway
+# Sin redirecciones raras
+```
+
+#### B. API Backend
+
+```bash
+# Desde terminal o navegador:
+curl http://89.167.15.73/api/health
+
+# Expected response:
+{
+  "status": "healthy",
+  "version": "2.5.0",
+  ...
+}
+```
+
+#### C. Grafana con Basic Auth
+
+```bash
+# Desde navegador:
+http://89.167.15.73/grafana/
+
+# Paso 1: Debe pedir Basic Auth
+#   Usuario: proxy-admin
+#   Password: aJtImXAwtoiGGGZan/CKfmalSl9wtNsQ
+
+# Paso 2: Luego login de Grafana
+#   Usuario: admin
+#   Password: (el que tengáis configurado)
+
+# Verificar:
+# - Dashboards cargan correctamente
+# - URLs internas son /grafana/api/..., /grafana/public/...
+# - No hay errores de assets (CSS/JS cargando)
+```
+
+#### D. Dashboards desde Console
+
+```bash
+# Desde la UI de Rhinometric:
+# 1. Ir a sección de dashboards
+# 2. Hacer clic en "Ver en Grafana" o similar
+# 3. Debe abrir: http://89.167.15.73/grafana/d/DASHBOARD_ID?kiosk=tv
+
+# Verificar:
+# - Dashboard se abre en modo kiosk
+# - No intenta ir a :3000 directamente
+# - Basic Auth ya está autenticado (cookie)
+```
+
+#### E. Notificaciones (Slack + Email)
+
+```bash
+# Disparar alerta de prueba:
+# (El método que ya usáis, por ejemplo forzar threshold)
+
+# Verificar:
+# - Slack recibe mensaje
+# - Email llega a bandeja
+# - Links en el mensaje pueden ir a :3002 aún (OK por ahora)
+#   → Actualización de estos links será fase posterior
+```
+
+### 5.4 - Validación de Perímetro Cerrado
+
+#### Verificar puertos expuestos EN LA VM
+
+```bash
+# En la VM:
+ss -tulpn | grep LISTEN
+
+# Output esperado:
+# tcp  LISTEN  0.0.0.0:22    (SSH - OK)
+# tcp  LISTEN  0.0.0.0:80    (Nginx - OK)
+# tcp  LISTEN  127.0.0.1:... (Servicios locales - OK)
+# tcp  LISTEN  172.22.0.X:... (Docker network - OK)
+
+# NO debería aparecer:
+# 0.0.0.0:3000  (Grafana)
+# 0.0.0.0:3002  (Console Frontend)
+# 0.0.0.0:5432  (PostgreSQL)
+# 0.0.0.0:6379  (Redis)
+# 0.0.0.0:8105  (Console Backend)
+# 0.0.0.0:9090  (Prometheus)
+# 0.0.0.0:9093  (Alertmanager)
+```
+
+#### Escaneo externo (desde PC local)
+
+```bash
+# Desde tu PC de desarrollo:
+nmap -p 1-65535 89.167.15.73
+
+# Resultado esperado:
+# PORT   STATE
+# 22/tcp open   ssh
+# 80/tcp open   http
+
+# Todos los demás puertos deben estar "filtered" o "closed"
+```
+
+### 5.5 - Post-Deployment
+
+#### Si todo está OK (24h estable):
+
+```bash
+# 1. Crear nuevo snapshot en VM
+# Nombre sugerido: GOLD-CORE-V2.8.0-NGINX-PERIMETER-OK
+
+# 2. Actualizar documentación
+# En docs/SECURITY_PERIMETER_PHASE2.md añadir:
+# - Fecha de deployment: DD/MM/YYYY HH:MM
+# - Commit desplegado: af76e94
+# - Resultado de ss -tulpn (copy/paste)
+# - Tests pasados (checklist)
+# - Persona que ejecutó: Nombre
+
+# 3. Declarar FASE 2 COMPLETADA
+```
+
+#### Troubleshooting Común
+
+**Problema 1: Nginx no arranca**
+```bash
+docker logs rhinometric-nginx
+# Buscar: "nginx: configuration file ... test failed"
+# Solución: Revisar sintaxis de nginx.conf
+docker exec rhinometric-nginx nginx -t
+```
+
+**Problema 2: Console no carga (502 Bad Gateway)**
+```bash
+# Verificar que backend/frontend están UP
+docker compose ps | grep console
+# Si están "restarting", ver logs:
+docker logs rhinometric-console-backend --tail 100
+docker logs rhinometric-console-frontend --tail 100
+```
+
+**Problema 3: Grafana redirect loop**
+```bash
+# Verificar variables de entorno:
+docker exec rhinometric-grafana env | grep GF_SERVER
+# Debe mostrar:
+# GF_SERVER_ROOT_URL=http://IP/grafana/
+# GF_SERVER_SERVE_FROM_SUB_PATH=true
+```
+
+**Problema 4: Basic Auth no funciona**
+```bash
+# Verificar que .htpasswd está montado:
+docker exec rhinometric-nginx ls -la /etc/nginx/.htpasswd
+# Debe existir y tener contenido
+
+# Verificar contenido:
+docker exec rhinometric-nginx cat /etc/nginx/.htpasswd
+# Debe mostrar: proxy-admin:$apr1$...
+```
+
+**Problema 5: Dashboards desde console van a :3000**
+```bash
+# Esto significa que el frontend aún tiene URL hardcodeada
+# Solución temporal: Acceder directo a http://IP/grafana/
+# Solución permanente: Actualizar frontend para usar /grafana/
+# (Puede ser fase posterior)
+```
+
+### 5.6 - Rollback (si algo sale mal)
+
+```bash
+# Opción 1: Restaurar desde snapshot
+# En Hetzner Cloud Panel:
+# 1. Detener VM
+# 2. Restore snapshot: GOLD-CORE-V2.7.0-NOTIFICATIONS-OK
+# 3. Iniciar VM
+
+# Opción 2: Revertir cambios en Git
+cd /opt/rhinometric
+git log --oneline -5  # Ver commits anteriores
+git checkout <COMMIT_ANTERIOR>  # Ej: fa95594
+docker compose down
+docker compose up -d
+
+# Opción 3: Modificar docker-compose manualmente
+# Cambiar temporalmente nginx ports a:
+#   ports:
+#     - "80:80"
+#     - "3000:3000"  # Temporal: exponer Grafana directo
+# Y probar qué está fallando
+```
+
+---
+
+## �📌 Notas Importantes
 
 ### Lo que NO se hará en esta fase:
 
