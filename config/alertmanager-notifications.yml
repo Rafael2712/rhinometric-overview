@@ -1,7 +1,7 @@
 global:
   resolve_timeout: 5m
   # SMTP configuration for email notifications (Zoho)
-  smtp_smarthost: 'smtp.zoho.eu:465'
+  smtp_smarthost: 'smtp.zoho.eu:587'
   smtp_from: 'rafael.canelon@rhinometric.com'
   smtp_auth_username: 'rafael.canelon@rhinometric.com'
   smtp_auth_password: '${SMTP_PASSWORD}'
