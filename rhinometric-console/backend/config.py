@@ -25,6 +25,10 @@ class Settings(BaseSettings):
     LOKI_URL: str = "http://rhinometric-loki:3100"
     JAEGER_URL: str = "http://rhinometric-jaeger:16686"  # Jaeger UI/API
     
+    # Grafana Credentials
+    GRAFANA_USER: str = "admin"  # Override with GRAFANA_USER env var
+    GRAFANA_PASSWORD: str = "admin"  # Override with GRAFANA_PASSWORD env var
+    
     # Admin Credentials (override these in .env for production)
     ADMIN_USERNAME: str = "admin"  # Override with ADMIN_USERNAME env var
     ADMIN_PASSWORD: str = "CHANGE_ME_IN_PRODUCTION"  # Override with ADMIN_PASSWORD env var
