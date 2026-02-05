@@ -5,11 +5,18 @@ This script runs on every backend startup to guarantee admin user exists.
 import os
 import logging
 from sqlalchemy.orm import Session
+from passlib.context import CryptContext
 from database import SessionLocal
 from models.user import User
-from core.security import get_password_hash
 
 logger = logging.getLogger(__name__)
+
+# Password hashing context
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+def get_password_hash(password: str) -> str:
+    """Hash a password using bcrypt"""
+    return pwd_context.hash(password)
 
 def ensure_admin_user():
     """
