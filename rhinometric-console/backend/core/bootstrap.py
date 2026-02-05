@@ -5,7 +5,7 @@ This script runs on every backend startup to guarantee admin user exists.
 import os
 import logging
 from sqlalchemy.orm import Session
-from db.session import SessionLocal
+from database import SessionLocal
 from models.user import User
 from core.security import get_password_hash
 
