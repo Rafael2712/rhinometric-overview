@@ -15,22 +15,24 @@ export const PanelRenderer: React.FC<PanelRendererProps> = ({
   from,
   to,
 }) => {
-  // Use direct Grafana iframe with embedding enabled
-  const grafanaUrl = `http://89.167.22.228:3000/d-solo/${uid}?panelId=${panelId}&from=${from}&to=${to}&theme=dark&kiosk`;
+  // Use NGINX /grafana/ proxy with auth proxy enabled
+  // This will automatically inject X-WEBAUTH-USER header
+  const iframeUrl = `/grafana/d-solo/${uid}?panelId=${panelId}&from=${from}&to=${to}&theme=dark&kiosk`;
 
   return (
-    <div className="relative bg-surface rounded overflow-hidden">
+    <div className="relative bg-surface rounded overflow-hidden shadow-lg">
       {/* Panel Title */}
-      <div className="flex items-center justify-between p-2 bg-surface-light">
-        <h3 className="text-sm font-medium text-white">{title}</h3>
+      <div className="flex items-center justify-between px-4 py-2 bg-surface-light border-b border-gray-700">
+        <h3 className="text-sm font-semibold text-white">{title}</h3>
       </div>
 
-      {/* Grafana Panel iframe */}
+      {/* Grafana Panel iframe - LIVE & INTERACTIVE */}
       <iframe
-        src={grafanaUrl}
+        src={iframeUrl}
         className="w-full h-[400px] border-0"
         title={title}
         style={{ background: '#1a1a1a' }}
+        allow="fullscreen"
       />
     </div>
   );
