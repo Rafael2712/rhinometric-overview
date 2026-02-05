@@ -57,16 +57,14 @@ def ensure_admin_user():
         db.commit()
         db.refresh(new_admin)
         
-        # Create owner role for admin
-        from models.user_role import UserRole
-        admin_role = UserRole(
-            user_id=new_admin.id,
-            role="owner"
+        # Assign OWNER role (role_id=1) to admin
+        db.execute(
+            "INSERT INTO user_roles (user_id, role_id) VALUES (:user_id, 1)",
+            {"user_id": new_admin.id}
         )
-        db.add(admin_role)
         db.commit()
         
-        logger.info(f"[BOOTSTRAP] ✅ Admin user '{admin_username}' created successfully with 'owner' role")
+        logger.info(f"[BOOTSTRAP] ✅ Admin user '{admin_username}' created successfully with 'OWNER' role")
         
     except Exception as e:
         logger.error(f"[BOOTSTRAP] ❌ Failed to ensure admin user exists: {str(e)}")
