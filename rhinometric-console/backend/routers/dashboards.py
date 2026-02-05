@@ -8,7 +8,7 @@ import httpx
 from typing import List, Optional, Dict, Any
 from pydantic import BaseModel
 from config import settings
-from auth import get_current_user
+from dependencies import get_current_user
 import logging
 
 router = APIRouter()
