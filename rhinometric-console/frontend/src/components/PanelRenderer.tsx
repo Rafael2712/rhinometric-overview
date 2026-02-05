@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import { Box, Typography, CircularProgress, Alert, IconButton } from '@mui/material';
-import RefreshIcon from '@mui/icons-material/Refresh';
+import { RefreshCw } from 'lucide-react';
 
 interface PanelRendererProps {
   uid: string;
@@ -40,45 +39,41 @@ export const PanelRenderer: React.FC<PanelRendererProps> = ({
   };
 
   return (
-    <Box p={2} position="relative">
+    <div className="relative p-4 bg-surface rounded">
       {/* Panel Title */}
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
-        <Typography variant="h6" fontSize={14} fontWeight={500}>
-          {title}
-        </Typography>
-        <IconButton size="small" onClick={handleRefresh} disabled={loading}>
-          <RefreshIcon fontSize="small" />
-        </IconButton>
-      </Box>
+      <div className="flex items-center justify-between mb-2">
+        <h3 className="text-sm font-medium text-white">{title}</h3>
+        <button
+          onClick={handleRefresh}
+          disabled={loading}
+          className="p-1 hover:bg-surface-light rounded transition-colors disabled:opacity-50"
+        >
+          <RefreshCw className={`w-4 h-4 text-text-secondary ${loading ? 'animate-spin' : ''}`} />
+        </button>
+      </div>
 
       {/* Loading State */}
       {loading && (
-        <Box display="flex" justifyContent="center" alignItems="center" minHeight="300px">
-          <CircularProgress size={30} />
-        </Box>
+        <div className="flex items-center justify-center min-h-[300px]">
+          <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+        </div>
       )}
 
       {/* Error State */}
       {error && !loading && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          Failed to load panel
-        </Alert>
+        <div className="card bg-error/10 border-error mb-2">
+          <p className="text-error text-sm">Failed to load panel</p>
+        </div>
       )}
 
       {/* Image */}
-      <Box
-        component="img"
+      <img
         src={imageUrl}
         alt={title}
         onLoad={handleImageLoad}
         onError={handleImageError}
-        sx={{
-          width: '100%',
-          height: 'auto',
-          display: loading || error ? 'none' : 'block',
-          borderRadius: 1,
-        }}
+        className={`w-full h-auto rounded ${loading || error ? 'hidden' : 'block'}`}
       />
-    </Box>
+    </div>
   );
 };

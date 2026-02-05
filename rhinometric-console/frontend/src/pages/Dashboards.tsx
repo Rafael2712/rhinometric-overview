@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom'
 import { ExternalLink, Folder, Tag, Eye } from 'lucide-react'
 import { useAuthStore } from '../lib/auth/store'
 import { openGrafanaDashboard } from '../utils/grafana'
-import { apiClient } from '../services/api'
 
 interface Dashboard {
   uid: string
@@ -39,7 +38,7 @@ export function DashboardsPage() {
   const user = useAuthStore((state) => state.user)
   
   // Check if user can edit in Grafana (admin or owner only)
-  const canEditGrafana = user?.role === 'admin' || user?.role === 'owner'
+  const canEditGrafana = user?.roles?.includes('admin') || user?.roles?.includes('owner');
 
   useEffect(() => {
     fetchDashboards()
@@ -48,8 +47,16 @@ export function DashboardsPage() {
   const fetchDashboards = async () => {
     try {
       setLoading(true)
-      const response = await apiClient.get('/api/dashboards')
-      setDashboards(response.data.dashboards)
+      const response = await fetch('/api/dashboards', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      })
+      if (!response.ok) {
+        throw new Error('Failed to fetch dashboards')
+      }
+      const data = await response.json()
+      setDashboards(data.dashboards)
     } catch (err) {
       setError('Failed to load dashboards')
       console.error('Error fetching dashboards:', err)

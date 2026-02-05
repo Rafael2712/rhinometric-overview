@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { Box, Typography, CircularProgress, Alert, Select, MenuItem, FormControl, InputLabel } from '@mui/material';
-import { apiClient } from '../services/api';
 import { PanelRenderer } from '../components/PanelRenderer';
+import { useAuthStore } from '../lib/auth/store';
 
 interface Panel {
   id: number;
@@ -44,6 +43,7 @@ export const DashboardViewer: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedRange, setSelectedRange] = useState<TimeRange>(TIME_RANGES[1]); // Default: 6h
+  const token = useAuthStore((state) => state.token);
 
   useEffect(() => {
     if (uid) {
@@ -55,16 +55,26 @@ export const DashboardViewer: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await apiClient.get(`/api/dashboards/${uid}`);
-      setDashboard(response.data);
+      const response = await fetch(`/api/dashboards/${uid}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to load dashboard');
+      }
+      
+      const data = await response.json();
+      setDashboard(data);
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to load dashboard');
+      setError(err.message || 'Failed to load dashboard');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleTimeRangeChange = (event: any) => {
+  const handleTimeRangeChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
     const range = TIME_RANGES.find(r => r.label === event.target.value);
     if (range) {
       setSelectedRange(range);
@@ -73,17 +83,19 @@ export const DashboardViewer: React.FC = () => {
 
   if (loading) {
     return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-        <CircularProgress />
-      </Box>
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+      </div>
     );
   }
 
   if (error) {
     return (
-      <Box p={3}>
-        <Alert severity="error">{error}</Alert>
-      </Box>
+      <div className="p-6">
+        <div className="card bg-error/10 border-error">
+          <p className="text-error">{error}</p>
+        </div>
+      </div>
     );
   }
 
@@ -92,46 +104,30 @@ export const DashboardViewer: React.FC = () => {
   }
 
   return (
-    <Box p={3}>
+    <div className="space-y-6 p-6">
       {/* Header */}
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h4">{dashboard.title}</Typography>
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-bold text-white">{dashboard.title}</h1>
         
-        <FormControl size="small" sx={{ minWidth: 200 }}>
-          <InputLabel id="timerange-label">Time Range</InputLabel>
-          <Select
-            labelId="timerange-label"
-            value={selectedRange.label}
-            label="Time Range"
-            onChange={handleTimeRangeChange}
-          >
-            {TIME_RANGES.map(range => (
-              <MenuItem key={range.label} value={range.label}>
-                {range.label}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-      </Box>
+        <select
+          value={selectedRange.label}
+          onChange={handleTimeRangeChange}
+          className="input w-auto min-w-[200px]"
+        >
+          {TIME_RANGES.map(range => (
+            <option key={range.label} value={range.label}>
+              {range.label}
+            </option>
+          ))}
+        </select>
+      </div>
 
       {/* Panels Grid */}
-      <Box
-        display="grid"
-        gridTemplateColumns="repeat(24, 1fr)"
-        gap={2}
-        sx={{
-          '& > div': {
-            backgroundColor: 'background.paper',
-            borderRadius: 1,
-            overflow: 'hidden',
-            boxShadow: 1,
-          }
-        }}
-      >
+      <div className="grid grid-cols-24 gap-4">
         {dashboard.panels.map(panel => (
-          <Box
+          <div
             key={panel.id}
-            sx={{
+            style={{
               gridColumn: `span ${panel.gridPos.w}`,
               gridRow: `span ${Math.ceil(panel.gridPos.h / 2)}`,
             }}
@@ -143,9 +139,9 @@ export const DashboardViewer: React.FC = () => {
               from={selectedRange.from}
               to={selectedRange.to}
             />
-          </Box>
+          </div>
         ))}
-      </Box>
-    </Box>
+      </div>
+    </div>
   );
 };
