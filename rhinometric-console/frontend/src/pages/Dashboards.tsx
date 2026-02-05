@@ -19,11 +19,6 @@ interface Dashboard {
   folderUrl?: string
 }
 
-interface DashboardsResponse {
-  dashboards: Dashboard[]
-  total: number
-}
-
 export function DashboardsPage() {
   useEffect(() => {
     document.title = 'Dashboards - Rhinometric'
@@ -68,7 +63,7 @@ export function DashboardsPage() {
   const openInGrafana = (dashboard: Dashboard, e: React.MouseEvent) => {
     e.stopPropagation()
     // Open Grafana directly on port 3000 (v2.5.1 - direct links strategy)
-    openGrafanaDashboard(dashboard.uid, 'kiosk=tv')
+    openGrafanaDashboard(dashboard.uid, { kiosk: 'tv' })
   }
 
   const viewInConsole = (dashboard: Dashboard) => {
