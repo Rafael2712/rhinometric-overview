@@ -33,7 +33,7 @@ class DashboardsResponse(BaseModel):
     total: int
 
 @router.get("", response_model=DashboardsResponse)
-async def get_dashboards():
+async def get_dashboards(current_user: Dict[str, Any] = Depends(get_current_user)):
     """
     Fetch all dashboards from Grafana API.
     Returns list with title, UID, tags, folder info.

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { ExternalLink, Folder, Tag, Eye } from 'lucide-react'
 import { useAuthStore } from '../lib/auth/store'
 import { openGrafanaDashboard } from '../utils/grafana'
+import { apiClient } from '../services/api'
 
 interface Dashboard {
   uid: string
@@ -47,22 +48,17 @@ export function DashboardsPage() {
   const fetchDashboards = async () => {
     try {
       setLoading(true)
-      const response = await fetch('/api/dashboards', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch dashboards')
-      }
-
-      const data: DashboardsResponse = await response.json()
-      setDashboards(data.dashboards)
+      const response = await apiClient.get('/api/dashboards')
+      setDashboards(response.data.dashboards)
     } catch (err) {
       setError('Failed to load dashboards')
       console.error('Error fetching dashboards:', err)
-    } finally {, e: React.MouseEvent) => {
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const openInGrafana = (dashboard: Dashboard, e: React.MouseEvent) => {
     e.stopPropagation()
     // Open Grafana directly on port 3000 (v2.5.1 - direct links strategy)
     openGrafanaDashboard(dashboard.uid, 'kiosk=tv')
