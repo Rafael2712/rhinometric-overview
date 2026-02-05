@@ -185,11 +185,6 @@ export function DashboardsPage() {
                   Grafana
                 </button>
               )}
-
-            <div className="mt-4 pt-4 border-t border-surface-light">
-              <button className="text-sm text-primary hover:text-primary/80 transition-colors font-medium">
-                Open in Grafana →
-              </button>
             </div>
           </div>
         ))}
