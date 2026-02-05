@@ -15,11 +15,8 @@ export const PanelRenderer: React.FC<PanelRendererProps> = ({
   from,
   to,
 }) => {
-  // Get auth token from localStorage
-  const token = localStorage.getItem('token');
-  
-  // Use backend proxy to render panel as image - include token in URL for img tag
-  const imageUrl = `/api/grafana-proxy/render/d-solo/${uid}?panelId=${panelId}&from=${from}&to=${to}&width=1200&height=400&theme=dark&token=${token}`;
+  // Use direct Grafana iframe with embedding enabled
+  const grafanaUrl = `http://89.167.22.228:3000/d-solo/${uid}?panelId=${panelId}&from=${from}&to=${to}&theme=dark&kiosk`;
 
   return (
     <div className="relative bg-surface rounded overflow-hidden">
@@ -28,12 +25,12 @@ export const PanelRenderer: React.FC<PanelRendererProps> = ({
         <h3 className="text-sm font-medium text-white">{title}</h3>
       </div>
 
-      {/* Image */}
-      <img
-        src={imageUrl}
-        alt={title}
-        className="w-full h-auto"
-        loading="lazy"
+      {/* Grafana Panel iframe */}
+      <iframe
+        src={grafanaUrl}
+        className="w-full h-[400px] border-0"
+        title={title}
+        style={{ background: '#1a1a1a' }}
       />
     </div>
   );
