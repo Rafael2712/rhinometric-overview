@@ -47,6 +47,13 @@ async def startup_event():
         logger.warning("Database connection failed - RBAC features unavailable", extra={"db_status": "failed"})
     else:
         logger.info("Database connected successfully", extra={"db_status": "connected"})
+        
+        # ✅ BOOTSTRAP: Ensure admin user exists (immortal admin)
+        try:
+            from core.bootstrap import ensure_admin_user
+            ensure_admin_user()
+        except Exception as e:
+            logger.error(f"Failed to run bootstrap: {str(e)}")
     
     # Update DB pool metrics
     update_db_pool_metrics(engine)

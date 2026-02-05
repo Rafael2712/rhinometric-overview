@@ -33,6 +33,11 @@ class Settings(BaseSettings):
     ADMIN_USERNAME: str = "admin"  # Override with ADMIN_USERNAME env var
     ADMIN_PASSWORD: str = "CHANGE_ME_IN_PRODUCTION"  # Override with ADMIN_PASSWORD env var
     
+    # Bootstrap Admin User (IMMORTAL ADMIN - always recreated on startup if missing)
+    RHINO_ADMIN_USER: str = "admin"  # Override with RHINO_ADMIN_USER env var
+    RHINO_ADMIN_PASSWORD: str = "271211Rc"  # Override with RHINO_ADMIN_PASSWORD env var
+    RHINO_ADMIN_EMAIL: str = "admin@rhinometric.local"  # Override with RHINO_ADMIN_EMAIL env var
+    
     class Config:
         env_file = ".env"
         case_sensitive = True
