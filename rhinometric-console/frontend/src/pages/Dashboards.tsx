@@ -65,12 +65,7 @@ export function DashboardsPage() {
   }
 
   const viewInConsole = (dashboard: Dashboard) => {
-    navigate(`/dashboards/${dashboard.uid}/view`
-  }
-
-  const openInGrafana = (dashboard: Dashboard) => {
-    // Open Grafana directly on port 3000 (v2.5.1 - direct links strategy)
-    openGrafanaDashboard(dashboard.uid, 'kiosk=tv')
+    navigate(`/dashboards/${dashboard.uid}/view`)
   }
 
   const filteredDashboards = dashboards.filter(dashboard =>
