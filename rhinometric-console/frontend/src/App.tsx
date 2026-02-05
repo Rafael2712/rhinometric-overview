@@ -4,6 +4,7 @@ import { ChangePasswordPage } from './pages/ChangePassword'
 import { Layout } from './components/Layout'
 import { HomePage } from './pages/Home'
 import { DashboardsPage } from './pages/Dashboards'
+import { DashboardViewer } from './pages/DashboardViewer'
 import { AnomaliesPage } from './pages/Anomalies'
 import { AlertsPage } from './pages/Alerts'
 import { LogsPage } from './pages/Logs'
@@ -31,6 +32,7 @@ function App() {
         <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
           <Route index element={<HomePage />} />
           <Route path="dashboards" element={<DashboardsPage />} />
+          <Route path="dashboards/:uid/view" element={<DashboardViewer />} />
           <Route path="services" element={<ServicesPage />} />
           <Route path="system-health" element={<SystemHealthPage />} />
           <Route path="anomalies" element={<AnomaliesPage />} />

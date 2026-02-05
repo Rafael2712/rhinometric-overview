@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { ExternalLink, Folder, Tag } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { ExternalLink, Folder, Tag, Eye } from 'lucide-react'
 import { useAuthStore } from '../lib/auth/store'
 import { openGrafanaDashboard } from '../utils/grafana'
 
@@ -28,11 +29,16 @@ export function DashboardsPage() {
     document.title = 'Dashboards - Rhinometric'
   }, [])
 
+  const navigate = useNavigate()
   const [dashboards, setDashboards] = useState<Dashboard[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const token = useAuthStore((state) => state.token)
+  const user = useAuthStore((state) => state.user)
+  
+  // Check if user can edit in Grafana (admin or owner only)
+  const canEditGrafana = user?.role === 'admin' || user?.role === 'owner'
 
   useEffect(() => {
     fetchDashboards()
@@ -56,9 +62,14 @@ export function DashboardsPage() {
     } catch (err) {
       setError('Failed to load dashboards')
       console.error('Error fetching dashboards:', err)
-    } finally {
-      setLoading(false)
-    }
+    } finally {, e: React.MouseEvent) => {
+    e.stopPropagation()
+    // Open Grafana directly on port 3000 (v2.5.1 - direct links strategy)
+    openGrafanaDashboard(dashboard.uid, 'kiosk=tv')
+  }
+
+  const viewInConsole = (dashboard: Dashboard) => {
+    navigate(`/dashboards/${dashboard.uid}/view`
   }
 
   const openInGrafana = (dashboard: Dashboard) => {
@@ -127,17 +138,11 @@ export function DashboardsPage() {
         />
       </div>
 
-      {/* Dashboards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredDashboards.map((dashboard) => (
-          <div
-            key={dashboard.uid}
-            className="card hover:border-primary/50 transition-all cursor-pointer group"
-            onClick={() => openInGrafana(dashboard)}
+      {/* Dashboards Grid */}group"
           >
             <div className="flex items-start justify-between mb-4">
               <div className="flex-1">
-                <h3 className="text-lg font-semibold text-white group-hover:text-primary transition-colors">
+                <h3 className="text-lg font-semibold text-white">
                   {dashboard.title}
                 </h3>
                 {dashboard.folderTitle && (
@@ -147,7 +152,6 @@ export function DashboardsPage() {
                   </div>
                 )}
               </div>
-              <ExternalLink className="w-5 h-5 text-text-muted group-hover:text-primary transition-colors flex-shrink-0" />
             </div>
 
             {dashboard.tags.length > 0 && (
@@ -168,6 +172,28 @@ export function DashboardsPage() {
                 )}
               </div>
             )}
+
+            <div className="mt-4 pt-4 border-t border-surface-light flex gap-2">
+              {/* Ver en consola - all roles */}
+              <button 
+                onClick={() => viewInConsole(dashboard)}
+                className="flex-1 btn-secondary text-sm font-medium flex items-center justify-center gap-2"
+              >
+                <Eye className="w-4 h-4" />
+                Ver en consola
+              </button>
+
+              {/* Open in Grafana - only admin/owner */}
+              {canEditGrafana && (
+                <button 
+                  onClick={(e) => openInGrafana(dashboard, e)}
+                  className="btn-outline text-sm font-medium flex items-center justify-center gap-1 px-3"
+                  title="Edit in Grafana"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  Grafana
+                </button>
+              )}
 
             <div className="mt-4 pt-4 border-t border-surface-light">
               <button className="text-sm text-primary hover:text-primary/80 transition-colors font-medium">
