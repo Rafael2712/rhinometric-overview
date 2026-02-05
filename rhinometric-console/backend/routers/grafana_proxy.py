@@ -56,6 +56,83 @@ def is_path_allowed(path: str, user: UserModel) -> bool:
     
     return False
 
+@router.get("/render/{path:path}")
+async def grafana_render_proxy(
+    path: str,
+    request: Request,
+    token: Optional[str] = Query(None)
+):
+    """
+    Proxy render requests to Grafana (panel images).
+    Returns PNG images directly to bypass CORS/iframe restrictions.
+    """
+    from jose import jwt, JWTError
+    from database import SessionLocal
+    
+    # Get JWT token
+    auth_header = request.headers.get("authorization")
+    jwt_token = None
+    
+    if auth_header and auth_header.startswith("Bearer "):
+        jwt_token = auth_header.split(" ")[1]
+    elif token:
+        jwt_token = token
+    
+    if not jwt_token:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    
+    # Verify user
+    try:
+        payload = jwt.decode(jwt_token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        username = payload.get("sub")
+        if not username:
+            raise HTTPException(status_code=401, detail="Invalid token")
+        
+        db = SessionLocal()
+        try:
+            current_user = db.query(UserModel).filter(UserModel.username == username).first()
+            if not current_user or not current_user.is_active:
+                raise HTTPException(status_code=403, detail="User not authorized")
+        finally:
+            db.close()
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    
+    # Build Grafana render URL
+    query_string = str(request.url.query).replace(f"token={token}", "") if token else str(request.url.query)
+    query_string = query_string.strip("&")
+    
+    grafana_url = f"http://rhinometric-grafana:3000/render/{path}"
+    if query_string:
+        grafana_url += f"?{query_string}"
+    
+    # Fetch from Grafana with admin credentials
+    async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
+        try:
+            response = await client.get(
+                grafana_url,
+                auth=(settings.GRAFANA_USER, settings.GRAFANA_PASSWORD)
+            )
+            
+            if response.status_code != 200:
+                raise HTTPException(
+                    status_code=response.status_code,
+                    detail=f"Grafana render failed: {response.status_code}"
+                )
+            
+            # Return image stream
+            return StreamingResponse(
+                iter([response.content]),
+                media_type=response.headers.get("content-type", "image/png"),
+                headers={
+                    "Cache-Control": "no-cache",
+                    "Access-Control-Allow-Origin": "*"
+                }
+            )
+            
+        except httpx.RequestError as e:
+            raise HTTPException(status_code=502, detail=f"Grafana unavailable: {str(e)}")
+
 @router.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"])
 async def grafana_proxy(
     path: str,

@@ -15,9 +15,11 @@ export const PanelRenderer: React.FC<PanelRendererProps> = ({
   from,
   to,
 }) => {
-  // Use Grafana public URL with viewer credentials
-  const grafanaUrl = 'http://console-viewer:ConsoleView2026Secure@89.167.22.228:3000';
-  const iframeUrl = `${grafanaUrl}/d-solo/${uid}?panelId=${panelId}&from=${from}&to=${to}&theme=dark&kiosk`;
+  // Get auth token from localStorage
+  const token = localStorage.getItem('token');
+  
+  // Use backend proxy to render panel as image - include token in URL for img tag
+  const imageUrl = `/api/grafana-proxy/render/d-solo/${uid}?panelId=${panelId}&from=${from}&to=${to}&width=1200&height=400&theme=dark&token=${token}`;
 
   return (
     <div className="relative bg-surface rounded overflow-hidden">
@@ -26,11 +28,12 @@ export const PanelRenderer: React.FC<PanelRendererProps> = ({
         <h3 className="text-sm font-medium text-white">{title}</h3>
       </div>
 
-      {/* iframe */}
-      <iframe
-        src={iframeUrl}
-        className="w-full h-[400px] border-0"
-        title={title}
+      {/* Image */}
+      <img
+        src={imageUrl}
+        alt={title}
+        className="w-full h-auto"
+        loading="lazy"
       />
     </div>
   );

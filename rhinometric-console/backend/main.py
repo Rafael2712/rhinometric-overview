@@ -189,6 +189,7 @@ async def debug_headers(request: Request):
 app.include_router(auth.router, prefix=f"{settings.API_PREFIX}/auth", tags=["Authentication"])
 app.include_router(users.router, prefix=f"{settings.API_PREFIX}/users", tags=["Users"])  # RBAC User Management
 app.include_router(grafana_proxy.router, prefix=f"{settings.API_PREFIX}/grafana", tags=["Grafana"])  # Grafana RBAC Proxy
+app.include_router(grafana_proxy.router, prefix=f"{settings.API_PREFIX}/grafana-proxy", tags=["Grafana Render"])  # Panel rendering
 app.include_router(kpis.router, prefix=f"{settings.API_PREFIX}/kpis", tags=["KPIs"])
 app.include_router(anomalies.router, prefix=f"{settings.API_PREFIX}/anomalies", tags=["Anomalies"])
 app.include_router(license.router, prefix=f"{settings.API_PREFIX}/license", tags=["License"])
