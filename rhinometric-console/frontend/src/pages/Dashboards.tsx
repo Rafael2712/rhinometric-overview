@@ -129,7 +129,12 @@ export function DashboardsPage() {
         />
       </div>
 
-      {/* Dashboards Grid */}group"
+      {/* Dashboards Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {filteredDashboards.map((dashboard) => (
+          <div
+            key={dashboard.uid}
+            className="card hover:border-primary/50 transition-all group"
           >
             <div className="flex items-start justify-between mb-4">
               <div className="flex-1">
