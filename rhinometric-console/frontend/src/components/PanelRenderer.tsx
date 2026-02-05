@@ -15,8 +15,7 @@ export const PanelRenderer: React.FC<PanelRendererProps> = ({
   from,
   to,
 }) => {
-  // Use NGINX /grafana/ proxy with auth proxy enabled
-  // This will automatically inject X-WEBAUTH-USER header
+  // Auth Proxy: NGINX injects X-WEBAUTH-USER header, Grafana auto-signs in
   const iframeUrl = `/grafana/d-solo/${uid}?panelId=${panelId}&from=${from}&to=${to}&theme=dark&kiosk`;
 
   return (
