@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { RefreshCw } from 'lucide-react';
+import { useAuthStore } from '../lib/auth/store';
 
 interface PanelRendererProps {
   uid: string;
@@ -18,24 +19,49 @@ export const PanelRenderer: React.FC<PanelRendererProps> = ({
 }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
-  const [refreshKey, setRefreshKey] = useState(0);
+  const [imageData, setImageData] = useState<string | null>(null);
+  const token = useAuthStore((state) => state.token);
 
-  const imageUrl = `/api/dashboards/${uid}/panels/${panelId}/render?from=${from}&to=${to}&width=1200&height=400&_=${refreshKey}`;
+  const loadPanel = async () => {
+    try {
+      setLoading(true);
+      setError(false);
 
-  const handleImageLoad = () => {
-    setLoading(false);
-    setError(false);
+      const url = `/api/dashboards/${uid}/panels/${panelId}/render?from=${from}&to=${to}&width=1200&height=400`;
+      const response = await fetch(url, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to load panel');
+      }
+
+      const blob = await response.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      setImageData(objectUrl);
+      setLoading(false);
+    } catch (err) {
+      setError(true);
+      setLoading(false);
+    }
   };
 
-  const handleImageError = () => {
-    setLoading(false);
-    setError(true);
-  };
+  useEffect(() => {
+    loadPanel();
+    return () => {
+      if (imageData) {
+        URL.revokeObjectURL(imageData);
+      }
+    };
+  }, [uid, panelId, from, to]);
 
   const handleRefresh = () => {
-    setLoading(true);
-    setError(false);
-    setRefreshKey(prev => prev + 1);
+    if (imageData) {
+      URL.revokeObjectURL(imageData);
+    }
+    loadPanel();
   };
 
   return (
@@ -67,13 +93,13 @@ export const PanelRenderer: React.FC<PanelRendererProps> = ({
       )}
 
       {/* Image */}
-      <img
-        src={imageUrl}
-        alt={title}
-        onLoad={handleImageLoad}
-        onError={handleImageError}
-        className={`w-full h-auto rounded ${loading || error ? 'hidden' : 'block'}`}
-      />
+      {imageData && !loading && !error && (
+        <img
+          src={imageData}
+          alt={title}
+          className="w-full h-auto rounded"
+        />
+      )}
     </div>
   );
 };
