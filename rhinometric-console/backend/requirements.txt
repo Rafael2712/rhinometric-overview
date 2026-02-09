@@ -13,6 +13,7 @@ email-validator==2.1.0
 # Database (RBAC requirement)
 sqlalchemy==2.0.25
 psycopg2-binary==2.9.9
+alembic==1.13.1
 
 # OpenTelemetry instrumentation
 opentelemetry-api==1.27.0
@@ -23,3 +24,9 @@ opentelemetry-exporter-otlp-proto-grpc==1.27.0
 
 # Prometheus metrics
 prometheus-client==0.20.0
+
+# Email service
+fastapi-mail==1.4.1
+
+# Rate limiting
+slowapi==0.1.9

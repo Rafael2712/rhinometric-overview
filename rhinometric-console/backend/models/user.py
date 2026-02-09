@@ -42,6 +42,11 @@ class User(Base):
     timezone = Column(String(50), default="UTC")
     language = Column(String(10), default="en")
     
+    # SSO fields (for future SAML/LDAP integration)
+    sso_provider = Column(String(50), nullable=True)  # 'local', 'saml', 'ldap', 'oauth2'
+    sso_external_id = Column(String(255), nullable=True, index=True)  # External user ID from SSO provider
+    email_verified = Column(Boolean, default=False, index=True)  # Email verification status
+    
     # Relationships
     roles = relationship("UserRole", foreign_keys="[UserRole.user_id]", back_populates="user", cascade="all, delete-orphan")
     creator = relationship("User", remote_side=[id], foreign_keys=[created_by])
@@ -178,3 +183,41 @@ class User(Base):
     def can_delete(self, resource: str, db_session) -> bool:
         """Check if user can delete resource"""
         return self.has_permission(resource, "delete", db_session)
+    
+    def get_all_permissions(self, db_session) -> List[dict]:
+        """
+        Get all permissions for this user (from all their roles).
+        
+        Returns:
+            List of permission dicts with resource and actions:
+            [
+                {"resource": "users", "actions": ["create", "read", "update", "delete"]},
+                {"resource": "dashboards", "actions": ["read", "update"]},
+                ...
+            ]
+        """
+        from sqlalchemy import text
+        from models.role import Permission, RolePermission
+        
+        # Get all permissions from all user roles
+        permissions_dict = {}
+        
+        for user_role in self.roles:
+            role = user_role.role
+            for role_perm in role.permissions:
+                perm = role_perm.permission
+                resource = perm.resource
+                action = perm.action
+                
+                if resource not in permissions_dict:
+                    permissions_dict[resource] = set()
+                permissions_dict[resource].add(action)
+        
+        # Convert to list of dicts
+        return [
+            {
+                "resource": resource,
+                "actions": sorted(list(actions))
+            }
+            for resource, actions in sorted(permissions_dict.items())
+        ]

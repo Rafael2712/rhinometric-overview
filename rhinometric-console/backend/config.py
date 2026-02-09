@@ -3,6 +3,9 @@ from pydantic_settings import BaseSettings
 class Settings(BaseSettings):
     """Application configuration settings"""
     
+    # Database
+    DATABASE_URL: str = "postgresql://rhinometric:rhinometric@postgres:5432/rhinometric"
+    
     # API Settings
     API_TITLE: str = "Rhinometric Console API Gateway"
     API_VERSION: str = "0.1.0"
@@ -37,6 +40,22 @@ class Settings(BaseSettings):
     RHINO_ADMIN_USER: str = "admin"  # Override with RHINO_ADMIN_USER env var
     RHINO_ADMIN_PASSWORD: str = "271211Rc"  # Override with RHINO_ADMIN_PASSWORD env var
     RHINO_ADMIN_EMAIL: str = "admin@rhinometric.local"  # Override with RHINO_ADMIN_EMAIL env var
+    
+    # Email Configuration (Zoho SMTP)
+    MAIL_USERNAME: str = ""  # Email username
+    MAIL_PASSWORD: str = ""  # Email password
+    MAIL_FROM: str = ""  # From address
+    MAIL_PORT: int = 587  # SMTP port
+    MAIL_SERVER: str = "smtp.zoho.com"  # SMTP server
+    MAIL_STARTTLS: bool = True  # Use STARTTLS
+    MAIL_SSL_TLS: bool = False  # Use SSL/TLS
+    MAIL_FROM_NAME: str = "Rhinometric Platform"  # From name
+    
+    # Frontend URL (for password reset links)
+    FRONTEND_URL: str = "http://localhost:3002"
+    
+    # Rate Limiting
+    RATE_LIMIT_FORGOT_PASSWORD: str = "3/hour"
     
     class Config:
         env_file = ".env"
