@@ -1,15 +1,29 @@
-# 🦏 Rhinometric v2.5.0 - Enterprise Observability Platform
+# 🦏 Rhinometric v2.5.1 - Enterprise Observability Platform
 
 [![License](https://img.shields.io/badge/license-Proprietary-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-2.5.0-green.svg)](https://github.com/Rafael2712/rhinometric-overview/releases/tag/v2.5.0)
+[![Version](https://img.shields.io/badge/version-2.5.1-green.svg)](https://github.com/Rafael2712/rhinometric-overview/releases/tag/v2.5.1)
 [![Docker](https://img.shields.io/badge/docker-24.0+-blue.svg)](https://www.docker.com/)
 [![Python](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/)
+[![Status](https://img.shields.io/badge/status-production--ready-success.svg)](https://console.rhinometric.com)
 
 **Plataforma completa de observabilidad y AIOps** que centraliza métricas, logs, traces y detección de anomalías con inteligencia artificial.
 
 ---
 
-## ✨ Novedades v2.5.0
+## ✨ Novedades v2.5.1 (2026-02-09)
+
+🔒 **SSL/TLS Ready** → Cloudflare integration con Real IP detection  
+⚡ **Memory Optimization** → Loki 1GB / Promtail 256MB (2x performance)  
+🔐 **Login Fixed** → Console authentication working correctly  
+🌐 **Domain Configured** → console.rhinometric.com production URL  
+🛡️ **Security Hardening** → Enhanced headers, CORS, rate limiting  
+📊 **Nginx Rewrite** → Proper routing for Console, API, and Grafana
+
+Ver [CHANGELOG.md](CHANGELOG.md) para detalles completos de cambios.
+
+---
+
+## 🎯 Previous Release (v2.5.0)
 
 🎯 **Console v3** → Dashboard visual de gestión (Vue.js + FastAPI)  
 🤖 **AI Anomaly Engine** → Detección inteligente con Prophet + IsolationForest  
@@ -17,8 +31,6 @@
 🌐 **WordPress Landing Pages** → 3 páginas HTML profesionales listas para publicar  
 📧 **Sistema de Emails** → Templates responsive con descargas dinámicas  
 📚 **Docs Multilanguage** → Guías completas en ES + EN
-
-Ver [RELEASE_NOTES.md](docs/v2.5.0/RELEASE_NOTES.md) para changelog completo.
 
 ---
 
@@ -38,9 +50,9 @@ VirtualBox → Archivo → Importar servicio virtualizado → rhinometric-demo-2
 # 3. Iniciar VM
 
 # 4. Acceder
-http://localhost:3000  → Grafana (admin/admin)
-http://localhost:3002  → Console v3
-http://localhost:8085  → AI Anomaly Engine
+http://console.rhinometric.com/         → Rhinometric Console (admin/admin)
+http://console.rhinometric.com/grafana/ → Grafana Dashboards
+http://console.rhinometric.com/api/     → Backend API
 ```
 
 **Características:**
@@ -48,6 +60,38 @@ http://localhost:8085  → AI Anomaly Engine
 - ✅ Hasta 20 hosts
 - ✅ Stack completo incluido
 - ✅ Sin configuración
+
+### Opción 2: Production Deployment (Recommended)
+
+**Ideal para:** Despliegue en producción con seguridad SSL
+
+```bash
+# 1. Clonar repositorio
+git clone https://github.com/Rafael2712/mi-proyecto.git rhinometric
+cd rhinometric
+
+# 2. Configurar variables de entorno
+cp .env.example .env
+# Editar .env con tus credenciales
+
+# 3. Desplegar con Docker Compose
+docker-compose -f docker-compose-v2.5.0-SECURE.yml up -d
+
+# 4. Verificar estado
+docker ps --filter "name=rhinometric"
+
+# 5. Acceder
+https://console.rhinometric.com/         → Rhinometric Console (admin/admin)
+https://console.rhinometric.com/grafana/ → Grafana Dashboards
+https://console.rhinometric.com/api/     → Backend API
+```
+
+**Características:**
+- ✅ SSL/TLS ready para Cloudflare
+- ✅ Memory optimized (Loki 1GB, Promtail 256MB)
+- ✅ Rate limiting configurado
+- ✅ CORS y security headers
+- ✅ Domain: console.rhinometric.com
 
 ---
 
@@ -97,7 +141,7 @@ nano .env
 # Añadir LICENSE_KEY=RHINO-ANNU-2025-XXXXXXXXXXXXX
 
 # 3. Iniciar stack
-docker compose -f docker-compose-v2.5.0.yml up -d
+docker compose -f docker-compose-v2.5.0-SECURE.yml up -d
 
 # 4. Esperar health checks (1-2 minutos)
 docker compose -f docker-compose-v2.5.0.yml ps
