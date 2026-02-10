@@ -1,6 +1,7 @@
-import { AlertTriangle, TrendingUp, Filter, Download, X } from 'lucide-react'
+import { AlertTriangle, TrendingUp, Filter, Download, X, GitMerge } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../lib/auth/store'
 import { openGrafanaExplore } from '../utils/grafana'
 
@@ -18,6 +19,7 @@ interface Anomaly {
 export function AnomaliesPage() {
   const [selectedAnomaly, setSelectedAnomaly] = useState<Anomaly | null>(null)
   const token = useAuthStore((state) => state.token)
+  const navigate = useNavigate()
 
   useEffect(() => {
     document.title = 'Rhinometric - AI Anomaly Detection'
@@ -183,13 +185,17 @@ export function AnomaliesPage() {
                     <div className="text-white font-medium">{anomaly.current_value.toFixed(1)}</div>
                     <div className="text-gray-500">/ {anomaly.expected_value.toFixed(1)}</div>
                   </td>
-                  <td className="px-4 py-3 text-center">
-                    <button 
-                      onClick={() => setSelectedAnomaly(anomaly)}
-                      className="text-primary hover:bg-primary/10 text-xs font-medium px-3 py-1 rounded transition-colors"
-                    >
-                      Details
-                    </button>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center justify-center gap-2">
+                      <button 
+                        onClick={() => navigate(`/correlations/${anomaly.timestamp}`)}
+                        className="text-purple-400 hover:bg-purple-500/10 text-xs font-medium px-3 py-1 rounded transition-colors flex items-center gap-1"
+                        title="Análisis de correlación completo con métricas, logs y traces"
+                      >
+                        <GitMerge size={14} />
+                        Ver Correlación
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}

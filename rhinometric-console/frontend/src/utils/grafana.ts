@@ -9,33 +9,23 @@
  */
 
 const GRAFANA_PUBLIC_URL =
-  import.meta.env.VITE_GRAFANA_PUBLIC_URL || "http://89.167.15.73:3000";
-
-// Credentials for console viewer user (Viewer role - read-only)
-const GRAFANA_VIEWER_USER = "console-viewer";
-const GRAFANA_VIEWER_PASS = "ConsoleView2026Secure";
+  import.meta.env.VITE_GRAFANA_PUBLIC_URL || "http://89.167.22.228/grafana";
 
 /**
- * Build authenticated Grafana URL
- * Uses Basic Auth embedded in URL (will be replaced by backend proxy in future)
+ * Build Grafana URL without credentials (relies on session/cookies)
+ * Credentials in URL cause CORS errors in modern browsers
  */
 function buildAuthenticatedUrl(path: string, params: Record<string, string> = {}): string {
-  // Add kiosk mode to hide Grafana UI
+  // Add theme parameter
   const defaultParams = {
-    kiosk: 'tv',
     theme: 'dark',
     ...params
   };
   
   const queryString = new URLSearchParams(defaultParams).toString();
-  const url = new URL(`${GRAFANA_PUBLIC_URL}${path}`);
+  const url = `${GRAFANA_PUBLIC_URL}${path}?${queryString}`;
   
-  // Add basic auth
-  url.username = GRAFANA_VIEWER_USER;
-  url.password = GRAFANA_VIEWER_PASS;
-  url.search = queryString;
-  
-  return url.toString();
+  return url;
 }
 
 /**

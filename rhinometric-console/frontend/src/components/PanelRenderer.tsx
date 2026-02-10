@@ -16,7 +16,8 @@ export const PanelRenderer: React.FC<PanelRendererProps> = ({
   to,
 }) => {
   // Auth Proxy: NGINX injects X-WEBAUTH-USER header, Grafana auto-signs in
-  const iframeUrl = `/grafana/d-solo/${uid}?panelId=${panelId}&from=${from}&to=${to}&theme=dark&kiosk`;
+  // orgId=1 is required for anonymous access to work
+  const iframeUrl = `/grafana/d-solo/${uid}?orgId=1&panelId=${panelId}&from=${from}&to=${to}&theme=dark&kiosk`;
 
   return (
     <div className="relative bg-surface rounded overflow-hidden shadow-lg">

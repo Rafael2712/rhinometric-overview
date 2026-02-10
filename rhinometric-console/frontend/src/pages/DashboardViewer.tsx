@@ -66,7 +66,9 @@ export const DashboardViewer: React.FC = () => {
       }
       
       const data = await response.json();
-      setDashboard(data);
+      // Grafana API returns { dashboard: {...}, meta: {...} }
+      const dashboardData = data.dashboard || data;
+      setDashboard(dashboardData);
     } catch (err: any) {
       setError(err.message || 'Failed to load dashboard');
     } finally {

@@ -7,6 +7,7 @@ import { HomePage } from './pages/Home'
 import { DashboardsPage } from './pages/Dashboards'
 import { DashboardViewer } from './pages/DashboardViewer'
 import { AnomaliesPage } from './pages/Anomalies'
+import { CorrelationView } from './pages/CorrelationView'
 import { AlertsPage } from './pages/Alerts'
 import { LogsPage } from './pages/Logs'
 import { TracesPage } from './pages/Traces'
@@ -38,6 +39,7 @@ function App() {
           <Route path="services" element={<ServicesPage />} />
           <Route path="system-health" element={<SystemHealthPage />} />
           <Route path="anomalies" element={<AnomaliesPage />} />
+          <Route path="correlations/:id" element={<CorrelationView />} />
           <Route path="alerts" element={<AlertsPage />} />
           <Route path="logs" element={<LogsPage />} />
           <Route path="traces" element={<TracesPage />} />
