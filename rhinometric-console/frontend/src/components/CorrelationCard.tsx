@@ -1,6 +1,6 @@
 import React from 'react';
 import { format } from 'date-fns';
-import { es } from 'date-fns/locale';
+// date-fns locale removed - using English defaults
 
 interface CorrelationCardProps {
   title: string;
@@ -43,7 +43,7 @@ export const CorrelationCard: React.FC<CorrelationCardProps> = ({
           </span>
         </div>
         <p className="text-xs text-gray-500 mt-1">
-          {format(new Date(timestamp * 1000), 'dd/MM/yy HH:mm:ss', { locale: es })}
+          {format(new Date(timestamp * 1000), 'dd/MM/yy HH:mm:ss', )}
         </p>
       </div>
     );
@@ -51,7 +51,7 @@ export const CorrelationCard: React.FC<CorrelationCardProps> = ({
 
   const renderLogData = (item: any) => {
     const timestamp = typeof item.timestamp === 'number' ? item.timestamp : parseFloat(item.timestamp);
-    const logText = item.line || item.log || 'Sin contenido';
+    const logText = item.line || item.log || 'No content';
     const isError = /error|fail|exception/i.test(logText);
     const isWarning = /warn|warning/i.test(logText);
 
@@ -75,7 +75,7 @@ export const CorrelationCard: React.FC<CorrelationCardProps> = ({
             </span>
           </div>
           <span className="text-xs text-gray-500 whitespace-nowrap">
-            {format(new Date(timestamp * 1000), 'HH:mm:ss', { locale: es })}
+            {format(new Date(timestamp * 1000), 'HH:mm:ss', )}
           </span>
         </div>
         <p className="text-sm text-gray-300 font-mono break-all line-clamp-3">
@@ -101,11 +101,11 @@ export const CorrelationCard: React.FC<CorrelationCardProps> = ({
           <div className="flex items-center gap-2">
             <span className="text-orange-400 text-lg">🔍</span>
             <span className="text-sm font-medium text-orange-300">
-              {item.metric_name || item.name || 'Anomalía detectada'}
+              {item.metric_name || item.name || 'Anomaly detected'}
             </span>
           </div>
           <span className="text-xs bg-orange-500/20 text-orange-300 px-2 py-1 rounded">
-            Anomalía
+            Anomaly
           </span>
         </div>
         {item.description && (
@@ -133,7 +133,7 @@ export const CorrelationCard: React.FC<CorrelationCardProps> = ({
         </div>
         {item.span_count && (
           <p className="text-xs text-gray-400">
-            {item.span_count} spans | Duración: {item.duration}ms
+            {item.span_count} spans | Duration: {item.duration}ms
           </p>
         )}
       </div>
@@ -145,7 +145,7 @@ export const CorrelationCard: React.FC<CorrelationCardProps> = ({
       return (
         <div className="text-center py-8 text-gray-500">
           <p className="text-4xl mb-2">📭</p>
-          <p className="text-sm">No se encontraron datos en esta ventana de tiempo</p>
+          <p className="text-sm">No data found in this time window</p>
         </div>
       );
     }
@@ -160,7 +160,7 @@ export const CorrelationCard: React.FC<CorrelationCardProps> = ({
       case 'traces':
         return data.map(renderTraceData);
       default:
-        return <p className="text-gray-500">Tipo de dato no soportado</p>;
+        return <p className="text-gray-500">Unsupported data type</p>;
     }
   };
 
@@ -172,7 +172,7 @@ export const CorrelationCard: React.FC<CorrelationCardProps> = ({
           <span className="text-2xl">{icon}</span>
           <div>
             <h3 className="text-lg font-semibold text-white">{title}</h3>
-            <p className="text-xs text-gray-400">{data.length} elementos encontrados</p>
+            <p className="text-xs text-gray-400">{data.length} items found</p>
           </div>
         </div>
         {onViewMore && data.length > 0 && (
@@ -180,7 +180,7 @@ export const CorrelationCard: React.FC<CorrelationCardProps> = ({
             onClick={onViewMore}
             className="text-sm text-purple-400 hover:text-purple-300 transition-colors"
           >
-            Ver más →
+            View more →
           </button>
         )}
       </div>

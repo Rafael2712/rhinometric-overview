@@ -8,13 +8,14 @@ import { useAuthStore } from '../lib/auth/store';
 import { 
   getGrafanaMetricsUrl, 
   getGrafanaLogsUrl, 
-  getJaegerTracesUrl,
   buildLokiQuery,
   canAccessExternalTools,
   openExternalLink 
 } from '../utils/externalLinks';
 import { format } from 'date-fns';
-import { es } from 'date-fns/locale';
+// date-fns locale removed - using English defaults
+
+const CORRELATION_VIEW_BUILD = '2026-02-16T12';
 
 interface TimelineEvent {
   timestamp: string;
@@ -34,7 +35,7 @@ export function CorrelationView() {
   const hasExternalAccess = user ? canAccessExternalTools(user.roles) : false;
 
   useEffect(() => {
-    document.title = 'Correlación de Eventos - Rhinometric';
+    document.title = 'Event Correlation - Rhinometric';
   }, []);
 
   useEffect(() => {
@@ -97,7 +98,7 @@ export function CorrelationView() {
       events.push({
         timestamp: anomaly.timestamp || data.timestamp,
         type: 'anomaly',
-        label: anomaly.metric_name || 'Anomalía detectada',
+        label: anomaly.metric_name || 'Anomaly detected',
         severity: anomaly.severity || 'medium'
       });
     });
@@ -114,7 +115,7 @@ export function CorrelationView() {
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center">
           <Loader2 className="mx-auto mb-4 text-primary animate-spin" size={48} />
-          <p className="text-gray-400">Correlacionando eventos...</p>
+          <p className="text-gray-400">Correlating events...</p>
         </div>
       </div>
     );
@@ -128,20 +129,20 @@ export function CorrelationView() {
           className="mb-6 flex items-center gap-2 text-gray-400 hover:text-white transition-colors"
         >
           <ArrowLeft size={20} />
-          Volver
+          Back
         </button>
 
         <div className="card bg-error/10 border-error/30">
           <div className="flex items-start gap-4">
             <AlertCircle className="text-error mt-1" size={24} />
             <div className="flex-1">
-              <h3 className="text-error font-semibold mb-2">Error al Cargar Correlación</h3>
+              <h3 className="text-error font-semibold mb-2">Error Loading Correlation</h3>
               <p className="text-error/80 text-sm mb-4">{error}</p>
               <button
                 onClick={loadCorrelation}
                 className="btn btn-secondary"
               >
-                Reintentar
+                Retry
               </button>
             </div>
           </div>
@@ -158,19 +159,19 @@ export function CorrelationView() {
           className="mb-6 flex items-center gap-2 text-gray-400 hover:text-white transition-colors"
         >
           <ArrowLeft size={20} />
-          Volver
+          Back
         </button>
 
         <div className="card text-center py-16">
           <AlertCircle className="mx-auto mb-4 text-gray-500" size={48} />
-          <p className="text-gray-400">No se encontró información de correlación</p>
+          <p className="text-gray-400">No correlation information found</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div>
+    <div data-build={CORRELATION_VIEW_BUILD}>
       {/* Header */}
       <div className="mb-8">
         <button
@@ -178,16 +179,16 @@ export function CorrelationView() {
           className="mb-4 flex items-center gap-2 text-gray-400 hover:text-white transition-colors"
         >
           <ArrowLeft size={20} />
-          Volver
+          Back
         </button>
 
         <div className="flex items-start justify-between">
           <div>
             <h1 className="text-3xl font-bold text-white mb-2">
-              Análisis de Correlación
+              Correlation Analysis
             </h1>
             <p className="text-gray-400">
-              Evento detectado el {format(new Date(data.timestamp), "dd 'de' MMMM 'a las' HH:mm:ss", { locale: es })}
+              Event detected on {format(new Date(data.timestamp), "MMMM dd, yyyy 'at' HH:mm:ss")}
             </p>
           </div>
           <button
@@ -196,7 +197,7 @@ export function CorrelationView() {
             className="btn btn-secondary flex items-center gap-2"
           >
             <RefreshCw size={16} className={isRefreshing ? 'animate-spin' : ''} />
-            {isRefreshing ? 'Actualizando...' : 'Actualizar'}
+            {isRefreshing ? 'Refreshing...' : 'Refresh'}
           </button>
         </div>
       </div>
@@ -208,7 +209,7 @@ export function CorrelationView() {
             <div className="text-3xl">📊</div>
             <div>
               <div className="text-2xl font-bold text-white">{data.summary.metrics_count}</div>
-              <div className="text-sm text-gray-400">Métricas</div>
+              <div className="text-sm text-gray-400">Metrics</div>
             </div>
           </div>
         </div>
@@ -238,7 +239,7 @@ export function CorrelationView() {
             <div className="text-3xl">⚠️</div>
             <div>
               <div className="text-2xl font-bold text-white">{data.summary.anomalies_count}</div>
-              <div className="text-sm text-gray-400">Anomalías</div>
+              <div className="text-sm text-gray-400">Anomalies</div>
             </div>
           </div>
         </div>
@@ -261,24 +262,24 @@ export function CorrelationView() {
         <div className="flex items-start gap-3">
           <div className="text-2xl">🕐</div>
           <div className="flex-1">
-            <h3 className="text-white font-semibold mb-2">Ventana de Correlación</h3>
+            <h3 className="text-white font-semibold mb-2">Correlation Window</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
               <div>
-                <span className="text-gray-400">Inicio:</span>
+                <span className="text-gray-400">Start:</span>
                 <span className="ml-2 text-white font-medium">
-                  {format(new Date(data.correlation_window.start), 'HH:mm:ss', { locale: es })}
+                  {format(new Date(data.correlation_window.start), 'HH:mm:ss')}
                 </span>
               </div>
               <div>
-                <span className="text-gray-400">Fin:</span>
+                <span className="text-gray-400">End:</span>
                 <span className="ml-2 text-white font-medium">
-                  {format(new Date(data.correlation_window.end), 'HH:mm:ss', { locale: es })}
+                  {format(new Date(data.correlation_window.end), 'HH:mm:ss')}
                 </span>
               </div>
               <div>
-                <span className="text-gray-400">Duración:</span>
+                <span className="text-gray-400">Duration:</span>
                 <span className="ml-2 text-white font-medium">
-                  {data.correlation_window.duration_seconds} segundos
+                  {data.correlation_window.duration_seconds} seconds
                 </span>
               </div>
             </div>
@@ -291,9 +292,9 @@ export function CorrelationView() {
         <div className="flex items-start gap-3 mb-4">
           <div className="text-2xl">🔗</div>
           <div className="flex-1">
-            <h3 className="text-white font-semibold mb-1">Análisis Profundo</h3>
+            <h3 className="text-white font-semibold mb-1">Deep Analysis</h3>
             <p className="text-sm text-gray-400">
-              Explora los datos en las herramientas nativas de observabilidad
+              Explore data in native observability tools
             </p>
           </div>
         </div>
@@ -303,8 +304,38 @@ export function CorrelationView() {
           <button
             onClick={() => {
               if (hasExternalAccess) {
-                const host = data.metadata?.host || 'unknown';
-                const metricQuery = `{instance=~"${host}.*"}`;
+                // Map correlation query_name AND anomaly metric_name to real PromQL
+                const metricMap: Record<string, string> = {
+                  // Backend correlation engine query_name keys
+                  'cpu_usage': '100 - (avg by (instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)',
+                  'memory_usage': '(1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100',
+                  'disk_usage': '(node_filesystem_size_bytes - node_filesystem_avail_bytes) / node_filesystem_size_bytes * 100',
+                  'network_receive': 'rate(node_network_receive_bytes_total[5m])',
+                  // Anomaly metric_name keys (node_* prefix)
+                  'node_cpu_usage': '100 - (avg by (instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)',
+                  'node_memory_usage': '(1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100',
+                  'node_disk_io': 'rate(node_disk_io_time_seconds_total[5m])',
+                  'node_network_receive': 'rate(node_network_receive_bytes_total[5m])',
+                  'node_network_transmit': 'rate(node_network_transmit_bytes_total[5m])',
+                  'node_disk_usage': '(node_filesystem_size_bytes - node_filesystem_avail_bytes) / node_filesystem_size_bytes * 100',
+                  // Rhinometric website metrics
+                  'rhinometric_website_dns_time': 'rhinometric_website_dns_time',
+                  'rhinometric_website_ssl_expiry': 'rhinometric_website_ssl_expiry',
+                  'rhinometric_website_response_time': 'rhinometric_website_response_time',
+                  'rhinometric_website_availability': 'rhinometric_website_availability',
+                  // Generic app metrics
+                  'postgres_connections': 'pg_stat_database_numbackends',
+                  'response_time_ms': 'http_request_duration_seconds',
+                  'error_rate': 'rate(http_requests_total{status=~"5.."}[5m])',
+                  'http_request_rate': 'sum(rate(http_requests_total[5m]))',
+                  'http_error_rate': 'sum(rate(http_requests_total{status=~"5.."}[5m]))',
+                  'http_latency_p95': 'histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket[5m])))',
+                  'http_latency_p99': 'histogram_quantile(0.99, sum by (le) (rate(http_request_duration_seconds_bucket[5m])))'
+                };
+                const firstMetric = data.metrics[0]?.query_name;
+                const metricQuery = firstMetric
+                  ? (metricMap[firstMetric] || firstMetric)
+                  : 'up';
                 const url = getGrafanaMetricsUrl(
                   metricQuery,
                   data.correlation_window.start,
@@ -319,7 +350,7 @@ export function CorrelationView() {
                 ? 'bg-blue-500/10 border-blue-500/30 hover:bg-blue-500/20 hover:border-blue-500/50 cursor-pointer'
                 : 'bg-gray-800 border-gray-700 opacity-50 cursor-not-allowed'
             }`}
-            title={hasExternalAccess ? 'Abrir métricas en Grafana' : 'Solo disponible para Administradores'}
+            title={hasExternalAccess ? 'Open metrics in Grafana' : 'Only available for Administrators'}
           >
             <div className="text-3xl">📊</div>
             <div className="flex-1 text-left">
@@ -332,7 +363,7 @@ export function CorrelationView() {
                 )}
               </div>
               <div className="text-xs text-gray-400">
-                {hasExternalAccess ? 'Ver métricas detalladas' : 'Acceso restringido'}
+                {hasExternalAccess ? 'View detailed metrics' : 'Restricted access'}
               </div>
             </div>
           </button>
@@ -358,7 +389,7 @@ export function CorrelationView() {
                 ? 'bg-green-500/10 border-green-500/30 hover:bg-green-500/20 hover:border-green-500/50 cursor-pointer'
                 : 'bg-gray-800 border-gray-700 opacity-50 cursor-not-allowed'
             }`}
-            title={hasExternalAccess ? 'Abrir logs en Grafana (Loki)' : 'Solo disponible para Administradores'}
+            title={hasExternalAccess ? 'Open logs in Grafana (Loki)' : 'Only available for Administrators'}
           >
             <div className="text-3xl">📝</div>
             <div className="flex-1 text-left">
@@ -371,45 +402,24 @@ export function CorrelationView() {
                 )}
               </div>
               <div className="text-xs text-gray-400">
-                {hasExternalAccess ? 'Explorar logs completos' : 'Acceso restringido'}
+                {hasExternalAccess ? 'Explore full logs' : 'Restricted access'}
               </div>
             </div>
           </button>
 
-          {/* Jaeger Traces */}
+          {/* Jaeger Traces – disabled until integration is ready */}
           <button
-            onClick={() => {
-              if (hasExternalAccess) {
-                const service = data.metadata?.service;
-                const url = getJaegerTracesUrl(
-                  data.correlation_window.start,
-                  data.correlation_window.end,
-                  service
-                );
-                openExternalLink(url);
-              }
-            }}
-            disabled={!hasExternalAccess}
-            className={`p-4 rounded-lg border transition-all flex items-center gap-3 ${
-              hasExternalAccess
-                ? 'bg-purple-500/10 border-purple-500/30 hover:bg-purple-500/20 hover:border-purple-500/50 cursor-pointer'
-                : 'bg-gray-800 border-gray-700 opacity-50 cursor-not-allowed'
-            }`}
-            title={hasExternalAccess ? 'Abrir traces en Jaeger' : 'Solo disponible para Administradores'}
+            disabled
+            className="p-4 rounded-lg border transition-all flex items-center gap-3 bg-gray-800 border-gray-700 opacity-50 cursor-not-allowed"
+            title="Coming soon"
           >
             <div className="text-3xl">🔗</div>
             <div className="flex-1 text-left">
               <div className="text-white font-medium flex items-center gap-2">
                 Jaeger Traces
-                {hasExternalAccess ? (
-                  <ExternalLink size={14} className="text-purple-400" />
-                ) : (
-                  <Lock size={14} className="text-gray-500" />
-                )}
+                <Lock size={14} className="text-gray-500" />
               </div>
-              <div className="text-xs text-gray-400">
-                {hasExternalAccess ? 'Análisis de trazas' : 'Acceso restringido'}
-              </div>
+              <div className="text-xs text-gray-400">Coming soon</div>
             </div>
           </button>
         </div>
@@ -418,8 +428,8 @@ export function CorrelationView() {
           <div className="mt-4 p-3 bg-warning/10 border border-warning/30 rounded-lg">
             <div className="flex items-center gap-2 text-warning text-sm">
               <Lock size={16} />
-              <span className="font-medium">Acceso Restringido:</span>
-              <span>Solo usuarios con rol ADMIN u OWNER pueden acceder a herramientas externas.</span>
+              <span className="font-medium">Restricted Access:</span>
+              <span>Only users with ADMIN or OWNER role can access external tools.</span>
             </div>
           </div>
         )}
@@ -430,7 +440,7 @@ export function CorrelationView() {
         {/* Metrics */}
         {data.metrics.length > 0 && (
           <CorrelationCard
-            title="Métricas Correlacionadas"
+            title="Correlated Metrics"
             icon="📊"
             data={data.metrics}
             type="metrics"
@@ -440,7 +450,7 @@ export function CorrelationView() {
         {/* Logs */}
         {data.logs.length > 0 && (
           <CorrelationCard
-            title="Logs Relacionados"
+            title="Related Logs"
             icon="📝"
             data={data.logs}
             type="logs"
@@ -450,7 +460,7 @@ export function CorrelationView() {
         {/* Anomalies */}
         {data.related_anomalies.length > 0 && (
           <CorrelationCard
-            title="Anomalías Relacionadas"
+            title="Related Anomalies"
             icon="⚠️"
             data={data.related_anomalies}
             type="anomalies"
@@ -460,7 +470,7 @@ export function CorrelationView() {
         {/* Traces */}
         {data.traces.length > 0 && (
           <CorrelationCard
-            title="Traces Relacionados"
+            title="Related Traces"
             icon="🔗"
             data={data.traces}
             type="traces"
@@ -476,13 +486,13 @@ export function CorrelationView() {
         <div className="card text-center py-16">
           <div className="text-6xl mb-4">🔍</div>
           <h3 className="text-xl font-semibold text-white mb-2">
-            No se Encontraron Datos Correlacionados
+            No Correlated Data Found
           </h3>
           <p className="text-gray-400 mb-6">
-            No se detectaron eventos relacionados en la ventana de tiempo especificada.
+            No related events detected in the specified time window.
           </p>
           <button onClick={handleRefresh} className="btn btn-primary">
-            Intentar de Nuevo
+            Try Again
           </button>
         </div>
       )}

@@ -1,6 +1,6 @@
 import React from 'react';
 import { format } from 'date-fns';
-import { es } from 'date-fns/locale';
+// date-fns locale removed - using English defaults
 
 interface TimelineEvent {
   timestamp: string;
@@ -68,14 +68,14 @@ export const CorrelationTimeline: React.FC<CorrelationTimelineProps> = ({
   return (
     <div className="w-full bg-gray-900 rounded-lg p-6 border border-gray-700">
       <h3 className="text-lg font-semibold text-white mb-4">
-        Línea de Tiempo de Eventos
+        Event Timeline
       </h3>
       
       {/* Timeline Header */}
       <div className="flex justify-between text-xs text-gray-400 mb-2">
-        <span>{format(new Date(windowStart), 'HH:mm:ss', { locale: es })}</span>
-        <span className="text-white font-medium">Evento Central</span>
-        <span>{format(new Date(windowEnd), 'HH:mm:ss', { locale: es })}</span>
+        <span>{format(new Date(windowStart), 'HH:mm:ss')}</span>
+        <span className="text-white font-medium">Central Event</span>
+        <span>{format(new Date(windowEnd), 'HH:mm:ss')}</span>
       </div>
 
       {/* Timeline Bar */}
@@ -86,7 +86,7 @@ export const CorrelationTimeline: React.FC<CorrelationTimelineProps> = ({
           style={{ left: `${centralPosition}%` }}
         >
           <div className="absolute -top-8 left-1/2 -translate-x-1/2 text-xs text-red-400 whitespace-nowrap">
-            Anomalía
+            Anomaly
           </div>
         </div>
 
@@ -110,10 +110,10 @@ export const CorrelationTimeline: React.FC<CorrelationTimelineProps> = ({
                   </div>
                   <p className="text-gray-300 mb-1">{event.label}</p>
                   {event.value && (
-                    <p className="text-gray-400 text-xs">Valor: {event.value}</p>
+                    <p className="text-gray-400 text-xs">Value: {event.value}</p>
                   )}
                   <p className="text-gray-500 text-xs mt-2">
-                    {format(new Date(event.timestamp), 'HH:mm:ss.SSS', { locale: es })}
+                    {format(new Date(event.timestamp), 'HH:mm:ss.SSS')}
                   </p>
                 </div>
               </div>
@@ -126,15 +126,15 @@ export const CorrelationTimeline: React.FC<CorrelationTimelineProps> = ({
       <div className="flex flex-wrap gap-4 text-xs text-gray-400 mt-4">
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 rounded-full bg-red-500" />
-          <span>Anomalía</span>
+          <span>Anomaly</span>
         </div>
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 rounded-full bg-orange-500" />
-          <span>Alerta</span>
+          <span>Alert</span>
         </div>
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 rounded-full bg-purple-500" />
-          <span>Métrica</span>
+          <span>Metric</span>
         </div>
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 rounded-full bg-gray-500" />
@@ -146,9 +146,9 @@ export const CorrelationTimeline: React.FC<CorrelationTimelineProps> = ({
       <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
         {['anomaly', 'alert', 'metric', 'log'].map((type) => {
           const count = events.filter(e => e.type === type).length;
-          const label = type === 'anomaly' ? 'Anomalías' : 
-                       type === 'alert' ? 'Alertas' :
-                       type === 'metric' ? 'Métricas' : 'Logs';
+          const label = type === 'anomaly' ? 'Anomalies' : 
+                       type === 'alert' ? 'Alerts' :
+                       type === 'metric' ? 'Metrics' : 'Logs';
           
           return (
             <div key={type} className="bg-gray-800 rounded-lg p-3 border border-gray-700">
