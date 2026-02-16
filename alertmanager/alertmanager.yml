@@ -17,10 +17,11 @@ route:
   group_interval: 5m
   repeat_interval: 4h
   routes:
-    # AI Anomaly alerts → dedicated receiver with rich templates
+    # AI Anomaly alerts -> dedicated receiver with rich templates
     - match:
         component: ai-anomaly
       receiver: "ai-anomaly-alerts"
+      group_by: ["alertname", "metric", "severity"]
       group_wait: 30s
       group_interval: 5m
       repeat_interval: 4h
@@ -56,13 +57,13 @@ receivers:
             url: "https://console.rhinometric.com/anomalies"
           - type: button
             text: "Ver metricas en Grafana (admin)"
-            url: "https://console.rhinometric.com/grafana/explore"
+            url: "https://console.rhinometric.com/grafana/explore?schemaVersion=1&panes=%7B%22a%22%3A%7B%22datasource%22%3A%22victoriametrics%22%2C%22queries%22%3A%5B%7B%22refId%22%3A%22A%22%2C%22expr%22%3A%22rhinometric_anomaly_current_value%7Bmetric_name%3D%5C%22{{ (index .Alerts 0).Labels.metric }}%5C%22%7D%22%7D%5D%2C%22range%22%3A%7B%22from%22%3A%22now-1h%22%2C%22to%22%3A%22now%22%7D%7D%7D"
         send_resolved: true
     email_configs:
       - to: "rafael.canelon@rhinometric.com"
         html: '{{ template "ai_anomaly_email.html" . }}'
         headers:
-          Subject: 'Rhinometric AI Alert [{{ (index .Alerts 0).Labels.severity | toUpper }}] {{ (index .Alerts 0).Labels.metric_name }}'
+          Subject: 'Rhinometric AI Alert [{{ (index .Alerts 0).Labels.severity | toUpper }}] {{ (index .Alerts 0).Labels.metric }}'
         send_resolved: true
 
   - name: "team-notifications"

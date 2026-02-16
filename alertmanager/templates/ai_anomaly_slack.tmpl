@@ -1,76 +1,76 @@
 {{ define "ai_anomaly_slack_title" -}}
-{{ if eq .Labels.severity "critical" }}🔴{{ else if eq .Labels.severity "high" }}🟠{{ else if eq .Labels.severity "warning" }}🟡{{ else if eq .Labels.severity "medium" }}🟡{{ else }}🔵{{ end }} [{{ .Labels.severity | toUpper }}] AI Anomaly: {{ .Labels.metric_name }} ({{ .Labels.instance }})
+{{ if eq .Labels.severity "critical" }}🔴{{ else if eq .Labels.severity "high" }}🟠{{ else if eq .Labels.severity "warning" }}🟡{{ else if eq .Labels.severity "medium" }}🟡{{ else if eq .Labels.severity "low" }}🔵{{ else }}🔵{{ end }} [{{ .Labels.severity | toUpper }}] AI Anomaly: {{ .Labels.metric }} ({{ .Labels.service }})
 {{- end }}
 
 {{ define "ai_anomaly_slack_description" -}}
-{{ if eq .Labels.metric_name "node_cpu_usage" -}}
+{{ if eq .Labels.metric "node_cpu_usage" -}}
 Uso de CPU del nodo fuera del rango normal aprendido por el modelo AI.
-{{- else if eq .Labels.metric_name "node_memory_usage" -}}
+{{- else if eq .Labels.metric "node_memory_usage" -}}
 Uso de memoria del nodo fuera del rango normal aprendido.
-{{- else if eq .Labels.metric_name "node_disk_usage" -}}
+{{- else if eq .Labels.metric "node_disk_usage" -}}
 Uso de disco fuera del rango esperado por el baseline.
-{{- else if eq .Labels.metric_name "node_disk_io" -}}
-Latencia o throughput de disco anómalos respecto al baseline.
-{{- else if eq .Labels.metric_name "node_network_receive" -}}
-Tráfico de red entrante inusual en el nodo.
-{{- else if eq .Labels.metric_name "node_network_transmit" -}}
-Tráfico de red saliente anómalo en el nodo.
-{{- else if eq .Labels.metric_name "rhinometric_website_availability" -}}
-Disponibilidad de la web más baja de lo esperado.
-{{- else if eq .Labels.metric_name "rhinometric_website_response_time" -}}
-Tiempos de respuesta de la web más altos de lo normal.
-{{- else if eq .Labels.metric_name "rhinometric_website_ssl_expiry" -}}
-Certificado SSL con vencimiento anómalo detectado.
-{{- else if eq .Labels.metric_name "rhinometric_website_dns_time" -}}
-Resolución DNS tardando más de lo esperado.
+{{- else if eq .Labels.metric "node_disk_io" -}}
+Latencia o throughput de disco anomalos respecto al baseline.
+{{- else if eq .Labels.metric "node_network_receive" -}}
+Trafico de red entrante inusual en el nodo.
+{{- else if eq .Labels.metric "node_network_transmit" -}}
+Trafico de red saliente anomalo en el nodo.
+{{- else if eq .Labels.metric "rhinometric_website_availability" -}}
+Disponibilidad de la web mas baja de lo esperado.
+{{- else if eq .Labels.metric "rhinometric_website_response_time" -}}
+Tiempos de respuesta de la web mas altos de lo normal.
+{{- else if eq .Labels.metric "rhinometric_website_ssl_expiry" -}}
+Certificado SSL con vencimiento anomalo detectado.
+{{- else if eq .Labels.metric "rhinometric_website_dns_time" -}}
+Resolucion DNS tardando mas de lo esperado.
 {{- else -}}
-Anomalía detectada por IA en {{ .Labels.metric_name }}.
+Anomalia detectada por IA en {{ .Labels.metric }}.
 {{- end }}
 {{- end }}
 
 {{ define "ai_anomaly_slack_troubleshooting" -}}
-{{ if eq .Labels.metric_name "node_cpu_usage" -}}
-1. Revisar gráfica de CPU en los últimos 30 minutos en Grafana.
+{{ if eq .Labels.metric "node_cpu_usage" -}}
+1. Revisar grafica de CPU en los ultimos 30 minutos en Grafana.
 2. Cruzar con logs de procesos principales en el nodo.
 3. Comprobar si coincide con despliegues, backups o jobs pesados.
-{{- else if eq .Labels.metric_name "node_memory_usage" -}}
+{{- else if eq .Labels.metric "node_memory_usage" -}}
 1. Revisar uso de RAM total y por proceso en Grafana.
 2. Buscar OOM kills en logs del sistema.
 3. Verificar si hay fugas de memoria en servicios recientes.
-{{- else if eq .Labels.metric_name "node_disk_usage" -}}
+{{- else if eq .Labels.metric "node_disk_usage" -}}
 1. Verificar espacio en disco con df -h en el nodo.
-2. Identificar directorios que crecen rápido (logs, datos).
-3. Revisar políticas de retención y limpieza automática.
-{{- else if eq .Labels.metric_name "node_disk_io" -}}
-1. Revisar métricas de IOPS, read/write bytes y latencia.
+2. Identificar directorios que crecen rapido (logs, datos).
+3. Revisar politicas de retencion y limpieza automatica.
+{{- else if eq .Labels.metric "node_disk_io" -}}
+1. Revisar metricas de IOPS, read/write bytes y latencia.
 2. Comprobar si hay procesos con acceso intensivo a disco (DB, backup).
 3. Ver espacio libre y errores en logs de sistema.
-{{- else if eq .Labels.metric_name "node_network_receive" -}}
-1. Mirar métricas de rx_bytes, rx_packets y drops.
+{{- else if eq .Labels.metric "node_network_receive" -}}
+1. Mirar metricas de rx_bytes, rx_packets y drops.
 2. Revisar logs de firewall / reverse-proxy.
-3. Verificar si coincide con campañas, pruebas de carga o escaneos.
-{{- else if eq .Labels.metric_name "node_network_transmit" -}}
-1. Ver métricas de tx_bytes, tx_packets, errores/drops.
-2. Revisar qué servicios generan más tráfico (logs de apps / proxy).
-3. Validar si hay jobs de sincronización o backups externos.
-{{- else if eq .Labels.metric_name "rhinometric_website_availability" -}}
+3. Verificar si coincide con campanas, pruebas de carga o escaneos.
+{{- else if eq .Labels.metric "node_network_transmit" -}}
+1. Ver metricas de tx_bytes, tx_packets, errores/drops.
+2. Revisar que servicios generan mas trafico (logs de apps / proxy).
+3. Validar si hay jobs de sincronizacion o backups externos.
+{{- else if eq .Labels.metric "rhinometric_website_availability" -}}
 1. Revisar HTTP status (5xx/4xx), uptime y health checks.
-2. Mirar logs de Nginx/ingress y de la aplicación web.
+2. Mirar logs de Nginx/ingress y de la aplicacion web.
 3. Comprobar despliegues recientes en frontend/backend.
-{{- else if eq .Labels.metric_name "rhinometric_website_response_time" -}}
-1. Ver métricas de latencia (p95/p99) en Grafana.
+{{- else if eq .Labels.metric "rhinometric_website_response_time" -}}
+1. Ver metricas de latencia (p95/p99) en Grafana.
 2. Revisar CPU, memoria y GC en los servicios web.
 3. Consultar logs de consultas lentas (DB / APIs internas).
-{{- else if eq .Labels.metric_name "rhinometric_website_ssl_expiry" -}}
+{{- else if eq .Labels.metric "rhinometric_website_ssl_expiry" -}}
 1. Verificar fecha de vencimiento del certificado SSL.
-2. Comprobar renovación automática (Let's Encrypt / proveedor).
-3. Revisar configuración de HTTPS en Nginx.
-{{- else if eq .Labels.metric_name "rhinometric_website_dns_time" -}}
-1. Ver métricas de DNS lookup time.
+2. Comprobar renovacion automatica (Let's Encrypt / proveedor).
+3. Revisar configuracion de HTTPS en Nginx.
+{{- else if eq .Labels.metric "rhinometric_website_dns_time" -}}
+1. Ver metricas de DNS lookup time.
 2. Comprobar estado del proveedor DNS / registros.
 3. Revisar cambios recientes en records (A/CNAME) o TTL.
 {{- else -}}
-1. Revisar métricas de {{ .Labels.metric_name }} en Grafana.
+1. Revisar metricas de {{ .Labels.metric }} en Grafana.
 2. Consultar logs del servicio afectado.
 3. Verificar cambios recientes en infraestructura.
 {{- end }}
@@ -81,20 +81,23 @@ Anomalía detectada por IA en {{ .Labels.metric_name }}.
 *{{ template "ai_anomaly_slack_title" . }}*
 
 {{ template "ai_anomaly_slack_description" . }}
-
-{{ if .Annotations.deviation_percent }}*Desviación:* {{ .Annotations.deviation_percent }}% respecto al baseline{{ end }}
-{{ if and .Annotations.current_value .Annotations.expected_value }}*Valor actual:* {{ .Annotations.current_value }} | *Baseline esperado:* {{ .Annotations.expected_value }}{{ end }}
+{{ if .Annotations.deviation_percent }}
+*Desviacion:* {{ .Annotations.deviation_percent }} respecto al baseline{{ end }}
+{{ if and .Annotations.current_value .Annotations.baseline_value }}
+*Valor actual:* {{ .Annotations.current_value }} | *Baseline esperado:* {{ .Annotations.baseline_value }}{{ end }}
 
 *Contexto:*
-• *Componente:* {{ .Labels.component }}
-• *Métrica:* {{ .Labels.metric_name }}
-• *Severidad:* {{ .Labels.severity | toUpper }}
-• *Estado:* {{ .Status }}
-• *Instancia:* {{ .Labels.instance }}
-• *Detectado:* {{ .StartsAt.Format "2006-01-02 15:04:05 UTC" }}
+\u2022 *Componente:* {{ .Labels.component }}
+\u2022 *Metrica:* {{ .Labels.metric }}
+\u2022 *Severidad:* {{ .Labels.severity | toUpper }}
+\u2022 *Estado:* {{ .Status }}
+\u2022 *Servicio:* {{ .Labels.service }}
+\u2022 *Confianza:* {{ .Annotations.confidence }}
+\u2022 *Detectado:* {{ .StartsAt.Format "2006-01-02 15:04:05 UTC" }}
 
 *Troubleshooting:*
 {{ template "ai_anomaly_slack_troubleshooting" . }}
 
+---
 {{ end }}
 {{ end }}

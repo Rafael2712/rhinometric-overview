@@ -24,10 +24,6 @@
         .description-box p { margin: 0; font-size: 15px; color: #2d3748; line-height: 1.5; }
         .deviation { font-size: 28px; font-weight: 800; color: #dc3545; }
         .deviation-label { font-size: 12px; color: #6c757d; text-transform: uppercase; }
-        .stats-row { display: flex; gap: 16px; margin-top: 12px; }
-        .stat-box { flex: 1; background: #f8f9fa; border-radius: 8px; padding: 12px; text-align: center; }
-        .stat-value { font-size: 18px; font-weight: 700; color: #2d3748; }
-        .stat-label { font-size: 11px; color: #6c757d; text-transform: uppercase; }
         .context-table { width: 100%; border-collapse: collapse; }
         .context-table td { padding: 8px 0; font-size: 14px; border-bottom: 1px solid #f0f2f5; }
         .context-table td:first-child { color: #6c757d; font-weight: 600; width: 140px; }
@@ -53,8 +49,8 @@
                 <span class="badge">AI ANOMALY</span>
                 {{ if eq .Status "resolved" }}<span class="badge" style="background:rgba(40,167,69,0.8);">RESUELTO</span>{{ end }}
             </div>
-            <h1 style="margin-top:12px;">{{ .Labels.metric_name }}</h1>
-            <p>Instancia: {{ .Labels.instance }} &bull; {{ .StartsAt.Format "02 Jan 2006 15:04 UTC" }}</p>
+            <h1 style="margin-top:12px;">{{ .Labels.metric }}</h1>
+            <p>Servicio: {{ .Labels.service }} &bull; {{ .StartsAt.Format "02 Jan 2006 15:04 UTC" }}</p>
         </div>
 
         <div class="body-content">
@@ -62,16 +58,15 @@
             <div class="section">
                 <div class="section-title">Que ha detectado Rhinometric</div>
                 <div class="description-box">
-                    <p>{{ .Annotations.summary }}</p>
+                    <p>{{ .Annotations.description }}</p>
                 </div>
                 {{ if .Annotations.deviation_percent }}
                 <div style="text-align:center;margin-top:16px;">
-                    <div class="deviation">{{ .Annotations.deviation_percent }}%</div>
+                    <div class="deviation">{{ .Annotations.deviation_percent }}</div>
                     <div class="deviation-label">Desviacion respecto al baseline</div>
                 </div>
                 {{ end }}
-                {{ if and .Annotations.current_value .Annotations.expected_value }}
-                <!--[if mso]><table width="100%"><tr><td width="50%" valign="top"><![endif]-->
+                {{ if and .Annotations.current_value .Annotations.baseline_value }}
                 <table width="100%" cellpadding="0" cellspacing="0" style="margin-top:12px;">
                     <tr>
                         <td width="48%" style="background:#f8f9fa;border-radius:8px;padding:12px;text-align:center;">
@@ -80,12 +75,11 @@
                         </td>
                         <td width="4%">&nbsp;</td>
                         <td width="48%" style="background:#f8f9fa;border-radius:8px;padding:12px;text-align:center;">
-                            <div style="font-size:18px;font-weight:700;color:#2d3748;">{{ .Annotations.expected_value }}</div>
+                            <div style="font-size:18px;font-weight:700;color:#2d3748;">{{ .Annotations.baseline_value }}</div>
                             <div style="font-size:11px;color:#6c757d;text-transform:uppercase;">Baseline esperado</div>
                         </td>
                     </tr>
                 </table>
-                <!--[if mso]></td></tr></table><![endif]-->
                 {{ end }}
             </div>
 
@@ -95,12 +89,13 @@
                 <table class="context-table">
                     <tr><td>Tipo</td><td>AI Anomaly</td></tr>
                     <tr><td>Alerta</td><td>{{ .Labels.alertname }}</td></tr>
-                    <tr><td>Metrica</td><td>{{ .Labels.metric_name }}</td></tr>
+                    <tr><td>Metrica</td><td>{{ .Labels.metric }}</td></tr>
                     <tr><td>Severidad</td><td>{{ .Labels.severity | toUpper }}</td></tr>
                     <tr><td>Estado</td><td>{{ .Status }}</td></tr>
                     <tr><td>Componente</td><td>{{ .Labels.component }}</td></tr>
-                    <tr><td>Instancia</td><td>{{ .Labels.instance }}</td></tr>
-                    <tr><td>Job</td><td>{{ .Labels.job }}</td></tr>
+                    <tr><td>Servicio</td><td>{{ .Labels.service }}</td></tr>
+                    <tr><td>Confianza</td><td>{{ .Annotations.confidence }}</td></tr>
+                    <tr><td>Anomaly Score</td><td>{{ .Annotations.anomaly_score }}</td></tr>
                     <tr><td>Detectado</td><td>{{ .StartsAt.Format "2006-01-02 15:04:05 UTC" }}</td></tr>
                     {{ if ne .Status "firing" }}
                     <tr><td>Resuelto</td><td>{{ .EndsAt.Format "2006-01-02 15:04:05 UTC" }}</td></tr>
@@ -113,7 +108,7 @@
                 <div class="section-title">Acciones rapidas</div>
                 <div class="actions">
                     <a href="https://console.rhinometric.com/anomalies" class="btn btn-primary">&#128269; Abrir en consola Rhinometric</a>
-                    <a href="https://console.rhinometric.com/grafana/explore?orgId=1&left={{ "{"  }}%22datasource%22:%22victoriametrics%22,%22queries%22:[{{ "{" }}%22refId%22:%22A%22,%22expr%22:%22{{ .Labels.metric_name }}%22{{ "}" }}]{{ "}" }}" class="btn btn-secondary">&#128202; Ver metricas en Grafana</a>
+                    <a href="https://console.rhinometric.com/grafana/explore?schemaVersion=1&panes=%7B%22a%22%3A%7B%22datasource%22%3A%22victoriametrics%22%2C%22queries%22%3A%5B%7B%22refId%22%3A%22A%22%2C%22expr%22%3A%22rhinometric_anomaly_current_value%7Bmetric_name%3D%5C%22{{ .Labels.metric }}%5C%22%7D%22%7D%5D%2C%22range%22%3A%7B%22from%22%3A%22now-1h%22%2C%22to%22%3A%22now%22%7D%7D%7D" class="btn btn-secondary">&#128202; Ver metricas en Grafana</a>
                 </div>
                 <p style="text-align:center;font-size:11px;color:#999;">Grafana requiere permisos de ADMIN/OWNER. Si no tienes acceso, usa la consola Rhinometric.</p>
             </div>
@@ -123,48 +118,48 @@
                 <div class="section-title">Guia rapida de troubleshooting</div>
                 <div class="troubleshooting">
                     <ol>
-                    {{ if eq .Labels.metric_name "node_cpu_usage" }}
+                    {{ if eq .Labels.metric "node_cpu_usage" }}
                         <li>Revisar grafica de CPU en los ultimos 30 minutos en Grafana.</li>
                         <li>Cruzar con logs de procesos principales en el nodo.</li>
                         <li>Comprobar si coincide con despliegues, backups o jobs pesados.</li>
-                    {{ else if eq .Labels.metric_name "node_memory_usage" }}
+                    {{ else if eq .Labels.metric "node_memory_usage" }}
                         <li>Revisar uso de RAM total y por proceso en Grafana.</li>
                         <li>Buscar OOM kills en logs del sistema.</li>
                         <li>Verificar si hay fugas de memoria en servicios recientes.</li>
-                    {{ else if eq .Labels.metric_name "node_disk_usage" }}
+                    {{ else if eq .Labels.metric "node_disk_usage" }}
                         <li>Verificar espacio en disco con df -h en el nodo.</li>
                         <li>Identificar directorios que crecen rapido (logs, datos).</li>
                         <li>Revisar politicas de retencion y limpieza automatica.</li>
-                    {{ else if eq .Labels.metric_name "node_disk_io" }}
+                    {{ else if eq .Labels.metric "node_disk_io" }}
                         <li>Revisar metricas de IOPS, read/write bytes y latencia.</li>
                         <li>Comprobar si hay procesos con acceso intensivo a disco.</li>
                         <li>Ver espacio libre y errores en logs de sistema.</li>
-                    {{ else if eq .Labels.metric_name "node_network_receive" }}
+                    {{ else if eq .Labels.metric "node_network_receive" }}
                         <li>Mirar metricas de rx_bytes, rx_packets y drops.</li>
                         <li>Revisar logs de firewall / reverse-proxy.</li>
                         <li>Verificar si coincide con campanas, pruebas de carga o escaneos.</li>
-                    {{ else if eq .Labels.metric_name "node_network_transmit" }}
+                    {{ else if eq .Labels.metric "node_network_transmit" }}
                         <li>Ver metricas de tx_bytes, tx_packets, errores/drops.</li>
                         <li>Revisar que servicios generan mas trafico.</li>
                         <li>Validar si hay jobs de sincronizacion o backups externos.</li>
-                    {{ else if eq .Labels.metric_name "rhinometric_website_availability" }}
+                    {{ else if eq .Labels.metric "rhinometric_website_availability" }}
                         <li>Revisar HTTP status (5xx/4xx), uptime y health checks.</li>
                         <li>Mirar logs de Nginx/ingress y de la aplicacion web.</li>
                         <li>Comprobar despliegues recientes en frontend/backend.</li>
-                    {{ else if eq .Labels.metric_name "rhinometric_website_response_time" }}
+                    {{ else if eq .Labels.metric "rhinometric_website_response_time" }}
                         <li>Ver metricas de latencia (p95/p99) en Grafana.</li>
                         <li>Revisar CPU, memoria y GC en los servicios web.</li>
                         <li>Consultar logs de consultas lentas (DB / APIs internas).</li>
-                    {{ else if eq .Labels.metric_name "rhinometric_website_ssl_expiry" }}
+                    {{ else if eq .Labels.metric "rhinometric_website_ssl_expiry" }}
                         <li>Verificar fecha de vencimiento del certificado SSL.</li>
                         <li>Comprobar renovacion automatica (Let's Encrypt / proveedor).</li>
                         <li>Revisar configuracion de HTTPS en Nginx.</li>
-                    {{ else if eq .Labels.metric_name "rhinometric_website_dns_time" }}
+                    {{ else if eq .Labels.metric "rhinometric_website_dns_time" }}
                         <li>Ver metricas de DNS lookup time.</li>
                         <li>Comprobar estado del proveedor DNS / registros.</li>
                         <li>Revisar cambios recientes en records (A/CNAME) o TTL.</li>
                     {{ else }}
-                        <li>Revisar metricas de {{ .Labels.metric_name }} en Grafana.</li>
+                        <li>Revisar metricas de {{ .Labels.metric }} en Grafana.</li>
                         <li>Consultar logs del servicio afectado.</li>
                         <li>Verificar cambios recientes en infraestructura.</li>
                     {{ end }}
@@ -189,7 +184,7 @@
         <div class="footer">
             <p><strong>Rhinometric Observability Platform v2.5.2</strong></p>
             <p>Servidor: 89.167.22.228 &bull; Componente: ai-anomaly</p>
-            <p style="margin-top:10px;">Recibes esta alerta porque estas suscrito a notificaciones de {{ .GroupLabels.alertname }}.<br>
+            <p style="margin-top:10px;">Recibes esta alerta porque estas suscrito a notificaciones de anomalia AI.<br>
             <a href="https://console.rhinometric.com">Consola Rhinometric</a> &bull;
             <a href="https://console.rhinometric.com/grafana">Grafana</a>
             </p>
