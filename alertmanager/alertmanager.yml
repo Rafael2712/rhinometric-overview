@@ -17,6 +17,15 @@ route:
   group_interval: 5m
   repeat_interval: 4h
   routes:
+    # AI Anomaly alerts → dedicated receiver with rich templates
+    - match:
+        component: ai-anomaly
+      receiver: "ai-anomaly-alerts"
+      group_wait: 30s
+      group_interval: 5m
+      repeat_interval: 4h
+      continue: false
+
     - match:
         severity: critical
       receiver: "critical-alerts"
@@ -33,6 +42,29 @@ route:
       repeat_interval: 24h
 
 receivers:
+  # AI Anomaly: Rich Slack + Email with troubleshooting
+  - name: "ai-anomaly-alerts"
+    slack_configs:
+      - channel: "#rhinometric-alerts"
+        username: "Rhinometric AI"
+        icon_emoji: ":brain:"
+        title: '{{ template "ai_anomaly_slack_title" (index .Alerts 0) }}'
+        text: '{{ template "ai_anomaly_slack" . }}'
+        actions:
+          - type: button
+            text: "Abrir en consola Rhinometric"
+            url: "https://console.rhinometric.com/anomalies"
+          - type: button
+            text: "Ver metricas en Grafana (admin)"
+            url: "https://console.rhinometric.com/grafana/explore"
+        send_resolved: true
+    email_configs:
+      - to: "rafael.canelon@rhinometric.com"
+        html: '{{ template "ai_anomaly_email.html" . }}'
+        headers:
+          Subject: 'Rhinometric AI Alert [{{ (index .Alerts 0).Labels.severity | toUpper }}] {{ (index .Alerts 0).Labels.metric_name }}'
+        send_resolved: true
+
   - name: "team-notifications"
     email_configs:
       - to: "rafael.canelon@rhinometric.com"

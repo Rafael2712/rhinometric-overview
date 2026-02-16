@@ -29,6 +29,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Documentation
 - Anadido docs/AI_ANOMALIES_CORRELATION_MODULE.md - Documentacion completa del modulo de anomalias y correlacion.
 
+### Added - Notification Templates (AI Anomaly)
+- **Plantilla Slack dedicada** (`ai_anomaly_slack.tmpl`) - Titulo con emoji de severidad, descripcion en lenguaje humano, bloque de contexto, troubleshooting inline y botones de accion (Consola + Grafana).
+- **Plantilla Email HTML dedicada** (`ai_anomaly_email.tmpl`) - Header con color por severidad, badges, seccion descriptiva, tabla de contexto, botones de accion, guia rapida de troubleshooting, links a documentacion y footer profesional.
+- **Ruta dedicada en Alertmanager** - Nuevo route `match: component: ai-anomaly` con receiver `ai-anomaly-alerts` (Slack + Email), posicionado antes de las rutas de severidad genericas.
+- **Regla MediumAnomalyDetected** - Nueva regla para anomalias de severidad `medium` con `for: 10m`.
+- **Catalogo de troubleshooting** - 10 tipos de metrica con pasos especificos: node_cpu_usage, node_memory_usage, node_disk_usage, node_disk_io, node_network_receive, node_network_transmit, rhinometric_website_availability, rhinometric_website_response_time, rhinometric_website_ssl_expiry, rhinometric_website_dns_time.
+
+### Documentation
+- Anadido `docs/ALERTING_NOTIFICATIONS_AI_ANOMALY.md` - Documentacion completa de notificaciones AI Anomaly (flujo, plantillas, catalogo, RBAC, verificacion).
+
+
 ---
 ## [2.5.1] - 2026-02-09
 

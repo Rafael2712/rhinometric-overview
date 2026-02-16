@@ -198,6 +198,7 @@
   # ═══════════════════════════════════════════════════════════════════════════
   # ALERTAS AI ANOMALY - Nueva v2.5.1
   # ═══════════════════════════════════════════════════════════════════════════
+  # AI ANOMALY ALERTS - Updated v2.5.2-alerts (rich annotations)
   - name: ai_anomaly_alerts
     interval: 60s
     rules:
@@ -208,10 +209,9 @@
           severity: critical
           component: ai-anomaly
         annotations:
-          summary: "Anomalía CRÍTICA detectada en {{ $labels.metric_name }}"
-          description: "IA detectó anomalía crítica en {{ $labels.metric_name }} con score {{ $labels.anomaly_score }}"
-          dashboard_link: "http://grafana:3000/d/ai-anomaly?var-metric={{ $labels.metric_name }}&from={{ $value | humanizeTimestamp }}&to=now"
-          
+          summary: "Anomalia CRITICA detectada por IA en {{ $labels.metric_name }} - desviacion significativa respecto al baseline aprendido."
+          description: "El motor de IA de Rhinometric ha detectado una anomalia critica en la metrica {{ $labels.metric_name }}. Requiere atencion inmediata."
+
       - alert: HighAnomalyDetected
         expr: rhinometric_anomaly_active{severity="high"} == 1
         for: 5m
@@ -219,10 +219,19 @@
           severity: warning
           component: ai-anomaly
         annotations:
-          summary: "Anomalía ALTA detectada en {{ $labels.metric_name }}"
-          description: "IA detectó anomalía alta en {{ $labels.metric_name }} con score {{ $labels.anomaly_score }}"
-          dashboard_link: "http://grafana:3000/d/ai-anomaly?var-metric={{ $labels.metric_name }}&from={{ $value | humanizeTimestamp }}&to=now"
-          
+          summary: "Anomalia ALTA detectada por IA en {{ $labels.metric_name }} - desviacion notable respecto al baseline aprendido."
+          description: "El motor de IA de Rhinometric ha detectado una anomalia alta en la metrica {{ $labels.metric_name }}."
+
+      - alert: MediumAnomalyDetected
+        expr: rhinometric_anomaly_active{severity="medium"} == 1
+        for: 10m
+        labels:
+          severity: warning
+          component: ai-anomaly
+        annotations:
+          summary: "Anomalia MEDIA detectada por IA en {{ $labels.metric_name }}."
+          description: "Desviacion moderada respecto al baseline en {{ $labels.metric_name }}."
+
       - alert: AIAnomalyServiceDown
         expr: up{job="rhinometric-ai-anomaly"} == 0
         for: 2m
@@ -231,4 +240,4 @@
           component: ai-anomaly
         annotations:
           summary: "AI Anomaly Detection service DOWN"
-          description: "El servicio de detección de anomalías está caído. No hay monitoreo ML activo."
+          description: "El servicio de deteccion de anomalias esta caido. No hay monitoreo ML activo."
