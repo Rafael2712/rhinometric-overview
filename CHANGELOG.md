@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+
+## [2.5.2-alerts] - 2026-02-16
+
+### Fixed
+- **Datasource incorrecto en Grafana Explore** - Todos los enlaces usaban datasource uid prometheus en lugar de victoriametrics. Corregido en externalLinks.ts, Anomalies.tsx, Alerts.tsx.
+- **MetricMap keys no coincidian con backend** - Motor de correlacion devuelve cpu_usage, memory_usage, etc. pero frontend solo tenia variantes node_*. Anadidas claves duales.
+- **Cache del navegador servia bundle obsoleto** - Mitigado con constante CORRELATION_VIEW_BUILD y atributo data-build.
+
+### Changed
+- Seccion Grafana en modal Anomalias gated por isAdmin() (solo ADMIN/OWNER).
+- Boton Metricas deshabilitado cuando metric_name es vacio o contiene unknown.
+
+### Disabled
+- Boton Jaeger Traces en CorrelationView y Anomalies (Proximamente).
+- Boton Logs en modal Anomalias (Proximamente).
+
+### Build
+- Bundle: index-ksGfZoKC.js / Imagen: rhinometric-console-frontend:v2.5.2-alerts
+
+### Documentation
+- Anadido docs/AI_ANOMALIES_CORRELATION_MODULE.md - Documentacion completa del modulo de anomalias y correlacion.
+
+---
 ## [2.5.1] - 2026-02-09
 
 ### 🎯 Infrastructure Stabilization & Security Hardening
