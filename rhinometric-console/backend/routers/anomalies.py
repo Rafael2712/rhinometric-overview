@@ -60,8 +60,16 @@ async def get_anomalies(
                 params=params
             )
             
+            # Sort by timestamp DESC (most recent first)
             if response.status_code == 200:
-                return response.json()
+                data = response.json()
+                if "anomalies" in data and isinstance(data["anomalies"], list):
+                    # Sort anomalies by timestamp descending
+                    data["anomalies"].sort(
+                        key=lambda x: x.get("timestamp", ""), 
+                        reverse=True
+                    )
+                return data
             else:
                 raise HTTPException(
                     status_code=response.status_code,

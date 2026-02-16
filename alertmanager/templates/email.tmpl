@@ -1,0 +1,70 @@
+{{ define "email.html" }}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 20px; }
+        .container { background-color: white; border-radius: 8px; padding: 20px; max-width: 600px; margin: 0 auto; }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 8px 8px 0 0; }
+        .alert { margin: 15px 0; padding: 15px; border-left: 4px solid #667eea; background-color: #f8f9fa; }
+        .critical { border-left-color: #dc3545; background-color: #f8d7da; }
+        .warning { border-left-color: #ffc107; background-color: #fff3cd; }
+        .info { border-left-color: #17a2b8; background-color: #d1ecf1; }
+        .resolved { border-left-color: #28a745; background-color: #d4edda; }
+        .label { display: inline-block; padding: 4px 8px; margin: 2px; background-color: #e9ecef; border-radius: 4px; font-size: 12px; }
+        .footer { margin-top: 20px; padding-top: 20px; border-top: 1px solid #dee2e6; font-size: 12px; color: #6c757d; text-align: center; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h2>í´” Rhinometric Alert Notification</h2>
+            <p>{{ .GroupLabels.alertname }}</p>
+        </div>
+        
+        <div style="padding: 20px;">
+            {{ if eq .Status "firing" }}
+                <h3 style="color: #dc3545;">íº¨ {{ len .Alerts }} Alert(s) Firing</h3>
+            {{ else }}
+                <h3 style="color: #28a745;">âœ… {{ len .Alerts }} Alert(s) Resolved</h3>
+            {{ end }}
+            
+            {{ range .Alerts }}
+            <div class="alert {{ if eq .Labels.severity "critical" }}critical{{ else if eq .Labels.severity "warning" }}warning{{ else }}info{{ end }} {{ if eq .Status "resolved" }}resolved{{ end }}">
+                <h4>{{ .Labels.alertname }}</h4>
+                <p><strong>Summary:</strong> {{ .Annotations.summary }}</p>
+                {{ if .Annotations.description }}
+                <p><strong>Description:</strong> {{ .Annotations.description }}</p>
+                {{ end }}
+                
+                <p><strong>Labels:</strong></p>
+                <div>
+                    {{ range .Labels.SortedPairs }}
+                    <span class="label">{{ .Name }}: {{ .Value }}</span>
+                    {{ end }}
+                </div>
+                
+                <p style="margin-top: 10px;">
+                    <strong>Status:</strong> {{ .Status }}<br>
+                    <strong>Started:</strong> {{ .StartsAt.Format "2006-01-02 15:04:05 MST" }}<br>
+                    {{ if ne .Status "firing" }}
+                    <strong>Ended:</strong> {{ .EndsAt.Format "2006-01-02 15:04:05 MST" }}<br>
+                    {{ end }}
+                </p>
+                
+                {{ if .GeneratorURL }}
+                <p><a href="{{ .GeneratorURL }}" style="color: #667eea;">View in Prometheus</a></p>
+                {{ end }}
+            </div>
+            {{ end }}
+        </div>
+        
+        <div class="footer">
+            <p>Rhinometric Observability Platform v2.5.0</p>
+            <p>Server: 89.167.22.228 | Generated: {{ .ExternalURL }}</p>
+        </div>
+    </div>
+</body>
+</html>
+{{ end }}

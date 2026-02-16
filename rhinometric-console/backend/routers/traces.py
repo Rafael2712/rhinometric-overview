@@ -34,8 +34,8 @@ async def get_traces(
     limit: int = Query(50, description="Maximum number of traces"),
     lookback: str = Query("1h", description="Time range to look back"),
     service: Optional[str] = Query(None, description="Filter by service name"),
-    minDuration: Optional[str] = Query(None, description="Minimum duration filter")
-    # current_user: UserModel = Depends(get_current_user)  # Disabled for debugging
+    minDuration: Optional[str] = Query(None, description="Minimum duration filter"),
+    current_user: UserModel = Depends(get_current_user)
 ):
     """
     Proxy traces from Jaeger's API.
@@ -157,7 +157,7 @@ async def get_traces(
 
 
 @router.get("/services")
-async def get_services():
+async def get_services(current_user: UserModel = Depends(get_current_user)):
     """
     Get list of available services from Jaeger.
     Used to populate service filter dropdown with real services.

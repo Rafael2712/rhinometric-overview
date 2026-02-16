@@ -1,0 +1,13 @@
+{
+  "tenant_id": "cliente-acme",
+  "customer_name": "ACME Corp",
+  "customer_id": "acme-001",
+  "customer_domain": "console.acme-corp.com",
+  "customer_ip": "10.0.0.100",
+  "license_tier": "essentials",
+  "provisioned_at": "2026-02-13 13:40:13 UTC",
+  "provisioned_by": "provision-customer.sh v2.5.1",
+  "platform_version": "2.5.1-hardened",
+  "website_monitoring": true,
+  "ssl_enabled": false
+}

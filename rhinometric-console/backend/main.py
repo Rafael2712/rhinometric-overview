@@ -4,6 +4,7 @@ from config import settings
 from database import engine, check_db_connection
 from models.user import Base as UserBase
 from models.role import Base as RoleBase
+from models.alert_acknowledgement import AlertAcknowledgement
 
 # Observability imports
 from telemetry import setup_telemetry
@@ -15,7 +16,7 @@ setup_json_logging(service_name="console-backend", log_level=settings.LOG_LEVEL 
 logger = get_logger(__name__)
 
 # Import routers
-from routers import auth, kpis, license, anomalies, alerts, logs, traces, dashboards, settings as settings_router, users, grafana_proxy
+from routers import auth, kpis, license, anomalies, alerts, logs, traces, dashboards, settings as settings_router, users, grafana_proxy, correlation
 
 app = FastAPI(
     title=settings.API_TITLE,
@@ -63,7 +64,45 @@ async def startup_event():
         "environment": "production"
     })
     
+    # Auto-create alert_acknowledgements table if it doesn't exist
+    try:
+        # engine already imported at module level
+        AlertAcknowledgement.__table__.create(bind=engine, checkfirst=True)
+        logger.info("Alert acknowledgements table ready")
+    except Exception as e:
+        logger.warning(f"Could not create alert_acknowledgements table: {e}")
+
     # NOTE: Tables should already exist from migration script
+
+    # RUST LICENSE VALIDATOR - Startup Check
+    try:
+        from utils.rust_license_validator import is_binary_available, validate_license
+        if is_binary_available():
+            lic = validate_license()
+            if lic.is_valid:
+                logger.info(
+                    "Rust license validator OK",
+                    extra={
+                        "license_status": lic.status,
+                        "plan": lic.plan,
+                        "max_hosts": lic.max_hosts,
+                        "customer": lic.customer,
+                        "expires_at": lic.expires_at,
+                        "validator": "rust",
+                    }
+                )
+            else:
+                logger.warning(
+                    "License validation FAILED: %s - %s" % (lic.status, lic.error_message),
+                    extra={"license_status": lic.status, "validator": "rust"}
+                )
+        else:
+            logger.warning(
+                "rhino-lic binary not found - Rust license validation unavailable",
+                extra={"validator": "rust", "binary_path": "/usr/local/bin/rhino-lic"}
+            )
+    except Exception as e:
+        logger.warning("Startup license check failed: %s" % e)
     # If you need to create tables automatically (not recommended for production):
     # UserBase.metadata.create_all(bind=engine)
     # RoleBase.metadata.create_all(bind=engine)
@@ -177,14 +216,6 @@ async def metrics(request: Request):
     """Prometheus metrics endpoint"""
     return await metrics_endpoint(request)
 
-@app.get("/debug-headers")
-async def debug_headers(request: Request):
-    """DEBUG: Ver todos los headers de la petición"""
-    return {
-        "headers": dict(request.headers),
-        "client": request.client.host if request.client else None
-    }
-
 # Include routers
 app.include_router(auth.router, prefix=f"{settings.API_PREFIX}/auth", tags=["Authentication"])
 app.include_router(users.router, prefix=f"{settings.API_PREFIX}/users", tags=["Users"])  # RBAC User Management
@@ -198,6 +229,7 @@ app.include_router(logs.router, prefix=f"{settings.API_PREFIX}/logs", tags=["Log
 app.include_router(traces.router, prefix=f"{settings.API_PREFIX}/traces", tags=["Traces"])
 app.include_router(dashboards.router, prefix=f"{settings.API_PREFIX}/dashboards", tags=["Dashboards"])
 app.include_router(settings_router.router, prefix=f"{settings.API_PREFIX}/settings", tags=["Settings"])
+app.include_router(correlation.router, prefix=f"{settings.API_PREFIX}/correlation", tags=["Correlation"])  # Rhino Core - Correlation Engine
 
 if __name__ == "__main__":
     import uvicorn

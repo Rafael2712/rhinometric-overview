@@ -1,0 +1,442 @@
+{
+  "dashboard": {
+    "title": "🌐 Rhinometric.com Website Health Monitor",
+    "tags": ["rhinometric", "website", "blackbox", "external", "enterprise"],
+    "timezone": "browser",
+    "schemaVersion": 38,
+    "version": 1,
+    "refresh": "15s",
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "panels": [
+      {
+        "id": 1,
+        "title": "🟢 Website Status",
+        "type": "stat",
+        "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
+        "datasource": {"type": "victoriametrics"},
+        "targets": [
+          {
+            "expr": "probe_success{job=\"blackbox-web-rhinometric\", instance=\"https://www.rhinometric.com/\"}",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "mappings": [
+              {"type": "value", "value": 0, "text": "DOWN", "color": "red"},
+              {"type": "value", "value": 1, "text": "UP", "color": "green"}
+            ],
+            "color": {"mode": "value"},
+            "noValue": "UNKNOWN"
+          }
+        },
+        "options": {
+          "graphMode": "none",
+          "colorMode": "background",
+          "textMode": "value_and_name"
+        }
+      },
+      {
+        "id": 2,
+        "title": "⏱️ Response Time",
+        "type": "stat",
+        "gridPos": {"h": 4, "w": 6, "x": 6, "y": 0},
+        "datasource": {"type": "victoriametrics"},
+        "targets": [
+          {
+            "expr": "probe_duration_seconds{job=\"blackbox-web-rhinometric\", instance=\"https://www.rhinometric.com/\"}",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "s",
+            "decimals": 2,
+            "color": {"mode": "thresholds"},
+            "thresholds": {
+              "steps": [
+                {"value": 0, "color": "green"},
+                {"value": 0.5, "color": "yellow"},
+                {"value": 1, "color": "orange"},
+                {"value": 2, "color": "red"}
+              ]
+            }
+          }
+        },
+        "options": {
+          "graphMode": "area",
+          "colorMode": "value"
+        }
+      },
+      {
+        "id": 3,
+        "title": "🔒 SSL Certificate",
+        "type": "stat",
+        "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0},
+        "datasource": {"type": "victoriametrics"},
+        "targets": [
+          {
+            "expr": "(probe_ssl_earliest_cert_expiry{job=\"blackbox-web-rhinometric\", instance=\"https://www.rhinometric.com/\"} - time()) / 86400",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "d",
+            "decimals": 0,
+            "color": {"mode": "thresholds"},
+            "thresholds": {
+              "steps": [
+                {"value": 0, "color": "red"},
+                {"value": 7, "color": "orange"},
+                {"value": 30, "color": "yellow"},
+                {"value": 60, "color": "green"}
+              ]
+            }
+          }
+        },
+        "options": {
+          "graphMode": "area",
+          "colorMode": "value",
+          "textMode": "value_and_name"
+        }
+      },
+      {
+        "id": 4,
+        "title": "🌐 HTTP Status",
+        "type": "stat",
+        "gridPos": {"h": 4, "w": 6, "x": 18, "y": 0},
+        "datasource": {"type": "victoriametrics"},
+        "targets": [
+          {
+            "expr": "probe_http_status_code{job=\"blackbox-web-rhinometric\", instance=\"https://www.rhinometric.com/\"}",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "mappings": [
+              {"type": "value", "value": 200, "text": "200 OK", "color": "green"},
+              {"type": "range", "from": 300, "to": 399, "text": "3xx Redirect", "color": "blue"},
+              {"type": "range", "from": 400, "to": 499, "text": "4xx Client Error", "color": "yellow"},
+              {"type": "range", "from": 500, "to": 599, "text": "5xx Server Error", "color": "red"},
+              {"type": "special", "match": "null", "text": "No Response", "color": "red"}
+            ],
+            "color": {"mode": "value"},
+            "noValue": "ERROR"
+          }
+        },
+        "options": {
+          "graphMode": "none",
+          "colorMode": "background"
+        }
+      },
+      {
+        "id": 5,
+        "title": "📈 Website Uptime (24h)",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4},
+        "datasource": {"type": "victoriametrics"},
+        "targets": [
+          {
+            "expr": "probe_success{job=\"blackbox-web-rhinometric\", instance=\"https://www.rhinometric.com/\"}",
+            "legendFormat": "Rhinometric.com Uptime",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "min": 0,
+            "max": 1,
+            "custom": {
+              "drawStyle": "line",
+              "lineInterpolation": "stepAfter",
+              "fillOpacity": 30,
+              "lineWidth": 2,
+              "spanNulls": false
+            },
+            "color": {"mode": "palette-classic"},
+            "mappings": [
+              {"type": "value", "value": 0, "text": "DOWN", "color": "red"},
+              {"type": "value", "value": 1, "text": "UP", "color": "green"}
+            ]
+          }
+        },
+        "options": {
+          "tooltip": {"mode": "single", "sort": "none"},
+          "legend": {"displayMode": "visible", "placement": "bottom"}
+        }
+      },
+      {
+        "id": 6,
+        "title": "⏲️ Response Time Trends",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4},
+        "datasource": {"type": "victoriametrics"},
+        "targets": [
+          {
+            "expr": "probe_duration_seconds{job=\"blackbox-web-rhinometric\", instance=\"https://www.rhinometric.com/\"}",
+            "legendFormat": "Total Response Time",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "s",
+            "custom": {
+              "drawStyle": "line",
+              "lineInterpolation": "smooth",
+              "fillOpacity": 20,
+              "lineWidth": 2
+            },
+            "color": {"mode": "palette-classic"}
+          }
+        },
+        "options": {
+          "tooltip": {"mode": "single", "sort": "none"},
+          "legend": {"displayMode": "visible", "placement": "bottom"}
+        }
+      },
+      {
+        "id": 7,
+        "title": "🔍 DNS Lookup Performance",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 8, "x": 0, "y": 12},
+        "datasource": {"type": "victoriametrics"},
+        "targets": [
+          {
+            "expr": "probe_dns_lookup_time_seconds{job=\"blackbox-web-rhinometric\", instance=\"https://www.rhinometric.com/\"}",
+            "legendFormat": "DNS Lookup Time",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "s",
+            "custom": {
+              "drawStyle": "line",
+              "lineInterpolation": "smooth",
+              "fillOpacity": 30
+            },
+            "color": {"fixedColor": "blue", "mode": "fixed"}
+          }
+        }
+      },
+      {
+        "id": 8,
+        "title": "🔒 TLS Handshake Time",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 8, "x": 8, "y": 12},
+        "datasource": {"type": "victoriametrics"},
+        "targets": [
+          {
+            "expr": "probe_http_duration_seconds{job=\"blackbox-web-rhinometric\", instance=\"https://www.rhinometric.com/\", phase=\"tls\"}",
+            "legendFormat": "TLS Handshake",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "s",
+            "custom": {
+              "drawStyle": "line",
+              "lineInterpolation": "smooth",
+              "fillOpacity": 30
+            },
+            "color": {"fixedColor": "green", "mode": "fixed"}
+          }
+        }
+      },
+      {
+        "id": 9,
+        "title": "🌍 Connection Phases Breakdown",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 8, "x": 16, "y": 12},
+        "datasource": {"type": "victoriametrics"},
+        "targets": [
+          {
+            "expr": "probe_http_duration_seconds{job=\"blackbox-web-rhinometric\", instance=\"https://www.rhinometric.com/\", phase=\"resolve\"}",
+            "legendFormat": "DNS Resolution",
+            "refId": "A"
+          },
+          {
+            "expr": "probe_http_duration_seconds{job=\"blackbox-web-rhinometric\", instance=\"https://www.rhinometric.com/\", phase=\"connect\"}",
+            "legendFormat": "TCP Connect",
+            "refId": "B"
+          },
+          {
+            "expr": "probe_http_duration_seconds{job=\"blackbox-web-rhinometric\", instance=\"https://www.rhinometric.com/\", phase=\"tls\"}",
+            "legendFormat": "TLS Handshake",
+            "refId": "C"
+          },
+          {
+            "expr": "probe_http_duration_seconds{job=\"blackbox-web-rhinometric\", instance=\"https://www.rhinometric.com/\", phase=\"processing\"}",
+            "legendFormat": "Server Processing",
+            "refId": "D"
+          },
+          {
+            "expr": "probe_http_duration_seconds{job=\"blackbox-web-rhinometric\", instance=\"https://www.rhinometric.com/\", phase=\"transfer\"}",
+            "legendFormat": "Content Transfer",
+            "refId": "E"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "s",
+            "custom": {
+              "drawStyle": "line",
+              "lineInterpolation": "smooth",
+              "fillOpacity": 10,
+              "stacking": {"mode": "normal"}
+            }
+          }
+        },
+        "options": {
+          "tooltip": {"mode": "multi", "sort": "desc"},
+          "legend": {"displayMode": "list", "placement": "bottom"}
+        }
+      },
+      {
+        "id": 10,
+        "title": "📊 Current Performance Metrics",
+        "type": "table",
+        "gridPos": {"h": 6, "w": 12, "x": 0, "y": 20},
+        "datasource": {"type": "victoriametrics"},
+        "targets": [
+          {
+            "expr": "probe_success{job=\"blackbox-web-rhinometric\", instance=\"https://www.rhinometric.com/\"}",
+            "legendFormat": "Status",
+            "refId": "A"
+          },
+          {
+            "expr": "probe_http_status_code{job=\"blackbox-web-rhinometric\", instance=\"https://www.rhinometric.com/\"}",
+            "legendFormat": "HTTP Code",
+            "refId": "B"
+          },
+          {
+            "expr": "probe_duration_seconds{job=\"blackbox-web-rhinometric\", instance=\"https://www.rhinometric.com/\"}",
+            "legendFormat": "Response Time",
+            "refId": "C"
+          },
+          {
+            "expr": "probe_http_version{job=\"blackbox-web-rhinometric\", instance=\"https://www.rhinometric.com/\"}",
+            "legendFormat": "HTTP Version",
+            "refId": "D"
+          }
+        ],
+        "transformations": [
+          {
+            "id": "organize",
+            "options": {
+              "excludeByName": {"Time": true},
+              "indexByName": {"Value #A": 0, "Value #B": 1, "Value #C": 2, "Value #D": 3},
+              "renameByName": {
+                "Value #A": "Website Status",
+                "Value #B": "HTTP Status Code", 
+                "Value #C": "Response Time (s)",
+                "Value #D": "HTTP Version"
+              }
+            }
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "custom": {"align": "center", "displayMode": "auto"}
+          },
+          "overrides": [
+            {
+              "matcher": {"id": "byName", "options": "Website Status"},
+              "properties": [
+                {
+                  "id": "mappings",
+                  "value": [
+                    {"type": "value", "value": 0, "text": "❌ DOWN", "color": "red"},
+                    {"type": "value", "value": 1, "text": "✅ UP", "color": "green"}
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "id": 11,
+        "title": "🚨 Availability SLA (30 days)",
+        "type": "stat",
+        "gridPos": {"h": 6, "w": 6, "x": 12, "y": 20},
+        "datasource": {"type": "victoriametrics"},
+        "targets": [
+          {
+            "expr": "avg_over_time(probe_success{job=\"blackbox-web-rhinometric\", instance=\"https://www.rhinometric.com/\"}[30d]) * 100",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "decimals": 3,
+            "color": {"mode": "thresholds"},
+            "thresholds": {
+              "steps": [
+                {"value": 0, "color": "red"},
+                {"value": 95, "color": "orange"},
+                {"value": 99, "color": "yellow"},
+                {"value": 99.9, "color": "green"}
+              ]
+            }
+          }
+        },
+        "options": {
+          "graphMode": "area",
+          "colorMode": "value",
+          "textMode": "value_and_name"
+        }
+      },
+      {
+        "id": 12,
+        "title": "🕒 Average Response Time (24h)",
+        "type": "stat", 
+        "gridPos": {"h": 6, "w": 6, "x": 18, "y": 20},
+        "datasource": {"type": "victoriametrics"},
+        "targets": [
+          {
+            "expr": "avg_over_time(probe_duration_seconds{job=\"blackbox-web-rhinometric\", instance=\"https://www.rhinometric.com/\"}[24h])",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "s",
+            "decimals": 3,
+            "color": {"mode": "thresholds"},
+            "thresholds": {
+              "steps": [
+                {"value": 0, "color": "green"},
+                {"value": 0.2, "color": "yellow"},
+                {"value": 0.5, "color": "orange"},
+                {"value": 1, "color": "red"}
+              ]
+            }
+          }
+        },
+        "options": {
+          "graphMode": "area", 
+          "colorMode": "value",
+          "textMode": "value_and_name"
+        }
+      }
+    ],
+    "templating": {
+      "list": []
+    },
+    "annotations": {
+      "list": []
+    },
+    "links": []
+  },
+  "overwrite": true
+}

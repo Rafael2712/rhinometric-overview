@@ -1,0 +1,130 @@
+global:
+  resolve_timeout: 5m
+  smtp_from: "rafael.canelon@rhinometric.com"
+  smtp_smarthost: "smtp.zoho.eu:587"
+  smtp_auth_username: "rafael.canelon@rhinometric.com"
+  smtp_auth_password: "271211Rc$"
+  smtp_require_tls: true
+  slack_api_url: "https://hooks.slack.com/services/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"
+
+templates:
+  - "/etc/alertmanager/templates/*.tmpl"
+
+route:
+  receiver: "team-notifications"
+  group_by: ["alertname", "instance", "severity"]
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+  routes:
+    # AI Anomaly alerts → dedicated receiver with rich templates
+    - match:
+        component: ai-anomaly
+      receiver: "ai-anomaly-alerts"
+      group_wait: 30s
+      group_interval: 5m
+      repeat_interval: 4h
+      continue: false
+
+    - match:
+        severity: critical
+      receiver: "critical-alerts"
+      group_wait: 10s
+      group_interval: 1m
+      repeat_interval: 1h
+    - match:
+        severity: warning
+      receiver: "warning-alerts"
+      repeat_interval: 6h
+    - match:
+        severity: info
+      receiver: "info-alerts"
+      repeat_interval: 24h
+
+receivers:
+  # AI Anomaly: Rich Slack + Email with troubleshooting
+  - name: "ai-anomaly-alerts"
+    slack_configs:
+      - channel: "#rhinometric-alerts"
+        username: "Rhinometric AI"
+        icon_emoji: ":brain:"
+        title: '{{ template "ai_anomaly_slack_title" (index .Alerts 0) }}'
+        text: '{{ template "ai_anomaly_slack" . }}'
+        actions:
+          - type: button
+            text: "Abrir en consola Rhinometric"
+            url: "https://console.rhinometric.com/anomalies"
+          - type: button
+            text: "Ver metricas en Grafana (admin)"
+            url: "https://console.rhinometric.com/grafana/explore"
+        send_resolved: true
+    email_configs:
+      - to: "rafael.canelon@rhinometric.com"
+        html: '{{ template "ai_anomaly_email.html" . }}'
+        headers:
+          Subject: 'Rhinometric AI Alert [{{ (index .Alerts 0).Labels.severity | toUpper }}] {{ (index .Alerts 0).Labels.metric_name }}'
+        send_resolved: true
+
+  - name: "team-notifications"
+    email_configs:
+      - to: "rafael.canelon@rhinometric.com"
+        html: "{{ template \"email.html\" . }}"
+        headers:
+          Subject: "Rhinometric Alert: {{ .GroupLabels.alertname }}"
+    slack_configs:
+      - channel: "#rhinometric-alerts"
+        title: "{{ .GroupLabels.alertname }}"
+        text: "{{ range .Alerts }}{{ .Annotations.summary }}\n{{ end }}"
+
+  - name: "critical-alerts"
+    email_configs:
+      - to: "rafael.canelon@rhinometric.com"
+        html: "{{ template \"email.html\" . }}"
+        headers:
+          Subject: "[CRITICAL] {{ .GroupLabels.alertname }}"
+          Priority: "urgent"
+    slack_configs:
+      - channel: "#rhinometric-critical"
+        color: "danger"
+        title: "[CRITICAL] {{ .GroupLabels.alertname }}"
+        text: "{{ range .Alerts }}*Instance:* {{ .Labels.instance }}\n*Summary:* {{ .Annotations.summary }}\n*Description:* {{ .Annotations.description }}\n{{ end }}"
+
+  - name: "warning-alerts"
+    email_configs:
+      - to: "rafael.canelon@rhinometric.com"
+        html: "{{ template \"email.html\" . }}"
+        headers:
+          Subject: "[WARNING] {{ .GroupLabels.alertname }}"
+    slack_configs:
+      - channel: "#rhinometric-alerts"
+        color: "warning"
+        title: "[WARNING] {{ .GroupLabels.alertname }}"
+        text: "{{ range .Alerts }}{{ .Annotations.summary }}{{ end }}"
+
+  - name: "info-alerts"
+    email_configs:
+      - to: "rafael.canelon@rhinometric.com"
+        html: "{{ template \"email.html\" . }}"
+        headers:
+          Subject: "[INFO] {{ .GroupLabels.alertname }}"
+    slack_configs:
+      - channel: "#rhinometric-info"
+        color: "#439FE0"
+        title: "[INFO] {{ .GroupLabels.alertname }}"
+
+inhibit_rules:
+  - source_match:
+      severity: critical
+    target_match:
+      severity: warning
+    equal: ["alertname", "instance"]
+  - source_match:
+      severity: critical
+    target_match:
+      severity: info
+    equal: ["alertname", "instance"]
+  - source_match:
+      severity: warning
+    target_match:
+      severity: info
+    equal: ["alertname", "instance"]

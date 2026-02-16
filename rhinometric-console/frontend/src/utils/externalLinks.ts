@@ -4,7 +4,7 @@
  */
 
 /**
- * Genera URL de Grafana Explore con query de Prometheus
+ * Genera URL de Grafana Explore con query de VictoriaMetrics/Prometheus
  */
 export function getGrafanaMetricsUrl(
   metricQuery: string,
@@ -18,7 +18,7 @@ export function getGrafanaMetricsUrl(
   const params = new URLSearchParams({
     'orgId': '1',
     'left': JSON.stringify({
-      datasource: 'prometheus',
+      datasource: 'victoriametrics',
       queries: [{
         refId: 'A',
         expr: metricQuery
@@ -118,7 +118,7 @@ export function getLokiApiUrl(
  * Verifica si el usuario tiene permisos para acceder a herramientas externas
  */
 export function canAccessExternalTools(userRoles: string[]): boolean {
-  return userRoles.some(role => 
+  return userRoles.some(role =>
     ['OWNER', 'ADMIN'].includes(role.toUpperCase())
   );
 }
@@ -128,17 +128,17 @@ export function canAccessExternalTools(userRoles: string[]): boolean {
  */
 export function buildLokiQuery(host?: string, level?: string): string {
   const labels: string[] = [];
-  
+
   if (host) {
     labels.push(`host="${host}"`);
   }
-  
+
   if (level) {
     labels.push(`level="${level}"`);
   }
 
-  return labels.length > 0 
-    ? `{${labels.join(',')}}` 
+  return labels.length > 0
+    ? `{${labels.join(',')}}`
     : '{job=~".+"}'; // Query general si no hay filtros
 }
 

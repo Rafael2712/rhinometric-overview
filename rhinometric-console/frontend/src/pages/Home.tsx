@@ -25,19 +25,19 @@ export function HomePage() {
     active_anomalies: [],
     alerts_24h: []
   })
-  
+
   useEffect(() => {
     document.title = 'Rhinometric - Home'
   }, [])
 
   const token = useAuthStore((state) => state.token)
-  
+
   // Fetch KPIs from backend API
   const { data: kpisData, isLoading, error } = useQuery({
     queryKey: ['kpis', token],
     queryFn: async () => {
       if (!token) throw new Error('No token available')
-      
+
       const response = await fetch('/api/kpis', {
         headers: {
           'Authorization': `Bearer ${token}`
@@ -63,8 +63,8 @@ export function HomePage() {
         }
 
         // Use real service status percentage instead of random
-        const serviceStatusValue = kpisData.service_status.value === "Operational" ? 100 : 
-                                   (kpisData.service_status.operational_count / kpisData.service_status.total_count) * 100
+        const serviceStatusValue = kpisData.service_status.value === "Operational" ? 100 :
+                                  (kpisData.service_status.operational_count / kpisData.service_status.total_count) * 100
 
         return {
           service_status: updateSeries(prev.service_status, serviceStatusValue),
@@ -110,41 +110,41 @@ export function HomePage() {
 
   // Map API data to KPI cards with sparkline data
   const kpis = kpisData ? [
-    { 
-      name: 'Service Status', 
-      value: kpisData.service_status.value, 
-      status: kpisData.service_status.status, 
-      icon: Activity, 
+    {
+      name: 'Service Status',
+      value: kpisData.service_status.value,
+      status: kpisData.service_status.status,
+      icon: Activity,
       change: kpisData.service_status.change,
       sparkline: history.service_status,
       trend: 'up',
       link: '/system-health'
     },
-    { 
-      name: 'Monitored Services', 
-      value: kpisData.monitored_hosts.value, 
-      status: kpisData.monitored_hosts.status, 
-      icon: Server, 
+    {
+      name: 'Monitored Services',
+      value: kpisData.monitored_hosts.value,
+      status: kpisData.monitored_hosts.status,
+      icon: Server,
       change: kpisData.monitored_hosts.change,
       sparkline: history.monitored_hosts,
       trend: 'stable',
       link: '/services'
     },
-    { 
-      name: 'Active Anomalies', 
-      value: kpisData.active_anomalies.value, 
-      status: kpisData.active_anomalies.status, 
-      icon: AlertTriangle, 
+    {
+      name: 'Active Anomalies',
+      value: kpisData.active_anomalies.value,
+      status: kpisData.active_anomalies.status,
+      icon: AlertTriangle,
       change: kpisData.active_anomalies.change,
       sparkline: history.active_anomalies,
       trend: 'down',
       link: '/anomalies'
     },
-    { 
-      name: 'Alerts (24h)', 
-      value: kpisData.alerts_24h.value, 
-      status: kpisData.alerts_24h.status, 
-      icon: Bell, 
+    {
+      name: 'Alerts (24h)',
+      value: kpisData.alerts_24h.value,
+      status: kpisData.alerts_24h.status,
+      icon: Bell,
       change: kpisData.alerts_24h.change,
       sparkline: history.alerts_24h,
       trend: 'up',
@@ -170,52 +170,52 @@ export function HomePage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-white mb-2">Welcome to Rhinometric</h1>
-        <p className="text-text-muted">AI-Powered Observability & Anomaly Detection Platform</p>
+        <h1 className="text-2xl sm:text-3xl font-bold text-white mb-1 sm:mb-2">Welcome to Rhinometric</h1>
+        <p className="text-text-muted text-sm sm:text-base">AI-Powered Observability & Anomaly Detection Platform</p>
         {/* Debug info */}
         {!token && <p className="text-warning text-sm mt-2">⚠️ No authentication token</p>}
         {error && <p className="text-error text-sm mt-2">❌ Error: {(error as Error).message}</p>}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
         {kpis.map((kpi) => {
           const Icon = kpi.icon
           const TrendIcon = kpi.trend === 'up' ? TrendingUp : TrendingDown
           const trendColor = kpi.trend === 'up' ? 'text-success' : kpi.trend === 'down' ? 'text-error' : 'text-gray-400'
-          
+
           return (
-            <div 
-              key={kpi.name} 
-              className="card hover:border-primary/50 cursor-pointer transition-all duration-200 hover:shadow-lg hover:shadow-primary/20"
+            <div
+              key={kpi.name}
+              className="card hover:border-primary/50 cursor-pointer transition-all duration-200 hover:shadow-lg hover:shadow-primary/20 p-3 sm:p-4 lg:p-6"
               onClick={() => navigate(kpi.link)}
             >
-              <div className="flex items-start justify-between mb-4">
-                <div className="p-2 bg-primary/10 rounded-lg">
-                  <Icon className="w-6 h-6 text-primary" />
+              <div className="flex items-start justify-between mb-2 sm:mb-4">
+                <div className="p-1.5 sm:p-2 bg-primary/10 rounded-lg">
+                  <Icon className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
                 </div>
-                <span className={`text-xs px-2 py-1 rounded-full ${kpi.status === 'success' ? 'bg-success/10 text-success' : 'bg-warning/10 text-warning'}`}>
+                <span className={`text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full ${kpi.status === 'success' ? 'bg-success/10 text-success' : 'bg-warning/10 text-warning'}`}>
                   {kpi.status === 'success' ? 'Healthy' : 'Warning'}
                 </span>
               </div>
-              <p className="text-text-muted text-sm mb-1">{kpi.name}</p>
-              <div className="flex items-end justify-between mb-3">
-                <p className="text-2xl font-bold text-white">{kpi.value}</p>
+              <p className="text-text-muted text-xs sm:text-sm mb-0.5 sm:mb-1">{kpi.name}</p>
+              <div className="flex items-end justify-between mb-2 sm:mb-3">
+                <p className="text-lg sm:text-2xl font-bold text-white">{kpi.value}</p>
                 {kpi.trend !== 'stable' && (
-                  <TrendIcon className={`w-5 h-5 ${trendColor}`} />
+                  <TrendIcon className={`w-4 h-4 sm:w-5 sm:h-5 ${trendColor}`} />
                 )}
               </div>
-              
+
               {/* Mini Sparkline Chart (últimas 24h) */}
               {kpi.sparkline.length > 0 && (
-                <div className="h-12 -mx-2 mb-2">
+                <div className="h-8 sm:h-12 -mx-1 sm:-mx-2 mb-1 sm:mb-2">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={kpi.sparkline}>
-                      <Line 
-                        type="monotone" 
-                        dataKey="value" 
-                        stroke={kpi.status === 'success' ? '#10b981' : '#f59e0b'} 
+                      <Line
+                        type="monotone"
+                        dataKey="value"
+                        stroke={kpi.status === 'success' ? '#10b981' : '#f59e0b'}
                         strokeWidth={2}
                         dot={false}
                         isAnimationActive={false}
@@ -224,20 +224,20 @@ export function HomePage() {
                   </ResponsiveContainer>
                 </div>
               )}
-              
-              <p className="text-xs text-text-muted">{kpi.change || 'Last 24 hours'}</p>
+
+              <p className="text-[10px] sm:text-xs text-text-muted">{kpi.change || 'Last 24 hours'}</p>
             </div>
           )
         })}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         <div className="card">
-          <h3 className="text-lg font-semibold text-white mb-4">System Health</h3>
+          <h3 className="text-base sm:text-lg font-semibold text-white mb-3 sm:mb-4">System Health</h3>
           <div className="space-y-3">
             {['Infrastructure', 'Network', 'Database', 'Applications'].map((category) => (
               <div key={category} className="flex items-center justify-between">
-                <span className="text-text-secondary">{category}</span>
+                <span className="text-text-secondary text-sm">{category}</span>
                 <div className="flex items-center space-x-2">
                   <div className="w-2 h-2 rounded-full bg-success" />
                   <span className="text-sm text-success">OK</span>
@@ -248,17 +248,17 @@ export function HomePage() {
         </div>
 
         <div className="card">
-          <h3 className="text-lg font-semibold text-white mb-4">Recent Activity</h3>
+          <h3 className="text-base sm:text-lg font-semibold text-white mb-3 sm:mb-4">Recent Activity</h3>
           <div className="space-y-3">
             <div className="flex items-start space-x-3">
-              <div className="w-2 h-2 rounded-full bg-primary mt-2" />
+              <div className="w-2 h-2 rounded-full bg-primary mt-2 flex-shrink-0" />
               <div>
                 <p className="text-sm text-white">System started successfully</p>
                 <p className="text-xs text-text-muted">2 minutes ago</p>
               </div>
             </div>
             <div className="flex items-start space-x-3">
-              <div className="w-2 h-2 rounded-full bg-success mt-2" />
+              <div className="w-2 h-2 rounded-full bg-success mt-2 flex-shrink-0" />
               <div>
                 <p className="text-sm text-white">All collectors connected</p>
                 <p className="text-xs text-text-muted">5 minutes ago</p>
@@ -269,16 +269,16 @@ export function HomePage() {
       </div>
 
       <div className="card bg-primary/5 border-primary/20">
-        <div className="flex items-start space-x-4">
-          <div className="p-2 bg-primary/10 rounded-lg">
-            <Activity className="w-6 h-6 text-primary" />
+        <div className="flex items-start gap-3 sm:space-x-4">
+          <div className="p-2 bg-primary/10 rounded-lg flex-shrink-0">
+            <Activity className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
           </div>
-          <div>
-            <h3 className="text-lg font-semibold text-white mb-2">Real-time Metrics Integration</h3>
-            <p className="text-text-muted text-sm mb-4">This dashboard displays live metrics from Prometheus, active anomalies from the AI engine, and recent alerts from AlertManager.</p>
-            <div className="flex space-x-2">
-              <span className="text-xs px-3 py-1 bg-success/20 text-success rounded-full">✓ Backend API: Connected</span>
-              <span className="text-xs px-3 py-1 bg-success/20 text-success rounded-full">✓ Frontend: Ready</span>
+          <div className="min-w-0">
+            <h3 className="text-base sm:text-lg font-semibold text-white mb-1 sm:mb-2">Real-time Metrics Integration</h3>
+            <p className="text-text-muted text-xs sm:text-sm mb-3 sm:mb-4">This dashboard displays live metrics from Prometheus, active anomalies from the AI engine, and recent alerts from AlertManager.</p>
+            <div className="flex flex-wrap gap-2">
+              <span className="text-[10px] sm:text-xs px-2 sm:px-3 py-1 bg-success/20 text-success rounded-full">✓ Backend API: Connected</span>
+              <span className="text-[10px] sm:text-xs px-2 sm:px-3 py-1 bg-success/20 text-success rounded-full">✓ Frontend: Ready</span>
             </div>
           </div>
         </div>

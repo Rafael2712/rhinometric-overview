@@ -171,6 +171,45 @@ services:
           cpus: '0.6'
           memory: 768M
     restart: unless-stopped
+  victoria-metrics:
+    image: victoriametrics/victoria-metrics:v1.99.0
+    container_name: rhinometric-victoria-metrics
+    command:
+    - -storageDataPath=/victoria-metrics-data
+    - -retentionPeriod=90d
+    - -httpListenAddr=:8428
+    - -promscrape.config=/etc/prometheus/prometheus.yml
+    - -promscrape.config.strictParse=false
+    - -promscrape.maxScrapeSize=16MB
+    - -memory.allowedPercent=60
+    - -search.maxQueryDuration=60s
+    - -search.maxConcurrentRequests=8
+    volumes:
+    - victoria-metrics-data:/victoria-metrics-data
+    - ./config/prometheus-v2.2.yml:/etc/prometheus/prometheus.yml:ro
+    networks:
+    - rhinometric_network
+    ports:
+    - "127.0.0.1:8428:8428"  # Locked to localhost
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "-T", "2", "http://localhost:8428/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 45s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    deploy:
+      resources:
+        limits:
+          cpus: '0.6'
+          memory: 1024M
+        reservations:
+          memory: 512M
+    restart: unless-stopped
   loki:
     image: grafana/loki:3.0.0
     container_name: rhinometric-loki
@@ -488,6 +527,7 @@ services:
           memory: 256M
     restart: unless-stopped
   rhinometric-console-backend:
+    image: rhinometric-console-backend:v2.5.2-alerts
     build:
       context: ./rhinometric-console/backend
       dockerfile: Dockerfile
@@ -499,7 +539,7 @@ services:
       SECRET_KEY: k3y_f1x3d_rh1n0m3tr1c_s3cur3_2026
       ALGORITHM: HS256
       ACCESS_TOKEN_EXPIRE_MINUTES: '1440'
-      CORS_ORIGINS: '["http://localhost:3002","http://rhinometric-console-frontend:3002","http://89.167.22.228","http://89.167.22.228:80"]'
+      CORS_ORIGINS: '["http://localhost:3002","http://rhinometric-console-frontend:3002","http://89.167.22.228","http://89.167.22.228:80","http://console.rhinometric.com","https://console.rhinometric.com"]'
       PROMETHEUS_URL: http://prometheus:9090
       AI_ANOMALY_URL: http://rhinometric-ai-anomaly:8085
       LICENSE_VALIDATOR_URL: http://license-server-v2:5000
@@ -517,6 +557,8 @@ services:
       OTEL_TRACES_EXPORTER: otlp
     volumes:
     - ${HOME}/rhinometric_data_v2.5/console-backend/logs:/app/logs
+    - /usr/local/bin/rhino-lic:/usr/local/bin/rhino-lic:ro
+    - /opt/rhinometric/license.key:/opt/rhinometric/license.key:ro
     networks:
     - rhinometric_network
     - rhinometric_network_v22
@@ -551,6 +593,7 @@ services:
           memory: 2048M
     restart: unless-stopped
   rhinometric-console-frontend:
+    image: rhinometric-console-frontend:v2.5.2-alerts
     build:
       context: ./rhinometric-console/frontend
       dockerfile: Dockerfile
@@ -610,10 +653,12 @@ services:
   blackbox-exporter:
     image: prom/blackbox-exporter:v0.24.0
     container_name: rhinometric-blackbox-exporter
+    ports:
+      - "127.0.0.1:9115:9115"  # Locked to localhost
     networks:
       - rhinometric_network
     volumes:
-      - ./config/blackbox.yml:/etc/blackbox_exporter/config.yml:ro
+      - ./blackbox/blackbox.yml:/etc/blackbox_exporter/config.yml:ro
     command:
       - --config.file=/etc/blackbox_exporter/config.yml
     logging:
@@ -651,6 +696,41 @@ services:
           memory: 64M
     restart: unless-stopped
 
+  # ============================================
+  # NGINX Reverse Proxy (single public entry point)
+  # ============================================
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: rhinometric-nginx
+    ports:
+      - "80:80"  # Only public port
+      # - "443:443"  # Uncomment when HTTPS is enabled
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/.htpasswd:/etc/nginx/.htpasswd:ro
+      # - ./nginx/ssl:/etc/nginx/ssl:ro  # Uncomment for HTTPS
+      - nginx-logs:/var/log/nginx
+    networks:
+      - rhinometric_network
+      - rhinometric_network_v22
+    depends_on:
+      rhinometric-console-frontend:
+        condition: service_healthy
+      rhinometric-console-backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost/nginx-health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.2'
+          memory: 128M
+    restart: unless-stopped
+
 networks:
   rhinometric_network:
     driver: bridge
@@ -662,3 +742,5 @@ networks:
 volumes:
   grafana-data:
   prometheus-data:
+  victoria-metrics-data:
+  nginx-logs:

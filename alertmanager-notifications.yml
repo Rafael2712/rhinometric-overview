@@ -1,0 +1,144 @@
+global:
+  resolve_timeout: 5m
+  # SMTP configuration for email notifications (Zoho)
+  smtp_smarthost: 'smtp.zoho.eu:587'
+  smtp_from: 'rafael.canelon@rhinometric.com'
+  smtp_auth_username: 'rafael.canelon@rhinometric.com'
+  smtp_auth_password: '${SMTP_PASSWORD}'
+  smtp_require_tls: true
+
+route:
+  receiver: 'default-receiver'
+  group_by: ['alertname', 'instance', 'component']
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+
+  # Routes específicas por severidad
+  routes:
+    # Critical alerts → Slack + Email immediately
+    - match:
+        severity: critical
+      receiver: 'critical-alerts'
+      group_wait: 10s
+      group_interval: 5m
+      repeat_interval: 1h
+      
+    # Warning alerts → Slack only, less frequent
+    - match:
+        severity: warning
+      receiver: 'warning-alerts'
+      group_wait: 1m
+      group_interval: 10m
+      repeat_interval: 6h
+      
+    # Info/other → Email only
+    - match_re:
+        severity: '(info|none)'
+      receiver: 'email-only'
+      group_wait: 5m
+      group_interval: 30m
+      repeat_interval: 12h
+
+receivers:
+  # Critical: Slack + Email
+  - name: 'critical-alerts'
+    slack_configs:
+      - api_url: '${SLACK_WEBHOOK_URL}'
+        channel: '#rhinometric-alerts'
+        username: 'Rhinometric Alerts'
+        icon_emoji: ':fire:'
+        title: '🔥 CRITICAL: {{ .GroupLabels.alertname }}'
+        text: |-
+          {{ range .Alerts }}
+          *Alert:* {{ .Labels.alertname }}
+          *Instance:* {{ .Labels.instance }}
+          *Component:* {{ .Labels.component }}
+          *Severity:* {{ .Labels.severity }}
+          *Description:* {{ .Annotations.description }}
+          *Summary:* {{ .Annotations.summary }}
+          {{ end }}
+        send_resolved: true
+    email_configs:
+      - to: 'rafael.canelon@rhinometric.com'
+        headers:
+          Subject: '🔥 CRITICAL Alert: {{ .GroupLabels.alertname }}'
+        html: |
+          <!DOCTYPE html>
+          <html>
+          <body style="font-family: Arial, sans-serif;">
+            <h2 style="color: #d9534f;">🔥 CRITICAL Alert</h2>
+            {{ range .Alerts }}
+            <div style="background: #f9f9f9; padding: 15px; margin: 10px 0; border-left: 4px solid #d9534f;">
+              <p><strong>Alert:</strong> {{ .Labels.alertname }}</p>
+              <p><strong>Instance:</strong> {{ .Labels.instance }}</p>
+              <p><strong>Component:</strong> {{ .Labels.component }}</p>
+              <p><strong>Severity:</strong> <span style="color: #d9534f;">{{ .Labels.severity }}</span></p>
+              <p><strong>Status:</strong> {{ .Status }}</p>
+              <p><strong>Description:</strong> {{ .Annotations.description }}</p>
+              <p><strong>Summary:</strong> {{ .Annotations.summary }}</p>
+              <p><strong>Started at:</strong> {{ .StartsAt }}</p>
+            </div>
+            {{ end }}
+            <hr>
+            <p style="color: #666; font-size: 12px;">
+              Rhinometric Observability Platform<br>
+              <a href="http://89.167.15.73:3002">View Console</a> | 
+              <a href="http://89.167.15.73:3000">View Grafana</a>
+            </p>
+          </body>
+          </html>
+        send_resolved: true
+
+  # Warnings: Slack only
+  - name: 'warning-alerts'
+    slack_configs:
+      - api_url: '${SLACK_WEBHOOK_URL}'
+        channel: '#rhinometric-alerts'
+        username: 'Rhinometric Alerts'
+        icon_emoji: ':warning:'
+        title: '⚠️ WARNING: {{ .GroupLabels.alertname }}'
+        text: |-
+          {{ range .Alerts }}
+          *Alert:* {{ .Labels.alertname }}
+          *Instance:* {{ .Labels.instance }}
+          *Component:* {{ .Labels.component }}
+          *Description:* {{ .Annotations.description }}
+          {{ end }}
+        send_resolved: true
+
+  # Info/Others: Email only
+  - name: 'email-only'
+    email_configs:
+      - to: 'rafael.canelon@rhinometric.com'
+        headers:
+          Subject: 'ℹ️ Rhinometric Info: {{ .GroupLabels.alertname }}'
+        html: |
+          <!DOCTYPE html>
+          <html>
+          <body style="font-family: Arial, sans-serif;">
+            <h2 style="color: #5bc0de;">ℹ️ Information Alert</h2>
+            {{ range .Alerts }}
+            <div style="background: #f9f9f9; padding: 15px; margin: 10px 0; border-left: 4px solid #5bc0de;">
+              <p><strong>Alert:</strong> {{ .Labels.alertname }}</p>
+              <p><strong>Instance:</strong> {{ .Labels.instance }}</p>
+              <p><strong>Description:</strong> {{ .Annotations.description }}</p>
+            </div>
+            {{ end }}
+          </body>
+          </html>
+        send_resolved: false
+
+  # Default fallback
+  - name: 'default-receiver'
+    webhook_configs:
+      - url: 'http://console-backend:8105/api/webhooks/alertmanager'
+        send_resolved: true
+
+# Inhibition rules: suppress warnings when critical is firing
+inhibit_rules:
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['alertname', 'instance']

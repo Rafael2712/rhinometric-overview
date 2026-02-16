@@ -14,8 +14,8 @@ async def get_logs(
     limit: int = Query(100, description="Maximum number of log lines"),
     start: str = Query(..., description="Start time in nanoseconds"),
     end: str = Query(..., description="End time in nanoseconds"),
-    direction: str = Query("backward", description="Query direction: forward or backward")
-    # current_user: UserModel = Depends(get_current_user)  # Disabled for debugging
+    direction: str = Query("backward", description="Query direction: forward or backward"),
+    current_user: UserModel = Depends(get_current_user)
 ):
     """
     Proxy logs from Loki's query_range API.

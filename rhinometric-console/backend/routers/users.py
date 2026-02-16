@@ -5,7 +5,7 @@ Requires OWNER or ADMIN role for most operations
 
 from datetime import datetime
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
 from pydantic import BaseModel, EmailStr, validator
 from sqlalchemy.orm import Session
 from sqlalchemy import func
@@ -132,7 +132,8 @@ def check_role_assignment_allowed(
 async def create_user(
     user_data: UserCreate,
     current_user: UserModel = Depends(require_role(["OWNER", "ADMIN"])),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    request: Request = None
 ):
     """
     Create new user (OWNER/ADMIN only).
@@ -169,6 +170,16 @@ async def create_user(
     for role in roles:
         check_role_assignment_allowed(current_user, role, db)
     
+    # ⚡ TAREA B: Validate license limits for roles
+    from services.license_validator import validate_user_roles, LicenseLimitError
+    try:
+        validate_user_roles(db, user_data.role_names)
+    except LicenseLimitError as e:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=str(e)
+        )
+    
     # Create user
     new_user = UserModel(
         username=user_data.username,
@@ -198,6 +209,21 @@ async def create_user(
         new_user.updated_at = new_user.created_at or datetime.utcnow()
         db.commit()
         db.refresh(new_user)
+    
+    # ⚡ TAREA C: Audit log - user created
+    from services.audit_logger import log_audit_event, AuditEvent
+    await log_audit_event(
+        category=AuditEvent.USER_MANAGEMENT,
+        action=AuditEvent.USER_CREATED,
+        user_id=current_user.id,
+        username=current_user.username,
+        target_user_id=new_user.id,
+        target_username=new_user.username,
+        ip_address=request.client.host if request and request.client else None,
+        status="success",
+        message=f"User {new_user.username} created with roles: {', '.join(user_data.role_names)}",
+        metadata={"roles": user_data.role_names, "email": new_user.email}
+    )
     
     return UserResponse(
         id=new_user.id,
@@ -448,7 +474,8 @@ async def assign_role(
     user_id: int,
     role_data: UserRoleAssignment,
     current_user: UserModel = Depends(require_role(["OWNER", "ADMIN"])),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    request: Request = None
 ):
     """
     Assign role to user (OWNER/ADMIN).
@@ -484,6 +511,15 @@ async def assign_role(
             detail="User already has this role"
         )
     
+    # ⚡ TAREA B: Validate license limit for this role
+    from services.license_validator import can_add_user_with_role
+    can_add, error_msg = can_add_user_with_role(db, role_data.role_name)
+    if not can_add:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=error_msg
+        )
+    
     # Assign role using UserRole table
     user_role = UserRoleModel(user_id=user_id, role_id=role.id, assigned_by=current_user.id)
     db.add(user_role)
@@ -491,6 +527,22 @@ async def assign_role(
     
     db.commit()
     db.refresh(user)
+    
+    # ⚡ TAREA C: Audit log - role assigned
+    from services.audit_logger import log_audit_event, AuditEvent
+    await log_audit_event(
+        category=AuditEvent.ROLE_MANAGEMENT,
+        action=AuditEvent.ROLE_ASSIGNED,
+        user_id=current_user.id,
+        username=current_user.username,
+        target_user_id=user.id,
+        target_username=user.username,
+        role=role_data.role_name,
+        ip_address=request.client.host if request and request.client else None,
+        status="success",
+        message=f"Role {role_data.role_name} assigned to user {user.username}",
+        metadata={"all_roles": user.get_roles()}
+    )
     
     return UserResponse(
         id=user.id,

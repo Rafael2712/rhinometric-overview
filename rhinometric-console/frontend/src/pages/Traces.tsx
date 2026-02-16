@@ -35,7 +35,9 @@ export function TracesPage() {
   const { data: servicesData } = useQuery({
     queryKey: ['jaeger-services'],
     queryFn: async () => {
-      const response = await fetch('/api/traces/services')
+      const response = await fetch('/api/traces/services', {
+        headers: { Authorization: `Bearer ${token}` }
+      })
       if (!response.ok) return { services: [] }
       const data = await response.json()
       return data
@@ -52,7 +54,7 @@ export function TracesPage() {
         limit: '100',
         lookback: timeRange
       })
-      
+
       if (serviceFilter !== 'all') {
         params.append('service', serviceFilter)
       }
@@ -60,8 +62,10 @@ export function TracesPage() {
         params.append('minDuration', `${minDuration}ms`)
       }
 
-      const response = await fetch(`/api/traces?${params}`)
-      
+      const response = await fetch(`/api/traces?${params}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+
       if (!response.ok) throw new Error('Failed to fetch traces')
       const data = await response.json()
       return data
@@ -87,14 +91,14 @@ export function TracesPage() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+    <div className="space-y-4 sm:space-y-6">
+      {/* Header – stacks on mobile */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold text-white mb-2">Distributed Traces</h1>
-          <p className="text-text-muted">Analyze request flows and performance with Jaeger</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-white mb-1 sm:mb-2">Distributed Traces</h1>
+          <p className="text-text-muted text-sm sm:text-base">Analyze request flows and performance with Jaeger</p>
         </div>
-        <button 
+        <button
           onClick={() => {
             const dataStr = JSON.stringify(traces, null, 2)
             const dataBlob = new Blob([dataStr], { type: 'application/json' })
@@ -106,7 +110,7 @@ export function TracesPage() {
             URL.revokeObjectURL(url)
           }}
           disabled={traces.length === 0}
-          className="btn btn-secondary flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="btn btn-secondary flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed text-sm self-start sm:self-auto"
         >
           <Download size={16} />
           Export
@@ -114,9 +118,9 @@ export function TracesPage() {
       </div>
 
       {/* Search and Filters */}
-      <div className="card space-y-4">
+      <div className="card space-y-3 sm:space-y-4">
         {/* Search Bar */}
-        <div className="flex items-center gap-3">
+        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
             <input
@@ -124,27 +128,27 @@ export function TracesPage() {
               placeholder="Search by Trace ID or Operation..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-surface-light border border-gray-700 text-white rounded-lg pl-10 pr-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full bg-surface-light border border-gray-700 text-white rounded-lg pl-10 pr-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-primary text-sm"
             />
           </div>
-          <button 
+          <button
             onClick={() => refetch()}
-            className="btn flex items-center gap-2"
+            className="btn flex items-center gap-2 min-h-[44px] text-sm justify-center"
           >
             <Search size={16} />
             Search
           </button>
         </div>
 
-        {/* Filters */}
-        <div className="flex items-center gap-4 flex-wrap">
+        {/* Filters – wraps naturally */}
+        <div className="flex flex-wrap items-center gap-3 sm:gap-4">
           <div className="flex items-center gap-2">
-            <Filter size={16} className="text-gray-400" />
-            <span className="text-sm text-gray-400">Service:</span>
+            <Filter size={16} className="text-gray-400 flex-shrink-0" />
+            <span className="text-sm text-gray-400 hidden sm:inline">Service:</span>
             <select
               value={serviceFilter}
               onChange={(e) => setServiceFilter(e.target.value)}
-              className="bg-surface-light border border-gray-700 text-white rounded px-3 py-1.5 text-sm"
+              className="bg-surface-light border border-gray-700 text-white rounded px-2 sm:px-3 py-1.5 text-sm max-w-[160px]"
             >
               {services.map(svc => (
                 <option key={svc} value={svc}>{svc === 'all' ? 'All Services' : svc}</option>
@@ -153,33 +157,33 @@ export function TracesPage() {
           </div>
 
           <div className="flex items-center gap-2">
-            <Clock size={16} className="text-gray-400" />
-            <span className="text-sm text-gray-400">Min Duration:</span>
+            <Clock size={16} className="text-gray-400 flex-shrink-0" />
+            <span className="text-sm text-gray-400 hidden sm:inline">Min Duration:</span>
             <input
               type="number"
               placeholder="ms"
               value={minDuration}
               onChange={(e) => setMinDuration(e.target.value)}
-              className="bg-surface-light border border-gray-700 text-white rounded px-3 py-1.5 text-sm w-24"
+              className="bg-surface-light border border-gray-700 text-white rounded px-2 sm:px-3 py-1.5 text-sm w-20"
             />
           </div>
 
           <div className="flex items-center gap-2">
-            <Clock size={16} className="text-gray-400" />
-            <span className="text-sm text-gray-400">Time Range:</span>
+            <Clock size={16} className="text-gray-400 flex-shrink-0" />
+            <span className="text-sm text-gray-400 hidden sm:inline">Time Range:</span>
             <select
               value={timeRange}
               onChange={(e) => setTimeRange(e.target.value)}
-              className="bg-surface-light border border-gray-700 text-white rounded px-3 py-1.5 text-sm"
+              className="bg-surface-light border border-gray-700 text-white rounded px-2 sm:px-3 py-1.5 text-sm"
             >
-              <option value="15m">Last 15 minutes</option>
-              <option value="30m">Last 30 minutes</option>
+              <option value="15m">Last 15 min</option>
+              <option value="30m">Last 30 min</option>
               <option value="1h">Last 1 hour</option>
               <option value="3h">Last 3 hours</option>
             </select>
           </div>
 
-          <div className="ml-auto text-sm text-gray-400">
+          <div className="text-xs sm:text-sm text-gray-400 w-full sm:w-auto sm:ml-auto">
             {traces.length} traces found
           </div>
         </div>
@@ -193,7 +197,7 @@ export function TracesPage() {
             <p className="text-gray-400 mt-4">Loading traces...</p>
           </div>
         ) : error ? (
-          <div className="text-center py-12">
+          <div className="text-center py-12 px-4">
             <Network className="text-error mx-auto mb-4" size={48} />
             <p className="text-error">Failed to load traces</p>
             <p className="text-sm text-gray-400 mt-2">{(error as Error).message}</p>
@@ -202,17 +206,17 @@ export function TracesPage() {
             </button>
           </div>
         ) : traces.length === 0 ? (
-          <div className="text-center py-12">
+          <div className="text-center py-12 px-4">
             <Network className="text-gray-400 mx-auto mb-4" size={48} />
             <p className="text-white text-lg font-semibold">No Traces Found</p>
-            <p className="text-gray-400 mt-2">No distributed traces available in the selected time range</p>
-            <div className="mt-6 p-4 bg-primary/10 border border-primary/30 rounded-lg max-w-2xl mx-auto text-left">
+            <p className="text-gray-400 mt-2 text-sm">No distributed traces available in the selected time range</p>
+            <div className="mt-6 p-3 sm:p-4 bg-primary/10 border border-primary/30 rounded-lg max-w-2xl mx-auto text-left">
               <div className="flex items-start gap-3">
                 <AlertCircle className="text-primary mt-1 flex-shrink-0" size={20} />
-                <div className="text-sm text-gray-300">
+                <div className="text-sm text-gray-300 min-w-0">
                   <p className="font-semibold text-primary mb-2">About Distributed Tracing</p>
-                  <p className="mb-2">Jaeger collects traces from instrumented applications. If no traces appear:</p>
-                  <ul className="list-disc list-inside space-y-1 text-gray-400">
+                  <p className="mb-2 text-xs sm:text-sm">Jaeger collects traces from instrumented applications. If no traces appear:</p>
+                  <ul className="list-disc list-inside space-y-1 text-gray-400 text-xs sm:text-sm">
                     <li>Ensure services are instrumented with OpenTelemetry</li>
                     <li>Verify Jaeger is receiving spans on port 14317 (gRPC) or 14318 (HTTP)</li>
                     <li>Check that services have OTLP exporters configured</li>
@@ -223,10 +227,10 @@ export function TracesPage() {
             </div>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-2 sm:space-y-3">
             {traces
-              .filter(trace => 
-                !searchQuery || 
+              .filter(trace =>
+                !searchQuery ||
                 trace.traceID.toLowerCase().includes(searchQuery.toLowerCase()) ||
                 trace.spans.some(s => s.operationName.toLowerCase().includes(searchQuery.toLowerCase()))
               )
@@ -236,30 +240,30 @@ export function TracesPage() {
                 const spanCount = trace.spans.length
 
                 return (
-                  <div 
+                  <div
                     key={trace.traceID}
-                    className="p-4 bg-surface-light hover:bg-surface-light/80 border border-gray-700 hover:border-primary/50 rounded-lg cursor-pointer transition-all"
+                    className="p-3 sm:p-4 bg-surface-light hover:bg-surface-light/80 border border-gray-700 hover:border-primary/50 rounded-lg cursor-pointer transition-all active:bg-surface-light/80"
                     onClick={() => setSelectedTrace(trace)}
                   >
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-3">
-                        <div className={`w-2 h-2 rounded-full ${getSpanColor(totalDuration)}`}></div>
-                        <span className="text-white font-mono text-sm">{trace.traceID.slice(0, 16)}...</span>
-                        <span className="text-xs px-2 py-1 rounded bg-gray-700 text-gray-300">
+                    <div className="flex items-center justify-between mb-2 gap-2">
+                      <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                        <div className={`w-2 h-2 rounded-full flex-shrink-0 ${getSpanColor(totalDuration)}`}></div>
+                        <span className="text-white font-mono text-xs sm:text-sm truncate">{trace.traceID.slice(0, 16)}...</span>
+                        <span className="text-xs px-2 py-1 rounded bg-gray-700 text-gray-300 flex-shrink-0">
                           {spanCount} span{spanCount > 1 ? 's' : ''}
                         </span>
                       </div>
-                      <span className="text-gray-400 text-sm">
+                      <span className="text-gray-400 text-xs sm:text-sm flex-shrink-0">
                         {formatDuration(totalDuration)}
                       </span>
                     </div>
-                    <div className="text-sm text-gray-300 mb-2">
+                    <div className="text-xs sm:text-sm text-gray-300 mb-2 truncate">
                       {rootSpan?.operationName || 'Unknown Operation'}
                     </div>
                     <div className="flex items-center gap-2 text-xs text-gray-500">
-                      <span>{rootSpan?.serviceName || 'unknown'}</span>
+                      <span className="truncate">{rootSpan?.serviceName || 'unknown'}</span>
                       <span>•</span>
-                      <span>{new Date(rootSpan?.startTime / 1000).toLocaleString()}</span>
+                      <span className="flex-shrink-0">{new Date(rootSpan?.startTime / 1000).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
                     </div>
                   </div>
                 )
@@ -270,54 +274,54 @@ export function TracesPage() {
 
       {/* Trace Detail Modal */}
       {selectedTrace && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-surface border border-gray-700 rounded-lg w-full max-w-6xl max-h-[90vh] flex flex-col">
+        <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
+          <div className="bg-surface border border-gray-700 rounded-t-xl sm:rounded-lg w-full sm:max-w-6xl max-h-[92vh] sm:max-h-[90vh] flex flex-col">
             {/* Modal Header */}
-            <div className="flex items-center justify-between p-6 border-b border-gray-700 sticky top-0 bg-surface z-10">
-              <div>
-                <h2 className="text-xl font-bold text-white mb-1">Trace Details</h2>
-                <p className="text-sm text-gray-400 font-mono">{selectedTrace.traceID}</p>
+            <div className="flex items-center justify-between p-3 sm:p-6 border-b border-gray-700 sticky top-0 bg-surface z-10">
+              <div className="min-w-0 flex-1 mr-3">
+                <h2 className="text-lg sm:text-xl font-bold text-white mb-1">Trace Details</h2>
+                <p className="text-xs sm:text-sm text-gray-400 font-mono truncate">{selectedTrace.traceID}</p>
               </div>
-              <button 
+              <button
                 onClick={() => setSelectedTrace(null)}
-                className="text-gray-400 hover:text-white p-2 hover:bg-error/20 rounded-lg transition-colors"
+                className="text-gray-400 hover:text-white p-2 hover:bg-error/20 rounded-lg transition-colors flex-shrink-0"
               >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
             </div>
 
             {/* Modal Content */}
-            <div className="flex-1 overflow-y-auto p-6">
-              <div className="space-y-6">
-                {/* Trace Summary */}
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="card">
-                    <p className="text-sm text-gray-400 mb-1">Total Duration</p>
-                    <p className="text-2xl font-bold text-white">
+            <div className="flex-1 overflow-y-auto p-3 sm:p-6">
+              <div className="space-y-4 sm:space-y-6">
+                {/* Trace Summary – responsive grid */}
+                <div className="grid grid-cols-3 gap-2 sm:gap-4">
+                  <div className="card p-2 sm:p-4">
+                    <p className="text-xs text-gray-400 mb-1">Duration</p>
+                    <p className="text-lg sm:text-2xl font-bold text-white">
                       {formatDuration(Math.max(...selectedTrace.spans.map(s => s.startTime + s.duration)) - Math.min(...selectedTrace.spans.map(s => s.startTime)))}
                     </p>
                   </div>
-                  <div className="card">
-                    <p className="text-sm text-gray-400 mb-1">Total Spans</p>
-                    <p className="text-2xl font-bold text-white">{selectedTrace.spans.length}</p>
+                  <div className="card p-2 sm:p-4">
+                    <p className="text-xs text-gray-400 mb-1">Spans</p>
+                    <p className="text-lg sm:text-2xl font-bold text-white">{selectedTrace.spans.length}</p>
                   </div>
-                  <div className="card">
-                    <p className="text-sm text-gray-400 mb-1">Services</p>
-                    <p className="text-2xl font-bold text-white">
+                  <div className="card p-2 sm:p-4">
+                    <p className="text-xs text-gray-400 mb-1">Services</p>
+                    <p className="text-lg sm:text-2xl font-bold text-white">
                       {new Set(selectedTrace.spans.map(s => s.serviceName)).size}
                     </p>
                   </div>
                 </div>
 
                 {/* Waterfall Chart */}
-                <div className="card">
-                  <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                <div className="card p-2 sm:p-4">
+                  <h3 className="text-base sm:text-lg font-semibold text-white mb-3 sm:mb-4 flex items-center gap-2">
                     <Network size={20} />
                     Span Waterfall
                   </h3>
-                  <div className="space-y-2">
+                  <div className="space-y-2 overflow-x-auto">
                     {(() => {
                       const minStartTime = Math.min(...selectedTrace.spans.map(s => s.startTime))
                       const maxEndTime = Math.max(...selectedTrace.spans.map(s => s.startTime + s.duration))
@@ -330,29 +334,29 @@ export function TracesPage() {
                           const width = (span.duration / totalTraceDuration) * 100
 
                           return (
-                            <div 
-                              key={span.spanID} 
-                              className={`text-sm p-2 rounded hover:bg-white/5 cursor-pointer transition-colors ${selectedSpan?.spanID === span.spanID ? 'bg-white/10 ring-1 ring-primary' : ''}`}
+                            <div
+                              key={span.spanID}
+                              className={`text-sm p-1.5 sm:p-2 rounded hover:bg-white/5 cursor-pointer transition-colors ${selectedSpan?.spanID === span.spanID ? 'bg-white/10 ring-1 ring-primary' : ''}`}
                               onClick={() => setSelectedSpan(span)}
                             >
-                              <div className="flex items-center gap-2 mb-1">
-                                <span className="text-gray-400 font-mono text-xs w-8">{index + 1}</span>
-                                <span className="text-white flex-1 truncate font-medium">{span.operationName}</span>
-                                <span className="text-gray-400 text-xs">{formatDuration(span.duration)}</span>
+                              <div className="flex items-center gap-1.5 sm:gap-2 mb-1">
+                                <span className="text-gray-400 font-mono text-xs w-6 sm:w-8 flex-shrink-0">{index + 1}</span>
+                                <span className="text-white flex-1 truncate font-medium text-xs sm:text-sm">{span.operationName}</span>
+                                <span className="text-gray-400 text-xs flex-shrink-0">{formatDuration(span.duration)}</span>
                               </div>
-                              <div className="h-6 bg-surface-light rounded relative ml-10 overflow-hidden">
-                                <div 
+                              <div className="h-5 sm:h-6 bg-surface-light rounded relative ml-7 sm:ml-10 overflow-hidden">
+                                <div
                                   className={`absolute h-full rounded ${getSpanColor(span.duration)}`}
-                                  style={{ 
-                                    left: `${startOffset}%`, 
+                                  style={{
+                                    left: `${startOffset}%`,
                                     width: `${Math.max(width, 0.5)}%`, // Ensure at least a tiny visible bar
                                     minWidth: '2px'
                                   }}
                                 ></div>
                               </div>
-                              <div className="text-xs text-gray-500 ml-10 mt-1 flex justify-between">
-                                <span>{span.serviceName}</span>
-                                <span>{span.spanID.slice(0,8)}</span>
+                              <div className="text-[10px] sm:text-xs text-gray-500 ml-7 sm:ml-10 mt-1 flex justify-between">
+                                <span className="truncate">{span.serviceName}</span>
+                                <span className="flex-shrink-0">{span.spanID.slice(0,8)}</span>
                               </div>
                             </div>
                           )
@@ -361,62 +365,62 @@ export function TracesPage() {
                   </div>
                 </div>
 
-                {/* Span Details Panel */}
+                {/* Span Details Panel – responsive grid */}
                 {selectedSpan && (
-                  <div className="card bg-surface-light border-primary/20">
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-lg font-semibold text-white">Span Details</h3>
-                      <button onClick={() => setSelectedSpan(null)} className="text-gray-400 hover:text-white">
+                  <div className="card bg-surface-light border-primary/20 p-3 sm:p-4">
+                    <div className="flex items-center justify-between mb-3 sm:mb-4">
+                      <h3 className="text-base sm:text-lg font-semibold text-white">Span Details</h3>
+                      <button onClick={() => setSelectedSpan(null)} className="text-gray-400 hover:text-white text-sm">
                         Close
                       </button>
                     </div>
-                    <div className="grid grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                       <div>
                         <h4 className="text-sm font-medium text-primary mb-2">Metadata</h4>
                         <dl className="space-y-2 text-sm">
-                          <div className="flex justify-between">
-                            <dt className="text-gray-400">Operation:</dt>
-                            <dd className="text-white font-mono">{selectedSpan.operationName}</dd>
+                          <div className="flex justify-between gap-2">
+                            <dt className="text-gray-400 flex-shrink-0">Operation:</dt>
+                            <dd className="text-white font-mono text-right truncate">{selectedSpan.operationName}</dd>
                           </div>
-                          <div className="flex justify-between">
-                            <dt className="text-gray-400">Service:</dt>
-                            <dd className="text-white">{selectedSpan.serviceName}</dd>
+                          <div className="flex justify-between gap-2">
+                            <dt className="text-gray-400 flex-shrink-0">Service:</dt>
+                            <dd className="text-white text-right truncate">{selectedSpan.serviceName}</dd>
                           </div>
-                          <div className="flex justify-between">
-                            <dt className="text-gray-400">Duration:</dt>
+                          <div className="flex justify-between gap-2">
+                            <dt className="text-gray-400 flex-shrink-0">Duration:</dt>
                             <dd className="text-white">{formatDuration(selectedSpan.duration)}</dd>
                           </div>
-                          <div className="flex justify-between">
-                            <dt className="text-gray-400">Start Time:</dt>
-                            <dd className="text-white">{new Date(selectedSpan.startTime / 1000).toLocaleString()}</dd>
+                          <div className="flex justify-between gap-2">
+                            <dt className="text-gray-400 flex-shrink-0">Start Time:</dt>
+                            <dd className="text-white text-right">{new Date(selectedSpan.startTime / 1000).toLocaleString()}</dd>
                           </div>
-                          <div className="flex justify-between">
-                            <dt className="text-gray-400">Span ID:</dt>
-                            <dd className="text-white font-mono">{selectedSpan.spanID}</dd>
+                          <div className="flex justify-between gap-2">
+                            <dt className="text-gray-400 flex-shrink-0">Span ID:</dt>
+                            <dd className="text-white font-mono text-right truncate">{selectedSpan.spanID}</dd>
                           </div>
-                          <div className="flex justify-between">
-                            <dt className="text-gray-400">Trace ID:</dt>
-                            <dd className="text-white font-mono">{selectedSpan.traceID}</dd>
+                          <div className="flex justify-between gap-2">
+                            <dt className="text-gray-400 flex-shrink-0">Trace ID:</dt>
+                            <dd className="text-white font-mono text-right truncate">{selectedSpan.traceID}</dd>
                           </div>
                         </dl>
                       </div>
                       <div>
                         <h4 className="text-sm font-medium text-primary mb-2">Tags & Attributes</h4>
                         {selectedSpan.tags && Object.keys(selectedSpan.tags).length > 0 ? (
-                          <div className="bg-black/30 rounded p-3 max-h-48 overflow-y-auto">
-                            <pre className="text-xs text-gray-300 font-mono whitespace-pre-wrap">
+                          <div className="bg-black/30 rounded p-2 sm:p-3 max-h-48 overflow-y-auto">
+                            <pre className="text-xs text-gray-300 font-mono whitespace-pre-wrap break-all">
                               {JSON.stringify(selectedSpan.tags, null, 2)}
                             </pre>
                           </div>
                         ) : (
                           <p className="text-gray-500 text-sm italic">No tags available</p>
                         )}
-                        
+
                         {selectedSpan.logs && selectedSpan.logs.length > 0 && (
                           <>
                             <h4 className="text-sm font-medium text-primary mb-2 mt-4">Logs</h4>
-                            <div className="bg-black/30 rounded p-3 max-h-48 overflow-y-auto">
-                              <pre className="text-xs text-gray-300 font-mono whitespace-pre-wrap">
+                            <div className="bg-black/30 rounded p-2 sm:p-3 max-h-48 overflow-y-auto">
+                              <pre className="text-xs text-gray-300 font-mono whitespace-pre-wrap break-all">
                                 {JSON.stringify(selectedSpan.logs, null, 2)}
                               </pre>
                             </div>
@@ -428,8 +432,8 @@ export function TracesPage() {
                 )}
 
                 {/* Actions */}
-                <div className="flex gap-3">
-                  <button 
+                <div className="flex gap-2 sm:gap-3">
+                  <button
                     onClick={() => {
                       // Open Grafana Explore directly (v2.5.1 - direct links strategy)
                       const exploreUrl = `?orgId=1&left=${encodeURIComponent(JSON.stringify({
@@ -439,7 +443,7 @@ export function TracesPage() {
                       }))}`
                       openGrafanaExplore(exploreUrl)
                     }}
-                    className="btn flex-1 flex items-center justify-center gap-2"
+                    className="btn flex-1 flex items-center justify-center gap-2 min-h-[44px] text-sm"
                   >
                     <ExternalLink size={16} />
                     View in Grafana

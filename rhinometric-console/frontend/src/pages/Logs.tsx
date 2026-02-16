@@ -27,7 +27,7 @@ export function LogsPage() {
     queryKey: ['logs', token, searchQuery, levelFilter, timeRange],
     queryFn: async () => {
       if (!token) throw new Error('No token available')
-      
+
       // Build LogQL query - optimized for speed
       let logql = '{job=~".+"}'
       if (levelFilter !== 'all') {
@@ -45,8 +45,10 @@ export function LogsPage() {
         direction: 'backward'
       })
 
-      const response = await fetch(`/api/logs?${params}`)
-      
+      const response = await fetch(`/api/logs?${params}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+
       if (!response.ok) throw new Error('Failed to fetch logs')
       return response.json()
     },
@@ -63,7 +65,7 @@ export function LogsPage() {
     return value * (multipliers[unit] || 3600000)
   }
 
-  const logs: LogEntry[] = logsData?.data?.result?.flatMap((stream: any) => 
+  const logs: LogEntry[] = logsData?.data?.result?.flatMap((stream: any) =>
     stream.values?.map(([timestamp, message]: [string, string]) => ({
       timestamp: new Date(parseInt(timestamp) / 1000000).toISOString(),
       message,
@@ -93,22 +95,23 @@ export function LogsPage() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+    <div className="space-y-4 sm:space-y-6">
+      {/* Header – stacks on mobile */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold text-white mb-2">Log Explorer</h1>
-          <p className="text-text-muted">Query and analyze logs from Loki</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-white mb-1 sm:mb-2">Log Explorer</h1>
+          <p className="text-text-muted text-sm sm:text-base">Query and analyze logs from Loki</p>
         </div>
-        <div className="flex items-center gap-2">
-          <button 
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <button
             onClick={() => setAutoRefresh(!autoRefresh)}
-            className={`btn btn-secondary flex items-center gap-2 ${autoRefresh ? 'bg-primary/20 text-primary' : ''}`}
+            className={`btn btn-secondary flex items-center gap-2 text-sm ${autoRefresh ? 'bg-primary/20 text-primary' : ''}`}
           >
             <RefreshCw size={16} className={autoRefresh ? 'animate-spin' : ''} />
-            Auto-refresh
+            <span className="hidden sm:inline">Auto-refresh</span>
+            <span className="sm:hidden">Auto</span>
           </button>
-          <button 
+          <button
             onClick={() => {
               const dataStr = JSON.stringify(logs, null, 2)
               const dataBlob = new Blob([dataStr], { type: 'application/json' })
@@ -120,71 +123,74 @@ export function LogsPage() {
               URL.revokeObjectURL(url)
             }}
             disabled={logs.length === 0}
-            className="btn btn-secondary flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="btn btn-secondary flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
           >
             <Download size={16} />
-            Export
+            <span className="hidden sm:inline">Export</span>
           </button>
         </div>
       </div>
 
       {/* Search and Filters */}
-      <div className="card space-y-4">
-        {/* Search Bar */}
-        <div className="flex items-center gap-3">
+      <div className="card space-y-3 sm:space-y-4">
+        {/* Search Bar – wraps buttons below on mobile */}
+        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
             <input
               type="text"
-              placeholder="Search logs... (press Enter to search)"
+              placeholder="Search logs... (press Enter)"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && refetch()}
-              className="w-full bg-surface-light border border-gray-700 text-white rounded-lg pl-10 pr-4 py-2.5 focus:outline-none focus:border-primary"
+              className="w-full bg-surface-light border border-gray-700 text-white rounded-lg pl-10 pr-4 py-2.5 focus:outline-none focus:border-primary text-sm"
             />
           </div>
-          <button 
-            onClick={() => refetch()}
-            className="btn flex items-center gap-2"
-          >
-            <Search size={16} />
-            Search
-          </button>
-          <button
-            onClick={() => {
-              // Build LogQL query
-              let logql = '{job=~".+"}'
-              if (levelFilter !== 'all') {
-                logql = `{job=~".+"} |= "${levelFilter}"`
-              }
-              if (searchQuery) {
-                logql += ` |= "${searchQuery}"`
-              }
+          <div className="flex gap-2">
+            <button
+              onClick={() => refetch()}
+              className="btn flex items-center gap-2 flex-1 sm:flex-none min-h-[44px] text-sm justify-center"
+            >
+              <Search size={16} />
+              Search
+            </button>
+            <button
+              onClick={() => {
+                // Build LogQL query
+                let logql = '{job=~".+"}'
+                if (levelFilter !== 'all') {
+                  logql = `{job=~".+"} |= "${levelFilter}"`
+                }
+                if (searchQuery) {
+                  logql += ` |= "${searchQuery}"`
+                }
 
-              // Open Grafana Explore directly (v2.5.1 - direct links strategy)
-              const exploreUrl = `?orgId=1&left=${encodeURIComponent(JSON.stringify({
-                datasource: 'loki',
-                queries: [{ refId: 'A', expr: logql }],
-                range: { from: `now-${timeRange}`, to: 'now' }
-              }))}`
-              openGrafanaExplore(exploreUrl)
-            }}
-            className="btn btn-secondary flex items-center gap-2"
-          >
-            <Download size={16} />
-            View in Grafana
-          </button>
+                // Open Grafana Explore directly (v2.5.1 - direct links strategy)
+                const exploreUrl = `?orgId=1&left=${encodeURIComponent(JSON.stringify({
+                  datasource: 'loki',
+                  queries: [{ refId: 'A', expr: logql }],
+                  range: { from: `now-${timeRange}`, to: 'now' }
+                }))}`
+                openGrafanaExplore(exploreUrl)
+              }}
+              className="btn btn-secondary flex items-center gap-2 flex-1 sm:flex-none min-h-[44px] text-sm justify-center"
+            >
+              <Download size={16} />
+              <span className="hidden sm:inline">View in Grafana</span>
+              <span className="sm:hidden">Grafana</span>
+            </button>
+          </div>
         </div>
 
-        {/* Filters */}
-        <div className="flex items-center gap-4 flex-wrap">
+        {/* Filters – wraps naturally */}
+        <div className="flex flex-wrap items-center gap-3 sm:gap-4">
           <div className="flex items-center gap-2">
-            <Filter size={16} className="text-gray-400" />
-            <span className="text-sm text-gray-400">Level:</span>
+            <Filter size={16} className="text-gray-400 flex-shrink-0" />
+            <span className="text-sm text-gray-400 hidden sm:inline">Level:</span>
             <select
               value={levelFilter}
               onChange={(e) => setLevelFilter(e.target.value)}
-              className="bg-surface-light border border-gray-700 text-white rounded px-3 py-1.5 text-sm"
+              className="bg-surface-light border border-gray-700 text-white rounded px-2 sm:px-3 py-1.5 text-sm"
             >
               <option value="all">All Levels</option>
               <option value="error">Error</option>
@@ -195,12 +201,12 @@ export function LogsPage() {
           </div>
 
           <div className="flex items-center gap-2">
-            <Clock size={16} className="text-gray-400" />
-            <span className="text-sm text-gray-400">Time:</span>
+            <Clock size={16} className="text-gray-400 flex-shrink-0" />
+            <span className="text-sm text-gray-400 hidden sm:inline">Time:</span>
             <select
               value={timeRange}
               onChange={(e) => setTimeRange(e.target.value)}
-              className="bg-surface-light border border-gray-700 text-white rounded px-3 py-1.5 text-sm"
+              className="bg-surface-light border border-gray-700 text-white rounded px-2 sm:px-3 py-1.5 text-sm"
             >
               <option value="5m">Last 5 minutes</option>
               <option value="15m">Last 15 minutes</option>
@@ -209,21 +215,21 @@ export function LogsPage() {
             </select>
           </div>
 
-          <div className="text-sm text-gray-400">
-            {logs.length} log entries (max 50)
+          <div className="text-xs sm:text-sm text-gray-400">
+            {logs.length} entries (max 50)
           </div>
         </div>
       </div>
 
       {/* Logs Display */}
-      <div className="card">
+      <div className="card p-0 sm:p-0">
         {isLoading ? (
           <div className="text-center py-12">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
             <p className="text-gray-400 mt-4">Loading logs...</p>
           </div>
         ) : error ? (
-          <div className="text-center py-12">
+          <div className="text-center py-12 px-4">
             <FileText className="text-error mx-auto mb-4" size={48} />
             <p className="text-error">Failed to load logs</p>
             <p className="text-sm text-gray-400 mt-2">{(error as Error).message}</p>
@@ -232,43 +238,71 @@ export function LogsPage() {
             </button>
           </div>
         ) : logs.length === 0 ? (
-          <div className="text-center py-12">
+          <div className="text-center py-12 px-4">
             <FileText className="text-gray-400 mx-auto mb-4" size={48} />
             <p className="text-white text-lg font-semibold">No Logs Found</p>
-            <p className="text-gray-400 mt-2">Try adjusting your search filters or time range</p>
+            <p className="text-gray-400 mt-2 text-sm">Try adjusting your search filters or time range</p>
           </div>
         ) : (
-          <div className="space-y-2 max-h-[600px] overflow-y-auto">
+          <div className="space-y-0 max-h-[600px] overflow-y-auto divide-y divide-gray-700/30">
             {logs.map((log, index) => (
-              <div 
+              <div
                 key={index}
-                className="flex items-start gap-3 p-3 hover:bg-surface-light rounded-lg transition-colors border-l-2 border-transparent hover:border-primary"
+                className="p-2 sm:p-3 hover:bg-surface-light transition-colors border-l-2 border-transparent hover:border-primary"
               >
-                {/* Timestamp */}
-                <div className="text-xs text-gray-500 font-mono whitespace-nowrap pt-1">
-                  {new Date(log.timestamp).toLocaleTimeString('en-US', { 
-                    hour12: false, 
-                    hour: '2-digit', 
-                    minute: '2-digit', 
-                    second: '2-digit' 
-                  })}
+                {/* Desktop: single row */}
+                <div className="hidden sm:flex items-start gap-3">
+                  {/* Timestamp */}
+                  <div className="text-xs text-gray-500 font-mono whitespace-nowrap pt-1">
+                    {new Date(log.timestamp).toLocaleTimeString('en-US', {
+                      hour12: false,
+                      hour: '2-digit',
+                      minute: '2-digit',
+                      second: '2-digit'
+                    })}
+                  </div>
+
+                  {/* Level Badge */}
+                  <div className={`text-xs font-medium px-2 py-0.5 rounded border whitespace-nowrap ${getLevelColor(log.level)}`}>
+                    {log.level.toUpperCase()}
+                  </div>
+
+                  {/* Labels */}
+                  {log.stream.job && (
+                    <code className="text-xs text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded whitespace-nowrap">
+                      {log.stream.job}
+                    </code>
+                  )}
+
+                  {/* Message */}
+                  <div className="flex-1 text-sm text-gray-300 font-mono break-all">
+                    {log.message}
+                  </div>
                 </div>
 
-                {/* Level Badge */}
-                <div className={`text-xs font-medium px-2 py-0.5 rounded border whitespace-nowrap ${getLevelColor(log.level)}`}>
-                  {log.level.toUpperCase()}
-                </div>
-
-                {/* Labels */}
-                {log.stream.job && (
-                  <code className="text-xs text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded whitespace-nowrap">
-                    {log.stream.job}
-                  </code>
-                )}
-
-                {/* Message */}
-                <div className="flex-1 text-sm text-gray-300 font-mono break-all">
-                  {log.message}
+                {/* Mobile: stacked layout */}
+                <div className="sm:hidden">
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className={`text-[10px] font-medium px-1.5 py-0.5 rounded border ${getLevelColor(log.level)}`}>
+                      {log.level.toUpperCase()}
+                    </div>
+                    {log.stream.job && (
+                      <code className="text-[10px] text-blue-400 bg-blue-500/10 px-1.5 py-0.5 rounded truncate">
+                        {log.stream.job}
+                      </code>
+                    )}
+                    <span className="text-[10px] text-gray-500 font-mono ml-auto flex-shrink-0">
+                      {new Date(log.timestamp).toLocaleTimeString('en-US', {
+                        hour12: false,
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit'
+                      })}
+                    </span>
+                  </div>
+                  <div className="text-xs text-gray-300 font-mono break-all line-clamp-3">
+                    {log.message}
+                  </div>
                 </div>
               </div>
             ))}
@@ -279,11 +313,12 @@ export function LogsPage() {
       {/* Info Banner */}
       <div className="card bg-primary/5 border-primary/20">
         <div className="flex items-start gap-3">
-          <FileText className="text-primary mt-1" size={20} />
-          <div>
+          <FileText className="text-primary mt-1 flex-shrink-0" size={20} />
+          <div className="min-w-0">
             <h3 className="text-sm font-semibold text-white mb-1">LogQL Queries</h3>
-            <p className="text-xs text-gray-400">
-              Use LogQL syntax for advanced queries. Examples: <code className="text-primary mx-1">{'{job="varlogs"}'}</code> 
+            <p className="text-xs text-gray-400 break-words">
+              Use LogQL syntax for advanced queries. Examples:
+              <code className="text-primary mx-1">{'{job="varlogs"}'}</code>
               or <code className="text-primary mx-1">{'|~ "error"'}</code> for regex matching.
             </p>
             <p className="text-xs text-gray-500 mt-2">

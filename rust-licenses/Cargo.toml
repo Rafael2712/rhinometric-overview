@@ -1,0 +1,25 @@
+[package]
+name = "rhino_license_core"
+version = "0.1.0"
+edition = "2021"
+description = "Rhinometric license validator and generator"
+authors = ["Rhinometric Team"]
+
+[[bin]]
+name = "rhino-lic"
+path = "src/main.rs"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+ed25519-dalek = { version = "2", features = ["serde", "rand_core"] }
+sha2 = "0.10"
+clap = { version = "4", features = ["derive", "env"] }
+chrono = { version = "0.4", features = ["serde"] }
+base64 = "0.22"
+rand = "0.8"
+
+[profile.release]
+opt-level = 3
+lto = true
+strip = true

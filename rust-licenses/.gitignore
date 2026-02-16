@@ -1,0 +1,16 @@
+# Rust build artifacts
+/target/
+
+# Private keys — NEVER commit these
+*.key
+keys/license.key
+private.key
+
+# Editor files
+.vscode/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db

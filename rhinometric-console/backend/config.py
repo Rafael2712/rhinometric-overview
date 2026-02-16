@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     # Security (CRITICAL: Change SECRET_KEY in production)
     SECRET_KEY: str = "CHANGE_ME_IN_PRODUCTION_MIN_32_CHARS_REQUIRED"  # Override with SECRET_KEY env var
     ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 30  # 30 days (sufficient for 14-day trial period)
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 24 hours
     
     # CORS
     CORS_ORIGINS: list[str] = ["http://localhost:3002", "http://127.0.0.1:3002"]

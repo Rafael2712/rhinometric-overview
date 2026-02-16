@@ -1,0 +1,17 @@
+{
+  "payload": {
+    "version": 1,
+    "tenant_id": "cliente-acme",
+    "customer": "ACME Corp",
+    "plan": "single_tenant_40_hosts",
+    "max_hosts": 40,
+    "issued_at": "2026-02-14T11:47:34.754078556+00:00",
+    "expires_at": "2027-02-13T00:00:00Z",
+    "fingerprint": "sha256:FAKEFINGERPRINTPARAPRUEBAS",
+    "features": [
+      "monitoring",
+      "alerting"
+    ]
+  },
+  "signature": "1XKh5KRz25Qp/fAmc8WtJefIpiEtjjzWG8BdQwN9of3oPl2iIziAUeYPHtTn9WyT2QjSg355HiX/o4e+tPgGDg=="
+}

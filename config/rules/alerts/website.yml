@@ -1,0 +1,62 @@
+# ═══════════════════════════════════════════════════════════════════════════
+#  PROMETHEUS ALERT RULES - RHINOMETRIC WEBSITE MONITORING v1.0.0
+# ═══════════════════════════════════════════════════════════════════════════
+
+groups:
+  - name: rhinometric_website
+    interval: 30s
+    rules:
+      # ── Availability ──────────────────────────────────────────────────
+      - alert: RhinometricWebsiteDown
+        expr: probe_success{job="blackbox-web-rhinometric"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          service: rhinometric-website
+        annotations:
+          summary: "rhinometric.com is DOWN"
+          description: "probe_success for {{ $labels.instance }} has been 0 for more than 2 minutes."
+
+      # ── High Latency ──────────────────────────────────────────────────
+      - alert: RhinometricWebsiteHighLatency
+        expr: probe_duration_seconds{job="blackbox-web-rhinometric"} > 2
+        for: 5m
+        labels:
+          severity: warning
+          service: rhinometric-website
+        annotations:
+          summary: "rhinometric.com high response time"
+          description: "Response time for {{ $labels.instance }} is {{ $value | humanizeDuration }} (>2s for 5 min)."
+
+      # ── SSL Certificate Expiry (<30 days) ─────────────────────────────
+      - alert: RhinometricWebsiteSSLExpiringSoon
+        expr: (probe_ssl_earliest_cert_expiry{job="blackbox-web-rhinometric"} - time()) / 86400 < 30
+        for: 1h
+        labels:
+          severity: warning
+          service: rhinometric-website
+        annotations:
+          summary: "rhinometric.com SSL certificate expiring soon"
+          description: "SSL certificate for {{ $labels.instance }} expires in {{ $value | humanize }} days."
+
+      # ── SSL Certificate Expiry (<7 days) ──────────────────────────────
+      - alert: RhinometricWebsiteSSLCritical
+        expr: (probe_ssl_earliest_cert_expiry{job="blackbox-web-rhinometric"} - time()) / 86400 < 7
+        for: 10m
+        labels:
+          severity: critical
+          service: rhinometric-website
+        annotations:
+          summary: "rhinometric.com SSL certificate about to expire"
+          description: "SSL certificate for {{ $labels.instance }} expires in {{ $value | humanize }} days. Immediate action required."
+
+      # ── Probe Target Unreachable ──────────────────────────────────────
+      - alert: RhinometricWebsiteProbeFailure
+        expr: up{job="blackbox-web-rhinometric"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          service: rhinometric-website
+        annotations:
+          summary: "Blackbox probe for rhinometric.com is unreachable"
+          description: "The blackbox-exporter scrape target for {{ $labels.instance }} is down."

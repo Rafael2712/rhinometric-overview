@@ -795,7 +795,7 @@ async def refresh_baselines(background_tasks: BackgroundTasks):
     """
     try:
         from app.baseline_manager import baseline_manager
-        from app.prometheus_client import PrometheusClient
+        from app.prom_client import PrometheusClient
         import numpy as np
         
         async def refresh_all():

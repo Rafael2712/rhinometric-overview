@@ -9,6 +9,35 @@ from models.user import User as UserModel
 
 router = APIRouter()
 
+# Explicit set of platform/infrastructure jobs.
+# Everything NOT in this set is classified as a "client service".
+# To add a new platform job, add it here. To add a client service, just add its
+# Prometheus scrape job — it will be picked up automatically.
+PLATFORM_JOBS = {
+    "prometheus",
+    "grafana",
+    "loki",
+    "jaeger",
+    "alertmanager",
+}
+
+# Jobs that are pure infrastructure/internal and should be excluded from
+# the "Monitored Services" KPI and from the /services endpoint.
+# These infrastructure exporters are classified as platform in system-health
+# and excluded from the "Monitored Services" KPI counter and /services endpoint.
+INFRA_JOBS = {
+    "node-exporter",
+    "cadvisor",
+    "blackbox-exporter",
+}
+
+# Internal probe jobs excluded from "Monitored Services" KPI and /services,
+# but counted as client services in system-health (they represent healthchecks).
+INTERNAL_PROBE_JOBS = {
+    "blackbox-http",
+}
+
+
 class KPIResponse(BaseModel):
     service_status: dict
     monitored_hosts: dict
@@ -27,6 +56,7 @@ class KPIHistoricalResponse(BaseModel):
 
 @router.get("", response_model=KPIResponse)
 async def get_kpis(current_user: UserModel = Depends(get_current_user)):
+    # TODO-RBAC: KPI counts should reflect only services visible to current_user role/tenant
     """
     Aggregate KPIs from Prometheus and other services
     
@@ -61,11 +91,13 @@ async def get_kpis(current_user: UserModel = Depends(get_current_user)):
             uptime_pct = (operational_count / total_count * 100) if total_count > 0 else 100.0
             
             # Get unique monitored services - count by unique instances
-            # Filter out internal metrics exporters (node-exporter, cadvisor, blackbox)
+            # Filter out infrastructure exporters and internal healthchecks
+            # node-exporter, cadvisor = host metrics; blackbox-exporter = self; blackbox-http = internal probes
+            # blackbox-web-* jobs ARE included (external website monitoring = client services)
             # These are monitoring infrastructure, not client services
             services_response = await client.get(
                 prom_url,
-                params={"query": 'count(count(up{job!~"node-exporter|cadvisor|blackbox.*"}) by (instance))'}
+                params={"query": 'count(count(up{job!~"node-exporter|cadvisor|blackbox-exporter|blackbox-http"}) by (instance))'}
             )
             services_data = services_response.json()
             results = services_data.get("data", {}).get("result", [])
@@ -80,7 +112,8 @@ async def get_kpis(current_user: UserModel = Depends(get_current_user)):
             total_results = total_data.get("data", {}).get("result", [])
             total_services_with_core = int(total_results[0].get("value", [0, "0"])[1]) if total_results else 0
             
-            # Get anomalies count from AI service (no auth required)
+            # Get ACTIVE anomalies count from AI service (no auth required)
+            # Use active_count instead of total to match Anomalies page
             anomalies_count = 0
             anomalies_status = "success"
             anomalies_change = "No issues detected"
@@ -88,10 +121,11 @@ async def get_kpis(current_user: UserModel = Depends(get_current_user)):
                 anomalies_response = await client.get(f"{settings.AI_ANOMALY_URL}/anomalies?limit=100", timeout=5.0)
                 if anomalies_response.status_code == 200:
                     anomalies_data = anomalies_response.json()
-                    anomalies_count = len(anomalies_data.get("anomalies", []))
+                    # Use active_count for consistency with Anomalies page
+                    anomalies_count = anomalies_data.get("active_count", 0)
                     if anomalies_count > 0:
                         anomalies_status = "warning"
-                        anomalies_change = f"{anomalies_count} detected"
+                        anomalies_change = f"{anomalies_count} active"
             except Exception as e:
                 print(f"Error fetching anomalies: {e}")
                 pass  # If AI service unavailable, keep at 0
@@ -294,6 +328,7 @@ async def get_kpis_historical(current_user: UserModel = Depends(get_current_user
 
 @router.get("/services")
 async def get_monitored_services(current_user: UserModel = Depends(get_current_user)):
+    # TODO-RBAC: Scope service list to current_user tenant when multi-tenancy is enabled
     """
     Get list of all monitored services with their status
     
@@ -306,7 +341,7 @@ async def get_monitored_services(current_user: UserModel = Depends(get_current_u
             # Get all services excluding infrastructure exporters
             services_response = await client.get(
                 prom_url,
-                params={"query": 'up{job!~"node-exporter|cadvisor|blackbox.*"}'}
+                params={"query": 'up{job!~"node-exporter|cadvisor|blackbox-exporter|blackbox-http"}'}
             )
             services_data = services_response.json()
             
@@ -384,9 +419,8 @@ async def get_system_health(current_user: UserModel = Depends(get_current_user))
                     job = metric.get("job", "unknown")
                     
                     # Classify as platform or client service
-                    is_platform = job in ["node-exporter", "cadvisor", "blackbox-exporter"] or \
-                                 "rhinometric" in job.lower() or \
-                                 job in ["prometheus", "grafana", "loki", "jaeger", "alertmanager"]
+                    # TODO-RBAC: When RBAC is implemented, filter services by user tenant/role
+                    is_platform = job in PLATFORM_JOBS or job in INFRA_JOBS
                     
                     if is_platform:
                         platform_total += 1

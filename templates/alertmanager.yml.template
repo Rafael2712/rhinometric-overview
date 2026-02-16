@@ -1,0 +1,102 @@
+global:
+  resolve_timeout: 5m
+  smtp_from: "__SMTP_FROM__"
+  smtp_smarthost: "__SMTP_HOST__:__SMTP_PORT__"
+  smtp_auth_username: "__SMTP_USER__"
+  smtp_auth_password: "__SMTP_PASSWORD__"
+  smtp_require_tls: true
+  slack_api_url: "__SLACK_WEBHOOK_URL__"
+
+templates:
+  - "/etc/alertmanager/templates/*.tmpl"
+
+route:
+  receiver: "team-notifications"
+  group_by: ["alertname", "instance", "severity"]
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+  routes:
+    - match:
+        severity: critical
+      receiver: "critical-alerts"
+      group_wait: 10s
+      group_interval: 1m
+      repeat_interval: 1h
+    - match:
+        severity: warning
+      receiver: "warning-alerts"
+      repeat_interval: 6h
+    - match:
+        severity: info
+      receiver: "info-alerts"
+      repeat_interval: 24h
+
+receivers:
+  - name: "team-notifications"
+    email_configs:
+      - to: "__ALERT_EMAIL__"
+        html: '{{ template "email.html" . }}'
+        headers:
+          Subject: 'Rhinometric Alert: {{ .GroupLabels.alertname }}'
+    slack_configs:
+      - channel: "__SLACK_CHANNEL_ALERTS__"
+        title: '{{ .GroupLabels.alertname }}'
+        text: '{{ range .Alerts }}{{ .Annotations.summary }}
+{{ end }}'
+
+  - name: "critical-alerts"
+    email_configs:
+      - to: "__ALERT_EMAIL__"
+        html: '{{ template "email.html" . }}'
+        headers:
+          Subject: '[CRITICAL] {{ .GroupLabels.alertname }}'
+          Priority: "urgent"
+    slack_configs:
+      - channel: "__SLACK_CHANNEL_CRITICAL__"
+        color: "danger"
+        title: '[CRITICAL] {{ .GroupLabels.alertname }}'
+        text: '{{ range .Alerts }}*Instance:* {{ .Labels.instance }}
+*Summary:* {{ .Annotations.summary }}
+*Description:* {{ .Annotations.description }}
+{{ end }}'
+
+  - name: "warning-alerts"
+    email_configs:
+      - to: "__ALERT_EMAIL__"
+        html: '{{ template "email.html" . }}'
+        headers:
+          Subject: '[WARNING] {{ .GroupLabels.alertname }}'
+    slack_configs:
+      - channel: "__SLACK_CHANNEL_ALERTS__"
+        color: "warning"
+        title: '[WARNING] {{ .GroupLabels.alertname }}'
+        text: '{{ range .Alerts }}{{ .Annotations.summary }}{{ end }}'
+
+  - name: "info-alerts"
+    email_configs:
+      - to: "__ALERT_EMAIL__"
+        html: '{{ template "email.html" . }}'
+        headers:
+          Subject: '[INFO] {{ .GroupLabels.alertname }}'
+    slack_configs:
+      - channel: "__SLACK_CHANNEL_INFO__"
+        color: "#439FE0"
+        title: '[INFO] {{ .GroupLabels.alertname }}'
+
+inhibit_rules:
+  - source_match:
+      severity: critical
+    target_match:
+      severity: warning
+    equal: ["alertname", "instance"]
+  - source_match:
+      severity: critical
+    target_match:
+      severity: info
+    equal: ["alertname", "instance"]
+  - source_match:
+      severity: warning
+    target_match:
+      severity: info
+    equal: ["alertname", "instance"]

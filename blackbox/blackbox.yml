@@ -1,0 +1,17 @@
+modules:
+  http_2xx:
+    prober: http
+    timeout: 10s
+    http:
+      method: GET
+      preferred_ip_protocol: "ip4"
+      tls_config:
+        insecure_skip_verify: false
+      follow_redirects: true
+      fail_if_ssl: false
+      valid_status_codes:
+        - 200
+        - 201
+        - 202
+        - 301
+        - 302

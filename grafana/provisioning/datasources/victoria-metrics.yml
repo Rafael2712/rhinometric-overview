@@ -1,0 +1,20 @@
+# VictoriaMetrics Datasource for Grafana
+# Rhinometric v3.0 - Rhino Core Integration
+# Autor: Rhinometric.com
+
+apiVersion: 1
+
+datasources:
+  - name: VictoriaMetrics
+    type: prometheus
+    access: proxy
+    url: http://victoria-metrics:8428
+    isDefault: false
+    editable: true
+    jsonData:
+      httpMethod: POST
+      timeInterval: 30s
+      queryTimeout: 60s
+      customQueryParameters: ''
+    uid: victoriametrics
+    version: 1

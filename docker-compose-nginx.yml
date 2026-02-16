@@ -1,0 +1,40 @@
+# NGINX Reverse Proxy for Rhinometric Platform
+# Deploy with: docker-compose -f docker-compose-nginx.yml up -d
+version: '3.8'
+
+services:
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: rhinometric-nginx
+    ports:
+      - "80:80"  # NGINX as sole public entry point
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/.htpasswd:/etc/nginx/.htpasswd:ro
+      - nginx-logs:/var/log/nginx
+    networks:
+      - rhinometric_network
+      - rhinometric_network_v22
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost/nginx-health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.2'
+          memory: 128M
+    restart: unless-stopped
+
+networks:
+  rhinometric_network:
+    name: rhinometric_rhinometric_network
+    external: true
+  rhinometric_network_v22:
+    name: rhinometric_rhinometric_network_v22
+    external: true
+
+volumes:
+  nginx-logs:
