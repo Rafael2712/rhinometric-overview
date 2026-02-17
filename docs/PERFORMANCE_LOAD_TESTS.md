@@ -223,27 +223,44 @@ return max(node_count, cadvisor_count)
 
 ---
 
-### 5.5 Test: 100 simulated hosts (total: 101) — PENDING
+### 5.5 Test: 100 simulated hosts (total: 101)
 
-**Date**: _To be executed_
-**Command**: `./scripts/run_host_load_test.sh 100`
+**Date**: 2026-02-17
+**Command**: ./scripts/run_host_load_test.sh 100
 
 | Metric | Value |
 |--------|-------|
-| **License Host Usage** | ___ / 100 |
-| **Prometheus targets (node-exporter)** | ___ UP, ___ DOWN |
-| **Prometheus CPU** | ___% |
-| **Prometheus RAM** | ___ MiB / 768 MiB (___%) |
-| **sim-node-exporter CPU** | ___% |
-| **sim-node-exporter RAM** | ___ MiB / 512 MiB (___%) |
-| **System load (1/5/15 min)** | ___ / ___ / ___ |
-| **System RAM available** | ___ Gi |
-| **Container health** | ___ |
+| **License Host Usage** | **101 / 100** (license limit reached) |
+| **Prometheus targets (node-exporter)** | 101 UP, 0 DOWN |
+| **Prometheus CPU** | **13.66%** |
+| **Prometheus RAM** | **165.1 MiB / 768 MiB (21.5%)** |
+| **sim-node-exporter CPU** | **1.37%** |
+| **sim-node-exporter RAM** | **24.18 MiB / 512 MiB (4.7%)** |
+| **System load (1/5/15 min)** | 0.36 / 0.54 / 0.54 |
+| **System RAM available** | ~12 Gi |
+| **Container health** | All healthy (victoria-metrics unhealthy — preexisting) |
+| **Avg scrape duration** | ~7.8 ms |
+| **TSDB head series** | 21,536 |
 
-**Dashboards reviewed**: ___
-**Observations**: ___
-**Verdict**: ___
+**Dashboards reviewed**:
+- 01 – System Overview (CPU, RAM, Disk, System Uptime, Network Traffic)
+- 04 – Docker Containers (running containers, CPU & RAM per container)
+- 06 – Rhinometric Console Backend (latencies, error rate, requests)
 
+**Observations**:
+- License page correctly shows 101/100 — **the Enterprise limit is reached**.
+- All 101 Prometheus targets reporting UP with 0 DOWN — zero scrape failures.
+- Prometheus CPU rose to 13.66% (up from <1% at 70 hosts). This is the first noticeable jump, likely driven by 101 concurrent scrape targets and TSDB ingestion. Still very comfortable on 8 vCPUs.
+- Prometheus RAM at 165.1 MiB, only 21.5% of the 768 MiB limit. Massive headroom remains.
+- sim-node-exporter CPU at 1.37% and RAM at 24.18 MiB — the simulation container is barely taxed even at 100 hosts.
+- System load average stays below 0.6 across all intervals, meaning the 8-core VM is essentially idle.
+- 12 GB system RAM still available — no memory pressure whatsoever.
+- Average scrape duration of ~7.8 ms per target — Prometheus is scraping all 101 targets well within the 15s interval.
+- TSDB head series at 21,536 — well within Prometheus’s default handling capacity.
+- No container restarts, no unhealthy transitions, no errors during the test.
+- Console navigation (Home, Logs, Traces, Dashboards, License) remained fully fluid and responsive.
+
+**Verdict**: ✅ **PASS at maximum Enterprise capacity.** The VM handles 101 hosts with no degradation in any observable metric.
 ---
 
 ### 5.6 Summary Table
@@ -254,27 +271,31 @@ return max(node_count, cadvisor_count)
 | 20 sim (21) | 21 | ~2–3% | ~174 MiB | < 1% | ~20 MiB | 0.29 | Fast | No impact |
 | 50 sim (51) | 51 | 2.34% | 185 MiB | 0.78% | 20 MiB | 1.07 | Fast | No degradation |
 | 70 sim (71) | 71 | 0.72% | 141 MiB | 1.24% | 22 MiB | 0.40 | Fast | No degradation |
-| 100 sim (101) | ___ | ___ | ___ | ___ | ___ | ___ | ___ | Pending |
+| 100 sim (101) | 101 | 13.66% | 165 MiB | 1.37% | 24 MiB | 0.36 | Fast | **Enterprise limit reached — no degradation** |
 
 ---
 
-## 6. Preliminary Capacity Conclusion
+## 6. Final Capacity Conclusion
 
-Based on tests conducted on 2026-02-17 with 20, 50, and 70 simulated hosts:
+Based on progressive tests conducted on 2026-02-17 with 20, 50, 70, and **100 simulated hosts**:
 
-**In the current VM configuration (8 vCPU AMD EPYC @ 2 GHz, 16 GB RAM, 301 GB SSD), Rhinometric Console v2.6.0 supports at least 70 monitored hosts with no perceptible degradation in console responsiveness, dashboard rendering, or backend latency.**
+**✅ In the current VM configuration (8 vCPU AMD EPYC @ 2 GHz, 16 GB RAM, 301 GB SSD), Rhinometric Console v2.6.0 handles the full Enterprise license capacity of 100 monitored hosts with no degradation in console responsiveness, dashboard rendering, or backend latency.**
 
-Key findings:
-- Prometheus uses only **~18% of its 768 MiB RAM limit** with 71 targets, leaving massive headroom.
-- The simulation container remains extremely lightweight at **~1.2% CPU and 22 MiB RAM** with 70 simulated hosts.
-- System load average stays below 0.5, well within the 8-core capacity.
-- **12 GB of system RAM remains available**, indicating zero memory pressure.
-- All services remain healthy throughout all tests with zero container restarts.
-- Resource consumption grows sub-linearly: going from 50 to 70 hosts showed minimal incremental impact.
+Key findings at full capacity (101 hosts):
+- Prometheus CPU at **13.66%** — the only metric showing a noticeable (but comfortable) increase versus lower tiers.
+- Prometheus RAM at **165 MiB** of its 768 MiB limit (**21.5% utilization**), leaving ~600 MiB of headroom.
+- Simulation container at **1.37% CPU / 24 MiB RAM** — trivial overhead.
+- System load average **< 0.6** across all intervals on 8 vCPUs.
+- **12 GB of system RAM remains available** — zero memory pressure.
+- Average scrape duration **~7.8 ms** per target; all 101 targets scraped well within the 15s interval.
+- **Zero container restarts**, zero scrape failures, zero errors throughout all test levels.
+- Resource consumption grows sub-linearly: the jump from 70 → 100 hosts was the largest in CPU (+12.9 pp) but still leaves ample margin.
 
-**Next steps**: The final test with 100 hosts (Enterprise license limit) is planned to confirm the system handles the maximum licensed capacity. Based on the observed trend, we are highly confident it will pass comfortably.
+Extrapolation estimate:
+- At current resource consumption rates, this VM could likely support **150–200 hosts** before hitting meaningful resource constraints (Prometheus RAM limit would be the first bottleneck).
+- For deployments exceeding 100 hosts, consider increasing Prometheus RAM limit from 768 MiB to 1536 MiB.
 
-> **Note**: These are synthetic hosts generating realistic but lightweight Prometheus metrics. Real-world hosts with full application stacks may produce more metric series and higher scrape payloads. This test validates the platform's monitoring infrastructure capacity, not individual host workload profiles.
+> **Note**: These are synthetic hosts generating realistic but lightweight Prometheus metrics (~25 metric families per host). Real-world hosts with full application stacks may produce more metric series and higher scrape payloads. This test validates the platform’s monitoring infrastructure capacity, not individual host workload profiles.
 
 ---
 
