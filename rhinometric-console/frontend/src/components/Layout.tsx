@@ -12,7 +12,7 @@ const navigation = [
   { name: 'Traces', href: '/traces', icon: Network },
   { name: 'License', href: '/license', icon: CreditCard },
   { name: 'Users', href: '/users', icon: Users, requiresAdmin: true },
-  { name: 'Settings', href: '/settings', icon: Settings },
+  { name: 'Settings', href: '/settings', icon: Settings, requiresAdmin: true },
 ]
 
 export function Layout() {

@@ -316,11 +316,6 @@ export function LicensePage() {
             System operates in degraded mode. Contact support to renew your license.
           </p>
           <div className="flex flex-col sm:flex-row gap-2">
-            <ContactSalesButton
-              tier={license?.edition}
-              organization={license?.customer_name}
-              hosts={`${data.hosts_used}/${license?.max_hosts}`}
-            />
             <ContactSupportButton
               subject="Expired license renewal"
               body={`License: ${license?.license_id || 'N/A'}\nExpired: ${formatDate(license?.valid_until)}`}
@@ -497,13 +492,7 @@ export function LicensePage() {
               )}
             </p>
           )}
-          <div className="flex flex-col sm:flex-row gap-2">
-            <ContactSalesButton
-              tier={license?.edition}
-              organization={license?.customer_name}
-              hosts={`${data.hosts_used}/${license?.max_hosts}`}
-            />
-          </div>
+
         </div>
       </div>
 
@@ -625,28 +614,7 @@ function TechnicalDetails({
   )
 }
 
-function ContactSalesButton({
-  tier,
-  organization,
-  hosts,
-}: {
-  tier?: string
-  organization?: string
-  hosts?: string
-}) {
-  const subject = encodeURIComponent('Rhinometric license upgrade request')
-  const body = encodeURIComponent(
-    `Hello,\n\nI would like to upgrade my Rhinometric license.\n\nEdition actual: ${EDITION_LABELS[tier ?? ''] || tier || 'N/A'}\nOrganization: ${organization || 'N/A'}\nHosts: ${hosts || 'N/A'}\n\nThank you.`,
-  )
-  return (
-    <a
-      href={`mailto:sales@rhinometric.com?subject=${subject}&body=${body}`}
-      className="btn btn-primary text-center"
-    >
-      Request Upgrade
-    </a>
-  )
-}
+
 
 function ContactSupportButton({
   subject,

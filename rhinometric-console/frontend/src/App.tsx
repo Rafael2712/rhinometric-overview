@@ -25,6 +25,11 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return isAuthenticated ? <>{children}</> : <Navigate to="/login" replace />
 }
 
+function AdminRoute({ children }: { children: React.ReactNode }) {
+  const { isAdmin } = useAuthStore()
+  return isAdmin() ? <>{children}</> : <Navigate to="/" replace />
+}
+
 function App() {
   return (
     <BrowserRouter>
@@ -45,7 +50,7 @@ function App() {
           <Route path="traces" element={<TracesPage />} />
           <Route path="license" element={<LicensePage />} />
           <Route path="users" element={<UsersPage />} />
-          <Route path="settings" element={<SettingsPage />} />
+          <Route path="settings" element={<AdminRoute><SettingsPage /></AdminRoute>} />
           <Route path="integrations" element={<IntegrationsPage />} />
           <Route path="reports" element={<ReportsPage />} />
         </Route>
