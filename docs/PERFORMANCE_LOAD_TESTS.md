@@ -265,37 +265,46 @@ return max(node_count, cadvisor_count)
 
 ### 5.6 Summary Table
 
-| Level | hosts_used | Prom CPU | Prom RAM | sim CPU | sim RAM | System Load | UI Feel | Notes |
-|-------|-----------|----------|----------|---------|---------|-------------|---------|-------|
-| Baseline (1) | 1 | ~1% | ~140 MiB | — | — | < 0.5 | Fast | Normal operation |
-| 20 sim (21) | 21 | ~2–3% | ~174 MiB | < 1% | ~20 MiB | 0.29 | Fast | No impact |
-| 50 sim (51) | 51 | 2.34% | 185 MiB | 0.78% | 20 MiB | 1.07 | Fast | No degradation |
-| 70 sim (71) | 71 | 0.72% | 141 MiB | 1.24% | 22 MiB | 0.40 | Fast | No degradation |
-| 100 sim (101) | 101 | 13.66% | 165 MiB | 1.37% | 24 MiB | 0.36 | Fast | **Enterprise limit reached — no degradation** |
+| Hosts totales | Prom CPU | Prom RAM (de 768 MiB) | Sim CPU | Sim RAM (de 512 MiB) | Load avg (1 min) | Veredicto |
+|:---:|:---:|:---:|:---:|:---:|:---:|:---|
+| **1** (baseline) | ~1–2% | ~140 MiB | — | — | < 0.5 | ✅ Normal operation |
+| **21** (20 sim) | ~2–3% | 174 MiB (22.6%) | < 1% | 20 MiB (3.9%) | 0.29 | ✅ Sin impacto |
+| **51** (50 sim) | 2.34% | 185.5 MiB (24.2%) | 0.78% | 20.2 MiB (3.9%) | 1.07 | ✅ Sin degradación |
+| **71** (70 sim) | 0.72% | 140.7 MiB (18.3%) | 1.24% | 21.9 MiB (4.3%) | 0.40 | ✅ Sin degradación |
+| **101** (100 sim) | 13.66% | 165.1 MiB (21.5%) | 1.37% | 24.18 MiB (4.7%) | 0.36 | ✅ **Sin degradación — límite Enterprise alcanzado** |
+
+> **Scrape cycle**: 101 targets × 7.8 ms ≈ 0.8 s por ciclo (de los 15 s disponibles).
 
 ---
 
 ## 6. Final Capacity Conclusion
 
-Based on progressive tests conducted on 2026-02-17 with 20, 50, 70, and **100 simulated hosts**:
+Basado en pruebas progresivas ejecutadas el 2026-02-17 con 20, 50, 70 y **100 hosts simulados**:
 
-**✅ In the current VM configuration (8 vCPU AMD EPYC @ 2 GHz, 16 GB RAM, 301 GB SSD), Rhinometric Console v2.6.0 handles the full Enterprise license capacity of 100 monitored hosts with no degradation in console responsiveness, dashboard rendering, or backend latency.**
+> **Rhinometric Console v2.6.0 está validado para hasta 100 hosts monitorizados en una VM de 8 vCPU / 16 GB con scrape de 15 s, sin degradación observable.**
 
-Key findings at full capacity (101 hosts):
-- Prometheus CPU at **13.66%** — the only metric showing a noticeable (but comfortable) increase versus lower tiers.
-- Prometheus RAM at **165 MiB** of its 768 MiB limit (**21.5% utilization**), leaving ~600 MiB of headroom.
-- Simulation container at **1.37% CPU / 24 MiB RAM** — trivial overhead.
-- System load average **< 0.6** across all intervals on 8 vCPUs.
-- **12 GB of system RAM remains available** — zero memory pressure.
-- Average scrape duration **~7.8 ms** per target; all 101 targets scraped well within the 15s interval.
-- **Zero container restarts**, zero scrape failures, zero errors throughout all test levels.
-- Resource consumption grows sub-linearly: the jump from 70 → 100 hosts was the largest in CPU (+12.9 pp) but still leaves ample margin.
+### Hallazgos clave a máxima capacidad (101 hosts)
 
-Extrapolation estimate:
-- At current resource consumption rates, this VM could likely support **150–200 hosts** before hitting meaningful resource constraints (Prometheus RAM limit would be the first bottleneck).
-- For deployments exceeding 100 hosts, consider increasing Prometheus RAM limit from 768 MiB to 1536 MiB.
+| Indicador | Valor | Margen restante |
+|-----------|-------|-----------------|
+| Prometheus CPU | 13.66% | ~86% libre en 8 vCPUs |
+| Prometheus RAM | 165 MiB / 768 MiB | ~600 MiB (78.5%) libre |
+| Sim container CPU | 1.37% | despreciable |
+| Sim container RAM | 24 MiB / 512 MiB | ~488 MiB (95%) libre |
+| System load (1 min) | 0.36 | 8 cores disponibles |
+| System RAM disponible | ~12 Gi | de 16 Gi totales |
+| Scrape duration medio | ~7.8 ms/target | 0.8 s de 15 s de intervalo |
+| TSDB head series | 21,536 | bien dentro de capacidad Prometheus |
+| Scrape failures | 0 | 101 de 101 targets UP |
+| Container restarts | 0 | estabilidad total |
 
-> **Note**: These are synthetic hosts generating realistic but lightweight Prometheus metrics (~25 metric families per host). Real-world hosts with full application stacks may produce more metric series and higher scrape payloads. This test validates the platform’s monitoring infrastructure capacity, not individual host workload profiles.
+### Tendencia de consumo
+
+- El consumo crece **sub-linealmente**: de 70 → 100 hosts se observó el mayor salto en CPU de Prometheus (+12.9 pp), pero aún queda amplio margen.
+- **Estimación de extrapolación**: esta VM podría soportar **150–200 hosts** antes de llegar a limitaciones significativas (el límite de RAM de Prometheus sería el primer cuello de botella).
+- Para despliegues que excedan 100 hosts, considerar elevar el límite de RAM de Prometheus de 768 MiB a 1536 MiB.
+
+> **Nota**: Estos son hosts sintéticos que generan métricas Prometheus realistas pero ligeras (~25 familias de métricas por host). Hosts reales con stacks de aplicación completos pueden producir más series y payloads de scrape más pesados. Este test valida la capacidad de la infraestructura de monitorización, no los perfiles de carga de trabajo individuales.
 
 ---
 

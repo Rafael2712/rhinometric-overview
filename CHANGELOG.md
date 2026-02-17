@@ -8,6 +8,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 
+
+## [v2.6.0] Performance validation for 100 hosts - 2026-02-17
+
+### Added
+- Synthetic load test framework for node-exporter targets (up to 100 hosts).
+- Scripts: 
+un_host_load_test.sh, stop_host_load_test.sh, sim_node_exporter.py.
+- Prometheus ile_sd_configs integration for dynamic target injection.
+
+### Tested
+- Progressive stress tests: 20 → 50 → 70 → 100 simulated hosts.
+- Verified license host counter (get_monitored_hosts_count()) matches Prometheus metrics at every tier.
+- All 101 Prometheus targets UP with zero scrape failures at maximum capacity.
+
+### Documentation
+- docs/PERFORMANCE_LOAD_TESTS.md — Full capacity report with per-tier results, summary table, architecture diagram, cheat-sheet, and final conclusion.
+- Documented capacity results and recommended limits for Enterprise edition (100 hosts).
+
+---
+
 ## [2.5.2-alerts] - 2026-02-16
 
 ### Fixed
