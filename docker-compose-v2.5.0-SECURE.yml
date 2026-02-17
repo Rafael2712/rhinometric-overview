@@ -555,6 +555,17 @@ services:
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
       OTEL_SERVICE_NAME: rhinometric-console-backend
       OTEL_TRACES_EXPORTER: otlp
+      # Email Configuration (loaded from .env)
+      MAIL_USERNAME: ${MAIL_USERNAME}
+      MAIL_PASSWORD: ${MAIL_PASSWORD}
+      MAIL_FROM: ${MAIL_FROM:-${MAIL_USERNAME}}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_SERVER: ${MAIL_SERVER:-smtp.zoho.eu}
+      MAIL_STARTTLS: ${MAIL_STARTTLS:-True}
+      MAIL_SSL_TLS: ${MAIL_SSL_TLS:-False}
+      MAIL_FROM_NAME: ${MAIL_FROM_NAME:-Rhinometric Platform}
+      # Frontend URL for password reset links
+      FRONTEND_URL: https://console.rhinometric.com
     volumes:
     - ${HOME}/rhinometric_data_v2.5/console-backend/logs:/app/logs
     - ${HOME}/rhinometric_data_v2.5/console-backend/data:/app/data

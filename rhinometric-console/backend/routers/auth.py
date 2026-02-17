@@ -22,6 +22,10 @@ from models.password_reset import PasswordResetToken
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
+import logging
+
+logger = logging.getLogger('rhinometric.auth')
+
 router = APIRouter()
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.API_PREFIX}/auth/login", auto_error=False)
 
@@ -396,3 +400,170 @@ async def check_permission(
         "has_permission": has_perm,
         "user_roles": current_user.get_roles()
     }
+
+
+# ====================================================================
+# PASSWORD RESET ENDPOINTS
+# ====================================================================
+
+@router.post("/forgot-password")
+async def forgot_password(
+    request_data: ForgotPasswordRequest,
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    """
+    Request a password reset email.
+
+    Security: Always returns 200 with a generic message regardless of
+    whether the email exists or not, to prevent user enumeration.
+    """
+    from services.email_service import send_password_reset_email
+    from services.audit_logger import log_audit_event, AuditEvent
+
+    email = request_data.email.lower().strip()
+
+    # Always return success to prevent email enumeration
+    generic_response = {
+        "message": "If an account with that email exists, a password reset link has been sent."
+    }
+
+    try:
+        # Find user by email
+        user = db.query(UserModel).filter(UserModel.email == email).first()
+
+        if not user:
+            logger.info(f"Password reset requested for non-existent email: {email}")
+            # Still return 200 for security
+            await asyncio.sleep(0.5)  # Timing-safe delay
+            return generic_response
+
+        if not user.is_active:
+            logger.info(f"Password reset requested for disabled user: {email}")
+            await asyncio.sleep(0.5)
+            return generic_response
+
+        # Invalidate any existing unused tokens for this user
+        existing_tokens = db.query(PasswordResetToken).filter(
+            PasswordResetToken.user_id == user.id,
+            PasswordResetToken.used == False
+        ).all()
+        for t in existing_tokens:
+            t.used = True
+        db.flush()
+
+        # Generate new reset token
+        reset_token = str(uuid.uuid4())
+        token_record = PasswordResetToken(
+            user_id=user.id,
+            token=reset_token,
+            expires_at=PasswordResetToken.generate_expiration(hours=1)
+        )
+        db.add(token_record)
+        db.commit()
+
+        # Send email (non-blocking failure - still return 200)
+        email_sent = await send_password_reset_email(
+            email=email,
+            username=user.username,
+            reset_token=reset_token
+        )
+
+        if email_sent:
+            logger.info(f"Password reset email sent to {email}")
+        else:
+            logger.error(f"Failed to send password reset email to {email}")
+
+        # Audit log
+        try:
+            await log_audit_event(
+                category=AuditEvent.AUTH,
+                action="password_reset_requested",
+                user_id=user.id,
+                username=user.username,
+                ip_address=request.client.host if request and request.client else None,
+                status="success" if email_sent else "email_failed",
+                message=f"Password reset requested for {email}"
+            )
+        except Exception:
+            pass
+
+    except Exception as e:
+        logger.error(f"Error processing forgot-password for {email}: {str(e)}")
+        db.rollback()
+
+    return generic_response
+
+
+@router.post("/reset-password")
+async def reset_password(
+    request_data: ResetPasswordRequest,
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    """
+    Reset password using a valid reset token.
+    Token must not be expired or already used.
+    """
+    from services.audit_logger import log_audit_event, AuditEvent
+
+    token_str = request_data.token.strip()
+    new_password = request_data.new_password
+
+    # Validate password complexity
+    if len(new_password) < 8:
+        raise HTTPException(status_code=400, detail="Password must be at least 8 characters long")
+    if not re.search(r"[A-Z]", new_password):
+        raise HTTPException(status_code=400, detail="Password must contain at least one uppercase letter")
+    if not re.search(r"[a-z]", new_password):
+        raise HTTPException(status_code=400, detail="Password must contain at least one lowercase letter")
+    if not re.search(r"[0-9]", new_password):
+        raise HTTPException(status_code=400, detail="Password must contain at least one number")
+
+    # Find valid token
+    token_record = db.query(PasswordResetToken).filter(
+        PasswordResetToken.token == token_str
+    ).first()
+
+    if not token_record:
+        raise HTTPException(status_code=400, detail="Invalid or expired reset link. Please request a new one.")
+
+    if token_record.used:
+        raise HTTPException(status_code=400, detail="This reset link has already been used. Please request a new one.")
+
+    if token_record.is_expired():
+        raise HTTPException(status_code=400, detail="This reset link has expired. Please request a new one.")
+
+    # Get user
+    user = db.query(UserModel).filter(UserModel.id == token_record.user_id).first()
+    if not user:
+        raise HTTPException(status_code=400, detail="Invalid reset link.")
+
+    # Update password
+    user.set_password(new_password)
+    user.must_change_password = False
+    user.updated_at = datetime.utcnow()
+
+    # Mark token as used
+    token_record.used = True
+
+    db.commit()
+
+    logger.info(f"Password reset successfully for user: {user.username}")
+
+    # Audit log
+    try:
+        await log_audit_event(
+            category=AuditEvent.AUTH,
+            action="password_reset_completed",
+            user_id=user.id,
+            username=user.username,
+            ip_address=request.client.host if request and request.client else None,
+            status="success",
+            message=f"Password reset completed for {user.username}"
+        )
+    except Exception:
+        pass
+
+    return {"message": "Password has been reset successfully. You can now log in with your new password."}
+

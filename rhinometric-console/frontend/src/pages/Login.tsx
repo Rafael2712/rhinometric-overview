@@ -1,22 +1,30 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../lib/auth/store'
-import { Activity, Eye, EyeOff, Mail } from 'lucide-react'
+import { Activity, Eye, EyeOff, Mail, ArrowLeft } from 'lucide-react'
+
+type ViewMode = 'login' | 'forgot-password'
 
 export function LoginPage() {
   useEffect(() => {
     document.title = 'Rhinometric - Login'
   }, [])
+
+  const [view, setView] = useState<ViewMode>('login')
+
+  // Login state
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const [showForgotModal, setShowForgotModal] = useState(false)
+
+  // Forgot password state
   const [forgotEmail, setForgotEmail] = useState('')
   const [forgotLoading, setForgotLoading] = useState(false)
   const [forgotSuccess, setForgotSuccess] = useState(false)
   const [forgotError, setForgotError] = useState('')
+
   const navigate = useNavigate()
   const { login, isAuthenticated, mustChangePassword } = useAuthStore()
 
@@ -59,129 +67,136 @@ export function LoginPage() {
 
       if (response.ok) {
         setForgotSuccess(true)
-        setTimeout(() => {
-          setShowForgotModal(false)
-          setForgotEmail('')
-          setForgotSuccess(false)
-        }, 3000)
+      } else if (response.status === 422) {
+        setForgotError('Please enter a valid email address.')
+      } else if (response.status === 429) {
+        setForgotError('Too many requests. Please wait a few minutes before trying again.')
       } else {
-        setForgotError('An error occurred. Please try again.')
+        // Even on server error, show generic message for security
+        setForgotSuccess(true)
       }
     } catch (err) {
-      setForgotError('Network error. Please try again.')
+      setForgotError('Network error. Please check your connection and try again.')
     } finally {
       setForgotLoading(false)
     }
   }
 
+  const switchToForgot = () => {
+    setView('forgot-password')
+    setForgotEmail('')
+    setForgotError('')
+    setForgotSuccess(false)
+  }
+
+  const switchToLogin = () => {
+    setView('login')
+    setForgotEmail('')
+    setForgotError('')
+    setForgotSuccess(false)
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">
       <div className="w-full max-w-md">
-        <div className="card">
-          <div className="flex flex-col items-center mb-8">
-            <div className="bg-primary rounded-lg p-3 mb-4">
-              <Activity className="w-8 h-8 text-white" />
-            </div>
-            <h1 className="text-3xl font-bold text-white">Rhinometric</h1>
-            <p className="text-text-muted mt-2">AI-Powered Observability Platform</p>
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label htmlFor="username" className="block text-sm font-medium text-text-secondary mb-2">
-                Email or Username
-              </label>
-              <input
-                id="username"
-                type="text"
-                className="input w-full"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                placeholder="Enter your email or username"
-                required
-                autoComplete="email username"
-              />
+        {view === 'login' && (
+          <div className="card">
+            <div className="flex flex-col items-center mb-8">
+              <div className="bg-primary rounded-lg p-3 mb-4">
+                <Activity className="w-8 h-8 text-white" />
+              </div>
+              <h1 className="text-3xl font-bold text-white">Rhinometric</h1>
+              <p className="text-text-muted mt-2">AI-Powered Observability Platform</p>
             </div>
 
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-text-secondary mb-2">
-                Password
-              </label>
-              <div className="relative">
-                <input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  className="input w-full pr-10"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Enter your password"
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-secondary transition-colors"
-                  tabIndex={-1}
-                >
-                  {showPassword ? (
-                    <EyeOff className="w-5 h-5" />
-                  ) : (
-                    <Eye className="w-5 h-5" />
-                  )}
-                </button>
-              </div>
-            </div>
-
-            {error && (
-              <div className="bg-error/10 border border-error text-error px-4 py-2 rounded-md text-sm">
-                {error}
-              </div>
-            )}
-
-            <button
-              type="submit"
-              className="btn btn-primary w-full"
-              disabled={loading}
-            >
-              {loading ? 'Signing in...' : 'Sign In'}
-            </button>
-          </form>
-
-          <div className="mt-6 text-center">
-            <button
-              type="button"
-              className="text-sm text-primary hover:text-primary-dark transition-colors"
-              onClick={() => setShowForgotModal(true)}
-            >
-              ¿Olvidó su contraseña?
-            </button>
-          </div>
-        </div>
-
-        <p className="text-center text-text-muted text-sm mt-6">
-          © 2025 Rhinometric. All rights reserved.
-        </p>
-      </div>
-
-      {/* Forgot Password Modal */}
-      {showForgotModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-background-secondary rounded-lg shadow-xl max-w-md w-full p-6">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="bg-primary/20 rounded-lg p-2">
-                <Mail className="w-6 h-6 text-primary" />
-              </div>
+            <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <h2 className="text-xl font-bold text-white">Restablecer Contraseña</h2>
-                <p className="text-sm text-text-muted">Ingresa tu correo electrónico para recibir el enlace</p>
+                <label htmlFor="username" className="block text-sm font-medium text-text-secondary mb-2">
+                  Email or Username
+                </label>
+                <input
+                  id="username"
+                  type="text"
+                  className="input w-full"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="Enter your email or username"
+                  required
+                  autoComplete="email username"
+                />
               </div>
+
+              <div>
+                <label htmlFor="password" className="block text-sm font-medium text-text-secondary mb-2">
+                  Password
+                </label>
+                <div className="relative">
+                  <input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    className="input w-full pr-10"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Enter your password"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-secondary transition-colors"
+                    tabIndex={-1}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="w-5 h-5" />
+                    ) : (
+                      <Eye className="w-5 h-5" />
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {error && (
+                <div className="bg-error/10 border border-error text-error px-4 py-2 rounded-md text-sm">
+                  {error}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                className="btn btn-primary w-full"
+                disabled={loading}
+              >
+                {loading ? 'Signing in...' : 'Sign In'}
+              </button>
+            </form>
+
+            <div className="mt-6 text-center">
+              <button
+                type="button"
+                className="text-sm text-primary hover:text-primary-dark transition-colors"
+                onClick={switchToForgot}
+              >
+                Forgot your password?
+              </button>
+            </div>
+          </div>
+        )}
+
+        {view === 'forgot-password' && (
+          <div className="card">
+            <div className="flex flex-col items-center mb-8">
+              <div className="bg-primary/20 rounded-lg p-3 mb-4">
+                <Mail className="w-8 h-8 text-primary" />
+              </div>
+              <h1 className="text-2xl font-bold text-white">Reset Password</h1>
+              <p className="text-text-muted mt-2">Enter your email to receive a reset link</p>
             </div>
 
             {!forgotSuccess ? (
               <form onSubmit={handleForgotPassword} className="space-y-4">
                 <div>
                   <label htmlFor="forgot-email" className="block text-sm font-medium text-text-secondary mb-2">
-                    Correo Electrónico
+                    Email Address
                   </label>
                   <input
                     id="forgot-email"
@@ -189,7 +204,7 @@ export function LoginPage() {
                     className="input w-full"
                     value={forgotEmail}
                     onChange={(e) => setForgotEmail(e.target.value)}
-                    placeholder="tucorreo@ejemplo.com"
+                    placeholder="you@example.com"
                     required
                     autoFocus
                   />
@@ -204,48 +219,46 @@ export function LoginPage() {
                 <div className="flex gap-3">
                   <button
                     type="button"
-                    onClick={() => {
-                      setShowForgotModal(false)
-                      setForgotEmail('')
-                      setForgotError('')
-                    }}
+                    onClick={switchToLogin}
                     className="btn btn-secondary flex-1"
                     disabled={forgotLoading}
                   >
-                    Cancelar
+                    <ArrowLeft className="w-4 h-4 mr-2" />
+                    Back
                   </button>
                   <button
                     type="submit"
                     className="btn btn-primary flex-1"
                     disabled={forgotLoading}
                   >
-                    {forgotLoading ? 'Enviando...' : 'Enviar Enlace'}
+                    {forgotLoading ? 'Sending...' : 'Send Reset Link'}
                   </button>
                 </div>
               </form>
             ) : (
               <div className="space-y-4">
                 <div className="bg-success/10 border border-success text-success px-4 py-3 rounded-md">
-                  <p className="font-medium">¡Revisa tu correo!</p>
+                  <p className="font-medium">Check your inbox</p>
                   <p className="text-sm mt-1">
-                    Si tu correo está registrado, recibirás el enlace de restablecimiento en breve.
+                    If an account exists with that email, you will receive a password reset link shortly.
                   </p>
                 </div>
                 <button
-                  onClick={() => {
-                    setShowForgotModal(false)
-                    setForgotEmail('')
-                    setForgotSuccess(false)
-                  }}
+                  onClick={switchToLogin}
                   className="btn btn-primary w-full"
                 >
-                  Cerrar
+                  <ArrowLeft className="w-4 h-4 mr-2" />
+                  Back to Sign In
                 </button>
               </div>
             )}
           </div>
-        </div>
-      )}
+        )}
+
+        <p className="text-center text-text-muted text-sm mt-6">
+          &copy; {new Date().getFullYear()} Rhinometric. All rights reserved.
+        </p>
+      </div>
     </div>
   )
 }

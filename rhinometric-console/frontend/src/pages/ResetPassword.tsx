@@ -233,7 +233,7 @@ export function ResetPasswordPage() {
         </div>
 
         <p className="text-center text-text-muted text-sm mt-6">
-          © 2026 Rhinometric. All rights reserved.
+          &copy; {new Date().getFullYear()} Rhinometric. All rights reserved.
         </p>
       </div>
     </div>
