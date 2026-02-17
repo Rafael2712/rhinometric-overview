@@ -1,0 +1,41 @@
+# ================================================================
+# Rhinometric Host Load Test - Docker Compose
+# ================================================================
+# Simulates N hosts using a lightweight Python-based node_exporter.
+# Each simulated host exposes metrics on a unique port (9200+).
+#
+# Usage (via scripts):
+#   ./scripts/run_host_load_test.sh 20
+#   ./scripts/run_host_load_test.sh 100
+#   ./scripts/stop_host_load_test.sh
+#
+# Manual usage:
+#   NUM_HOSTS=20 docker-compose -f docker-compose.loadtest.yml up -d
+#   docker-compose -f docker-compose.loadtest.yml down
+# ================================================================
+
+version: "3.8"
+
+services:
+  sim-node-exporter:
+    image: python:3.11-slim
+    container_name: rhinometric-sim-node-exporter
+    working_dir: /app
+    command: ["python3", "sim_node_exporter.py", "${NUM_HOSTS:-20}"]
+    volumes:
+      - ./loadtest/sim_node_exporter.py:/app/sim_node_exporter.py:ro
+    networks:
+      - rhinometric_rhinometric_network
+    labels:
+      com.rhinometric.role: "loadtest"
+      com.rhinometric.component: "sim-node-exporter"
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+    restart: unless-stopped
+
+networks:
+  rhinometric_rhinometric_network:
+    external: true

@@ -140,6 +140,7 @@ services:
     container_name: rhinometric-prometheus
     volumes:
     - ./config/prometheus-v2.2.yml:/etc/prometheus/prometheus.yml:ro
+    - ./prometheus/loadtest_targets.json:/etc/prometheus/loadtest_targets.json:ro
     - ./config/rules:/etc/prometheus/rules:ro
     - prometheus-data:/prometheus
     networks:

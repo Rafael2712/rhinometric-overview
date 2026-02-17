@@ -1,0 +1,202 @@
+[
+  {
+    "targets": [
+      "rhinometric-sim-node-exporter:9200"
+    ],
+    "labels": {
+      "env": "loadtest",
+      "rhinometric_role": "simulated-host",
+      "sim_host_id": "sim-host-001"
+    }
+  },
+  {
+    "targets": [
+      "rhinometric-sim-node-exporter:9201"
+    ],
+    "labels": {
+      "env": "loadtest",
+      "rhinometric_role": "simulated-host",
+      "sim_host_id": "sim-host-002"
+    }
+  },
+  {
+    "targets": [
+      "rhinometric-sim-node-exporter:9202"
+    ],
+    "labels": {
+      "env": "loadtest",
+      "rhinometric_role": "simulated-host",
+      "sim_host_id": "sim-host-003"
+    }
+  },
+  {
+    "targets": [
+      "rhinometric-sim-node-exporter:9203"
+    ],
+    "labels": {
+      "env": "loadtest",
+      "rhinometric_role": "simulated-host",
+      "sim_host_id": "sim-host-004"
+    }
+  },
+  {
+    "targets": [
+      "rhinometric-sim-node-exporter:9204"
+    ],
+    "labels": {
+      "env": "loadtest",
+      "rhinometric_role": "simulated-host",
+      "sim_host_id": "sim-host-005"
+    }
+  },
+  {
+    "targets": [
+      "rhinometric-sim-node-exporter:9205"
+    ],
+    "labels": {
+      "env": "loadtest",
+      "rhinometric_role": "simulated-host",
+      "sim_host_id": "sim-host-006"
+    }
+  },
+  {
+    "targets": [
+      "rhinometric-sim-node-exporter:9206"
+    ],
+    "labels": {
+      "env": "loadtest",
+      "rhinometric_role": "simulated-host",
+      "sim_host_id": "sim-host-007"
+    }
+  },
+  {
+    "targets": [
+      "rhinometric-sim-node-exporter:9207"
+    ],
+    "labels": {
+      "env": "loadtest",
+      "rhinometric_role": "simulated-host",
+      "sim_host_id": "sim-host-008"
+    }
+  },
+  {
+    "targets": [
+      "rhinometric-sim-node-exporter:9208"
+    ],
+    "labels": {
+      "env": "loadtest",
+      "rhinometric_role": "simulated-host",
+      "sim_host_id": "sim-host-009"
+    }
+  },
+  {
+    "targets": [
+      "rhinometric-sim-node-exporter:9209"
+    ],
+    "labels": {
+      "env": "loadtest",
+      "rhinometric_role": "simulated-host",
+      "sim_host_id": "sim-host-010"
+    }
+  },
+  {
+    "targets": [
+      "rhinometric-sim-node-exporter:9210"
+    ],
+    "labels": {
+      "env": "loadtest",
+      "rhinometric_role": "simulated-host",
+      "sim_host_id": "sim-host-011"
+    }
+  },
+  {
+    "targets": [
+      "rhinometric-sim-node-exporter:9211"
+    ],
+    "labels": {
+      "env": "loadtest",
+      "rhinometric_role": "simulated-host",
+      "sim_host_id": "sim-host-012"
+    }
+  },
+  {
+    "targets": [
+      "rhinometric-sim-node-exporter:9212"
+    ],
+    "labels": {
+      "env": "loadtest",
+      "rhinometric_role": "simulated-host",
+      "sim_host_id": "sim-host-013"
+    }
+  },
+  {
+    "targets": [
+      "rhinometric-sim-node-exporter:9213"
+    ],
+    "labels": {
+      "env": "loadtest",
+      "rhinometric_role": "simulated-host",
+      "sim_host_id": "sim-host-014"
+    }
+  },
+  {
+    "targets": [
+      "rhinometric-sim-node-exporter:9214"
+    ],
+    "labels": {
+      "env": "loadtest",
+      "rhinometric_role": "simulated-host",
+      "sim_host_id": "sim-host-015"
+    }
+  },
+  {
+    "targets": [
+      "rhinometric-sim-node-exporter:9215"
+    ],
+    "labels": {
+      "env": "loadtest",
+      "rhinometric_role": "simulated-host",
+      "sim_host_id": "sim-host-016"
+    }
+  },
+  {
+    "targets": [
+      "rhinometric-sim-node-exporter:9216"
+    ],
+    "labels": {
+      "env": "loadtest",
+      "rhinometric_role": "simulated-host",
+      "sim_host_id": "sim-host-017"
+    }
+  },
+  {
+    "targets": [
+      "rhinometric-sim-node-exporter:9217"
+    ],
+    "labels": {
+      "env": "loadtest",
+      "rhinometric_role": "simulated-host",
+      "sim_host_id": "sim-host-018"
+    }
+  },
+  {
+    "targets": [
+      "rhinometric-sim-node-exporter:9218"
+    ],
+    "labels": {
+      "env": "loadtest",
+      "rhinometric_role": "simulated-host",
+      "sim_host_id": "sim-host-019"
+    }
+  },
+  {
+    "targets": [
+      "rhinometric-sim-node-exporter:9219"
+    ],
+    "labels": {
+      "env": "loadtest",
+      "rhinometric_role": "simulated-host",
+      "sim_host_id": "sim-host-020"
+    }
+  }
+]
