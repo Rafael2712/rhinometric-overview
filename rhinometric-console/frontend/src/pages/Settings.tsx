@@ -72,6 +72,14 @@ export function SettingsPage() {
         </div>
       )}
 
+
+      {/* Error Message */}
+      {updateAIAlertsMutation.isError && (
+        <div className="card bg-error/10 border-error/30 flex items-center gap-3">
+          <AlertCircle className="text-error" size={20} />
+          <span className="text-error font-medium">Failed to update setting. Please try again.</span>
+        </div>
+      )}
       {/* AI Alerts Configuration */}
       <div className="card">
         <div className="flex items-start gap-4 mb-4">
@@ -118,6 +126,16 @@ export function SettingsPage() {
             <AlertCircle className="text-warning flex-shrink-0 mt-0.5" size={16} />
             <p className="text-xs text-warning">
               <strong>Alerting Disabled:</strong> AI anomalies are still detected and visible in Rhinometric, but no Slack or email notifications will be sent. 
+            </p>
+          </div>
+        )}
+
+        {aiAlertsEnabled && (
+          <div className="mt-4 p-3 bg-success/10 border border-success/30 rounded-lg flex items-start gap-2">
+            <CheckCircle2 className="text-success flex-shrink-0 mt-0.5" size={16} />
+            <p className="text-xs text-success">
+              <strong>Alerting Enabled:</strong> Critical AI anomalies will send Slack and email notifications.
+              Lower severities remain visible only in the console.
             </p>
           </div>
         )}

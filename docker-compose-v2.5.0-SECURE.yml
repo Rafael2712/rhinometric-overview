@@ -416,7 +416,7 @@ services:
     - --config.file=/etc/alertmanager/alertmanager.yml
     - --storage.path=/alertmanager
     volumes:
-    - ./alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    - ./alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml
     - ./alertmanager/templates:/etc/alertmanager/templates:ro
     - ${HOME}/rhinometric_data_v2.5/alertmanager:/alertmanager
     environment:
@@ -557,6 +557,8 @@ services:
       OTEL_TRACES_EXPORTER: otlp
     volumes:
     - ${HOME}/rhinometric_data_v2.5/console-backend/logs:/app/logs
+    - ${HOME}/rhinometric_data_v2.5/console-backend/data:/app/data
+    - ./alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml
     - /usr/local/bin/rhino-lic:/usr/local/bin/rhino-lic:ro
     - /opt/rhinometric/license.key:/opt/rhinometric/license.key:ro
     networks:

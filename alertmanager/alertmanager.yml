@@ -1,4 +1,4 @@
-global:
+﻿global:
   resolve_timeout: 5m
   smtp_from: "rafael.canelon@rhinometric.com"
   smtp_smarthost: "smtp.zoho.eu:587"
@@ -17,10 +17,21 @@ route:
   group_interval: 5m
   repeat_interval: 4h
   routes:
-    # AI Anomaly alerts -> dedicated receiver with rich templates
+    # Route 1: Critical AI anomalies - toggled receiver (ai-anomaly-alerts when ON, blackhole when OFF)
     - match:
         component: ai-anomaly
-      receiver: "ai-anomaly-alerts"
+        severity: critical
+      receiver: "blackhole"
+      group_by: ["alertname", "metric", "severity"]
+      group_wait: 30s
+      group_interval: 5m
+      repeat_interval: 4h
+      continue: false
+
+    # Route 2: ALL other AI anomalies (non-critical) - always blackhole
+    - match:
+        component: ai-anomaly
+      receiver: "blackhole"
       group_by: ["alertname", "metric", "severity"]
       group_wait: 30s
       group_interval: 5m
@@ -43,7 +54,6 @@ route:
       repeat_interval: 24h
 
 receivers:
-  # AI Anomaly: Rich Slack + Email with troubleshooting
   - name: "ai-anomaly-alerts"
     slack_configs:
       - channel: "#rhinometric-alerts"
@@ -112,6 +122,8 @@ receivers:
       - channel: "#rhinometric-info"
         color: "#439FE0"
         title: "[INFO] {{ .GroupLabels.alertname }}"
+
+  - name: "blackhole"
 
 inhibit_rules:
   - source_match:
