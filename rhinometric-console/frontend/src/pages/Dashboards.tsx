@@ -30,10 +30,9 @@ export function DashboardsPage() {
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const token = useAuthStore((state) => state.token)
-  const user = useAuthStore((state) => state.user)
   
   // Check if user can edit in Grafana (admin or owner only)
-  const canEditGrafana = user?.roles?.includes('admin') || user?.roles?.includes('owner');
+  const isAdmin = useAuthStore((state) => state.isAdmin)
 
   useEffect(() => {
     fetchDashboards()
@@ -172,17 +171,17 @@ export function DashboardsPage() {
             )}
 
             <div className="mt-4 pt-4 border-t border-surface-light flex gap-2">
-              {/* Ver en consola - all roles */}
+              {/* View in Console - all roles */}
               <button 
                 onClick={() => viewInConsole(dashboard)}
                 className="flex-1 btn-secondary text-sm font-medium flex items-center justify-center gap-2"
               >
                 <Eye className="w-4 h-4" />
-                Ver en consola
+                View in Console
               </button>
 
               {/* Open in Grafana - only admin/owner */}
-              {canEditGrafana && (
+              {isAdmin() && (
                 <button 
                   onClick={(e) => openInGrafana(dashboard, e)}
                   className="btn-outline text-sm font-medium flex items-center justify-center gap-1 px-3"

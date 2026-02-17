@@ -288,6 +288,7 @@ export function CorrelationView() {
       </div>
 
       {/* Quick Actions - External Tools */}
+      {hasExternalAccess && (
       <div className="card mb-8 bg-gray-800/50 border-gray-700">
         <div className="flex items-start gap-3 mb-4">
           <div className="text-2xl">🔗</div>
@@ -424,16 +425,8 @@ export function CorrelationView() {
           </button>
         </div>
 
-        {!hasExternalAccess && (
-          <div className="mt-4 p-3 bg-warning/10 border border-warning/30 rounded-lg">
-            <div className="flex items-center gap-2 text-warning text-sm">
-              <Lock size={16} />
-              <span className="font-medium">Restricted Access:</span>
-              <span>Only users with ADMIN or OWNER role can access external tools.</span>
-            </div>
-          </div>
-        )}
       </div>
+      )}
 
       {/* Data Cards Grid */}
       <div className="space-y-6">

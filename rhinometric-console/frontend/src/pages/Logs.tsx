@@ -18,6 +18,7 @@ export function LogsPage() {
   }, [])
 
   const token = useAuthStore((state) => state.token)
+  const isAdmin = useAuthStore((state) => state.isAdmin)
   const [searchQuery, setSearchQuery] = useState('')
   const [levelFilter, setLevelFilter] = useState<string>('all')
   const [timeRange, setTimeRange] = useState<string>('15m')  // Changed from 1h to 15min for performance
@@ -154,6 +155,7 @@ export function LogsPage() {
               <Search size={16} />
               Search
             </button>
+            {isAdmin() && (
             <button
               onClick={() => {
                 // Build LogQL query
@@ -179,6 +181,7 @@ export function LogsPage() {
               <span className="hidden sm:inline">View in Grafana</span>
               <span className="sm:hidden">Grafana</span>
             </button>
+            )}
           </div>
         </div>
 

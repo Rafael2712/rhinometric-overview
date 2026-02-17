@@ -24,6 +24,7 @@ interface Trace {
 
 export function TracesPage() {
   const token = useAuthStore((state) => state.token)
+  const isAdmin = useAuthStore((state) => state.isAdmin)
   const [searchQuery, setSearchQuery] = useState('')
   const [serviceFilter, setServiceFilter] = useState<string>('all')
   const [minDuration, setMinDuration] = useState<string>('')
@@ -431,7 +432,7 @@ export function TracesPage() {
                   </div>
                 )}
 
-                {/* Actions */}
+                {isAdmin() && (
                 <div className="flex gap-2 sm:gap-3">
                   <button
                     onClick={() => {
@@ -449,6 +450,7 @@ export function TracesPage() {
                     View in Grafana
                   </button>
                 </div>
+                )}
               </div>
             </div>
           </div>

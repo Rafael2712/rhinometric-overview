@@ -44,6 +44,7 @@ export function AlertsPage() {
   }, [])
 
   const token = useAuthStore((state) => state.token)
+  const isAdmin = useAuthStore((state) => state.isAdmin)
   const queryClient = useQueryClient()
   const [severityFilter, setSeverityFilter] = useState<string>('all')
   const [statusFilter, setStatusFilter] = useState<string>('all')
@@ -437,6 +438,7 @@ export function AlertsPage() {
               </div>
               {/* Action buttons - stack on mobile */}
               <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+                {isAdmin() && (
                 <button
                   className="btn flex-1 min-h-[44px]"
                   onClick={() => {
@@ -460,6 +462,7 @@ export function AlertsPage() {
                 >
                   View in Grafana
                 </button>
+                )}
                 <div className="flex-1 flex gap-2">
                   <select
                     value={silenceDuration}
