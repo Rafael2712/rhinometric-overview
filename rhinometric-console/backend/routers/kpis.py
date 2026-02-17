@@ -19,6 +19,13 @@ PLATFORM_JOBS = {
     "loki",
     "jaeger",
     "alertmanager",
+    "otel-collector",
+    "console-backend",
+    "license-server-v2",
+    "ai-anomaly",
+    "postgres",
+    "redis",
+    "promtail",
 }
 
 # Jobs that are pure infrastructure/internal and should be excluded from
@@ -36,6 +43,12 @@ INFRA_JOBS = {
 INTERNAL_PROBE_JOBS = {
     "blackbox-http",
 }
+
+
+# All internal jobs combined for PromQL exclusion
+ALL_INTERNAL_JOBS = PLATFORM_JOBS | INFRA_JOBS | INTERNAL_PROBE_JOBS
+EXCLUDE_REGEX = "|".join(sorted(ALL_INTERNAL_JOBS))
+PLATFORM_REGEX = "|".join(sorted(PLATFORM_JOBS))
 
 
 class KPIResponse(BaseModel):
@@ -97,7 +110,7 @@ async def get_kpis(current_user: UserModel = Depends(get_current_user)):
             # These are monitoring infrastructure, not client services
             services_response = await client.get(
                 prom_url,
-                params={"query": 'count(count(up{job!~"node-exporter|cadvisor|blackbox-exporter|blackbox-http"}) by (instance))'}
+                params={"query": f'count(count(up{{job!~"{EXCLUDE_REGEX}"}}) by (instance))'}
             )
             services_data = services_response.json()
             results = services_data.get("data", {}).get("result", [])
@@ -111,6 +124,14 @@ async def get_kpis(current_user: UserModel = Depends(get_current_user)):
             total_data = total_response.json()
             total_results = total_data.get("data", {}).get("result", [])
             total_services_with_core = int(total_results[0].get("value", [0, "0"])[1]) if total_results else 0
+
+
+            # Count platform services only (for Service Status card)
+            platform_q = f'count(count(up{{job=~"{PLATFORM_REGEX}"}}) by (instance))'
+            platform_response = await client.get(prom_url, params={"query": platform_q})
+            platform_data = platform_response.json()
+            platform_results = platform_data.get("data", {}).get("result", [])
+            platform_count = int(platform_results[0].get("value", [0, "0"])[1]) if platform_results else 0
             
             # Get ACTIVE anomalies count from AI service (no auth required)
             # Use active_count instead of total to match Anomalies page
@@ -161,14 +182,14 @@ async def get_kpis(current_user: UserModel = Depends(get_current_user)):
                 service_status={
                     "value": "Operational" if operational_count == total_count else "Degraded",
                     "status": "success" if operational_count == total_count else "warning",
-                    "change": f"{uptime_pct:.1f}% Uptime (Last 30d)",
+                    "change": f"{platform_count} platform services · {uptime_pct:.1f}% Uptime",
                     "operational_count": operational_count,
                     "total_count": total_count
                 },
                 monitored_hosts={
                     "value": str(service_count),
                     "status": "success",
-                    "change": f"Client services (Total: {total_services_with_core} incl. platform)"
+                    "change": f"Client services (Total: {service_count + platform_count} incl. platform)"
                 },
                 active_anomalies={
                     "value": str(anomalies_count),
@@ -239,7 +260,7 @@ async def get_kpis_historical(current_user: UserModel = Depends(get_current_user
             hosts_response = await client.get(
                 prom_url,
                 params={
-                    "query": "count(count by (instance) (up))",
+                    "query": f'count(count by (instance) (up{{job!~"{EXCLUDE_REGEX}"}}))',
                     "start": start_ts,
                     "end": end_ts,
                     "step": step
