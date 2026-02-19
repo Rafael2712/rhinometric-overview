@@ -79,6 +79,9 @@ body {
 	min-height: 100vh;
 	line-height: 1.55;
 	overflow-x: hidden;
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+	text-rendering: optimizeLegibility;
 }
 
 p {
@@ -210,9 +213,9 @@ textarea:focus {
 }
 
 .site-header .btn {
-	min-height: clamp(38px, 2.5vw, 44px);
-	padding: 0 clamp(12px, 3vw, 18px);
-	font-size: 0.95rem;
+	min-height: clamp(36px, 2.5vw, 42px);
+	padding: 0.4rem clamp(12px, 2.5vw, 20px);
+	font-size: clamp(0.8rem, 1.5vw, 0.92rem);
 }
 
 /* Mobile layout rules consolidated at end of file (see below) */
@@ -222,13 +225,16 @@ textarea:focus {
 	align-items: center;
 	justify-content: center;
 	min-height: clamp(42px, 3vw, 48px);
-	padding: 0 clamp(16px, 4vw, 24px);
+	padding: 0.5rem clamp(16px, 4vw, 24px);
 	border-radius: 999px;
 	font-weight: 600;
+	font-size: clamp(0.85rem, 1.8vw, 1rem);
 	border: none;
 	cursor: pointer;
 	text-align: center;
 	text-decoration: none;
+	white-space: nowrap;
+	letter-spacing: 0.01em;
 	box-shadow: 0 12px 24px rgba(15, 23, 42, 0.08);
 	transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
 }
@@ -392,14 +398,14 @@ textarea:focus {
 
 @media (max-width: 640px) {
 	.hero .container {
-		padding-inline: clamp(1rem, 6vw, 1.5rem);
+		padding-inline: clamp(1rem, 5vw, 1.5rem);
 	}
 	.hero-brand::before {
-		width: min(320px, 85vw);
-		height: min(320px, 85vw);
+		width: min(240px, 60vw);
+		height: min(240px, 60vw);
 	}
 	.hero-logo {
-		width: min(280px, 80vw);
+		width: min(220px, 55vw);
 	}
 }
 
@@ -414,14 +420,14 @@ textarea:focus {
 
 @media (max-width: 400px) {
 	.hero-brand {
-		padding: 0.75rem;
+		padding: 0.5rem;
 	}
 	.hero-brand::before {
-		width: min(240px, 90vw);
-		height: min(240px, 90vw);
+		width: min(200px, 55vw);
+		height: min(200px, 55vw);
 	}
 	.hero-logo {
-		width: min(220px, 78vw);
+		width: min(180px, 50vw);
 	}
 }
 
@@ -780,40 +786,65 @@ body.modal-open {
 	border-color: #f43f5e;
 }
 
-/* Social section styles added for LinkedIn block */
+/* Social section — LinkedIn block */
 .social-section {
-	padding: 40px 0;
-	border-top: 1px solid rgba(0,0,0,0.06);
+	padding: clamp(2rem, 5vw, 3.5rem) 0;
+	border-top: 1px solid rgba(15, 23, 42, 0.06);
+	background: rgba(255, 255, 255, 0.45);
 }
 
 .social-inner {
 	display: flex;
 	align-items: center;
-	justify-content: space-between;
-	gap: 16px;
+	justify-content: center;
+	gap: clamp(1rem, 3vw, 2rem);
 	flex-wrap: wrap;
 }
 
 .social-title {
 	margin: 0;
+	font-size: clamp(1.1rem, 2.5vw, 1.4rem);
+	font-weight: 600;
+	color: #0b2357;
 }
 
 .social-link {
 	display: inline-flex;
 	align-items: center;
-	gap: 10px;
+	gap: 8px;
 	text-decoration: none;
+	padding: 0.5rem 1.25rem;
+	border-radius: 999px;
+	background: linear-gradient(120deg, #0077b5 0%, #005e93 100%);
+	color: #ffffff;
+	font-weight: 600;
+	font-size: 0.9rem;
+	transition: transform 0.2s ease, box-shadow 0.2s ease;
+	box-shadow: 0 8px 20px rgba(0, 119, 181, 0.2);
+}
+
+.social-link:hover,
+.social-link:focus-visible {
+	transform: translateY(-2px);
+	box-shadow: 0 12px 28px rgba(0, 119, 181, 0.3);
+	color: #ffffff;
 }
 
 .social-icon svg {
-	width: 20px;
-	height: 20px;
+	width: 18px;
+	height: 18px;
 	display: block;
+	fill: currentColor;
+}
+
+.social-text {
+	color: inherit;
 }
 
 @media (max-width: 600px) {
 	.social-inner {
-		justify-content: flex-start;
+		flex-direction: column;
+		text-align: center;
 	}
 }
 
@@ -1614,24 +1645,31 @@ body.modal-open {
 }
 
 .site-footer {
-	background: #1f4f73;
-	color: rgba(255, 255, 255, 0.88);
-	padding: clamp(2rem, 5vw, 4rem) 0;
-	margin-top: 3rem;
+	background: linear-gradient(140deg, #112a46 0%, #1a4268 50%, #0e2a47 100%);
+	color: rgba(255, 255, 255, 0.92);
+	padding: clamp(2.5rem, 6vw, 4.5rem) 0;
+	margin-top: 0;
 	text-align: center;
 }
 
-.site-footer,
-.site-footer a,
 .site-footer p {
-	color: rgba(255, 255, 255, 0.88);
+	color: rgba(255, 255, 255, 0.75);
+}
+
+.site-footer a {
+	color: rgba(255, 255, 255, 0.92);
+	transition: color 0.2s ease;
+}
+
+.site-footer a:hover,
+.site-footer a:focus {
+	color: #6ec2ff;
 }
 
 .footer-simple {
 	display: grid;
-	gap: 0.35rem;
+	gap: 0.6rem;
 	font-size: 0.9rem;
-	opacity: 0.95;
 	justify-items: center;
 }
 
@@ -1727,6 +1765,22 @@ body.modal-open {
 	}
 }
 
+/* Tablet: feature-showcase stacks into single column */
+@media (max-width: 1023px) {
+	.feature-showcase {
+		grid-template-columns: 1fr;
+		gap: 1.5rem;
+	}
+	.feature-display {
+		min-height: 360px;
+	}
+	.feature-nav {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+		gap: 0.75rem;
+	}
+}
+
 /* ==========================================================================
    CONSOLIDATED MOBILE LAYOUT — max-width: 768px
    All mobile-specific rules live here. Nothing above should use @media 768px.
@@ -1766,28 +1820,31 @@ body.modal-open {
 		z-index: 50;
 	}
 
-	/* Header action buttons: flow as a centered row */
+	/* Header action buttons: auto-width centered pills */
 	.site-header .header-actions {
 		width: 100%;
+		display: flex;
 		justify-content: center;
 		gap: 0.5rem;
+		align-items: center;
 		flex-wrap: wrap;
 	}
 
 	.site-header .header-actions .btn {
-		flex: 1 1 calc(50% - 0.5rem);
+		flex: 0 1 auto;
 		min-height: 36px;
-		padding: 0.35rem 0.95rem;
-		font-size: 0.93rem;
+		padding: 0.45rem 1rem;
+		font-size: 0.82rem;
+		white-space: nowrap;
 	}
 
-	/* Pin the language switcher to top-right of header row */
+	/* Language switcher: top-right aligned with brand */
 	.site-header .header-actions .language-switcher {
 		position: absolute;
-		top: 50%;
+		top: 0.6rem;
 		right: 0;
-		transform: translateY(-50%);
 		z-index: 10;
+		transform: none;
 	}
 
 	/* --- C. Hero section --- */
@@ -1821,27 +1878,27 @@ body.modal-open {
 		hyphens: auto;
 	}
 
-	/* CTA buttons: full-width, capped at 420px, centered */
+	/* Hero CTA: auto-width pill, left-aligned with content */
 	.hero .header-actions {
-		display: flex !important;
-		flex-direction: column !important;
-		gap: 0.6rem !important;
-		align-items: center !important;
+		display: flex;
+		justify-content: flex-start;
+		gap: 0.6rem;
+		align-items: center;
+		flex-wrap: wrap;
 	}
 
 	.hero .header-actions .btn {
-		width: 100% !important;
-		max-width: 420px !important;
-		padding: 0.55rem 1rem !important;
-		font-size: 0.95rem !important;
-		min-height: 40px;
-		box-sizing: border-box !important;
+		width: auto;
+		padding: 0.6rem 1.5rem;
+		font-size: 0.9rem;
+		min-height: 42px;
+		box-sizing: border-box;
 	}
 
 	/* General button sizing on mobile */
 	.btn {
-		font-size: 0.95rem;
-		padding: 0.35rem 0.75rem;
+		font-size: 0.9rem;
+		padding: 0.45rem 1rem;
 	}
 
 	/* --- D. Observability / Feature showcase section --- */
@@ -1970,25 +2027,79 @@ body.modal-open {
 		padding-right: 1rem !important;
 	}
 
-	/* Social section spacing */
+	/* Social section mobile */
 	.social-inner {
-		gap: 12px;
+		flex-direction: column;
+		text-align: center;
+		gap: 0.75rem;
+	}
+
+	/* --- G. Content sections --- */
+	.section {
+		padding-block: clamp(1.5rem, 4vw, 2.5rem);
+	}
+
+	.section-title {
+		font-size: clamp(1.15rem, 4.5vw, 1.5rem);
+	}
+
+	.section-lead {
+		font-size: clamp(0.88rem, 2.8vw, 1rem);
+	}
+
+	.hero .section-lead {
+		font-size: clamp(0.88rem, 2.8vw, 1rem);
+	}
+
+	/* How-it-works: single column */
+	.how-steps {
+		grid-template-columns: 1fr;
+		gap: 0.75rem;
+	}
+
+	.how-step {
+		padding: 0.75rem;
+	}
+
+	/* Cards: better mobile sizing */
+	.card {
+		padding: 1.25rem;
+		border-radius: 16px;
+	}
+
+	.console-preview-card {
+		padding: 1rem;
+	}
+
+	/* Footer mobile */
+	.site-footer {
+		padding: clamp(1.5rem, 5vw, 3rem) 0;
 	}
 }
 
 /* Small phones */
 @media (max-width: 480px) {
-	.site-header .header-actions .btn {
-		flex-basis: 100%;
-	}
 	.header-inner {
-		padding: 0.65rem 0;
+		padding: 0.5rem 0;
 	}
 	.brand-text {
-		font-size: 1.125rem;
+		font-size: 1.05rem;
 	}
+	.rm-header-logo,
 	.header-logo img {
-		height: 32px;
+		height: 28px;
+	}
+	.site-header .header-actions .btn {
+		font-size: 0.78rem;
+		padding: 0.4rem 0.75rem;
+		min-height: 34px;
+	}
+	.hero .section-title {
+		font-size: clamp(1.2rem, 5.5vw, 1.5rem);
+	}
+	.hero .header-actions .btn {
+		font-size: 0.85rem;
+		padding: 0.5rem 1.25rem;
 	}
 }
 
@@ -1996,5 +2107,38 @@ body.modal-open {
 @media (min-width: 1024px) {
 	.hero-grid {
 		grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+	}
+	.hero .section-title {
+		font-size: clamp(2rem, 3.5vw, 3.2rem);
+	}
+}
+
+/* Large desktop: refined spacing */
+@media (min-width: 1280px) {
+	.container {
+		width: min(90%, 1280px);
+	}
+	.hero {
+		padding-block: clamp(3rem, 5vw, 5rem);
+	}
+	.feature-showcase {
+		gap: 3rem;
+	}
+}
+
+/* Ultra-wide monitors: contain and center content */
+@media (min-width: 1600px) {
+	.container {
+		width: min(85%, 1400px);
+	}
+	.hero-brand::before {
+		width: clamp(380px, 22vw, 500px);
+		height: clamp(380px, 22vw, 500px);
+	}
+	.hero-logo {
+		width: clamp(340px, 20vw, 460px);
+	}
+	.site-footer {
+		padding: 4rem 0;
 	}
 }
