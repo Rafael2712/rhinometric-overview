@@ -447,6 +447,92 @@ textarea:focus {
 	}
 }
 
+/* Mobile fixes: buttons, feature grid, hero title, language switch */
+@media (max-width: 768px) {
+	/* Prevent horizontal overflow on small screens */
+	html, body {
+		max-width: 100%;
+		overflow-x: hidden;
+	}
+
+	/* Reduce button sizes on mobile */
+	.btn {
+		font-size: 0.95rem;
+		padding: 0.35rem 0.75rem;
+	}
+
+	.hero .header-actions .btn {
+		font-size: 0.95rem;
+		padding: 0.35rem 0.75rem;
+		min-height: 40px;
+	}
+
+	/* Ensure hero title wraps nicely on small screens */
+	.hero .section-title {
+		font-size: clamp(1.4rem, 6vw, 1.8rem);
+		line-height: 1.18;
+		overflow-wrap: break-word;
+		word-break: break-word;
+		hyphens: auto;
+	}
+
+	/* Stack feature nav and panels into a single column to avoid misalignment */
+	.feature-showcase .feature-nav {
+		display: block;
+		width: 100%;
+	}
+
+	.feature-showcase .feature-nav .feature-tab {
+		width: 100%;
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
+		box-sizing: border-box;
+		margin-bottom: 0.5rem;
+	}
+
+	.feature-showcase .feature-display {
+		width: 100%;
+		margin-top: 0.75rem;
+	}
+
+	.feature-panel {
+		width: 100%;
+		box-sizing: border-box;
+	}
+
+	/* Keep language switch visible and non-overlapping on mobile
+		 - desktop behavior unchanged because these rules are inside media query */
+	.hero {
+		position: relative;
+	}
+
+	.hero-language-switcher {
+		position: absolute;
+		top: 10px;
+		right: 12px;
+		z-index: 30;
+		display: flex;
+		justify-content: flex-end;
+	}
+
+	/* Make space for the language switch so it doesn't overlap hero content */
+	.hero .hero-copy {
+		padding-top: 2.25rem;
+	}
+
+	/* Prevent large images or svgs from creating overflow */
+	img, svg {
+		max-width: 100%;
+		height: auto;
+	}
+
+	/* Minor spacing adjustments to keep layout tidy */
+	.social-inner {
+		gap: 12px;
+	}
+}
+
 .hero-bullets {
 	margin: 1rem 0 0;
 	padding-left: 0;

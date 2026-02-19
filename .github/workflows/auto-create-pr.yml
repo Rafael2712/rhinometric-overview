@@ -1,0 +1,35 @@
+name: Auto-create PR for feature branches
+
+on:
+  push:
+    branches:
+      - 'feat/**'
+
+jobs:
+  create_pr:
+    name: Create Pull Request
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Create PR
+        uses: peter-evans/create-pull-request@v5
+        with:
+          # Prefer a user-provided PAT stored in repo secrets (REPO_PAT) for broader permissions.
+          # Fallback to the built-in GITHUB_TOKEN when REPO_PAT is not provided.
+          token: ${{ secrets.REPO_PAT || secrets.GITHUB_TOKEN }}
+          base: main
+          branch: ${{ github.ref_name }}
+          title: "Auto PR: ${{ github.ref_name }}"
+          body: |
+            Este PR fue creado automáticamente por el workflow.
+
+            - Rama: ${{ github.ref_name }}
+            - Evento: push
+
+          labels: automated, auto-pr
