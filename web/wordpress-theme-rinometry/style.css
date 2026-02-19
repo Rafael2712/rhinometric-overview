@@ -215,152 +215,7 @@ textarea:focus {
 	font-size: 0.95rem;
 }
 
-@media (max-width: 768px) {
-	.header-inner {
-		flex-wrap: wrap;
-		row-gap: 0.5rem;
-	}
-	.site-header .header-actions {
-		width: 100%;
-		justify-content: center;
-		gap: 0.5rem;
-	}
-	.site-header .header-actions .btn {
-		flex: 1 1 calc(50% - 0.5rem);
-		min-height: 36px;
-		padding: 0.35rem 0.95rem;
-	}
-}
-
-/* Additional mobile layout fixes for rhinometric.com (<=768px) */
-@media (max-width: 768px) {
-	/* Ensure no horizontal overflow */
-	html, body {
-		width: 100% !important;
-		max-width: 100% !important;
-		overflow-x: hidden !important;
-	}
-
-	/* Hero: single column and reduced whitespace */
-	.hero-grid {
-		grid-template-columns: 1fr !important;
-		gap: 1rem !important;
-	}
-
-	.hero-brand,
-	.hero-copy {
-		order: initial !important;
-		width: 100% !important;
-		max-width: 100% !important;
-	}
-
-	.hero {
-		padding-block: 1.5rem !important;
-	}
-
-	/* CTA buttons: full-width but capped */
-	.hero .header-actions {
-		display: flex !important;
-		flex-direction: column !important;
-		gap: 0.6rem !important;
-		align-items: center !important;
-	}
-
-	.hero .header-actions .btn {
-		width: 100% !important;
-		max-width: 420px !important;
-		padding: 0.6rem 1rem !important;
-		font-size: 0.98rem !important;
-		box-sizing: border-box !important;
-	}
-
-	/* Language switch: keep only header one; hide duplicates in hero */
-	.hero-language-switcher {
-		display: none !important;
-	}
-
-	/* Keep header sticky and at proper z-index */
-	.site-header {
-		position: sticky;
-		top: 0;
-		z-index: 50;
-	}
-
-	/* Make header-inner a positioning context for the language switch */
-	.site-header .header-inner {
-		position: relative;
-		align-items: center;
-	}
-
-	/* Header actions: normal flow for buttons, full-width row */
-	.site-header .header-actions {
-		width: 100%;
-		justify-content: center;
-		gap: 0.5rem;
-	}
-
-	/* Pin ONLY the language switcher to top-right of header */
-	.site-header .header-actions .language-switcher {
-		position: absolute;
-		top: 50%;
-		right: 0;
-		transform: translateY(-50%);
-		z-index: 10;
-	}
-
-	/* Observability: stack into single column and make visuals responsive */
-	#out-of-the-box,
-	#out-of-the-box .container,
-	.feature-showcase {
-		width: 100% !important;
-		max-width: 100% !important;
-		display: block !important;
-	}
-
-	.feature-showcase {
-		display: flex !important;
-		flex-direction: column !important;
-		gap: 1rem !important;
-	}
-
-	.feature-showcase .feature-nav,
-	.feature-showcase .feature-display {
-		width: 100% !important;
-		min-width: 0 !important;
-		box-sizing: border-box !important;
-	}
-
-	.feature-showcase .feature-nav .feature-tab {
-		width: 100% !important;
-		min-width: 0 !important;
-	}
-
-	.feature-visual,
-	.feature-visual * {
-		max-width: 100% !important;
-		width: 100% !important;
-		height: auto !important;
-	}
-
-	/* Make images and svgs responsive across the site */
-	img, svg {
-		max-width: 100% !important;
-		height: auto !important;
-	}
-
-	/* Ensure containers do not have min-width forcing overflow */
-	.container,
-	.hero-grid,
-	.feature-panel {
-		min-width: 0 !important;
-	}
-}
-
-@media (max-width: 480px) {
-	.site-header .header-actions .btn {
-		flex-basis: 100%;
-	}
-}
+/* Mobile layout rules consolidated at end of file (see below) */
 
 .btn {
 	display: inline-flex;
@@ -533,16 +388,7 @@ textarea:focus {
 	}
 }
 
-@media (max-width: 768px) {
-	.hero .header-actions {
-		width: 100%;
-		flex-direction: column;
-		align-items: stretch;
-	}
-	.hero .header-actions .btn {
-		width: 100%;
-	}
-}
+/* (moved to consolidated mobile block) */
 
 @media (max-width: 640px) {
 	.hero .container {
@@ -579,80 +425,7 @@ textarea:focus {
 	}
 }
 
-/* Mobile fixes: buttons, feature grid, hero title, language switch */
-@media (max-width: 768px) {
-	/* Prevent horizontal overflow on small screens */
-	html, body {
-		max-width: 100%;
-		overflow-x: hidden;
-	}
-
-	/* Reduce button sizes on mobile */
-	.btn {
-		font-size: 0.95rem;
-		padding: 0.35rem 0.75rem;
-	}
-
-	.hero .header-actions .btn {
-		font-size: 0.95rem;
-		padding: 0.35rem 0.75rem;
-		min-height: 40px;
-	}
-
-	/* Ensure hero title wraps nicely on small screens */
-	.hero .section-title {
-		font-size: clamp(1.4rem, 6vw, 1.8rem);
-		line-height: 1.18;
-		overflow-wrap: break-word;
-		word-break: break-word;
-		hyphens: auto;
-	}
-
-	/* Stack feature nav and panels into a single column to avoid misalignment */
-	.feature-showcase .feature-nav {
-		display: block;
-		width: 100%;
-	}
-
-	.feature-showcase .feature-nav .feature-tab {
-		width: 100%;
-		display: flex;
-		align-items: center;
-		gap: 0.75rem;
-		box-sizing: border-box;
-		margin-bottom: 0.5rem;
-	}
-
-	.feature-showcase .feature-display {
-		width: 100%;
-		margin-top: 0.75rem;
-	}
-
-	.feature-panel {
-		width: 100%;
-		box-sizing: border-box;
-	}
-
-	/* Keep language switch visible and non-overlapping on mobile
-		 - desktop behavior unchanged because these rules are inside media query */
-	.hero {
-		position: relative;
-	}
-
-	/* Hero language switcher hidden via earlier rule (display: none !important) */
-	/* No extra top padding needed since hero switcher is not shown on mobile */
-
-	/* Prevent large images or svgs from creating overflow */
-	img, svg {
-		max-width: 100%;
-		height: auto;
-	}
-
-	/* Minor spacing adjustments to keep layout tidy */
-	.social-inner {
-		gap: 12px;
-	}
-}
+/* (moved to consolidated mobile block) */
 
 .hero-bullets {
 	margin: 1rem 0 0;
@@ -1044,101 +817,7 @@ body.modal-open {
 	}
 }
 
-/* Observability section mobile fixes (<=768px) */
-@media (max-width: 768px) {
-	/* Prevent horizontal scrolling on small screens */
-	html, body {
-		max-width: 100%;
-		overflow-x: hidden;
-	}
-
-	/* Force observability (out-of-the-box) into single column */
-	#out-of-the-box .container,
-	.feature-showcase,
-	.feature-showcase .feature-nav,
-	.feature-showcase .feature-display {
-		width: 100% !important;
-		max-width: 100% !important;
-		box-sizing: border-box !important;
-	}
-
-	/* Make nav tabs stack and take full width */
-	.feature-showcase .feature-nav {
-		display: block !important;
-		margin-bottom: 0.75rem !important;
-		padding: 0 !important;
-	}
-
-	.feature-showcase .feature-nav .feature-tab {
-		width: 100% !important;
-		min-width: 0 !important;
-		box-sizing: border-box !important;
-		margin-bottom: 0.5rem !important;
-	}
-
-	/* Ensure display area takes full width and auto-sizes to content */
-	.feature-showcase .feature-display {
-		display: block !important;
-		width: 100% !important;
-		min-width: 0 !important;
-		min-height: auto !important;
-		height: auto !important;
-		overflow: visible !important;
-	}
-
-	/* Make panels flow normally on mobile (not absolute overlay) */
-	.feature-panel {
-		position: relative !important;
-		inset: auto !important;
-		width: 100% !important;
-		min-width: 0 !important;
-		box-sizing: border-box !important;
-		display: none !important;
-	}
-
-	.feature-panel.is-active {
-		display: grid !important;
-		opacity: 1 !important;
-		transform: none !important;
-		pointer-events: auto !important;
-	}
-
-	/* Prevent graphic overflow: make visuals responsive */
-	.feature-visual,
-	.visual-dashboard,
-	.visual-terminal,
-	.visual-graph,
-	.visual-panels {
-		max-width: 100% !important;
-		width: 100% !important;
-		overflow: hidden !important;
-	}
-
-	/* Make any images or inline svgs responsive */
-	.feature-visual img,
-	.feature-visual svg,
-	.visual-dashboard img,
-	.visual-dashboard svg,
-	img,
-	svg {
-		max-width: 100% !important;
-		height: auto !important;
-		display: block !important;
-	}
-
-	/* Ensure badges or fixed-width elements don't force overflow */
-	.feature-badge,
-	.how-step,
-	.console-preview-card {
-		max-width: 100% !important;
-		box-sizing: border-box !important;
-	}
-
-	/* Reduce horizontal paddings that may cause overflow */
-	.container {
-		padding-left: 1rem !important;
-		padding-right: 1rem !important;
-	}
+/* (moved to consolidated mobile block) */
 }
 
 .elite-modal-form select {
@@ -1452,24 +1131,7 @@ body.modal-open {
 	box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5), 0 10px 24px rgba(15, 23, 42, 0.08);
 }
 
-@media (max-width: 768px) {
-	.tab-list {
-		flex-wrap: nowrap;
-		overflow-x: auto;
-		scroll-snap-type: x proximity;
-		gap: 0.75rem;
-		padding: 0.4rem 0.2rem 0.6rem;
-		margin-inline: -0.2rem;
-	}
-	.tab-list::-webkit-scrollbar {
-		display: none;
-	}
-	.tab-button {
-		flex: 0 0 auto;
-		min-width: 180px;
-		scroll-snap-align: start;
-	}
-}
+/* (tab-list mobile rules moved to consolidated mobile block) */
 
 .tab-button {
 	appearance: none;
@@ -2049,18 +1711,7 @@ body.modal-open {
 	margin-bottom: 1.25rem;
 }
 
-@media (max-width: 768px) {
-	.nav {
-		width: 100%;
-		justify-content: flex-start;
-	}
-	.brand-text {
-		font-size: 1.25rem;
-	}
-	.header-logo img {
-		height: 34px;
-	}
-}
+/* (moved to consolidated mobile block) */
 
 @media (max-width: 900px) {
 	.hero-logo {
@@ -2077,7 +1728,260 @@ body.modal-open {
 	}
 }
 
+/* ==========================================================================
+   CONSOLIDATED MOBILE LAYOUT — max-width: 768px
+   All mobile-specific rules live here. Nothing above should use @media 768px.
+   ========================================================================== */
+@media (max-width: 768px) {
+
+	/* --- A. Prevent horizontal overflow --- */
+	html, body {
+		width: 100% !important;
+		max-width: 100% !important;
+		overflow-x: hidden !important;
+	}
+
+	/* --- B. Header & navigation --- */
+	.header-inner {
+		flex-wrap: wrap;
+		row-gap: 0.5rem;
+		position: relative;          /* positioning context for language switch */
+	}
+
+	.nav {
+		width: 100%;
+		justify-content: flex-start;
+	}
+
+	.brand-text {
+		font-size: 1.25rem;
+	}
+
+	.header-logo img {
+		height: 34px;
+	}
+
+	.site-header {
+		position: sticky;
+		top: 0;
+		z-index: 50;
+	}
+
+	/* Header action buttons: flow as a centered row */
+	.site-header .header-actions {
+		width: 100%;
+		justify-content: center;
+		gap: 0.5rem;
+		flex-wrap: wrap;
+	}
+
+	.site-header .header-actions .btn {
+		flex: 1 1 calc(50% - 0.5rem);
+		min-height: 36px;
+		padding: 0.35rem 0.95rem;
+		font-size: 0.93rem;
+	}
+
+	/* Pin the language switcher to top-right of header row */
+	.site-header .header-actions .language-switcher {
+		position: absolute;
+		top: 50%;
+		right: 0;
+		transform: translateY(-50%);
+		z-index: 10;
+	}
+
+	/* --- C. Hero section --- */
+	.hero {
+		padding-block: 1.5rem;
+		position: relative;
+	}
+
+	.hero-grid {
+		grid-template-columns: 1fr !important;
+		gap: 1rem !important;
+	}
+
+	.hero-brand,
+	.hero-copy {
+		width: 100% !important;
+		max-width: 100% !important;
+	}
+
+	/* Hide the duplicate language switch inside the hero */
+	.hero-language-switcher {
+		display: none !important;
+	}
+
+	/* Hero title sizing */
+	.hero .section-title {
+		font-size: clamp(1.4rem, 6vw, 1.8rem);
+		line-height: 1.18;
+		overflow-wrap: break-word;
+		word-break: break-word;
+		hyphens: auto;
+	}
+
+	/* CTA buttons: full-width, capped at 420px, centered */
+	.hero .header-actions {
+		display: flex !important;
+		flex-direction: column !important;
+		gap: 0.6rem !important;
+		align-items: center !important;
+	}
+
+	.hero .header-actions .btn {
+		width: 100% !important;
+		max-width: 420px !important;
+		padding: 0.55rem 1rem !important;
+		font-size: 0.95rem !important;
+		min-height: 40px;
+		box-sizing: border-box !important;
+	}
+
+	/* General button sizing on mobile */
+	.btn {
+		font-size: 0.95rem;
+		padding: 0.35rem 0.75rem;
+	}
+
+	/* --- D. Observability / Feature showcase section --- */
+
+	/* Break the 2-column grid into 1 column */
+	.feature-showcase {
+		display: flex !important;
+		flex-direction: column !important;
+		gap: 1rem !important;
+		width: 100% !important;
+		max-width: 100% !important;
+	}
+
+	#out-of-the-box,
+	#out-of-the-box .container {
+		width: 100% !important;
+		max-width: 100% !important;
+	}
+
+	/* Nav tabs: stack full-width */
+	.feature-showcase .feature-nav {
+		display: block !important;
+		width: 100% !important;
+		min-width: 0 !important;
+		margin-bottom: 0.75rem !important;
+		padding: 0 !important;
+		box-sizing: border-box !important;
+	}
+
+	.feature-showcase .feature-nav .feature-tab {
+		width: 100% !important;
+		min-width: 0 !important;
+		box-sizing: border-box !important;
+		margin-bottom: 0.5rem !important;
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
+	}
+
+	/* Display area: auto-height, no fixed min-height */
+	.feature-showcase .feature-display {
+		display: block !important;
+		width: 100% !important;
+		min-width: 0 !important;
+		min-height: auto !important;
+		height: auto !important;
+		overflow: visible !important;
+		box-sizing: border-box !important;
+	}
+
+	/* Panels: relative (not absolute overlay) so they stack normally */
+	.feature-panel {
+		position: relative !important;
+		inset: auto !important;
+		width: 100% !important;
+		min-width: 0 !important;
+		box-sizing: border-box !important;
+		display: none !important;
+	}
+
+	.feature-panel.is-active {
+		display: grid !important;
+		opacity: 1 !important;
+		transform: none !important;
+		pointer-events: auto !important;
+	}
+
+	/* Visuals: responsive, no overflow */
+	.feature-visual,
+	.visual-dashboard,
+	.visual-terminal,
+	.visual-graph,
+	.visual-panels {
+		max-width: 100% !important;
+		width: 100% !important;
+		overflow: hidden !important;
+	}
+
+	.feature-visual {
+		height: 200px;   /* reduced from 260px for mobile */
+	}
+
+	/* --- E. Tab list (horizontal scrollable) --- */
+	.tab-list {
+		flex-wrap: nowrap;
+		overflow-x: auto;
+		scroll-snap-type: x proximity;
+		gap: 0.75rem;
+		padding: 0.4rem 0.2rem 0.6rem;
+		margin-inline: -0.2rem;
+	}
+
+	.tab-list::-webkit-scrollbar {
+		display: none;
+	}
+
+	.tab-button {
+		flex: 0 0 auto;
+		min-width: 180px;
+		scroll-snap-align: start;
+	}
+
+	/* --- F. Global responsive safety --- */
+
+	/* All images and SVGs */
+	img, svg {
+		max-width: 100% !important;
+		height: auto !important;
+	}
+
+	/* Remove fixed min-widths on key containers */
+	.container,
+	.hero-grid,
+	.feature-panel,
+	.feature-badge,
+	.how-step,
+	.console-preview-card {
+		min-width: 0 !important;
+		max-width: 100% !important;
+		box-sizing: border-box !important;
+	}
+
+	/* Normalize container padding */
+	.container {
+		padding-left: 1rem !important;
+		padding-right: 1rem !important;
+	}
+
+	/* Social section spacing */
+	.social-inner {
+		gap: 12px;
+	}
+}
+
+/* Small phones */
 @media (max-width: 480px) {
+	.site-header .header-actions .btn {
+		flex-basis: 100%;
+	}
 	.header-inner {
 		padding: 0.65rem 0;
 	}
@@ -2087,15 +1991,9 @@ body.modal-open {
 	.header-logo img {
 		height: 32px;
 	}
-	.site-header .header-actions {
-		width: 100%;
-		justify-content: flex-start;
-	}
-	.site-header .header-actions .btn {
-		width: 100%;
-	}
 }
 
+/* Desktop: two-column hero */
 @media (min-width: 1024px) {
 	.hero-grid {
 		grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
