@@ -923,6 +923,85 @@ body.modal-open {
 	}
 }
 
+/* Observability section mobile fixes (<=768px) */
+@media (max-width: 768px) {
+	/* Prevent horizontal scrolling on small screens */
+	html, body {
+		max-width: 100%;
+		overflow-x: hidden;
+	}
+
+	/* Force observability (out-of-the-box) into single column */
+	#out-of-the-box .container,
+	.feature-showcase,
+	.feature-showcase .feature-nav,
+	.feature-showcase .feature-display {
+		width: 100% !important;
+		max-width: 100% !important;
+		box-sizing: border-box !important;
+	}
+
+	/* Make nav tabs stack and take full width */
+	.feature-showcase .feature-nav {
+		display: block !important;
+		margin-bottom: 0.75rem !important;
+		padding: 0 !important;
+	}
+
+	.feature-showcase .feature-nav .feature-tab {
+		width: 100% !important;
+		min-width: 0 !important;
+		box-sizing: border-box !important;
+		margin-bottom: 0.5rem !important;
+	}
+
+	/* Ensure panels and visual area take full width and stack */
+	.feature-showcase .feature-display,
+	.feature-panel {
+		display: block !important;
+		width: 100% !important;
+		min-width: 0 !important;
+		overflow: visible !important;
+	}
+
+	/* Prevent graphic overflow: make visuals responsive */
+	.feature-visual,
+	.visual-dashboard,
+	.visual-terminal,
+	.visual-graph,
+	.visual-panels {
+		max-width: 100% !important;
+		width: 100% !important;
+		overflow: hidden !important;
+	}
+
+	/* Make any images or inline svgs responsive */
+	.feature-visual img,
+	.feature-visual svg,
+	.visual-dashboard img,
+	.visual-dashboard svg,
+	img,
+	svg {
+		max-width: 100% !important;
+		height: auto !important;
+		display: block !important;
+	}
+
+	/* Ensure badges or fixed-width elements don't force overflow */
+	.feature-badge,
+	.how-step,
+	.console-preview-card {
+		max-width: 100% !important;
+		box-sizing: border-box !important;
+	}
+
+	/* Reduce horizontal paddings that may cause overflow */
+	.container {
+		padding-left: 1rem !important;
+		padding-right: 1rem !important;
+	}
+}
+
 .elite-modal-form select {
 	appearance: none;
 	background-image: linear-gradient(45deg, transparent 50%, #0f172a 50%), linear-gradient(135deg, #0f172a 50%, transparent 50%);
