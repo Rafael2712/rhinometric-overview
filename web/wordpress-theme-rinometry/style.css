@@ -224,6 +224,121 @@ textarea:focus {
 	}
 }
 
+/* Additional mobile layout fixes for rhinometric.com (<=768px) */
+@media (max-width: 768px) {
+	/* Ensure no horizontal overflow */
+	html, body {
+		width: 100% !important;
+		max-width: 100% !important;
+		overflow-x: hidden !important;
+	}
+
+	/* Hero: single column and reduced whitespace */
+	.hero-grid {
+		grid-template-columns: 1fr !important;
+		gap: 1rem !important;
+	}
+
+	.hero-brand,
+	.hero-copy {
+		order: initial !important;
+		width: 100% !important;
+		max-width: 100% !important;
+	}
+
+	.hero {
+		padding-block: 1.5rem !important;
+	}
+
+	/* CTA buttons: full-width but capped */
+	.hero .header-actions {
+		display: flex !important;
+		flex-direction: column !important;
+		gap: 0.6rem !important;
+		align-items: center !important;
+	}
+
+	.hero .header-actions .btn {
+		width: 100% !important;
+		max-width: 420px !important;
+		padding: 0.6rem 1rem !important;
+		font-size: 0.98rem !important;
+		box-sizing: border-box !important;
+	}
+
+	/* Language switch: keep only header one; hide duplicates in hero */
+	.hero-language-switcher {
+		display: none !important;
+	}
+
+	/* Ensure header action (language switch) sits top-right without overlapping */
+	.site-header {
+		position: sticky;
+		top: 0;
+		z-index: 50;
+	}
+
+	.site-header .header-inner {
+		align-items: center;
+	}
+
+	.site-header .header-actions {
+		position: absolute !important;
+		top: 8px !important;
+		right: 12px !important;
+		display: flex !important;
+		gap: 0.5rem !important;
+		background: transparent !important;
+	}
+
+	/* Observability: stack into single column and make visuals responsive */
+	#out-of-the-box,
+	#out-of-the-box .container,
+	.feature-showcase {
+		width: 100% !important;
+		max-width: 100% !important;
+		display: block !important;
+	}
+
+	.feature-showcase {
+		display: flex !important;
+		flex-direction: column !important;
+		gap: 1rem !important;
+	}
+
+	.feature-showcase .feature-nav,
+	.feature-showcase .feature-display {
+		width: 100% !important;
+		min-width: 0 !important;
+		box-sizing: border-box !important;
+	}
+
+	.feature-showcase .feature-nav .feature-tab {
+		width: 100% !important;
+		min-width: 0 !important;
+	}
+
+	.feature-visual,
+	.feature-visual * {
+		max-width: 100% !important;
+		width: 100% !important;
+		height: auto !important;
+	}
+
+	/* Make images and svgs responsive across the site */
+	img, svg {
+		max-width: 100% !important;
+		height: auto !important;
+	}
+
+	/* Ensure containers do not have min-width forcing overflow */
+	.container,
+	.hero-grid,
+	.feature-panel {
+		min-width: 0 !important;
+	}
+}
+
 @media (max-width: 480px) {
 	.site-header .header-actions .btn {
 		flex-basis: 100%;
