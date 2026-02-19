@@ -17,6 +17,7 @@
   var queryParam = config.queryParam || 'lang';
   var initialLang = config.initialLang;
   var currentLang = null;
+  var warned = new Set();
 
   function isSupported(lang) {
     return typeof lang === 'string' && supportedLanguages.indexOf(lang) !== -1;
@@ -84,38 +85,51 @@
   function getDict(lang) {
     return translations[lang] || translations[fallbackLang] || {};
   }
+  function t(lang, key) {
+    if (!key) return null;
+    var langDict = translations[lang] || {};
+    if (typeof langDict[key] === 'string' && langDict[key] !== '') {
+      return langDict[key];
+    }
+
+    var enDict = translations['en'] || {};
+    if (typeof enDict[key] === 'string' && enDict[key] !== '') {
+      if (!warned.has(key)) {
+        console.warn('[i18n] Missing "' + key + '" for ' + lang + '. Falling back to EN.');
+        warned.add(key);
+      }
+      return enDict[key];
+    }
+
+    if (!warned.has(key)) {
+      console.warn('[i18n] Missing "' + key + '" for ' + lang + ' and EN. Keeping existing content.');
+      warned.add(key);
+    }
+    return null;
+  }
 
   function translateNodes(lang) {
-    var dict = getDict(lang);
-    var fallback = getDict(fallbackLang);
     document.querySelectorAll('[data-i18n]').forEach(function (node) {
       var key = node.getAttribute('data-i18n');
-      if (!key) {
-        return;
-      }
-      var text = typeof dict[key] === 'string' ? dict[key] : fallback[key];
-      if (typeof text !== 'string') {
-        return;
-      }
+      if (!key) return;
       var wantsText = !node.hasAttribute('data-i18n-attr') || node.getAttribute('data-i18n-text') === 'true';
+      var value = t(lang, key);
+      if (value === null) return; // keep existing content
       if (wantsText) {
-        node.textContent = text;
+        node.textContent = value;
       }
     });
+
     document.querySelectorAll('[data-i18n-attr]').forEach(function (node) {
       var attrs = (node.getAttribute('data-i18n-attr') || '').split(',');
       var key = node.getAttribute('data-i18n');
-      if (!key) {
-        return;
-      }
-      var attrValue = typeof dict[key] === 'string' ? dict[key] : fallback[key];
-      if (typeof attrValue !== 'string') {
-        return;
-      }
+      if (!key) return;
+      var value = t(lang, key);
+      if (value === null) return;
       attrs.forEach(function (attr) {
         var name = attr.trim();
         if (name) {
-          node.setAttribute(name, attrValue);
+          node.setAttribute(name, value);
         }
       });
     });
@@ -145,8 +159,6 @@
   }
 
   function updateModalDataset(lang) {
-    var dict = getDict(lang);
-    var fallback = getDict(fallbackLang);
     var form = document.querySelector('.elite-modal-form');
     if (!form) {
       return;
@@ -162,7 +174,7 @@
     ];
     datasetMap.forEach(function (entry) {
       var key = entry[1];
-      var value = typeof dict[key] === 'string' ? dict[key] : fallback[key];
+      var value = t(lang, key);
       if (typeof value === 'string') {
         form.dataset[entry[0]] = value;
       }

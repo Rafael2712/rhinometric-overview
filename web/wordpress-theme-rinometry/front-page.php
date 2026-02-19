@@ -111,6 +111,8 @@ $rinometry_frontpage_strings = [
     'modal.error.security' => 'Security validation failed. Refresh the page and try again.',
     'modal.error.listTitle' => 'Please review the following',
     'modal.close' => 'Close dialog',
+    'social_title' => 'Follow us',
+    'social_linkedin_aria' => 'Rhinometric on LinkedIn',
   ],
   'es' => [
     'hero.badge' => 'Motor de Observabilidad On-Prem',
@@ -205,6 +207,8 @@ $rinometry_frontpage_strings = [
     'modal.error.security' => 'Fallo la validación de seguridad. Refresca la página e intenta otra vez.',
     'modal.error.listTitle' => 'Revisa lo siguiente',
     'modal.close' => 'Cerrar diálogo',
+    'social_title' => 'Síguenos',
+    'social_linkedin_aria' => 'Rhinometric en LinkedIn',
   ],
 ];
 
@@ -333,7 +337,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['rh_elite_modal'])) {
         <li data-i18n="hero.bullet3"><?php echo esc_html($rinometry_frontpage_translate('hero.bullet3')); ?></li>
       </ul>
       <div class="header-actions" style="margin-top: 1.5rem;">
-        <a class="btn btn-primary" href="#elite-modal" data-elite-modal-trigger="true" data-i18n="hero.ctaPrimary"><?php echo esc_html($rinometry_frontpage_translate('hero.ctaPrimary')); ?></a>
         <a class="btn btn-secondary" href="#out-of-the-box" data-i18n="hero.ctaSecondary"><?php echo esc_html($rinometry_frontpage_translate('hero.ctaSecondary')); ?></a>
       </div>
     </div>
@@ -534,16 +537,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['rh_elite_modal'])) {
   </div>
 </section>
 
-<section class="section section-alt early-access" id="early-access">
-  <div class="container">
-    <div class="card">
-      <span class="early-access-tag" data-i18n="early.tag"><?php echo esc_html($rinometry_frontpage_translate('early.tag')); ?></span>
-      <h2 class="section-title" data-i18n="early.title"><?php echo esc_html($rinometry_frontpage_translate('early.title')); ?></h2>
-      <p class="section-lead" data-i18n="early.lead"><?php echo esc_html($rinometry_frontpage_translate('early.lead')); ?></p>
-      <a class="btn btn-primary" href="#elite-modal" data-elite-modal-trigger="true" data-i18n="early.cta"><?php echo esc_html($rinometry_frontpage_translate('early.cta')); ?></a>
-    </div>
-  </div>
-</section>
+<!-- Early Access section removed per request -->
 <script>
   document.addEventListener('DOMContentLoaded', function () {
     document.querySelectorAll('[data-feature-tabs]').forEach(function (container) {
@@ -684,83 +678,24 @@ $rinometry_frontpage_cookies_to_clear = array_values(array_unique([
   })();
 </script>
 <script src="<?php echo esc_url(get_template_directory_uri() . '/assets/js/frontpage-i18n.js'); ?>" defer></script>
-<div class="elite-modal-backdrop" data-elite-modal hidden>
-  <div class="elite-modal-container" role="dialog" aria-modal="true" aria-labelledby="elite-modal-title" aria-describedby="elite-modal-subtitle" tabindex="-1">
-    <button type="button" class="elite-modal-close" data-elite-modal-close aria-label="<?php echo esc_attr($rinometry_frontpage_translate('modal.close')); ?>">
-      <span aria-hidden="true">&times;</span>
-    </button>
-    <div class="elite-modal-content">
-      <h3 id="elite-modal-title" class="elite-modal-title" data-i18n="modal.title"><?php echo esc_html($rinometry_frontpage_translate('modal.title')); ?></h3>
-      <p id="elite-modal-subtitle" class="elite-modal-subtitle" data-i18n="modal.subtitle"><?php echo esc_html($rinometry_frontpage_translate('modal.subtitle')); ?></p>
-      <div class="elite-modal-feedback" role="status" aria-live="polite"></div>
-      <div class="elite-modal-errors" role="alert" aria-live="assertive"></div>
-      <form class="elite-modal-form" method="post" action="<?php echo esc_url(home_url('/')); ?>" novalidate data-error-required="<?php echo esc_attr($rinometry_frontpage_translate('modal.error.required')); ?>" data-error-email="<?php echo esc_attr($rinometry_frontpage_translate('modal.error.email')); ?>" data-error-server="<?php echo esc_attr($rinometry_frontpage_translate('modal.error.server')); ?>" data-errors-title="<?php echo esc_attr($rinometry_frontpage_translate('modal.error.listTitle')); ?>" data-loading-label="<?php echo esc_attr($rinometry_frontpage_translate('modal.loading')); ?>" data-submit-label="<?php echo esc_attr($rinometry_frontpage_translate('modal.submit')); ?>" data-success-title="<?php echo esc_attr($rinometry_frontpage_translate('modal.success.title')); ?>">
-        <div class="elite-modal-grid">
-          <div class="field">
-            <label for="elite-email" data-i18n="modal.email.label"><?php echo esc_html($rinometry_frontpage_translate('modal.email.label')); ?></label>
-            <input type="email" id="elite-email" name="elite_email" autocomplete="email" inputmode="email" required>
-            <p class="field-error" data-field-error="elite_email" aria-live="polite"></p>
-          </div>
-          <div class="field">
-            <div class="field-label">
-              <label for="elite-role" data-i18n="modal.role.label"><?php echo esc_html($rinometry_frontpage_translate('modal.role.label')); ?></label>
-              <span class="field-optional-pill" data-i18n="modal.field.optional"><?php echo esc_html($rinometry_frontpage_translate('modal.field.optional')); ?></span>
-            </div>
-            <input type="text" id="elite-role" name="elite_role" data-i18n="modal.role.placeholder" data-i18n-attr="placeholder" placeholder="<?php echo esc_attr($rinometry_frontpage_translate('modal.role.placeholder')); ?>">
-            <p class="field-hint" data-i18n="modal.role.help"><?php echo esc_html($rinometry_frontpage_translate('modal.role.help')); ?></p>
-            <p class="field-error" data-field-error="elite_role" aria-live="polite"></p>
-          </div>
-          <div class="field">
-            <label for="elite-sector" data-i18n="modal.sector.label"><?php echo esc_html($rinometry_frontpage_translate('modal.sector.label')); ?></label>
-            <select id="elite-sector" name="elite_sector" required>
-              <option value="" selected disabled data-i18n="modal.select.placeholder"><?php echo esc_html($rinometry_frontpage_translate('modal.select.placeholder')); ?></option>
-              <option value="fintech" data-i18n="modal.sector.fintech"><?php echo esc_html($rinometry_frontpage_translate('modal.sector.fintech')); ?></option>
-              <option value="healthcare" data-i18n="modal.sector.healthcare"><?php echo esc_html($rinometry_frontpage_translate('modal.sector.healthcare')); ?></option>
-              <option value="industrial" data-i18n="modal.sector.industrial"><?php echo esc_html($rinometry_frontpage_translate('modal.sector.industrial')); ?></option>
-              <option value="gov" data-i18n="modal.sector.gov"><?php echo esc_html($rinometry_frontpage_translate('modal.sector.gov')); ?></option>
-              <option value="other" data-i18n="modal.sector.other"><?php echo esc_html($rinometry_frontpage_translate('modal.sector.other')); ?></option>
-            </select>
-            <p class="field-error" data-field-error="elite_sector" aria-live="polite"></p>
-          </div>
-          <div class="field">
-            <label for="elite-infrastructure" data-i18n="modal.infrastructure.label"><?php echo esc_html($rinometry_frontpage_translate('modal.infrastructure.label')); ?></label>
-            <select id="elite-infrastructure" name="elite_infrastructure" required>
-              <option value="" selected disabled data-i18n="modal.select.placeholder"><?php echo esc_html($rinometry_frontpage_translate('modal.select.placeholder')); ?></option>
-              <option value="onprem" data-i18n="modal.infrastructure.onprem"><?php echo esc_html($rinometry_frontpage_translate('modal.infrastructure.onprem')); ?></option>
-              <option value="baremetal" data-i18n="modal.infrastructure.baremetal"><?php echo esc_html($rinometry_frontpage_translate('modal.infrastructure.baremetal')); ?></option>
-              <option value="edge" data-i18n="modal.infrastructure.edge"><?php echo esc_html($rinometry_frontpage_translate('modal.infrastructure.edge')); ?></option>
-              <option value="hybrid" data-i18n="modal.infrastructure.hybrid"><?php echo esc_html($rinometry_frontpage_translate('modal.infrastructure.hybrid')); ?></option>
-            </select>
-            <p class="field-error" data-field-error="elite_infrastructure" aria-live="polite"></p>
-          </div>
-          <div class="field">
-            <label for="elite-pain" data-i18n="modal.pain.label"><?php echo esc_html($rinometry_frontpage_translate('modal.pain.label')); ?></label>
-            <select id="elite-pain" name="elite_pain_point" required>
-              <option value="" selected disabled data-i18n="modal.select.placeholder"><?php echo esc_html($rinometry_frontpage_translate('modal.select.placeholder')); ?></option>
-              <option value="costs" data-i18n="modal.pain.costs"><?php echo esc_html($rinometry_frontpage_translate('modal.pain.costs')); ?></option>
-              <option value="privacy" data-i18n="modal.pain.privacy"><?php echo esc_html($rinometry_frontpage_translate('modal.pain.privacy')); ?></option>
-              <option value="private" data-i18n="modal.pain.private"><?php echo esc_html($rinometry_frontpage_translate('modal.pain.private')); ?></option>
-            </select>
-            <p class="field-error" data-field-error="elite_pain_point" aria-live="polite"></p>
-          </div>
-        </div>
-        <div class="field honeypot" aria-hidden="true">
-          <label for="elite-company">Company</label>
-          <input type="text" id="elite-company" name="elite_company" tabindex="-1" autocomplete="off">
-        </div>
-        <input type="hidden" name="rh_elite_modal" value="1">
-        <input type="hidden" name="current_lang" value="<?php echo esc_attr($rinometry_frontpage_language); ?>">
-        <?php wp_nonce_field('rh_elite_modal', 'rh_elite_modal_nonce'); ?>
-        <div class="elite-modal-actions">
-          <button class="btn btn-primary" type="submit" disabled data-default-label="<?php echo esc_attr($rinometry_frontpage_translate('modal.submit')); ?>" data-loading-label="<?php echo esc_attr($rinometry_frontpage_translate('modal.loading')); ?>" data-i18n="modal.submit"><?php echo esc_html($rinometry_frontpage_translate('modal.submit')); ?></button>
-        </div>
-      </form>
-      <div class="elite-modal-success" role="status" aria-live="polite" hidden>
-        <h4 data-i18n="modal.success.title"><?php echo esc_html($rinometry_frontpage_translate('modal.success.title')); ?></h4>
-        <p class="elite-modal-success-text" data-i18n="modal.success.message"><?php echo esc_html($rinometry_frontpage_translate('modal.success.message')); ?></p>
-      </div>
-    </div>
+<section class="social-section">
+  <div class="container social-inner">
+    <h2 class="social-title" data-i18n="social_title"><?php echo esc_html($rinometry_frontpage_translate('social_title')); ?></h2>
+
+     <a class="social-link"
+       href="https://www.linkedin.com/company/rhinometric/"
+       target="_blank"
+       rel="noopener noreferrer"
+       data-i18n-attr="aria-label"
+       data-i18n="social_linkedin_aria">
+      <span class="social-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" role="img" focusable="false" xmlns="http://www.w3.org/2000/svg">
+          <path d="M4.98 3.5C4.98 4.88 3.87 6 2.5 6S0 4.88 0 3.5 1.12 1 2.5 1 4.98 2.12 4.98 3.5ZM.5 8h4V24h-4V8Zm7.5 0h3.8v2.2h.05c.53-1 1.83-2.2 3.76-2.2C19.6 8 22 10.1 22 14.4V24h-4v-8.4c0-2-.04-4.6-2.8-4.6-2.8 0-3.23 2.2-3.23 4.5V24h-4V8Z"/>
+        </svg>
+      </span>
+
+      <span class="social-text">LinkedIn</span>
+    </a>
   </div>
-</div>
-<script src="<?php echo esc_url(get_template_directory_uri() . '/assets/js/elite-modal.js'); ?>" defer></script>
+</section>
 <?php get_footer(); ?>
