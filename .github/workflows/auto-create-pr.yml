@@ -20,9 +20,9 @@ jobs:
       - name: Create PR
         uses: peter-evans/create-pull-request@v5
         with:
-          # Prefer a user-provided PAT stored in repo secrets (REPO_PAT) for broader permissions.
-          # Fallback to the built-in GITHUB_TOKEN when REPO_PAT is not provided.
-          token: ${{ secrets.REPO_PAT || secrets.GITHUB_TOKEN }}
+          # Use the built-in token provided to the runner for creating PRs.
+          # Removed optional REPO_PAT fallback to avoid relying on repo secrets.
+          token: ${{ github.token }}
           base: main
           branch: ${{ github.ref_name }}
           title: "Auto PR: ${{ github.ref_name }}"
