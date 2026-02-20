@@ -15,7 +15,7 @@ $lang = rinometry_get_current_language();
 $t = [
     /* ---- Hero ---- */
     'hero_h1'       => ['en' => 'Your infrastructure.<br>Your data.<br>Zero cloud egress.', 'es' => 'Tu infraestructura.<br>Tus datos.<br>Cero egreso a la nube.'],
-    'hero_lead'     => ['en' => 'Private observability for metrics, logs, and traces — single-tenant, EU-hosted, Docker-based.', 'es' => 'Observabilidad privada para métricas, logs y trazas — single-tenant, alojado en la UE, basado en Docker.'],
+    'hero_lead'     => ['en' => 'Private observability for metrics, logs, and traces — single-tenant, EU-deployable, Docker-based.', 'es' => 'Observabilidad privada para métricas, logs y trazas — single-tenant, desplegable en la UE, basado en Docker.'],
     'hero_cta_1'    => ['en' => 'Request a demo', 'es' => 'Solicitar demo'],
     'hero_cta_2'    => ['en' => 'View platform', 'es' => 'Ver plataforma'],
 
