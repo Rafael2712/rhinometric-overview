@@ -15,16 +15,16 @@ $lang = rinometry_get_current_language();
 $t = [
     /* ---- Hero ---- */
     'hero_h1'       => ['en' => 'Your infrastructure.<br>Your data.<br>Your control.', 'es' => 'Tu infraestructura.<br>Tus datos.<br>Tu control.'],
-    'hero_lead'     => ['en' => 'Deploy on-premise or in a dedicated VM within a European public cloud environment, under full customer control.', 'es' => 'Despliega on-premise o en una VM dedicada dentro de un entorno de nube pública europea, bajo control total del cliente.'],
+    'hero_lead'     => ['en' => 'Deploy on-premise or in a dedicated VM within a European public cloud environment, under full customer control.', 'es' => 'Despliega on-premise o en una VM dedicada dentro de un entorno de nube pública europeo, bajo control total del cliente.'],
     'hero_trust'    => ['en' => 'No shared tenancy. No third-party SaaS data exposure.', 'es' => 'Sin multi-tenancy compartida. Sin exposición de datos a un SaaS de terceros.'],
     'hero_cta_1'    => ['en' => 'Request an Evaluation', 'es' => 'Solicitar evaluación'],
     'hero_cta_2'    => ['en' => 'Explore the Platform', 'es' => 'Explorar la plataforma'],
 
     /* ---- What is it ---- */
     'what_title'    => ['en' => 'What is Rhinometric', 'es' => 'Qué es Rhinometric'],
-    'what_lead'     => ['en' => 'Rhinometric unifies metrics, logs, and traces in one operational view. Built on Prometheus (metrics), Loki (logs), Jaeger (traces), and Grafana (visualization).', 'es' => 'Rhinometric unifica métricas, logs y trazas en una única vista operacional. Basado en Prometheus (métricas), Loki (logs), Jaeger (trazas) y Grafana (visualización).'],
+    'what_lead'     => ['en' => 'Rhinometric unifies metrics, logs, and traces in one operational view. Built on Prometheus + VictoriaMetrics (metrics), Loki (logs), Jaeger (traces), and Grafana (visualization).', 'es' => 'Rhinometric unifica métricas, logs y trazas en una sola vista operativa. Construido sobre Prometheus + VictoriaMetrics (métricas), Loki (logs), Jaeger (trazas) y Grafana (visualización).'],
     'what_1_t'      => ['en' => 'Metrics', 'es' => 'Métricas'],
-    'what_1_d'      => ['en' => 'Prometheus collection with Grafana dashboards.', 'es' => 'Recolección con Prometheus y dashboards Grafana.'],
+    'what_1_d'      => ['en' => 'Prometheus + VictoriaMetrics collection with Grafana dashboards.', 'es' => 'Recolección con Prometheus + VictoriaMetrics y dashboards Grafana.'],
     'what_2_t'      => ['en' => 'Logs', 'es' => 'Logs'],
     'what_2_d'      => ['en' => 'Centralized log aggregation via Loki.', 'es' => 'Agregación centralizada de logs con Loki.'],
     'what_3_t'      => ['en' => 'Traces', 'es' => 'Trazas'],
@@ -40,7 +40,7 @@ $t = [
 
     /* ---- Deployment & Security (merged) ---- */
     'depsec_title'  => ['en' => 'Deployment &amp; Security', 'es' => 'Despliegue y seguridad'],
-    'depsec_1'      => ['en' => 'On-premise or dedicated VM in a European public cloud environment — your infrastructure, your rules.', 'es' => 'On-premise o VM dedicada en un entorno de nube pública europea — tu infraestructura, tus reglas.'],
+    'depsec_1'      => ['en' => 'On-premise or dedicated VM in a European public cloud environment — your infrastructure, your rules.', 'es' => 'On-premise o VM dedicada en un entorno de nube pública europeo — tu infraestructura, tus reglas.'],
     'depsec_2'      => ['en' => 'mTLS everywhere, RBAC with audit trail, EU data residency.', 'es' => 'mTLS en todas las comunicaciones, RBAC con auditoría, residencia de datos en la UE.'],
     'deploy_link'   => ['en' => 'Explore deployment', 'es' => 'Explorar despliegue'],
     'sec_link'      => ['en' => 'Learn about security', 'es' => 'Más sobre seguridad'],

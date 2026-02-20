@@ -114,7 +114,7 @@ function rinometry_meta_tags() {
         ];
         $descs = [
             'en' => 'Deploy a private observability engine for metrics, logs, and traces. On-premise or dedicated VM in a European public cloud environment. No shared tenancy.',
-            'es' => 'Despliega un motor de observabilidad privado para métricas, logs y trazas. On-premise o VM dedicada en entorno de nube pública europea. Sin tenencia compartida.',
+            'es' => 'Despliega un motor de observabilidad privado para métricas, logs y trazas. On-premise o VM dedicada en entorno de nube pública europeo. Sin tenencia compartida.',
         ];
         $title = $titles[$lang] ?? $titles['en'];
         $desc = $descs[$lang] ?? $descs['en'];

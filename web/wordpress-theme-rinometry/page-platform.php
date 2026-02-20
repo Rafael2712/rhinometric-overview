@@ -7,7 +7,7 @@ get_header();
 $lang = rinometry_get_current_language();
 $t = [
     'title'   => ['en' => 'Platform overview', 'es' => 'Visión general de la plataforma'],
-    'lead'    => ['en' => 'Rhinometric unifies metrics, logs, and traces in one operational view. Built on Prometheus (metrics), Loki (logs), Jaeger (traces), and Grafana (visualization).', 'es' => 'Rhinometric unifica métricas, logs y trazas en una única vista operacional. Basado en Prometheus (métricas), Loki (logs), Jaeger (trazas) y Grafana (visualización).'],
+    'lead'    => ['en' => 'Rhinometric unifies metrics, logs, and traces in one operational view. Built on Prometheus + VictoriaMetrics (metrics), Loki (logs), Jaeger (traces), and Grafana (visualization).', 'es' => 'Rhinometric unifica métricas, logs y trazas en una sola vista operativa. Construido sobre Prometheus + VictoriaMetrics (métricas), Loki (logs), Jaeger (trazas) y Grafana (visualización).'],
     'c1_t'    => ['en' => 'Unified data plane', 'es' => 'Plano de datos unificado'],
     'c1_d'    => ['en' => 'Metrics, logs, and traces in a single operational view with consistent retention policies.', 'es' => 'Métricas, logs y trazas en una única vista operacional con políticas de retención consistentes.'],
     'c2_t'    => ['en' => 'Operator-first design', 'es' => 'Diseño orientado al operador'],
@@ -22,7 +22,7 @@ $t = [
 ];
 $__ = function ($k) use ($t, $lang) { return $t[$k][$lang] ?? $t[$k]['en'] ?? $k; };
 $components = [
-    ['icon' => '📊', 'name' => 'Prometheus', 'desc' => ['en' => 'Metrics collection & long-term storage', 'es' => 'Recolección de métricas y almacenamiento a largo plazo']],
+    ['icon' => '📊', 'name' => 'Prometheus + VictoriaMetrics', 'desc' => ['en' => 'Metrics collection, long-term storage & high-performance queries', 'es' => 'Recolección de métricas, almacenamiento a largo plazo y consultas de alto rendimiento']],
     ['icon' => '📋', 'name' => 'Loki',       'desc' => ['en' => 'Log aggregation with label-based queries', 'es' => 'Agregación de logs con consultas basadas en etiquetas']],
     ['icon' => '🔗', 'name' => 'Jaeger',     'desc' => ['en' => 'Distributed tracing with service maps', 'es' => 'Trazas distribuidas con mapas de servicios']],
     ['icon' => '📈', 'name' => 'Grafana',    'desc' => ['en' => 'Visualization, dashboards & alerting', 'es' => 'Visualización, dashboards y alertas']],
