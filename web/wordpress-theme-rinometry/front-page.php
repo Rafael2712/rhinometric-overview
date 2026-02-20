@@ -1,8 +1,8 @@
 <?php
 /**
- * front-page.php — Rhinometric v3
- * 6-block homepage with full EN/ES i18n.
- * Blocks: Hero · Why it matters · What you get · Deployment models · Security & trust · CTA final
+ * front-page.php — Rhinometric v3.1
+ * 6-block compact homepage with full EN/ES i18n.
+ * Blocks: Hero · What is it · Why on-prem · Deployment summary · Security summary · CTA final
  */
 
 get_header();
@@ -10,219 +10,155 @@ get_header();
 $lang = rinometry_get_current_language();
 
 /* ================================================================
-   i18n string catalogue
+   i18n string catalogue (compact — detail lives in child pages)
    ================================================================ */
 $t = [
     /* ---- Hero ---- */
-    'hero_badge'    => ['en' => 'Single-Tenant Observability', 'es' => 'Observabilidad Single-Tenant'],
     'hero_h1'       => ['en' => 'Your infrastructure.<br>Your data.<br>Zero cloud egress.', 'es' => 'Tu infraestructura.<br>Tus datos.<br>Cero egreso a la nube.'],
-    'hero_lead'     => ['en' => 'Deploy a private observability engine for metrics, logs, and traces — hosted in the EU, on your own terms.', 'es' => 'Despliega un motor de observabilidad privado para métricas, logs y trazas — alojado en la UE, bajo tus condiciones.'],
-    'hero_bullet_1' => ['en' => 'Metrics, logs & traces in one stack', 'es' => 'Métricas, logs y trazas en un solo stack'],
-    'hero_bullet_2' => ['en' => 'Grafana-native dashboards included', 'es' => 'Dashboards nativos de Grafana incluidos'],
-    'hero_bullet_3' => ['en' => 'Docker-based, deploys in minutes', 'es' => 'Basado en Docker, despliega en minutos'],
-    'hero_cta'      => ['en' => 'Get started', 'es' => 'Comenzar'],
+    'hero_lead'     => ['en' => 'Private observability for metrics, logs, and traces — single-tenant, EU-hosted, Docker-based.', 'es' => 'Observabilidad privada para métricas, logs y trazas — single-tenant, alojado en la UE, basado en Docker.'],
+    'hero_cta_1'    => ['en' => 'Request a demo', 'es' => 'Solicitar demo'],
+    'hero_cta_2'    => ['en' => 'View platform', 'es' => 'Ver plataforma'],
 
-    /* ---- Why it matters ---- */
-    'why_title'     => ['en' => 'Why it matters', 'es' => 'Por qué importa'],
-    'why_subtitle'  => ['en' => 'Most observability platforms require you to send telemetry to a shared, multi-tenant cloud. That means latency, vendor lock-in, and data exposure. Rhinometric keeps everything inside your perimeter.', 'es' => 'La mayoría de las plataformas de observabilidad exigen enviar telemetría a una nube compartida multi-tenant. Eso implica latencia, vendor lock-in y exposición de datos. Rhinometric mantiene todo dentro de tu perímetro.'],
-    'why_card_1_t'  => ['en' => 'Data sovereignty', 'es' => 'Soberanía de datos'],
-    'why_card_1_d'  => ['en' => 'Your telemetry never leaves your network. Full control, full compliance.', 'es' => 'Tu telemetría nunca sale de tu red. Control total, cumplimiento total.'],
-    'why_card_2_t'  => ['en' => 'No vendor lock-in', 'es' => 'Sin vendor lock-in'],
-    'why_card_2_d'  => ['en' => 'Built on open-source foundations: Prometheus, Loki, Tempo, Grafana. Own your stack.', 'es' => 'Construido sobre bases open-source: Prometheus, Loki, Tempo, Grafana. Tu stack es tuyo.'],
-    'why_card_3_t'  => ['en' => 'Production-ready', 'es' => 'Listo para producción'],
-    'why_card_3_d'  => ['en' => 'Pre-configured dashboards, alerting rules, and retention policies out of the box.', 'es' => 'Dashboards preconfigurados, reglas de alerta y políticas de retención listas para usar.'],
-
-    /* ---- What you get ---- */
-    'what_title'    => ['en' => 'What you get', 'es' => 'Qué obtienes'],
+    /* ---- What is it ---- */
+    'what_title'    => ['en' => 'What is Rhinometric', 'es' => 'Qué es Rhinometric'],
+    'what_lead'     => ['en' => 'A self-hosted observability stack built on Prometheus, Loki, Jaeger, and Grafana.', 'es' => 'Un stack de observabilidad autoalojado basado en Prometheus, Loki, Jaeger y Grafana.'],
     'what_1_t'      => ['en' => 'Metrics', 'es' => 'Métricas'],
-    'what_1_d'      => ['en' => 'Prometheus-powered metrics collection with long-term storage and pre-built Grafana dashboards.', 'es' => 'Recolección de métricas con Prometheus, almacenamiento a largo plazo y dashboards Grafana pre-configurados.'],
+    'what_1_d'      => ['en' => 'Prometheus-powered collection with long-term storage and Grafana dashboards.', 'es' => 'Recolección con Prometheus, almacenamiento a largo plazo y dashboards Grafana.'],
     'what_2_t'      => ['en' => 'Logs', 'es' => 'Logs'],
-    'what_2_d'      => ['en' => 'Centralized log aggregation via Loki with label-based querying and integrated alerting.', 'es' => 'Agregación centralizada de logs con Loki, consultas basadas en etiquetas y alertas integradas.'],
+    'what_2_d'      => ['en' => 'Centralized aggregation via Loki with label-based querying.', 'es' => 'Agregación centralizada con Loki y consultas basadas en etiquetas.'],
     'what_3_t'      => ['en' => 'Traces', 'es' => 'Trazas'],
-    'what_3_d'      => ['en' => 'Distributed tracing through Tempo with service maps, span analysis and correlation.', 'es' => 'Trazas distribuidas con Tempo, mapas de servicios, análisis de spans y correlación.'],
-    'what_4_t'      => ['en' => 'Dashboards', 'es' => 'Dashboards'],
-    'what_4_d'      => ['en' => 'Grafana-native panels with real-time data, flexible layout, and built-in alerting.', 'es' => 'Paneles nativos de Grafana con datos en tiempo real, diseño flexible y alertas integradas.'],
-    'what_5_t'      => ['en' => 'Alerting', 'es' => 'Alertas'],
-    'what_5_d'      => ['en' => 'Unified alerting engine with Slack, email, PagerDuty and webhook integrations.', 'es' => 'Motor de alertas unificado con integraciones para Slack, email, PagerDuty y webhooks.'],
-    'what_6_t'      => ['en' => 'Security', 'es' => 'Seguridad'],
-    'what_6_d'      => ['en' => 'mTLS, RBAC, network policies, and audit logging. Enterprise-grade from day one.', 'es' => 'mTLS, RBAC, políticas de red y auditoría de logs. Nivel empresarial desde el día uno.'],
+    'what_3_d'      => ['en' => 'Distributed tracing through Jaeger with service maps and span analysis.', 'es' => 'Trazas distribuidas con Jaeger, mapas de servicios y análisis de spans.'],
+    'what_link'     => ['en' => 'See full platform details', 'es' => 'Ver detalles completos de la plataforma'],
 
-    /* ---- Deployment models ---- */
-    'deploy_title'  => ['en' => 'Deployment models', 'es' => 'Modelos de despliegue'],
-    'deploy_1_t'    => ['en' => 'On-premise', 'es' => 'On-premise'],
-    'deploy_1_d'    => ['en' => 'Full control on your hardware. Air-gapped support available.', 'es' => 'Control total en tu hardware. Soporte air-gapped disponible.'],
-    'deploy_2_t'    => ['en' => 'Private cloud', 'es' => 'Nube privada'],
-    'deploy_2_d'    => ['en' => 'Deploy on AWS, Azure, or GCP inside your own VPC. No shared tenancy.', 'es' => 'Despliega en AWS, Azure o GCP dentro de tu propio VPC. Sin tenencia compartida.'],
-    'deploy_3_t'    => ['en' => 'Hybrid', 'es' => 'Híbrido'],
-    'deploy_3_d'    => ['en' => 'Combine on-prem collection with cloud storage. Best of both worlds.', 'es' => 'Combina recolección on-prem con almacenamiento en la nube. Lo mejor de ambos mundos.'],
+    /* ---- Why on-prem / Single-tenant EU ---- */
+    'why_title'     => ['en' => 'Why on-prem &amp; single-tenant', 'es' => 'Por qué on-prem y single-tenant'],
+    'why_1'         => ['en' => 'Your telemetry never leaves your network — full data sovereignty.', 'es' => 'Tu telemetría nunca sale de tu red — soberanía de datos total.'],
+    'why_2'         => ['en' => 'Built on open-source foundations — no vendor lock-in.', 'es' => 'Construido sobre bases open-source — sin vendor lock-in.'],
+    'why_3'         => ['en' => 'Pre-configured dashboards, alerting, and retention policies included.', 'es' => 'Dashboards, alertas y políticas de retención preconfigurados incluidos.'],
 
-    /* ---- Security & trust ---- */
-    'sec_title'     => ['en' => 'Security & trust', 'es' => 'Seguridad y confianza'],
-    'sec_1_t'       => ['en' => 'mTLS everywhere', 'es' => 'mTLS en todas partes'],
-    'sec_1_d'       => ['en' => 'All inter-service communication is encrypted with mutual TLS. Zero trust by default.', 'es' => 'Toda la comunicación entre servicios está cifrada con TLS mutuo. Zero trust por defecto.'],
-    'sec_2_t'       => ['en' => 'RBAC & audit logs', 'es' => 'RBAC y auditoría'],
-    'sec_2_d'       => ['en' => 'Granular role-based access control with complete audit trail for every action.', 'es' => 'Control de acceso basado en roles granular con pista de auditoría completa para cada acción.'],
-    'sec_3_t'       => ['en' => 'EU data residency', 'es' => 'Residencia de datos en la UE'],
-    'sec_3_d'       => ['en' => 'All data stays within EU borders. GDPR-ready architecture built in.', 'es' => 'Todos los datos permanecen dentro de las fronteras de la UE. Arquitectura preparada para GDPR.'],
-    'sec_4_t'       => ['en' => 'Air-gap ready', 'es' => 'Preparado para air-gap'],
-    'sec_4_d'       => ['en' => 'Deployable in fully disconnected environments with offline license validation.', 'es' => 'Desplegable en entornos completamente desconectados con validación de licencia offline.'],
+    /* ---- Deployment summary ---- */
+    'deploy_title'  => ['en' => 'Deployment options', 'es' => 'Opciones de despliegue'],
+    'deploy_1'      => ['en' => 'On-premise or private cloud (AWS, Azure, GCP) — your VPC, your rules.', 'es' => 'On-premise o nube privada (AWS, Azure, GCP) — tu VPC, tus reglas.'],
+    'deploy_2'      => ['en' => 'Hybrid mode available — on-prem collectors with cloud storage.', 'es' => 'Modo híbrido disponible — colectores on-prem con almacenamiento en la nube.'],
+    'deploy_link'   => ['en' => 'Explore deployment models', 'es' => 'Explorar modelos de despliegue'],
+
+    /* ---- Security summary ---- */
+    'sec_title'     => ['en' => 'Security &amp; trust', 'es' => 'Seguridad y confianza'],
+    'sec_1'         => ['en' => 'mTLS on all inter-service communication — zero trust by default.', 'es' => 'mTLS en toda la comunicación entre servicios — zero trust por defecto.'],
+    'sec_2'         => ['en' => 'Role-based access control with full audit trail.', 'es' => 'Control de acceso basado en roles con auditoría completa.'],
+    'sec_3'         => ['en' => 'EU data residency — GDPR-ready architecture.', 'es' => 'Residencia de datos en la UE — arquitectura preparada para GDPR.'],
+    'sec_link'      => ['en' => 'Learn more about security', 'es' => 'Más sobre seguridad'],
 
     /* ---- CTA final ---- */
     'cta_title'     => ['en' => 'Ready to take control?', 'es' => '¿Listo para tomar el control?'],
-    'cta_lead'      => ['en' => 'Deploy Rhinometric in your infrastructure today. No credit card, no shared tenancy, no data egress.', 'es' => 'Despliega Rhinometric en tu infraestructura hoy. Sin tarjeta de crédito, sin tenencia compartida, sin egreso de datos.'],
-    'cta_btn_1'     => ['en' => 'Request a demo', 'es' => 'Solicitar demo'],
-    'cta_btn_2'     => ['en' => 'View pricing', 'es' => 'Ver precios'],
+    'cta_lead'      => ['en' => 'Deploy Rhinometric in your infrastructure today. No shared tenancy, no data egress.', 'es' => 'Despliega Rhinometric en tu infraestructura hoy. Sin tenencia compartida, sin egreso de datos.'],
+    'cta_btn'       => ['en' => 'Contact us', 'es' => 'Contáctanos'],
 
-    /* ---- Social ---- */
+    /* ---- Social (rendered by footer, kept for i18n JS) ---- */
     'social_title'  => ['en' => 'Follow us', 'es' => 'Síguenos'],
 ];
 
 /**
- * Translate helper: returns the string for the current language.
+ * Translate helper.
  */
 $__ = function ($key) use ($t, $lang) {
     return $t[$key][$lang] ?? $t[$key]['en'] ?? $key;
 };
-
-/* ================================================================
-   Trust strip logos
-   ================================================================ */
-$trust_logos = [
-    ['label' => 'Prometheus',  'file' => 'logo-prometheus.svg'],
-    ['label' => 'Grafana',     'file' => 'logo-grafana.svg'],
-    ['label' => 'Loki',        'file' => 'logo-loki.svg'],
-    ['label' => 'Tempo',       'file' => 'logo-tempo.svg'],
-    ['label' => 'Docker',      'file' => 'logo-docker.svg'],
-];
-$asset_uri = get_template_directory_uri() . '/assets/';
 ?>
 
 <!-- ============================================================
-     BLOCK 1 — Hero
+     BLOCK 1 — Hero (compact: H1 + lead + 2 CTAs)
      ============================================================ -->
-<section class="hero">
+<section class="hero hero-compact">
   <div class="container hero-inner">
-    <span class="badge" data-i18n="hero_badge"><?php echo $__('hero_badge'); ?></span>
     <h1 data-i18n="hero_h1"><?php echo $__('hero_h1'); ?></h1>
     <p class="hero-lead" data-i18n="hero_lead"><?php echo esc_html($__('hero_lead')); ?></p>
-    <ul class="hero-bullets" aria-label="<?php echo esc_attr($__('hero_badge')); ?>">
-      <li data-i18n="hero_bullet_1"><?php echo esc_html($__('hero_bullet_1')); ?></li>
-      <li data-i18n="hero_bullet_2"><?php echo esc_html($__('hero_bullet_2')); ?></li>
-      <li data-i18n="hero_bullet_3"><?php echo esc_html($__('hero_bullet_3')); ?></li>
-    </ul>
-    <a class="btn btn-primary btn-lg" href="<?php echo esc_url(rinometry_page_url('contact')); ?>" data-i18n="hero_cta">
-      <?php echo esc_html($__('hero_cta')); ?>
-    </a>
-  </div>
-</section>
-
-<!-- Trust strip -->
-<div class="trust-strip">
-  <div class="container trust-strip-inner">
-    <?php foreach ($trust_logos as $logo) :
-        $path = $asset_uri . $logo['file'];
-    ?>
-      <img src="<?php echo esc_url($path); ?>" alt="<?php echo esc_attr($logo['label']); ?>" loading="lazy" />
-    <?php endforeach; ?>
-  </div>
-</div>
-
-<!-- ============================================================
-     BLOCK 2 — Why it matters
-     ============================================================ -->
-<section class="section">
-  <div class="container">
-    <h2 class="section-title" data-i18n="why_title"><?php echo esc_html($__('why_title')); ?></h2>
-    <p class="section-subtitle" data-i18n="why_subtitle"><?php echo esc_html($__('why_subtitle')); ?></p>
-    <div class="grid-3">
-      <?php for ($i = 1; $i <= 3; $i++) : ?>
-      <div class="card">
-        <h3 class="card-title" data-i18n="why_card_<?php echo $i; ?>_t"><?php echo esc_html($__("why_card_{$i}_t")); ?></h3>
-        <p data-i18n="why_card_<?php echo $i; ?>_d"><?php echo esc_html($__("why_card_{$i}_d")); ?></p>
-      </div>
-      <?php endfor; ?>
+    <div class="hero-cta">
+      <a class="btn btn-primary btn-lg" href="<?php echo esc_url(rinometry_page_url('contact')); ?>" data-i18n="hero_cta_1">
+        <?php echo esc_html($__('hero_cta_1')); ?>
+      </a>
+      <a class="btn btn-ghost btn-lg" href="<?php echo esc_url(rinometry_page_url('platform')); ?>" data-i18n="hero_cta_2">
+        <?php echo esc_html($__('hero_cta_2')); ?>
+      </a>
     </div>
   </div>
 </section>
 
 <!-- ============================================================
-     BLOCK 3 — What you get
+     BLOCK 2 — What is Rhinometric (1 sentence + 3 cards)
      ============================================================ -->
-<section class="section section-alt">
+<section class="section section-compact">
   <div class="container">
     <h2 class="section-title" data-i18n="what_title"><?php echo esc_html($__('what_title')); ?></h2>
+    <p class="section-subtitle" data-i18n="what_lead"><?php echo esc_html($__('what_lead')); ?></p>
     <div class="grid-3">
-      <?php for ($i = 1; $i <= 6; $i++) : ?>
-      <div class="card">
-        <div class="card-icon" aria-hidden="true">
-          <?php
-          $icons = ['📊', '📋', '🔗', '📈', '🔔', '🛡️'];
-          echo $icons[$i - 1];
-          ?>
-        </div>
+      <?php
+      $what_icons = ['📊', '📋', '🔗'];
+      for ($i = 1; $i <= 3; $i++) : ?>
+      <div class="card card-compact">
+        <div class="card-icon" aria-hidden="true"><?php echo $what_icons[$i - 1]; ?></div>
         <h3 class="card-title" data-i18n="what_<?php echo $i; ?>_t"><?php echo esc_html($__("what_{$i}_t")); ?></h3>
         <p data-i18n="what_<?php echo $i; ?>_d"><?php echo esc_html($__("what_{$i}_d")); ?></p>
       </div>
       <?php endfor; ?>
     </div>
+    <p class="section-link"><a href="<?php echo esc_url(rinometry_page_url('platform')); ?>" data-i18n="what_link"><?php echo esc_html($__('what_link')); ?> &rarr;</a></p>
   </div>
 </section>
 
 <!-- ============================================================
-     BLOCK 4 — Deployment models
+     BLOCK 3 — Why on-prem / Single-tenant EU (3 bullets)
      ============================================================ -->
-<section class="section">
+<section class="section section-compact section-alt">
   <div class="container">
-    <h2 class="section-title" data-i18n="deploy_title"><?php echo esc_html($__('deploy_title')); ?></h2>
-    <div class="grid-3">
-      <?php
-      $deploy_icons = ['🏢', '☁️', '🔄'];
-      for ($i = 1; $i <= 3; $i++) : ?>
-      <div class="deployment-card card">
-        <div class="card-icon" aria-hidden="true"><?php echo $deploy_icons[$i - 1]; ?></div>
-        <h3 class="card-title" data-i18n="deploy_<?php echo $i; ?>_t"><?php echo esc_html($__("deploy_{$i}_t")); ?></h3>
-        <p data-i18n="deploy_<?php echo $i; ?>_d"><?php echo esc_html($__("deploy_{$i}_d")); ?></p>
-      </div>
-      <?php endfor; ?>
-    </div>
+    <h2 class="section-title" data-i18n="why_title"><?php echo $__('why_title'); ?></h2>
+    <ul class="check-list">
+      <li data-i18n="why_1"><?php echo esc_html($__('why_1')); ?></li>
+      <li data-i18n="why_2"><?php echo esc_html($__('why_2')); ?></li>
+      <li data-i18n="why_3"><?php echo esc_html($__('why_3')); ?></li>
+    </ul>
   </div>
 </section>
 
 <!-- ============================================================
-     BLOCK 5 — Security & trust
+     BLOCK 4 — Deployment summary (2 bullets + link)
      ============================================================ -->
-<section class="section section-alt">
+<section class="section section-compact">
   <div class="container">
-    <h2 class="section-title" data-i18n="sec_title"><?php echo esc_html($__('sec_title')); ?></h2>
-    <div class="grid-2">
-      <?php
-      $sec_icons = ['🔒', '👤', '🇪🇺', '🔌'];
-      for ($i = 1; $i <= 4; $i++) : ?>
-      <div class="card">
-        <div class="card-icon" aria-hidden="true"><?php echo $sec_icons[$i - 1]; ?></div>
-        <h3 class="card-title" data-i18n="sec_<?php echo $i; ?>_t"><?php echo esc_html($__("sec_{$i}_t")); ?></h3>
-        <p data-i18n="sec_<?php echo $i; ?>_d"><?php echo esc_html($__("sec_{$i}_d")); ?></p>
-      </div>
-      <?php endfor; ?>
-    </div>
+    <h2 class="section-title" data-i18n="deploy_title"><?php echo $__('deploy_title'); ?></h2>
+    <ul class="check-list">
+      <li data-i18n="deploy_1"><?php echo esc_html($__('deploy_1')); ?></li>
+      <li data-i18n="deploy_2"><?php echo esc_html($__('deploy_2')); ?></li>
+    </ul>
+    <p class="section-link"><a href="<?php echo esc_url(rinometry_page_url('deployment')); ?>" data-i18n="deploy_link"><?php echo esc_html($__('deploy_link')); ?> &rarr;</a></p>
+  </div>
+</section>
+
+<!-- ============================================================
+     BLOCK 5 — Security summary (3 bullets + link)
+     ============================================================ -->
+<section class="section section-compact section-alt">
+  <div class="container">
+    <h2 class="section-title" data-i18n="sec_title"><?php echo $__('sec_title'); ?></h2>
+    <ul class="check-list">
+      <li data-i18n="sec_1"><?php echo esc_html($__('sec_1')); ?></li>
+      <li data-i18n="sec_2"><?php echo esc_html($__('sec_2')); ?></li>
+      <li data-i18n="sec_3"><?php echo esc_html($__('sec_3')); ?></li>
+    </ul>
+    <p class="section-link"><a href="<?php echo esc_url(rinometry_page_url('security')); ?>" data-i18n="sec_link"><?php echo esc_html($__('sec_link')); ?> &rarr;</a></p>
   </div>
 </section>
 
 <!-- ============================================================
      BLOCK 6 — CTA final
      ============================================================ -->
-<section class="section section-dark cta-section">
+<section class="section section-compact section-dark cta-section">
   <div class="container" style="text-align:center;">
     <h2 data-i18n="cta_title"><?php echo esc_html($__('cta_title')); ?></h2>
     <p class="cta-lead" data-i18n="cta_lead"><?php echo esc_html($__('cta_lead')); ?></p>
-    <div class="cta-buttons">
-      <a class="btn btn-white btn-lg" href="<?php echo esc_url(rinometry_page_url('contact')); ?>" data-i18n="cta_btn_1">
-        <?php echo esc_html($__('cta_btn_1')); ?>
-      </a>
-      <a class="btn btn-outline btn-lg" href="<?php echo esc_url(rinometry_page_url('pricing')); ?>" data-i18n="cta_btn_2">
-        <?php echo esc_html($__('cta_btn_2')); ?>
-      </a>
-    </div>
+    <a class="btn btn-white btn-lg" href="<?php echo esc_url(rinometry_page_url('contact')); ?>" data-i18n="cta_btn">
+      <?php echo esc_html($__('cta_btn')); ?>
+    </a>
   </div>
 </section>
 

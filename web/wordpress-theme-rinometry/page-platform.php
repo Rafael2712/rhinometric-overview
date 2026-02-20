@@ -24,8 +24,13 @@ $__ = function ($k) use ($t, $lang) { return $t[$k][$lang] ?? $t[$k]['en'] ?? $k
 $components = [
     ['icon' => '📊', 'name' => 'Prometheus', 'desc' => ['en' => 'Metrics collection & long-term storage', 'es' => 'Recolección de métricas y almacenamiento a largo plazo']],
     ['icon' => '📋', 'name' => 'Loki',       'desc' => ['en' => 'Log aggregation with label-based queries', 'es' => 'Agregación de logs con consultas basadas en etiquetas']],
-    ['icon' => '🔗', 'name' => 'Tempo',      'desc' => ['en' => 'Distributed tracing with service maps', 'es' => 'Trazas distribuidas con mapas de servicios']],
+    ['icon' => '🔗', 'name' => 'Jaeger',     'desc' => ['en' => 'Distributed tracing with service maps', 'es' => 'Trazas distribuidas con mapas de servicios']],
     ['icon' => '📈', 'name' => 'Grafana',    'desc' => ['en' => 'Visualization, dashboards & alerting', 'es' => 'Visualización, dashboards y alertas']],
+];
+$features = [
+    ['icon' => '📈', 't' => ['en' => 'Dashboards', 'es' => 'Dashboards'], 'd' => ['en' => 'Grafana-native panels with real-time data, flexible layout, and built-in alerting.', 'es' => 'Paneles nativos de Grafana con datos en tiempo real, diseño flexible y alertas integradas.']],
+    ['icon' => '🔔', 't' => ['en' => 'Alerting', 'es' => 'Alertas'], 'd' => ['en' => 'Unified alerting engine with Slack, email, PagerDuty and webhook integrations.', 'es' => 'Motor de alertas unificado con integraciones para Slack, email, PagerDuty y webhooks.']],
+    ['icon' => '🛡️', 't' => ['en' => 'Security', 'es' => 'Seguridad'], 'd' => ['en' => 'mTLS, RBAC, network policies, and audit logging. Enterprise-grade from day one.', 'es' => 'mTLS, RBAC, políticas de red y auditoría de logs. Nivel empresarial desde el día uno.']],
 ];
 ?>
 
@@ -68,6 +73,21 @@ $components = [
         <div class="card-icon" aria-hidden="true"><?php echo $c['icon']; ?></div>
         <h3 class="card-title"><?php echo esc_html($c['name']); ?></h3>
         <p><?php echo esc_html($c['desc'][$lang] ?? $c['desc']['en']); ?></p>
+      </div>
+      <?php endforeach; ?>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container">
+    <h2 class="section-title"><?php echo esc_html($lang === 'es' ? 'Capacidades adicionales' : 'Additional capabilities'); ?></h2>
+    <div class="grid-3">
+      <?php foreach ($features as $f) : ?>
+      <div class="card">
+        <div class="card-icon" aria-hidden="true"><?php echo $f['icon']; ?></div>
+        <h3 class="card-title"><?php echo esc_html($f['t'][$lang] ?? $f['t']['en']); ?></h3>
+        <p><?php echo esc_html($f['d'][$lang] ?? $f['d']['en']); ?></p>
       </div>
       <?php endforeach; ?>
     </div>

@@ -84,7 +84,8 @@ ul, ol { padding-left: 1.25rem; }
    2. Layout
    ========================================================================== */
 .container { width: min(92%, var(--container-max)); margin-inline: auto; padding-inline: clamp(1rem, 4vw, 2rem); }
-.section { padding-block: clamp(3rem, 6vw, 5rem); }
+.section { padding-block: clamp(2.5rem, 5vw, 4rem); }
+.section-compact { padding-block: clamp(1.5rem, 3vw, 2.5rem); }
 .section-alt { background: var(--surface); }
 .section-dark { background: var(--navy); color: var(--text-inverse); }
 .section-dark .section-subtitle, .section-dark .text-muted { color: rgba(255,255,255,0.7); }
@@ -173,19 +174,19 @@ ul, ol { padding-left: 1.25rem; }
 /* ==========================================================================
    6. Cards & Grid
    ========================================================================== */
-.grid { display: grid; gap: clamp(1rem, 3vw, 1.5rem); }
+.grid { display: grid; gap: clamp(0.75rem, 2vw, 1.25rem); }
 .grid-2 { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
 .grid-3 { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
 .grid-4 { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
 .card {
   background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md);
-  padding: clamp(1.25rem, 3vw, 1.75rem); transition: box-shadow 0.2s ease, transform 0.15s ease;
+  padding: clamp(1rem, 2.5vw, 1.5rem); transition: box-shadow 0.2s ease, transform 0.15s ease;
 }
 .card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
 .card-icon {
   width: 48px; height: 48px; border-radius: var(--radius-sm);
   background: rgba(14,165,165,0.08); border: 1px solid rgba(14,165,165,0.15);
-  display: flex; align-items: center; justify-content: center; margin-bottom: 1rem; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center; margin-bottom: 0.75rem; flex-shrink: 0;
 }
 .card-icon svg, .card-icon img { width: 24px; height: 24px; }
 .card h3 { font-size: 1.1rem; font-weight: 600; margin-bottom: 0.5rem; }
@@ -196,9 +197,10 @@ ul, ol { padding-left: 1.25rem; }
    ========================================================================== */
 .hero {
   background: linear-gradient(160deg, var(--navy) 0%, var(--navy-mid) 100%);
-  color: var(--text-inverse); padding-block: clamp(3.5rem, 8vw, 6rem);
+  color: var(--text-inverse); padding-block: clamp(2.5rem, 6vw, 4rem);
   position: relative; overflow: hidden;
 }
+.hero-compact { padding-block: clamp(2rem, 5vw, 3.5rem); }
 .hero::before {
   content: ''; position: absolute; width: 600px; height: 600px; border-radius: 50%;
   background: radial-gradient(circle, rgba(14,165,165,0.12), transparent 70%);
@@ -216,18 +218,34 @@ ul, ol { padding-left: 1.25rem; }
   font-size: clamp(2rem, 5vw, 3rem); font-weight: 700; line-height: 1.15;
   letter-spacing: -0.02em; margin-bottom: 1rem; color: var(--white);
 }
-.hero-lead { font-size: clamp(1rem, 2vw, 1.15rem); color: rgba(255,255,255,0.8); max-width: 560px; line-height: 1.6; margin-bottom: 1.5rem; }
-.hero-bullets { list-style: none; padding: 0; margin: 0 0 2rem; display: grid; gap: 0.6rem; }
+.hero-lead { font-size: clamp(1rem, 2vw, 1.15rem); color: rgba(255,255,255,0.8); max-width: 560px; line-height: 1.6; margin-bottom: 1.25rem; }
+.hero-bullets { list-style: none; padding: 0; margin: 0 0 1.5rem; display: grid; gap: 0.5rem; }
 .hero-bullets li { padding-left: 1.5rem; position: relative; color: rgba(255,255,255,0.85); font-size: 0.95rem; }
 .hero-bullets li::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--teal); position: absolute; left: 0; top: 0.5rem; }
 .hero-cta { display: flex; gap: 0.75rem; flex-wrap: wrap; }
 .hero-visual { display: flex; justify-content: center; align-items: center; }
 .hero-visual img { max-width: 420px; width: 100%; filter: drop-shadow(0 20px 40px rgba(0,0,0,0.3)); }
 
+/* Check-list (bullet summaries) */
+.check-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.6rem; max-width: 640px; }
+.check-list li { padding-left: 1.75rem; position: relative; font-size: 1rem; line-height: 1.5; color: var(--text); }
+.check-list li::before { content: '\2713'; position: absolute; left: 0; color: var(--teal); font-weight: 700; font-size: 1.1rem; }
+
+/* Section link ("See more →") */
+.section-link { margin-top: 1.25rem; margin-bottom: 0; font-weight: 600; font-size: 0.95rem; }
+.section-link a { color: var(--teal); text-decoration: none; }
+.section-link a:hover, .section-link a:focus { color: var(--teal-dark); text-decoration: underline; }
+
+/* Card compact */
+.card-compact { padding: clamp(1rem, 2vw, 1.25rem); }
+.card-compact .card-icon { width: 40px; height: 40px; margin-bottom: 0.75rem; }
+.card-compact h3 { font-size: 1rem; }
+.card-compact p { font-size: 0.88rem; }
+
 /* ==========================================================================
    8. Trust strip
    ========================================================================== */
-.trust-strip { display: flex; flex-wrap: wrap; justify-content: center; gap: clamp(1rem, 3vw, 2rem); padding-block: 1.5rem; }
+.trust-strip { display: flex; flex-wrap: wrap; justify-content: center; gap: clamp(1rem, 3vw, 2rem); padding-block: 1rem; }
 .trust-item { display: flex; align-items: center; gap: 0.5rem; font-size: 0.88rem; font-weight: 600; color: var(--gray-600); white-space: nowrap; }
 .trust-item svg { width: 20px; height: 20px; color: var(--teal); flex-shrink: 0; }
 
@@ -244,13 +262,13 @@ ul, ol { padding-left: 1.25rem; }
    ========================================================================== */
 .cta-section { text-align: center; }
 .cta-section .section-title { color: var(--white); }
-.cta-section .section-subtitle { color: rgba(255,255,255,0.75); margin-inline: auto; margin-bottom: 2rem; }
+.cta-section .section-subtitle { color: rgba(255,255,255,0.75); margin-inline: auto; margin-bottom: 1.5rem; }
 .cta-buttons { display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap; }
 
 /* ==========================================================================
    11. Social
    ========================================================================== */
-.social-section { padding: clamp(2rem, 4vw, 3rem) 0; border-top: 1px solid var(--border); }
+.social-section { padding: clamp(1.25rem, 3vw, 2rem) 0; border-top: 1px solid var(--border); }
 .social-inner { display: flex; align-items: center; justify-content: center; gap: clamp(1rem, 3vw, 2rem); flex-wrap: wrap; }
 .social-title { margin: 0; font-size: 1.1rem; font-weight: 600; }
 .social-link {
@@ -265,7 +283,7 @@ ul, ol { padding-left: 1.25rem; }
 /* ==========================================================================
    12. Footer
    ========================================================================== */
-.site-footer { background: var(--navy); color: rgba(255,255,255,0.8); padding-block: clamp(2.5rem, 5vw, 4rem); }
+.site-footer { background: var(--navy); color: rgba(255,255,255,0.8); padding-block: clamp(2rem, 4vw, 3rem); }
 .footer-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 2rem; margin-bottom: 2rem; }
 .footer-col h4 { color: var(--white); font-size: 0.9rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.75rem; }
 .footer-col ul { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.4rem; }
@@ -388,7 +406,8 @@ ul, ol { padding-left: 1.25rem; }
   .brand img { height: 26px; }
   .hero h1 { font-size: clamp(1.4rem, 6vw, 1.8rem); }
   .hero-lead { font-size: 0.92rem; }
-  .section { padding-block: clamp(2rem, 5vw, 3rem); }
+  .section { padding-block: clamp(1.5rem, 4vw, 2.5rem); }
+  .section-compact { padding-block: clamp(1rem, 3vw, 1.5rem); }
   .footer-grid { grid-template-columns: 1fr; }
 }
 
