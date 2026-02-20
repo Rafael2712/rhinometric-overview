@@ -455,7 +455,94 @@ ul, ol { padding-left: 1.25rem; }
 }
 
 /* ==========================================================================
-   20. Print
+   20. Unified Operational Interface — carousel (mobile) / grid (desktop)
+   ========================================================================== */
+.ops-unified {
+  padding-block: clamp(1.25rem, 3vw, 2rem);
+  background: var(--gray-50);
+}
+.ops-title {
+  font-size: clamp(1.5rem, 3.5vw, 2rem);
+  font-weight: 700; line-height: 1.2; letter-spacing: -0.02em;
+  margin: 0 0 0.4rem;
+}
+.ops-lead {
+  font-size: clamp(0.88rem, 1.8vw, 1rem);
+  color: var(--text-muted); line-height: 1.55;
+  max-width: 640px; margin: 0 0 0.75rem;
+}
+.ops-swipe-hint {
+  display: block; text-align: right;
+  font-size: 0.72rem; color: var(--gray-400);
+  margin: 0 0 0.4rem; font-weight: 500;
+}
+
+/* Card strip — mobile: horizontal scroll-snap carousel */
+.ops-cards {
+  display: flex; gap: 0.6rem;
+  overflow-x: auto; -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x mandatory;
+  scroll-padding-left: clamp(1rem, 4vw, 2rem);
+  padding-bottom: 0.4rem; /* room for scrollbar if visible */
+  scrollbar-width: none;
+}
+.ops-cards::-webkit-scrollbar { display: none; }
+
+.ops-card {
+  flex: 0 0 84%; max-width: 320px;
+  scroll-snap-align: start;
+  background: var(--white); border: 1px solid var(--gray-200);
+  border-radius: var(--radius-sm);
+  padding: 0.7rem 0.85rem;
+  display: flex; flex-direction: column; gap: 0.25rem;
+}
+.ops-card:first-child {
+  border-left: 3px solid var(--teal);
+}
+.ops-icon {
+  width: 36px; height: 36px; border-radius: 6px;
+  background: rgba(14,165,165,0.07); border: 1px solid rgba(14,165,165,0.12);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.1rem; flex-shrink: 0;
+}
+.ops-card h3 {
+  font-size: 0.88rem; font-weight: 650;
+  margin: 0; line-height: 1.3; color: var(--navy);
+}
+.ops-card p {
+  font-size: 0.8rem; line-height: 1.45;
+  color: var(--text-muted); margin: 0;
+}
+
+/* Desktop: 3-col grid, no scroll */
+@media (min-width: 900px) {
+  .ops-swipe-hint { display: none; }
+  .ops-cards {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 0.65rem; overflow: visible;
+  }
+  .ops-card {
+    flex: unset; max-width: unset;
+  }
+}
+
+/* Tablet tweaks */
+@media (max-width: 899px) and (min-width: 600px) {
+  .ops-card { flex: 0 0 52%; max-width: 340px; }
+}
+
+/* Small phone */
+@media (max-width: 480px) {
+  .ops-unified { padding-block: clamp(1rem, 2.5vw, 1.5rem); }
+  .ops-title { font-size: clamp(1.25rem, 5vw, 1.5rem); }
+  .ops-lead { font-size: 0.84rem; }
+  .ops-card { flex: 0 0 82%; padding: 0.6rem 0.75rem; }
+  .ops-card h3 { font-size: 0.84rem; }
+  .ops-card p { font-size: 0.76rem; }
+}
+
+/* ==========================================================================
+   21. Print
    ========================================================================== */
 @media print {
   .site-header, .site-footer, .cookie-banner, .nav-toggle { display: none; }
