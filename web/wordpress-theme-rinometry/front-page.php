@@ -1,8 +1,8 @@
 <?php
 /**
- * front-page.php — Rhinometric v3.1
- * 6-block compact homepage with full EN/ES i18n.
- * Blocks: Hero · What is it · Why on-prem · Deployment summary · Security summary · CTA final
+ * front-page.php — Rhinometric v3.2
+ * 5-block compact homepage with full EN/ES i18n.
+ * Blocks: Hero · What is it · Why on-prem · Deployment & Security · CTA final
  */
 
 get_header();
@@ -23,31 +23,22 @@ $t = [
     'what_title'    => ['en' => 'What is Rhinometric', 'es' => 'Qué es Rhinometric'],
     'what_lead'     => ['en' => 'A self-hosted observability stack built on Prometheus, Loki, Jaeger, and Grafana.', 'es' => 'Un stack de observabilidad autoalojado basado en Prometheus, Loki, Jaeger y Grafana.'],
     'what_1_t'      => ['en' => 'Metrics', 'es' => 'Métricas'],
-    'what_1_d'      => ['en' => 'Prometheus-powered collection with long-term storage and Grafana dashboards.', 'es' => 'Recolección con Prometheus, almacenamiento a largo plazo y dashboards Grafana.'],
+    'what_1_d'      => ['en' => 'Prometheus collection with Grafana dashboards.', 'es' => 'Recolección con Prometheus y dashboards Grafana.'],
     'what_2_t'      => ['en' => 'Logs', 'es' => 'Logs'],
-    'what_2_d'      => ['en' => 'Centralized aggregation via Loki with label-based querying.', 'es' => 'Agregación centralizada con Loki y consultas basadas en etiquetas.'],
+    'what_2_d'      => ['en' => 'Centralized log aggregation via Loki.', 'es' => 'Agregación centralizada de logs con Loki.'],
     'what_3_t'      => ['en' => 'Traces', 'es' => 'Trazas'],
-    'what_3_d'      => ['en' => 'Distributed tracing through Jaeger with service maps and span analysis.', 'es' => 'Trazas distribuidas con Jaeger, mapas de servicios y análisis de spans.'],
-    'what_link'     => ['en' => 'See full platform details', 'es' => 'Ver detalles completos de la plataforma'],
-
+    'what_3_d'      => ['en' => 'Distributed tracing with Jaeger service maps.', 'es' => 'Trazas distribuidas con mapas de servicios Jaeger.'],
     /* ---- Why on-prem / Single-tenant EU ---- */
     'why_title'     => ['en' => 'Why on-prem &amp; single-tenant', 'es' => 'Por qué on-prem y single-tenant'],
     'why_1'         => ['en' => 'Your telemetry never leaves your network — full data sovereignty.', 'es' => 'Tu telemetría nunca sale de tu red — soberanía de datos total.'],
     'why_2'         => ['en' => 'Built on open-source foundations — no vendor lock-in.', 'es' => 'Construido sobre bases open-source — sin vendor lock-in.'],
-    'why_3'         => ['en' => 'Pre-configured dashboards, alerting, and retention policies included.', 'es' => 'Dashboards, alertas y políticas de retención preconfigurados incluidos.'],
 
-    /* ---- Deployment summary ---- */
-    'deploy_title'  => ['en' => 'Deployment options', 'es' => 'Opciones de despliegue'],
-    'deploy_1'      => ['en' => 'On-premise or private cloud (AWS, Azure, GCP) — your VPC, your rules.', 'es' => 'On-premise o nube privada (AWS, Azure, GCP) — tu VPC, tus reglas.'],
-    'deploy_2'      => ['en' => 'Hybrid mode available — on-prem collectors with cloud storage.', 'es' => 'Modo híbrido disponible — colectores on-prem con almacenamiento en la nube.'],
-    'deploy_link'   => ['en' => 'Explore deployment models', 'es' => 'Explorar modelos de despliegue'],
-
-    /* ---- Security summary ---- */
-    'sec_title'     => ['en' => 'Security &amp; trust', 'es' => 'Seguridad y confianza'],
-    'sec_1'         => ['en' => 'mTLS on all inter-service communication — zero trust by default.', 'es' => 'mTLS en toda la comunicación entre servicios — zero trust por defecto.'],
-    'sec_2'         => ['en' => 'Role-based access control with full audit trail.', 'es' => 'Control de acceso basado en roles con auditoría completa.'],
-    'sec_3'         => ['en' => 'EU data residency — GDPR-ready architecture.', 'es' => 'Residencia de datos en la UE — arquitectura preparada para GDPR.'],
-    'sec_link'      => ['en' => 'Learn more about security', 'es' => 'Más sobre seguridad'],
+    /* ---- Deployment & Security (merged) ---- */
+    'depsec_title'  => ['en' => 'Deployment &amp; Security', 'es' => 'Despliegue y seguridad'],
+    'depsec_1'      => ['en' => 'On-premise, private cloud, or hybrid — your VPC, your rules.', 'es' => 'On-premise, nube privada o híbrido — tu VPC, tus reglas.'],
+    'depsec_2'      => ['en' => 'mTLS everywhere, RBAC with audit trail, EU data residency.', 'es' => 'mTLS en todas las comunicaciones, RBAC con auditoría, residencia de datos en la UE.'],
+    'deploy_link'   => ['en' => 'Explore deployment', 'es' => 'Explorar despliegue'],
+    'sec_link'      => ['en' => 'Learn about security', 'es' => 'Más sobre seguridad'],
 
     /* ---- CTA final ---- */
     'cta_title'     => ['en' => 'Ready to take control?', 'es' => '¿Listo para tomar el control?'],
@@ -102,12 +93,11 @@ $__ = function ($key) use ($t, $lang) {
       </div>
       <?php endfor; ?>
     </div>
-    <p class="section-link"><a href="<?php echo esc_url(rinometry_page_url('platform')); ?>" data-i18n="what_link"><?php echo esc_html($__('what_link')); ?> &rarr;</a></p>
   </div>
 </section>
 
 <!-- ============================================================
-     BLOCK 3 — Why on-prem / Single-tenant EU (3 bullets)
+     BLOCK 3 — Why on-prem / Single-tenant EU (2 bullets)
      ============================================================ -->
 <section class="section section-compact section-alt">
   <div class="container">
@@ -115,42 +105,29 @@ $__ = function ($key) use ($t, $lang) {
     <ul class="check-list">
       <li data-i18n="why_1"><?php echo esc_html($__('why_1')); ?></li>
       <li data-i18n="why_2"><?php echo esc_html($__('why_2')); ?></li>
-      <li data-i18n="why_3"><?php echo esc_html($__('why_3')); ?></li>
     </ul>
   </div>
 </section>
 
 <!-- ============================================================
-     BLOCK 4 — Deployment summary (2 bullets + link)
+     BLOCK 4 — Deployment & Security (merged)
      ============================================================ -->
 <section class="section section-compact">
   <div class="container">
-    <h2 class="section-title" data-i18n="deploy_title"><?php echo $__('deploy_title'); ?></h2>
+    <h2 class="section-title" data-i18n="depsec_title"><?php echo $__('depsec_title'); ?></h2>
     <ul class="check-list">
-      <li data-i18n="deploy_1"><?php echo esc_html($__('deploy_1')); ?></li>
-      <li data-i18n="deploy_2"><?php echo esc_html($__('deploy_2')); ?></li>
+      <li data-i18n="depsec_1"><?php echo esc_html($__('depsec_1')); ?></li>
+      <li data-i18n="depsec_2"><?php echo esc_html($__('depsec_2')); ?></li>
     </ul>
-    <p class="section-link"><a href="<?php echo esc_url(rinometry_page_url('deployment')); ?>" data-i18n="deploy_link"><?php echo esc_html($__('deploy_link')); ?> &rarr;</a></p>
+    <div class="section-links">
+      <a class="btn btn-outline btn-sm" href="<?php echo esc_url(rinometry_page_url('deployment')); ?>" data-i18n="deploy_link"><?php echo esc_html($__('deploy_link')); ?> &rarr;</a>
+      <a class="btn btn-outline btn-sm" href="<?php echo esc_url(rinometry_page_url('security')); ?>" data-i18n="sec_link"><?php echo esc_html($__('sec_link')); ?> &rarr;</a>
+    </div>
   </div>
 </section>
 
 <!-- ============================================================
-     BLOCK 5 — Security summary (3 bullets + link)
-     ============================================================ -->
-<section class="section section-compact section-alt">
-  <div class="container">
-    <h2 class="section-title" data-i18n="sec_title"><?php echo $__('sec_title'); ?></h2>
-    <ul class="check-list">
-      <li data-i18n="sec_1"><?php echo esc_html($__('sec_1')); ?></li>
-      <li data-i18n="sec_2"><?php echo esc_html($__('sec_2')); ?></li>
-      <li data-i18n="sec_3"><?php echo esc_html($__('sec_3')); ?></li>
-    </ul>
-    <p class="section-link"><a href="<?php echo esc_url(rinometry_page_url('security')); ?>" data-i18n="sec_link"><?php echo esc_html($__('sec_link')); ?> &rarr;</a></p>
-  </div>
-</section>
-
-<!-- ============================================================
-     BLOCK 6 — CTA final
+     BLOCK 5 — CTA final
      ============================================================ -->
 <section class="section section-compact section-dark cta-section">
   <div class="container text-center">

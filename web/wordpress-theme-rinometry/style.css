@@ -236,6 +236,9 @@ ul, ol { padding-left: 1.25rem; }
 .section-link a { color: var(--teal); text-decoration: none; }
 .section-link a:hover, .section-link a:focus { color: var(--teal-dark); text-decoration: underline; }
 
+/* Paired link buttons (merged sections) */
+.section-links { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-top: 1.25rem; }
+
 /* Card compact */
 .card-compact { padding: clamp(1rem, 2vw, 1.25rem); }
 .card-compact .card-icon { width: 40px; height: 40px; margin-bottom: 0.75rem; }
@@ -263,6 +266,7 @@ ul, ol { padding-left: 1.25rem; }
 .cta-section { text-align: center; }
 .cta-section .section-title { color: var(--white); }
 .cta-section .section-subtitle { color: rgba(255,255,255,0.75); margin-inline: auto; margin-bottom: 1.5rem; }
+.cta-section.section-compact { padding-block: clamp(1.2rem, 2.5vw, 2rem); }
 .cta-buttons { display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap; }
 
 /* ==========================================================================
@@ -406,6 +410,9 @@ ul, ol { padding-left: 1.25rem; }
   .btn-lg { min-height: 44px; padding: 0.55rem 1.5rem; font-size: 0.92rem; }
   .cta-section h2 { font-size: clamp(1.25rem, 4vw, 1.6rem); margin-bottom: 0.4rem; }
   .cta-section .cta-lead { font-size: 0.88rem; margin-bottom: 0.75rem; }
+  .cta-section.section-compact { padding-block: clamp(0.8rem, 2vw, 1.4rem); }
+  .section-links { gap: 0.5rem; margin-top: 0.75rem; }
+  .section-links .btn-sm { font-size: 0.82rem; padding: 0.35rem 0.85rem; min-height: 36px; }
   .social-section { padding: 0.75rem 0; }
   .social-title { font-size: 0.95rem; }
   .social-link { font-size: 0.82rem; padding: 0.35rem 1rem; }
