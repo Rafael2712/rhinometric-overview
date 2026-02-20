@@ -71,11 +71,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 ?>
+<section class="page-hero">
+  <div class="container">
+    <h1><?php esc_html_e('Contact Rhinometric', 'rinometry'); ?></h1>
+    <p class="hero-lead"><?php esc_html_e('Have a question or need help evaluating the platform? Send a message and we will respond.', 'rinometry'); ?></p>
+  </div>
+</section>
+
 <section class="section">
   <div class="container split">
     <div>
-      <h1 class="section-title"><?php esc_html_e('Contact Rhinometric', 'rinometry'); ?></h1>
-      <p class="section-lead"><?php esc_html_e('Have a question or need help evaluating the platform? Send a message and we will respond.', 'rinometry'); ?></p>
       <div class="card">
         <h2><?php esc_html_e('What to expect', 'rinometry'); ?></h2>
         <ul>
