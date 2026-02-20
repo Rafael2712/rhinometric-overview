@@ -7,22 +7,15 @@ get_header();
 $lang = rinometry_get_current_language();
 $t = [
     'title'   => ['en' => 'Deployment models', 'es' => 'Modelos de despliegue'],
-    'lead'    => ['en' => 'Run Rhinometric wherever your data lives — on your hardware, in your cloud, or both.', 'es' => 'Ejecuta Rhinometric donde vivan tus datos — en tu hardware, en tu nube, o ambos.'],
+    'lead'    => ['en' => 'Two deployment options — both single-tenant, both under your full control.', 'es' => 'Dos opciones de despliegue — ambas single-tenant, ambas bajo tu control total.'],
+    'ps_t'    => ['en' => 'Private SaaS (Dedicated VM)', 'es' => 'SaaS privado (VM dedicada)'],
+    'ps_d'    => ['en' => 'A dedicated virtual machine per customer within a European public cloud provider (Germany-based). No shared resources, no multi-tenancy.', 'es' => 'Una máquina virtual dedicada por cliente dentro de un proveedor cloud público europeo (basado en Alemania). Sin recursos compartidos, sin multi-tenancy.'],
+    'ps_f1'   => ['en' => 'Dedicated VM — no shared resources', 'es' => 'VM dedicada — sin recursos compartidos'],
+    'ps_f2'   => ['en' => 'European cloud provider (Germany-based)', 'es' => 'Proveedor cloud europeo (basado en Alemania)'],
     'op_t'    => ['en' => 'On-premise', 'es' => 'On-premise'],
-    'op_d'    => ['en' => 'Full control on your hardware. Air-gapped environments supported. Ideal for regulated industries.', 'es' => 'Control total en tu hardware. Entornos air-gapped soportados. Ideal para industrias reguladas.'],
-    'op_f1'   => ['en' => 'Docker-based deployment', 'es' => 'Despliegue basado en Docker'],
-    'op_f2'   => ['en' => 'Offline license validation', 'es' => 'Validación de licencia offline'],
-    'op_f3'   => ['en' => 'Air-gap ready', 'es' => 'Preparado para air-gap'],
-    'pc_t'    => ['en' => 'Private cloud', 'es' => 'Nube privada'],
-    'pc_d'    => ['en' => 'Deploy on AWS, Azure, or GCP inside your own VPC. No shared tenancy, no data egress.', 'es' => 'Despliega en AWS, Azure o GCP dentro de tu propio VPC. Sin tenencia compartida, sin egreso de datos.'],
-    'pc_f1'   => ['en' => 'AWS / Azure / GCP support', 'es' => 'Soporte AWS / Azure / GCP'],
-    'pc_f2'   => ['en' => 'VPC-only networking', 'es' => 'Red solo VPC'],
-    'pc_f3'   => ['en' => 'Auto-scaling capable', 'es' => 'Auto-escalado disponible'],
-    'hy_t'    => ['en' => 'Hybrid', 'es' => 'Híbrido'],
-    'hy_d'    => ['en' => 'Combine on-prem collection with cloud storage and visualization. Best of both worlds.', 'es' => 'Combina recolección on-prem con almacenamiento y visualización en la nube. Lo mejor de ambos mundos.'],
-    'hy_f1'   => ['en' => 'Local collectors, remote storage', 'es' => 'Colectores locales, almacenamiento remoto'],
-    'hy_f2'   => ['en' => 'Edge-to-cloud telemetry', 'es' => 'Telemetría edge-to-cloud'],
-    'hy_f3'   => ['en' => 'Centralized dashboards', 'es' => 'Dashboards centralizados'],
+    'op_d'    => ['en' => 'Full installation on your own physical servers. Air-gapped environments supported. Ideal for regulated industries.', 'es' => 'Instalación completa en tus propios servidores físicos. Entornos air-gapped soportados. Ideal para industrias reguladas.'],
+    'op_f1'   => ['en' => 'Docker-based deployment on your hardware', 'es' => 'Despliegue basado en Docker en tu hardware'],
+    'op_f2'   => ['en' => 'Offline license validation, air-gap ready', 'es' => 'Validación de licencia offline, preparado para air-gap'],
     'cta_t'   => ['en' => 'Not sure which model fits?', 'es' => '¿No sabes qué modelo encaja?'],
     'cta_d'   => ['en' => 'We can help you evaluate the best deployment strategy for your infrastructure.', 'es' => 'Podemos ayudarte a evaluar la mejor estrategia de despliegue para tu infraestructura.'],
     'cta_btn' => ['en' => 'Talk to us', 'es' => 'Habla con nosotros'],
@@ -39,12 +32,11 @@ $__ = function ($k) use ($t, $lang) { return $t[$k][$lang] ?? $t[$k]['en'] ?? $k
 
 <section class="section">
   <div class="container">
-    <div class="grid-3">
+    <div class="grid-2">
       <?php
       $models = [
+          ['key' => 'ps', 'icon' => '☁️'],
           ['key' => 'op', 'icon' => '🏢'],
-          ['key' => 'pc', 'icon' => '☁️'],
-          ['key' => 'hy', 'icon' => '🔄'],
       ];
       foreach ($models as $m) :
           $k = $m['key'];
@@ -56,7 +48,6 @@ $__ = function ($k) use ($t, $lang) { return $t[$k][$lang] ?? $t[$k]['en'] ?? $k
         <ul>
           <li><?php echo esc_html($__("{$k}_f1")); ?></li>
           <li><?php echo esc_html($__("{$k}_f2")); ?></li>
-          <li><?php echo esc_html($__("{$k}_f3")); ?></li>
         </ul>
       </div>
       <?php endforeach; ?>

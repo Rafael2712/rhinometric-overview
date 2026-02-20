@@ -218,7 +218,8 @@ ul, ol { padding-left: 1.25rem; }
   font-size: clamp(2rem, 5vw, 3rem); font-weight: 700; line-height: 1.15;
   letter-spacing: -0.02em; margin-bottom: 1rem; color: var(--white);
 }
-.hero-lead { font-size: clamp(1rem, 2vw, 1.15rem); color: rgba(255,255,255,0.8); max-width: 560px; line-height: 1.6; margin-bottom: 1.25rem; }
+.hero-lead { font-size: clamp(1rem, 2vw, 1.15rem); color: rgba(255,255,255,0.8); max-width: 560px; line-height: 1.6; margin-bottom: 0.5rem; }
+.hero-trust { font-size: 0.92rem; color: var(--teal-light); font-weight: 600; letter-spacing: 0.01em; margin-bottom: 1.25rem; }
 .hero-bullets { list-style: none; padding: 0; margin: 0 0 1.5rem; display: grid; gap: 0.5rem; }
 .hero-bullets li { padding-left: 1.5rem; position: relative; color: rgba(255,255,255,0.85); font-size: 0.95rem; }
 .hero-bullets li::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--teal); position: absolute; left: 0; top: 0.5rem; }
@@ -391,7 +392,8 @@ ul, ol { padding-left: 1.25rem; }
   .hero { padding-block: clamp(2.5rem, 6vw, 4rem); }
   .hero-compact { padding-block: clamp(1.5rem, 4vw, 2.5rem); }
   .hero-compact h1 { font-size: clamp(1.5rem, 5.5vw, 2rem); margin-bottom: 0.6rem; }
-  .hero-compact .hero-lead { font-size: 0.9rem; margin-bottom: 0.75rem; }
+  .hero-compact .hero-lead { font-size: 0.9rem; margin-bottom: 0.4rem; }
+  .hero-compact .hero-trust { font-size: 0.82rem; margin-bottom: 0.75rem; }
   .hero-compact .hero-cta { gap: 0.5rem; }
   .hero-compact .hero-cta .btn-lg { min-height: 40px; padding: 0.5rem 1.25rem; font-size: 0.88rem; }
   .hero-inner { gap: 0.75rem; }

@@ -14,8 +14,9 @@ $lang = rinometry_get_current_language();
    ================================================================ */
 $t = [
     /* ---- Hero ---- */
-    'hero_h1'       => ['en' => 'Your infrastructure.<br>Your data.<br>Zero cloud egress.', 'es' => 'Tu infraestructura.<br>Tus datos.<br>Cero egreso a la nube.'],
-    'hero_lead'     => ['en' => 'Private observability for metrics, logs, and traces — single-tenant, EU-deployable, Docker-based.', 'es' => 'Observabilidad privada para métricas, logs y trazas — single-tenant, desplegable en la UE, basado en Docker.'],
+    'hero_h1'       => ['en' => 'Your infrastructure.<br>Your data.<br>Your control.', 'es' => 'Tu infraestructura.<br>Tus datos.<br>Tu control.'],
+    'hero_lead'     => ['en' => 'Deploy on-premise or in a dedicated VM within a European cloud provider (Germany-based), under full customer control.', 'es' => 'Despliega on-premise o en una VM dedicada dentro de un proveedor cloud europeo (basado en Alemania), bajo control total del cliente.'],
+    'hero_trust'    => ['en' => 'No shared tenancy. No third-party SaaS data exposure.', 'es' => 'Sin multi-tenancy compartida. Sin exposición de datos a un SaaS de terceros.'],
     'hero_cta_1'    => ['en' => 'Request a demo', 'es' => 'Solicitar demo'],
     'hero_cta_2'    => ['en' => 'View platform', 'es' => 'Ver plataforma'],
 
@@ -42,7 +43,7 @@ $t = [
 
     /* ---- CTA final ---- */
     'cta_title'     => ['en' => 'Ready to take control?', 'es' => '¿Listo para tomar el control?'],
-    'cta_lead'      => ['en' => 'Deploy Rhinometric in your infrastructure today. No shared tenancy, no data egress.', 'es' => 'Despliega Rhinometric en tu infraestructura hoy. Sin tenencia compartida, sin egreso de datos.'],
+    'cta_lead'      => ['en' => 'Deploy Rhinometric in your infrastructure today. No shared tenancy, no third-party data exposure.', 'es' => 'Despliega Rhinometric en tu infraestructura hoy. Sin multi-tenancy compartida, sin exposición de datos a terceros.'],
     'cta_btn'       => ['en' => 'Contact us', 'es' => 'Contáctanos'],
 
     /* ---- Social (rendered by footer, kept for i18n JS) ---- */
@@ -64,6 +65,7 @@ $__ = function ($key) use ($t, $lang) {
   <div class="container hero-inner">
     <h1 data-i18n="hero_h1"><?php echo $__('hero_h1'); ?></h1>
     <p class="hero-lead" data-i18n="hero_lead"><?php echo esc_html($__('hero_lead')); ?></p>
+    <p class="hero-trust" data-i18n="hero_trust"><?php echo esc_html($__('hero_trust')); ?></p>
     <div class="hero-cta">
       <a class="btn btn-primary btn-lg" href="<?php echo esc_url(rinometry_page_url('contact')); ?>" data-i18n="hero_cta_1">
         <?php echo esc_html($__('hero_cta_1')); ?>
