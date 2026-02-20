@@ -19,7 +19,7 @@ get_header();
         <div class="card-media">
           <img class="icon" src="<?php echo esc_url(get_template_directory_uri() . '/assets/icon-platform.svg'); ?>" alt="<?php esc_attr_e('Platform icon', 'rinometry'); ?>">
           <div>
-            <h3><?php esc_html_e('Hybrid-ready', 'rinometry'); ?></h3>
+            <h3><?php esc_html_e('Multi-environment ready', 'rinometry'); ?></h3>
             <p><?php esc_html_e('Connect edge environments while centralizing governance and reporting.', 'rinometry'); ?></p>
           </div>
         </div>

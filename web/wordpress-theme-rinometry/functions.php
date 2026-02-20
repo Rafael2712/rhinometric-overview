@@ -113,8 +113,8 @@ function rinometry_meta_tags() {
             'es' => 'Rhinometric — Observabilidad Single-Tenant en la UE',
         ];
         $descs = [
-            'en' => 'Deploy a private observability engine for metrics, logs, and traces. On-premise or dedicated VM in a European cloud provider. No shared tenancy.',
-            'es' => 'Despliega un motor de observabilidad privado para métricas, logs y trazas. On-premise o VM dedicada en proveedor cloud europeo. Sin tenencia compartida.',
+            'en' => 'Deploy a private observability engine for metrics, logs, and traces. On-premise or dedicated VM in a European public cloud environment. No shared tenancy.',
+            'es' => 'Despliega un motor de observabilidad privado para métricas, logs y trazas. On-premise o VM dedicada en entorno de nube pública europea. Sin tenencia compartida.',
         ];
         $title = $titles[$lang] ?? $titles['en'];
         $desc = $descs[$lang] ?? $descs['en'];

@@ -15,28 +15,32 @@ $lang = rinometry_get_current_language();
 $t = [
     /* ---- Hero ---- */
     'hero_h1'       => ['en' => 'Your infrastructure.<br>Your data.<br>Your control.', 'es' => 'Tu infraestructura.<br>Tus datos.<br>Tu control.'],
-    'hero_lead'     => ['en' => 'Deploy on-premise or in a dedicated VM within a European cloud provider (Germany-based), under full customer control.', 'es' => 'Despliega on-premise o en una VM dedicada dentro de un proveedor cloud europeo (basado en Alemania), bajo control total del cliente.'],
+    'hero_lead'     => ['en' => 'Deploy on-premise or in a dedicated VM within a European public cloud environment, under full customer control.', 'es' => 'Despliega on-premise o en una VM dedicada dentro de un entorno de nube pública europea, bajo control total del cliente.'],
     'hero_trust'    => ['en' => 'No shared tenancy. No third-party SaaS data exposure.', 'es' => 'Sin multi-tenancy compartida. Sin exposición de datos a un SaaS de terceros.'],
     'hero_cta_1'    => ['en' => 'Request an Evaluation', 'es' => 'Solicitar evaluación'],
     'hero_cta_2'    => ['en' => 'Explore the Platform', 'es' => 'Explorar la plataforma'],
 
     /* ---- What is it ---- */
     'what_title'    => ['en' => 'What is Rhinometric', 'es' => 'Qué es Rhinometric'],
-    'what_lead'     => ['en' => 'A self-hosted observability stack built on Prometheus, Loki, Jaeger, and Grafana.', 'es' => 'Un stack de observabilidad autoalojado basado en Prometheus, Loki, Jaeger y Grafana.'],
+    'what_lead'     => ['en' => 'Rhinometric unifies metrics, logs, and traces in one operational view. Built on Prometheus (metrics), Loki (logs), Jaeger (traces), and Grafana (visualization).', 'es' => 'Rhinometric unifica métricas, logs y trazas en una única vista operacional. Basado en Prometheus (métricas), Loki (logs), Jaeger (trazas) y Grafana (visualización).'],
     'what_1_t'      => ['en' => 'Metrics', 'es' => 'Métricas'],
     'what_1_d'      => ['en' => 'Prometheus collection with Grafana dashboards.', 'es' => 'Recolección con Prometheus y dashboards Grafana.'],
     'what_2_t'      => ['en' => 'Logs', 'es' => 'Logs'],
     'what_2_d'      => ['en' => 'Centralized log aggregation via Loki.', 'es' => 'Agregación centralizada de logs con Loki.'],
     'what_3_t'      => ['en' => 'Traces', 'es' => 'Trazas'],
-    'what_3_d'      => ['en' => 'Distributed tracing with Jaeger service maps.', 'es' => 'Trazas distribuidas con mapas de servicios Jaeger.'],
+    'what_3_d'      => ['en' => 'Distributed tracing with Jaeger service maps. AI-assisted anomaly detection to surface unusual patterns and reduce alert noise.', 'es' => 'Trazas distribuidas con mapas de servicios Jaeger. Detección de anomalías asistida por IA para identificar patrones inusuales y reducir el ruido de alertas.'],
     /* ---- Why on-prem / Single-tenant EU ---- */
     'why_title'     => ['en' => 'Why on-prem &amp; single-tenant', 'es' => 'Por qué on-prem y single-tenant'],
     'why_1'         => ['en' => 'Your telemetry never leaves your network — full data sovereignty.', 'es' => 'Tu telemetría nunca sale de tu red — soberanía de datos total.'],
     'why_2'         => ['en' => 'Built on open-source foundations — no vendor lock-in.', 'es' => 'Construido sobre bases open-source — sin vendor lock-in.'],
+    'designed_t'    => ['en' => 'Designed for', 'es' => 'Diseñado para'],
+    'designed_1'    => ['en' => 'Organizations requiring infrastructure control and data sovereignty', 'es' => 'Organizaciones que requieren control de infraestructura y soberanía de datos'],
+    'designed_2'    => ['en' => 'Teams operating in regulated or sensitive environments', 'es' => 'Equipos que operan en entornos regulados o sensibles'],
+    'designed_3'    => ['en' => 'Engineering teams needing full observability without shared SaaS', 'es' => 'Equipos de ingeniería que necesitan observabilidad completa sin SaaS compartido'],
 
     /* ---- Deployment & Security (merged) ---- */
     'depsec_title'  => ['en' => 'Deployment &amp; Security', 'es' => 'Despliegue y seguridad'],
-    'depsec_1'      => ['en' => 'On-premise, private cloud, or hybrid — your VPC, your rules.', 'es' => 'On-premise, nube privada o híbrido — tu VPC, tus reglas.'],
+    'depsec_1'      => ['en' => 'On-premise or dedicated VM in a European public cloud environment — your infrastructure, your rules.', 'es' => 'On-premise o VM dedicada en un entorno de nube pública europea — tu infraestructura, tus reglas.'],
     'depsec_2'      => ['en' => 'mTLS everywhere, RBAC with audit trail, EU data residency.', 'es' => 'mTLS en todas las comunicaciones, RBAC con auditoría, residencia de datos en la UE.'],
     'deploy_link'   => ['en' => 'Explore deployment', 'es' => 'Explorar despliegue'],
     'sec_link'      => ['en' => 'Learn about security', 'es' => 'Más sobre seguridad'],
@@ -107,6 +111,12 @@ $__ = function ($key) use ($t, $lang) {
     <ul class="check-list">
       <li data-i18n="why_1"><?php echo esc_html($__('why_1')); ?></li>
       <li data-i18n="why_2"><?php echo esc_html($__('why_2')); ?></li>
+    </ul>
+    <h3 class="subsection-title" data-i18n="designed_t"><?php echo esc_html($__('designed_t')); ?></h3>
+    <ul class="check-list">
+      <li data-i18n="designed_1"><?php echo esc_html($__('designed_1')); ?></li>
+      <li data-i18n="designed_2"><?php echo esc_html($__('designed_2')); ?></li>
+      <li data-i18n="designed_3"><?php echo esc_html($__('designed_3')); ?></li>
     </ul>
   </div>
 </section>

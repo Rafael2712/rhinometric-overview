@@ -22,7 +22,7 @@ $t = [
     'title'       => ['en' => 'Enterprise Evaluation Session', 'es' => 'Sesión de Evaluación Empresarial'],
     'subtitle'    => ['en' => 'Assess deployment fit, architecture compatibility and operational alignment.', 'es' => 'Evalúe el encaje del despliegue, la compatibilidad arquitectónica y la alineación operativa.'],
     'covers_t'    => ['en' => 'What this session covers', 'es' => 'Qué cubre esta sesión'],
-    'covers_1'    => ['en' => 'Deployment model discussion (On-premise or dedicated EU VM)', 'es' => 'Discusión del modelo de despliegue (On-premise o VM dedicada en la UE)'],
+    'covers_1'    => ['en' => 'Deployment model discussion (On-premise or dedicated VM in a European public cloud environment)', 'es' => 'Discusión del modelo de despliegue (On-premise o VM dedicada en entorno de nube pública europea)'],
     'covers_2'    => ['en' => 'Architecture walkthrough (Prometheus, Loki, Jaeger, Grafana)', 'es' => 'Recorrido arquitectónico (Prometheus, Loki, Jaeger, Grafana)'],
     'covers_3'    => ['en' => 'Security and isolation model review', 'es' => 'Revisión del modelo de seguridad y aislamiento'],
     'covers_4'    => ['en' => 'Q&A tailored to your infrastructure', 'es' => 'Preguntas y respuestas adaptadas a tu infraestructura'],

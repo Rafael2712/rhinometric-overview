@@ -7,11 +7,11 @@ get_header();
 $lang = rinometry_get_current_language();
 $t = [
     'title'   => ['en' => 'Platform overview', 'es' => 'Visión general de la plataforma'],
-    'lead'    => ['en' => 'Rhinometric unifies metrics, logs, and traces into a single self-hosted observability stack — pre-configured, production-ready, and fully under your control.', 'es' => 'Rhinometric unifica métricas, logs y trazas en un único stack de observabilidad autoalojado — preconfigurado, listo para producción y totalmente bajo tu control.'],
+    'lead'    => ['en' => 'Rhinometric unifies metrics, logs, and traces in one operational view. Built on Prometheus (metrics), Loki (logs), Jaeger (traces), and Grafana (visualization).', 'es' => 'Rhinometric unifica métricas, logs y trazas en una única vista operacional. Basado en Prometheus (métricas), Loki (logs), Jaeger (trazas) y Grafana (visualización).'],
     'c1_t'    => ['en' => 'Unified data plane', 'es' => 'Plano de datos unificado'],
     'c1_d'    => ['en' => 'Metrics, logs, and traces in a single operational view with consistent retention policies.', 'es' => 'Métricas, logs y trazas en una única vista operacional con políticas de retención consistentes.'],
     'c2_t'    => ['en' => 'Operator-first design', 'es' => 'Diseño orientado al operador'],
-    'c2_d'    => ['en' => 'Opinionated dashboards, alerts, and runbooks to accelerate incident response.', 'es' => 'Dashboards, alertas y runbooks prediseñados para acelerar la respuesta a incidentes.'],
+    'c2_d'    => ['en' => 'Opinionated dashboards, alerts, and runbooks to accelerate incident response. AI-assisted anomaly detection to surface unusual patterns and reduce alert noise.', 'es' => 'Dashboards, alertas y runbooks prediseñados para acelerar la respuesta a incidentes. Detección de anomalías asistida por IA para identificar patrones inusuales y reducir el ruido de alertas.'],
     'c3_t'    => ['en' => 'Enterprise governance', 'es' => 'Gobernanza empresarial'],
     'c3_d'    => ['en' => 'Role-based access, audit visibility, and secure integrations for regulated teams.', 'es' => 'Control de acceso basado en roles, visibilidad de auditoría e integraciones seguras para equipos regulados.'],
     'comp_t'  => ['en' => 'Core components', 'es' => 'Componentes principales'],

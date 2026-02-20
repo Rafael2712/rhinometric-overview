@@ -1,7 +1,7 @@
 <?php
 /**
  * page-deployment.php — Rhinometric v3
- * Deployment models: on-premise, private cloud, hybrid.
+ * Deployment models: on-premise and dedicated VM (single-tenant).
  */
 get_header();
 $lang = rinometry_get_current_language();
@@ -9,9 +9,9 @@ $t = [
     'title'   => ['en' => 'Deployment models', 'es' => 'Modelos de despliegue'],
     'lead'    => ['en' => 'Two deployment options — both single-tenant, both under your full control.', 'es' => 'Dos opciones de despliegue — ambas single-tenant, ambas bajo tu control total.'],
     'ps_t'    => ['en' => 'Private SaaS (Dedicated VM)', 'es' => 'SaaS privado (VM dedicada)'],
-    'ps_d'    => ['en' => 'A dedicated virtual machine per customer within a European public cloud provider (Germany-based). No shared resources, no multi-tenancy.', 'es' => 'Una máquina virtual dedicada por cliente dentro de un proveedor cloud público europeo (basado en Alemania). Sin recursos compartidos, sin multi-tenancy.'],
+    'ps_d'    => ['en' => 'A dedicated virtual machine per customer within a European public cloud environment. No shared resources, no multi-tenancy.', 'es' => 'Una máquina virtual dedicada por cliente dentro de un entorno de nube pública europea. Sin recursos compartidos, sin multi-tenancy.'],
     'ps_f1'   => ['en' => 'Dedicated VM — no shared resources', 'es' => 'VM dedicada — sin recursos compartidos'],
-    'ps_f2'   => ['en' => 'European cloud provider (Germany-based)', 'es' => 'Proveedor cloud europeo (basado en Alemania)'],
+    'ps_f2'   => ['en' => 'European public cloud environment', 'es' => 'Entorno de nube pública europea'],
     'op_t'    => ['en' => 'On-premise', 'es' => 'On-premise'],
     'op_d'    => ['en' => 'Full installation on your own physical servers. Air-gapped environments supported. Ideal for regulated industries.', 'es' => 'Instalación completa en tus propios servidores físicos. Entornos air-gapped soportados. Ideal para industrias reguladas.'],
     'op_f1'   => ['en' => 'Docker-based deployment on your hardware', 'es' => 'Despliegue basado en Docker en tu hardware'],

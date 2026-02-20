@@ -96,6 +96,7 @@ ul, ol { padding-left: 1.25rem; }
    3. Typography
    ========================================================================== */
 .section-title { font-size: clamp(1.75rem, 4vw, 2.5rem); font-weight: 700; line-height: 1.2; letter-spacing: -0.02em; }
+.subsection-title { font-size: clamp(1rem, 2.5vw, 1.25rem); font-weight: 600; margin-top: 1rem; margin-bottom: 0.4rem; color: var(--navy); }
 .section-subtitle { font-size: clamp(1rem, 2vw, 1.15rem); color: var(--text-muted); max-width: 640px; line-height: 1.6; }
 .text-muted { color: var(--text-muted); }
 .text-center { text-align: center; }
