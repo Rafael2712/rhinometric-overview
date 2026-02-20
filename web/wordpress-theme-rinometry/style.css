@@ -386,9 +386,29 @@ ul, ol { padding-left: 1.25rem; }
   .mobile-nav-actions .btn { width: 100%; display: flex; }
   .mobile-nav-lang { display: flex; justify-content: center; gap: 0.5rem; margin-top: 1rem; }
   .hero { padding-block: clamp(2.5rem, 6vw, 4rem); }
-  .hero-grid { gap: 1.5rem; }
-  .hero h1 { font-size: clamp(1.6rem, 6vw, 2.2rem); }
-  .hero-visual img { max-width: 280px; }
+  .hero-compact { padding-block: clamp(1.5rem, 4vw, 2.5rem); }
+  .hero-compact h1 { font-size: clamp(1.5rem, 5.5vw, 2rem); margin-bottom: 0.6rem; }
+  .hero-compact .hero-lead { font-size: 0.9rem; margin-bottom: 0.75rem; }
+  .hero-compact .hero-cta { gap: 0.5rem; }
+  .hero-compact .hero-cta .btn-lg { min-height: 40px; padding: 0.5rem 1.25rem; font-size: 0.88rem; }
+  .hero-inner { gap: 0.75rem; }
+  .section-compact { padding-block: clamp(1rem, 3vw, 1.75rem); }
+  .section-compact .section-title { font-size: clamp(1.25rem, 4vw, 1.6rem); margin-bottom: 0.4rem; }
+  .section-compact .section-subtitle { font-size: 0.88rem; margin-bottom: 0.75rem; }
+  .check-list { gap: 0.4rem; }
+  .check-list li { font-size: 0.88rem; padding-left: 1.5rem; }
+  .check-list li::before { font-size: 0.95rem; }
+  .section-link { margin-top: 0.75rem; font-size: 0.88rem; }
+  .card-compact { padding: 0.75rem; }
+  .card-compact .card-icon { width: 36px; height: 36px; margin-bottom: 0.5rem; }
+  .card-compact h3 { font-size: 0.92rem; margin-bottom: 0.25rem; }
+  .card-compact p { font-size: 0.82rem; }
+  .btn-lg { min-height: 44px; padding: 0.55rem 1.5rem; font-size: 0.92rem; }
+  .cta-section h2 { font-size: clamp(1.25rem, 4vw, 1.6rem); margin-bottom: 0.4rem; }
+  .cta-section .cta-lead { font-size: 0.88rem; margin-bottom: 0.75rem; }
+  .social-section { padding: 0.75rem 0; }
+  .social-title { font-size: 0.95rem; }
+  .social-link { font-size: 0.82rem; padding: 0.35rem 1rem; }
   .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
   .footer-grid { grid-template-columns: 1fr 1fr; }
   .footer-bottom { flex-direction: column; text-align: center; }

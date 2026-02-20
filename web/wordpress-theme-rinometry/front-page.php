@@ -153,7 +153,7 @@ $__ = function ($key) use ($t, $lang) {
      BLOCK 6 — CTA final
      ============================================================ -->
 <section class="section section-compact section-dark cta-section">
-  <div class="container" style="text-align:center;">
+  <div class="container text-center">
     <h2 data-i18n="cta_title"><?php echo esc_html($__('cta_title')); ?></h2>
     <p class="cta-lead" data-i18n="cta_lead"><?php echo esc_html($__('cta_lead')); ?></p>
     <a class="btn btn-white btn-lg" href="<?php echo esc_url(rinometry_page_url('contact')); ?>" data-i18n="cta_btn">
