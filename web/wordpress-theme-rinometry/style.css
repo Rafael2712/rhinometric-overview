@@ -1794,24 +1794,26 @@ body.modal-open {
 		overflow-x: hidden !important;
 	}
 
-	/* --- B. Header & navigation --- */
+	/* --- B. Header: compact single row --- */
 	.header-inner {
-		flex-wrap: wrap;
-		row-gap: 0.5rem;
-		position: relative;          /* positioning context for language switch */
+		flex-wrap: nowrap;
+		gap: 0.5rem;
+		padding: 0.5rem 0;
 	}
 
+	/* Hide nav on mobile (no hamburger needed — empty or minimal) */
 	.nav {
-		width: 100%;
-		justify-content: flex-start;
+		display: none;
 	}
 
 	.brand-text {
-		font-size: 1.25rem;
+		font-size: 1.1rem;
 	}
 
-	.header-logo img {
-		height: 34px;
+	.rm-header-logo,
+	.header-logo img,
+	.site-header .site-brand img {
+		height: 30px;
 	}
 
 	.site-header {
@@ -1820,31 +1822,32 @@ body.modal-open {
 		z-index: 50;
 	}
 
-	/* Header action buttons: auto-width centered pills */
+	/* Actions: stay on the same row, shrink to fit */
 	.site-header .header-actions {
-		width: 100%;
+		width: auto;
 		display: flex;
-		justify-content: center;
-		gap: 0.5rem;
 		align-items: center;
-		flex-wrap: wrap;
+		gap: 0.35rem;
+		flex-wrap: nowrap;
+		margin-left: auto;
+		flex-shrink: 1;
+		min-width: 0;
 	}
 
 	.site-header .header-actions .btn {
 		flex: 0 1 auto;
-		min-height: 36px;
-		padding: 0.45rem 1rem;
-		font-size: 0.82rem;
+		min-height: 32px;
+		padding: 0.3rem 0.65rem;
+		font-size: 0.72rem;
 		white-space: nowrap;
+		min-width: 0;
 	}
 
-	/* Language switcher: top-right aligned with brand */
+	/* Language switcher: inline with buttons */
 	.site-header .header-actions .language-switcher {
-		position: absolute;
-		top: 0.6rem;
-		right: 0;
-		z-index: 10;
-		transform: none;
+		position: static;
+		flex-shrink: 0;
+		font-size: 0.75rem;
 	}
 
 	/* --- C. Hero section --- */
@@ -2080,19 +2083,21 @@ body.modal-open {
 /* Small phones */
 @media (max-width: 480px) {
 	.header-inner {
-		padding: 0.5rem 0;
+		padding: 0.4rem 0;
+		gap: 0.3rem;
 	}
 	.brand-text {
-		font-size: 1.05rem;
+		font-size: 0.95rem;
 	}
 	.rm-header-logo,
-	.header-logo img {
-		height: 28px;
+	.header-logo img,
+	.site-header .site-brand img {
+		height: 24px;
 	}
 	.site-header .header-actions .btn {
-		font-size: 0.78rem;
-		padding: 0.4rem 0.75rem;
-		min-height: 34px;
+		font-size: 0.68rem;
+		padding: 0.25rem 0.55rem;
+		min-height: 28px;
 	}
 	.hero .section-title {
 		font-size: clamp(1.2rem, 5.5vw, 1.5rem);
