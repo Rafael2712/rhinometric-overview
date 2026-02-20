@@ -7,11 +7,11 @@ get_header();
 $lang = rinometry_get_current_language();
 $t = [
     'title'   => ['en' => 'Platform overview', 'es' => 'Visión general de la plataforma'],
-    'lead'    => ['en' => 'Rhinometric unifies metrics, logs, and traces in one operational view. Built on Prometheus + VictoriaMetrics (metrics), Loki (logs), Jaeger (traces), and Grafana (visualization).', 'es' => 'Rhinometric unifica métricas, logs y trazas en una sola vista operativa. Construido sobre Prometheus + VictoriaMetrics (métricas), Loki (logs), Jaeger (trazas) y Grafana (visualización).'],
+    'lead'    => ['en' => 'A single operational interface for metrics, logs, traces, AI anomaly detection, dashboards, alerts, and notifications. Built on Prometheus + VictoriaMetrics, Loki, Jaeger, Grafana, and Alertmanager.', 'es' => 'Una interfaz operativa única para métricas, logs, trazas, detección de anomalías con IA, dashboards, alertas y notificaciones. Construida sobre Prometheus + VictoriaMetrics, Loki, Jaeger, Grafana y Alertmanager.'],
     'c1_t'    => ['en' => 'Unified data plane', 'es' => 'Plano de datos unificado'],
     'c1_d'    => ['en' => 'Metrics, logs, and traces in a single operational view with consistent retention policies.', 'es' => 'Métricas, logs y trazas en una única vista operacional con políticas de retención consistentes.'],
     'c2_t'    => ['en' => 'Operator-first design', 'es' => 'Diseño orientado al operador'],
-    'c2_d'    => ['en' => 'Opinionated dashboards, alerts, and runbooks to accelerate incident response. AI-assisted anomaly detection to surface unusual patterns and reduce alert noise.', 'es' => 'Dashboards, alertas y runbooks prediseñados para acelerar la respuesta a incidentes. Detección de anomalías asistida por IA para identificar patrones inusuales y reducir el ruido de alertas.'],
+    'c2_d'    => ['en' => 'Opinionated dashboards, Alertmanager-based alerts, and runbooks to accelerate incident response. AI-powered anomaly detection to surface unusual patterns and reduce alert noise.', 'es' => 'Dashboards prediseñados, alertas basadas en Alertmanager y runbooks para acelerar la respuesta a incidentes. Detección de anomalías potenciada por IA para identificar patrones inusuales y reducir el ruido de alertas.'],
     'c3_t'    => ['en' => 'Enterprise governance', 'es' => 'Gobernanza empresarial'],
     'c3_d'    => ['en' => 'Role-based access, audit visibility, and secure integrations for regulated teams.', 'es' => 'Control de acceso basado en roles, visibilidad de auditoría e integraciones seguras para equipos regulados.'],
     'comp_t'  => ['en' => 'Core components', 'es' => 'Componentes principales'],
@@ -29,7 +29,7 @@ $components = [
 ];
 $features = [
     ['icon' => '📈', 't' => ['en' => 'Dashboards', 'es' => 'Dashboards'], 'd' => ['en' => 'Grafana-native panels with real-time data, flexible layout, and built-in alerting.', 'es' => 'Paneles nativos de Grafana con datos en tiempo real, diseño flexible y alertas integradas.']],
-    ['icon' => '🔔', 't' => ['en' => 'Alerting', 'es' => 'Alertas'], 'd' => ['en' => 'Unified alerting engine with Slack, email, PagerDuty and webhook integrations.', 'es' => 'Motor de alertas unificado con integraciones para Slack, email, PagerDuty y webhooks.']],
+    ['icon' => '🔔', 't' => ['en' => 'Alerting', 'es' => 'Alertas'], 'd' => ['en' => 'Alertmanager-based alerting with routing, silences, and Slack/Email notifications built in.', 'es' => 'Alertas basadas en Alertmanager con enrutamiento, silencios y notificaciones por Slack/Email integradas.']],
     ['icon' => '🛡️', 't' => ['en' => 'Security', 'es' => 'Seguridad'], 'd' => ['en' => 'mTLS, RBAC, network policies, and audit logging. Enterprise-grade from day one.', 'es' => 'mTLS, RBAC, políticas de red y auditoría de logs. Nivel empresarial desde el día uno.']],
 ];
 ?>

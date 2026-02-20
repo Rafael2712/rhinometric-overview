@@ -14,25 +14,34 @@ $lang = rinometry_get_current_language();
    ================================================================ */
 $t = [
     /* ---- Hero ---- */
-    'hero_h1'       => ['en' => 'Your infrastructure.<br>Your data.<br>Your control.', 'es' => 'Tu infraestructura.<br>Tus datos.<br>Tu control.'],
-    'hero_lead'     => ['en' => 'Deploy on-premise or in a dedicated VM within a European public cloud environment, under full customer control.', 'es' => 'Despliega on-premise o en una VM dedicada dentro de un entorno de nube pública europeo, bajo control total del cliente.'],
-    'hero_trust'    => ['en' => 'No shared tenancy. No third-party SaaS data exposure.', 'es' => 'Sin multi-tenancy compartida. Sin exposición de datos a un SaaS de terceros.'],
+    'hero_h1'       => ['en' => 'AI-powered observability.<br>One interface. Zero integration.', 'es' => 'Observabilidad potenciada por IA.<br>Una interfaz. Cero integración.'],
+    'hero_lead'     => ['en' => 'Rhinometric delivers dashboards, AI-guided anomaly detection, alerts, logs, and traces — pre-integrated and production-ready. Connect your services and operate. No glue code, no consulting projects.', 'es' => 'Rhinometric ofrece dashboards, detección de anomalías guiada por IA, alertas, logs y trazas — pre-integrado y listo para producción. Conecta tus servicios y opera. Sin código de pegamento, sin proyectos de consultoría.'],
+    'hero_trust'    => ['en' => 'Single-tenant. On-premise or dedicated VM in a European cloud provider, under full customer control.', 'es' => 'Single-tenant. On-premise o VM dedicada en un proveedor cloud europeo, bajo control total del cliente.'],
     'hero_cta_1'    => ['en' => 'Request an Evaluation', 'es' => 'Solicitar evaluación'],
     'hero_cta_2'    => ['en' => 'Explore the Platform', 'es' => 'Explorar la plataforma'],
 
-    /* ---- What is it ---- */
+    /* ---- What is it (7 capabilities) ---- */
     'what_title'    => ['en' => 'What is Rhinometric', 'es' => 'Qué es Rhinometric'],
-    'what_lead'     => ['en' => 'Rhinometric unifies metrics, logs, and traces in one operational view. Built on Prometheus + VictoriaMetrics (metrics), Loki (logs), Jaeger (traces), and Grafana (visualization).', 'es' => 'Rhinometric unifica métricas, logs y trazas en una sola vista operativa. Construido sobre Prometheus + VictoriaMetrics (métricas), Loki (logs), Jaeger (trazas) y Grafana (visualización).'],
+    'what_lead'     => ['en' => 'A single operational interface that unifies seven core capabilities — built on Prometheus + VictoriaMetrics, Loki, Jaeger, Grafana, and Alertmanager. Pre-integrated so you don\'t spend months wiring it together.', 'es' => 'Una interfaz operativa única que unifica siete capacidades esenciales — construida sobre Prometheus + VictoriaMetrics, Loki, Jaeger, Grafana y Alertmanager. Pre-integrado para que no pases meses conectándolo todo.'],
     'what_1_t'      => ['en' => 'Metrics', 'es' => 'Métricas'],
-    'what_1_d'      => ['en' => 'Prometheus + VictoriaMetrics collection with Grafana dashboards.', 'es' => 'Recolección con Prometheus + VictoriaMetrics y dashboards Grafana.'],
+    'what_1_d'      => ['en' => 'Prometheus + VictoriaMetrics for collection and long-term retention. High-performance queries across all your infrastructure metrics.', 'es' => 'Prometheus + VictoriaMetrics para recolección y retención a largo plazo. Consultas de alto rendimiento sobre todas las métricas de tu infraestructura.'],
     'what_2_t'      => ['en' => 'Logs', 'es' => 'Logs'],
-    'what_2_d'      => ['en' => 'Centralized log aggregation via Loki.', 'es' => 'Agregación centralizada de logs con Loki.'],
+    'what_2_d'      => ['en' => 'Centralized log aggregation via Loki with label-based queries. Correlate logs with metrics and traces in one view.', 'es' => 'Agregación centralizada de logs con Loki y consultas basadas en etiquetas. Correlaciona logs con métricas y trazas en una sola vista.'],
     'what_3_t'      => ['en' => 'Traces', 'es' => 'Trazas'],
-    'what_3_d'      => ['en' => 'Distributed tracing with Jaeger service maps. AI-assisted anomaly detection to surface unusual patterns and reduce alert noise.', 'es' => 'Trazas distribuidas con mapas de servicios Jaeger. Detección de anomalías asistida por IA para identificar patrones inusuales y reducir el ruido de alertas.'],
+    'what_3_d'      => ['en' => 'Distributed tracing with Jaeger service maps. Pinpoint latency bottlenecks and map dependencies across services.', 'es' => 'Trazas distribuidas con mapas de servicios Jaeger. Identifica cuellos de botella de latencia y mapea dependencias entre servicios.'],
+    'what_4_t'      => ['en' => 'AI Anomaly Detection', 'es' => 'Detección de anomalías con IA'],
+    'what_4_d'      => ['en' => 'AI-powered anomaly detection to surface unusual patterns, reduce alert noise, and accelerate root-cause analysis.', 'es' => 'Detección de anomalías potenciada por IA para identificar patrones inusuales, reducir ruido de alertas y acelerar el análisis de causa raíz.'],
+    'what_5_t'      => ['en' => 'Dashboards', 'es' => 'Dashboards'],
+    'what_5_d'      => ['en' => 'Grafana-native dashboards pre-configured for operational use. Real-time data with flexible layouts.', 'es' => 'Dashboards nativos de Grafana preconfigurados para uso operativo. Datos en tiempo real con diseños flexibles.'],
+    'what_6_t'      => ['en' => 'Alerts', 'es' => 'Alertas'],
+    'what_6_d'      => ['en' => 'Alertmanager-based alerting with routing rules, silences, and escalation paths — configured out of the box.', 'es' => 'Alertas basadas en Alertmanager con reglas de enrutamiento, silencios y rutas de escalamiento — preconfiguradas de serie.'],
+    'what_7_t'      => ['en' => 'Notifications', 'es' => 'Notificaciones'],
+    'what_7_d'      => ['en' => 'Alert delivery via Email and Slack. Route critical notifications to the right team, right away.', 'es' => 'Entrega de alertas por Email y Slack. Enruta notificaciones críticas al equipo correcto, de inmediato.'],
     /* ---- Why on-prem / Single-tenant EU ---- */
     'why_title'     => ['en' => 'Why on-prem &amp; single-tenant', 'es' => 'Por qué on-prem y single-tenant'],
     'why_1'         => ['en' => 'Your telemetry never leaves your network — full data sovereignty.', 'es' => 'Tu telemetría nunca sale de tu red — soberanía de datos total.'],
     'why_2'         => ['en' => 'Built on open-source foundations — no vendor lock-in.', 'es' => 'Construido sobre bases open-source — sin vendor lock-in.'],
+    'why_3'         => ['en' => 'Pre-integrated platform — no months of setup, no glue code, no consulting engagements.', 'es' => 'Plataforma pre-integrada — sin meses de configuración, sin código de pegamento, sin proyectos de consultoría.'],
     'designed_t'    => ['en' => 'Designed for', 'es' => 'Diseñado para'],
     'designed_1'    => ['en' => 'Organizations requiring infrastructure control and data sovereignty', 'es' => 'Organizaciones que requieren control de infraestructura y soberanía de datos'],
     'designed_2'    => ['en' => 'Teams operating in regulated or sensitive environments', 'es' => 'Equipos que operan en entornos regulados o sensibles'],
@@ -40,7 +49,7 @@ $t = [
 
     /* ---- Deployment & Security (merged) ---- */
     'depsec_title'  => ['en' => 'Deployment &amp; Security', 'es' => 'Despliegue y seguridad'],
-    'depsec_1'      => ['en' => 'On-premise or dedicated VM in a European public cloud environment — your infrastructure, your rules.', 'es' => 'On-premise o VM dedicada en un entorno de nube pública europeo — tu infraestructura, tus reglas.'],
+    'depsec_1'      => ['en' => 'On-premise or dedicated VM in a European cloud provider — your infrastructure, your rules.', 'es' => 'On-premise o VM dedicada en un proveedor cloud europeo — tu infraestructura, tus reglas.'],
     'depsec_2'      => ['en' => 'mTLS everywhere, RBAC with audit trail, EU data residency.', 'es' => 'mTLS en todas las comunicaciones, RBAC con auditoría, residencia de datos en la UE.'],
     'deploy_link'   => ['en' => 'Explore deployment', 'es' => 'Explorar despliegue'],
     'sec_link'      => ['en' => 'Learn about security', 'es' => 'Más sobre seguridad'],
@@ -82,7 +91,7 @@ $__ = function ($key) use ($t, $lang) {
 </section>
 
 <!-- ============================================================
-     BLOCK 2 — What is Rhinometric (1 sentence + 3 cards)
+     BLOCK 2 — What is Rhinometric (intro + 7 capability cards)
      ============================================================ -->
 <section class="section section-compact">
   <div class="container">
@@ -90,8 +99,8 @@ $__ = function ($key) use ($t, $lang) {
     <p class="section-subtitle" data-i18n="what_lead"><?php echo esc_html($__('what_lead')); ?></p>
     <div class="grid-3">
       <?php
-      $what_icons = ['📊', '📋', '🔗'];
-      for ($i = 1; $i <= 3; $i++) : ?>
+      $what_icons = ['📊', '📋', '🔗', '🤖', '📈', '🔔', '📧'];
+      for ($i = 1; $i <= 7; $i++) : ?>
       <div class="card card-compact">
         <div class="card-icon" aria-hidden="true"><?php echo $what_icons[$i - 1]; ?></div>
         <h3 class="card-title" data-i18n="what_<?php echo $i; ?>_t"><?php echo esc_html($__("what_{$i}_t")); ?></h3>
@@ -103,7 +112,7 @@ $__ = function ($key) use ($t, $lang) {
 </section>
 
 <!-- ============================================================
-     BLOCK 3 — Why on-prem / Single-tenant EU (2 bullets)
+     BLOCK 3 — Why on-prem / Single-tenant EU (3 bullets)
      ============================================================ -->
 <section class="section section-compact section-alt">
   <div class="container">
@@ -111,6 +120,7 @@ $__ = function ($key) use ($t, $lang) {
     <ul class="check-list">
       <li data-i18n="why_1"><?php echo esc_html($__('why_1')); ?></li>
       <li data-i18n="why_2"><?php echo esc_html($__('why_2')); ?></li>
+      <li data-i18n="why_3"><?php echo esc_html($__('why_3')); ?></li>
     </ul>
     <h3 class="subsection-title" data-i18n="designed_t"><?php echo esc_html($__('designed_t')); ?></h3>
     <ul class="check-list">

@@ -109,12 +109,12 @@ function rinometry_meta_tags() {
     // Front page meta
     if (is_front_page()) {
         $titles = [
-            'en' => 'Rhinometric — Single-Tenant Observability in the EU',
-            'es' => 'Rhinometric — Observabilidad Single-Tenant en la UE',
+            'en' => 'Rhinometric — AI-Powered Observability. One Interface.',
+            'es' => 'Rhinometric — Observabilidad con IA. Una Interfaz.',
         ];
         $descs = [
-            'en' => 'Deploy a private observability engine for metrics, logs, and traces. On-premise or dedicated VM in a European public cloud environment. No shared tenancy.',
-            'es' => 'Despliega un motor de observabilidad privado para métricas, logs y trazas. On-premise o VM dedicada en entorno de nube pública europeo. Sin tenencia compartida.',
+            'en' => 'Pre-integrated observability platform: dashboards, AI anomaly detection, alerts, logs, and traces in one interface. On-premise or dedicated VM in a European cloud provider. No shared tenancy.',
+            'es' => 'Plataforma de observabilidad pre-integrada: dashboards, detección de anomalías con IA, alertas, logs y trazas en una interfaz. On-premise o VM dedicada en un proveedor cloud europeo. Sin tenencia compartida.',
         ];
         $title = $titles[$lang] ?? $titles['en'];
         $desc = $descs[$lang] ?? $descs['en'];
