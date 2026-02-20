@@ -32,6 +32,10 @@ from utils.rust_license_validator import (
     is_binary_available as rust_binary_available,
     RustLicenseResult,
 )
+from utils.entity_scope import (
+    EntityScope, classify_entity, is_customer_host,
+    ALL_INTERNAL_JOBS,
+)
 
 router = APIRouter()
 logger = logging.getLogger("rhinometric.license")
@@ -84,54 +88,73 @@ class LicenseStatusResponse(BaseModel):
 
 async def get_monitored_hosts_count() -> int:
     """
-    Get number of monitored hosts from Prometheus.
+    Get number of CUSTOMER-managed monitored hosts from Prometheus.
 
-    Counts unique instances from:
-    - node_exporter (system metrics)
-    - cadvisor (container metrics)
+    Only hosts whose jobs classify as CUSTOMER count toward the
+    licensed max_hosts.  PLATFORM infrastructure (node-exporter and
+    cadvisor on the Rhinometric host itself) is excluded.
 
-    Returns actual host count based on real data.
+    Strategy:
+      1. Count CUSTOMER-scoped unique instances (jobs NOT in ALL_INTERNAL_JOBS).
+      2. Fall back to legacy node-exporter/cadvisor count if zero
+         CUSTOMER jobs exist (backward compat for agent-only setups).
     """
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
-            # Query 1: Count unique node_exporter instances
+            prom_url = f"{settings.PROMETHEUS_URL}/api/v1/query"
+
+            # --- Legacy counts (node-exporter / cadvisor) ---
             node_query = 'count(count by (instance) (up{job="node-exporter"}))'
-            node_response = await client.get(
-                f"{settings.PROMETHEUS_URL}/api/v1/query",
-                params={"query": node_query}
-            )
-
+            node_resp = await client.get(prom_url, params={"query": node_query})
             node_count = 0
-            if node_response.status_code == 200:
-                data = node_response.json()
-                if data.get("status") == "success":
-                    result = data.get("data", {}).get("result", [])
-                    if result:
-                        node_count = int(float(result[0]["value"][1]))
+            if node_resp.status_code == 200:
+                d = node_resp.json()
+                if d.get("status") == "success":
+                    r = d.get("data", {}).get("result", [])
+                    if r:
+                        node_count = int(float(r[0]["value"][1]))
 
-            # Query 2: Count unique cadvisor instances
             cadvisor_query = 'count(count by (instance) (up{job="cadvisor"}))'
-            cadvisor_response = await client.get(
-                f"{settings.PROMETHEUS_URL}/api/v1/query",
-                params={"query": cadvisor_query}
-            )
-
+            cad_resp = await client.get(prom_url, params={"query": cadvisor_query})
             cadvisor_count = 0
-            if cadvisor_response.status_code == 200:
-                data = cadvisor_response.json()
-                if data.get("status") == "success":
-                    result = data.get("data", {}).get("result", [])
-                    if result:
-                        cadvisor_count = int(float(result[0]["value"][1]))
+            if cad_resp.status_code == 200:
+                d = cad_resp.json()
+                if d.get("status") == "success":
+                    r = d.get("data", {}).get("result", [])
+                    if r:
+                        cadvisor_count = int(float(r[0]["value"][1]))
 
-            hosts = max(node_count, cadvisor_count)
-            logger.info(f"Monitored hosts: {hosts} (node_exporter: {node_count}, cadvisor: {cadvisor_count})")
+            # --- CUSTOMER-scoped service count ---
+            exclude_re = "|".join(sorted(ALL_INTERNAL_JOBS))
+            customer_query = f'count(count by (instance) (up{{job!~"{exclude_re}"}}))'
+            cust_resp = await client.get(prom_url, params={"query": customer_query})
+            customer_count = 0
+            if cust_resp.status_code == 200:
+                d = cust_resp.json()
+                if d.get("status") == "success":
+                    r = d.get("data", {}).get("result", [])
+                    if r:
+                        customer_count = int(float(r[0]["value"][1]))
+
+            # CUSTOMER jobs take priority; fall back to legacy if none exist
+            if customer_count > 0:
+                hosts = customer_count
+                logger.info(
+                    f"Monitored CUSTOMER hosts: {hosts} "
+                    f"(customer_jobs: {customer_count}, "
+                    f"node_exporter: {node_count}, cadvisor: {cadvisor_count})"
+                )
+            else:
+                hosts = max(node_count, cadvisor_count)
+                logger.info(
+                    f"Monitored hosts (legacy fallback): {hosts} "
+                    f"(node_exporter: {node_count}, cadvisor: {cadvisor_count})"
+                )
             return hosts
 
     except Exception as e:
         logger.error(f"Error getting host count from Prometheus: {str(e)}")
         return 0
-
 
 def _calculate_time_remaining(expires_at_str: Optional[str]):
     """Calculate days and hours remaining from expiry string."""
