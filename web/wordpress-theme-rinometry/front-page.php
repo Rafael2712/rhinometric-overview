@@ -17,8 +17,8 @@ $t = [
     'hero_h1'       => ['en' => 'Your infrastructure.<br>Your data.<br>Your control.', 'es' => 'Tu infraestructura.<br>Tus datos.<br>Tu control.'],
     'hero_lead'     => ['en' => 'Deploy on-premise or in a dedicated VM within a European cloud provider (Germany-based), under full customer control.', 'es' => 'Despliega on-premise o en una VM dedicada dentro de un proveedor cloud europeo (basado en Alemania), bajo control total del cliente.'],
     'hero_trust'    => ['en' => 'No shared tenancy. No third-party SaaS data exposure.', 'es' => 'Sin multi-tenancy compartida. Sin exposición de datos a un SaaS de terceros.'],
-    'hero_cta_1'    => ['en' => 'Request a demo', 'es' => 'Solicitar demo'],
-    'hero_cta_2'    => ['en' => 'View platform', 'es' => 'Ver plataforma'],
+    'hero_cta_1'    => ['en' => 'Request an Evaluation', 'es' => 'Solicitar evaluación'],
+    'hero_cta_2'    => ['en' => 'Explore the Platform', 'es' => 'Explorar la plataforma'],
 
     /* ---- What is it ---- */
     'what_title'    => ['en' => 'What is Rhinometric', 'es' => 'Qué es Rhinometric'],
@@ -44,7 +44,7 @@ $t = [
     /* ---- CTA final ---- */
     'cta_title'     => ['en' => 'Ready to take control?', 'es' => '¿Listo para tomar el control?'],
     'cta_lead'      => ['en' => 'Deploy Rhinometric in your infrastructure today. No shared tenancy, no third-party data exposure.', 'es' => 'Despliega Rhinometric en tu infraestructura hoy. Sin multi-tenancy compartida, sin exposición de datos a terceros.'],
-    'cta_btn'       => ['en' => 'Contact us', 'es' => 'Contáctanos'],
+    'cta_btn'       => ['en' => 'Request an Evaluation', 'es' => 'Solicitar evaluación'],
 
     /* ---- Social (rendered by footer, kept for i18n JS) ---- */
     'social_title'  => ['en' => 'Follow us', 'es' => 'Síguenos'],
@@ -67,7 +67,7 @@ $__ = function ($key) use ($t, $lang) {
     <p class="hero-lead" data-i18n="hero_lead"><?php echo esc_html($__('hero_lead')); ?></p>
     <p class="hero-trust" data-i18n="hero_trust"><?php echo esc_html($__('hero_trust')); ?></p>
     <div class="hero-cta">
-      <a class="btn btn-primary btn-lg" href="<?php echo esc_url(rinometry_page_url('contact')); ?>" data-i18n="hero_cta_1">
+      <a class="btn btn-primary btn-lg" href="<?php echo esc_url(rinometry_page_url('evaluation')); ?>" data-i18n="hero_cta_1">
         <?php echo esc_html($__('hero_cta_1')); ?>
       </a>
       <a class="btn btn-ghost btn-lg" href="<?php echo esc_url(rinometry_page_url('platform')); ?>" data-i18n="hero_cta_2">
@@ -135,7 +135,7 @@ $__ = function ($key) use ($t, $lang) {
   <div class="container text-center">
     <h2 data-i18n="cta_title"><?php echo esc_html($__('cta_title')); ?></h2>
     <p class="cta-lead" data-i18n="cta_lead"><?php echo esc_html($__('cta_lead')); ?></p>
-    <a class="btn btn-white btn-lg" href="<?php echo esc_url(rinometry_page_url('contact')); ?>" data-i18n="cta_btn">
+    <a class="btn btn-white btn-lg" href="<?php echo esc_url(rinometry_page_url('evaluation')); ?>" data-i18n="cta_btn">
       <?php echo esc_html($__('cta_btn')); ?>
     </a>
   </div>

@@ -127,11 +127,11 @@ msgstr "Icono de dashboards"
 msgid "Data residency"
 msgstr "Residencia de datos"
 
-msgid "Demo Lead"
-msgstr "Lead de demo"
+msgid "Evaluation Lead"
+msgstr "Lead de evaluación"
 
-msgid "Demo Leads"
-msgstr "Leads de demo"
+msgid "Evaluation Leads"
+msgstr "Leads de evaluación"
 
 msgid "Demo request form"
 msgstr "Formulario de solicitud de demo"
@@ -448,8 +448,8 @@ msgstr "Preparado para híbrido"
 msgid "Identify latency hotspots and service dependencies."
 msgstr "Identifica puntos críticos de latencia y dependencias de servicios."
 
-msgid "If needed, we can route you to the demo team."
-msgstr "Si es necesario, te derivamos al equipo de demos."
+msgid "If needed, we can route you to the evaluation team."
+msgstr "Si es necesario, te derivamos al equipo de evaluación."
 
 msgid "Ingest standardized telemetry through OpenTelemetry collectors to preserve context across metrics, logs, and traces."
 msgstr "Ingiere telemetría estandarizada a través de colectores OpenTelemetry para preservar contexto entre métricas, logs y trazas."
@@ -515,8 +515,8 @@ msgstr "El nombre es obligatorio."
 msgid "Need help installing? Visit the thank you page for next steps:"
 msgstr "¿Necesitas ayuda para instalar? Visita la página de gracias para los siguientes pasos:"
 
-msgid "Need help? Request a demo"
-msgstr "¿Necesitas ayuda? Solicita una demo"
+msgid "Need help? Request an evaluation"
+msgstr "¿Necesitas ayuda? Solicita una evaluación"
 
 msgid "New Rhinometric download request"
 msgstr "Nueva solicitud de descarga de Rhinometric"
@@ -874,8 +874,8 @@ msgstr "Gracias por contactar a Rhinometric."
 msgid "We will respond within 1–2 business days."
 msgstr "Responderemos en 1–2 días hábiles."
 
-msgid "Helpful links: Download, Roadmap, Request a demo."
-msgstr "Enlaces útiles: Descarga, Roadmap, Solicitar demo."
+msgid "Helpful links: Download, Roadmap, Request an evaluation."
+msgstr "Enlaces útiles: Descarga, Roadmap, Solicitar evaluación."
 
 msgid "Website"
 msgstr "Sitio web"
@@ -909,3 +909,18 @@ msgstr "Leads de demo (JSON)"
 
 msgid "Unauthorized request."
 msgstr "Solicitud no autorizada."
+
+msgid "Request an Evaluation"
+msgstr "Solicitar evaluación"
+
+msgid "Rhinometric evaluation request"
+msgstr "Solicitud de evaluación de Rhinometric"
+
+msgid "New evaluation request received:"
+msgstr "Nueva solicitud de evaluación recibida:"
+
+msgid "Your Rhinometric evaluation request"
+msgstr "Tu solicitud de evaluación de Rhinometric"
+
+msgid "Thanks for requesting an evaluation session with Rhinometric."
+msgstr "Gracias por solicitar una sesión de evaluación con Rhinometric."

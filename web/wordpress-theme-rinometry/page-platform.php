@@ -17,8 +17,8 @@ $t = [
     'comp_t'  => ['en' => 'Core components', 'es' => 'Componentes principales'],
     'comp_d'  => ['en' => 'Built on battle-tested open-source foundations.', 'es' => 'Construido sobre bases open-source probadas en producción.'],
     'cta_t'   => ['en' => 'See it in action', 'es' => 'Vélo en acción'],
-    'cta_d'   => ['en' => 'Contact us for a personalized walkthrough of the Rhinometric platform.', 'es' => 'Contáctanos para una demostración personalizada de la plataforma Rhinometric.'],
-    'cta_btn' => ['en' => 'Contact us', 'es' => 'Contáctanos'],
+    'cta_d'   => ['en' => 'Request an evaluation session for a personalized walkthrough of the Rhinometric platform.', 'es' => 'Solicita una sesión de evaluación para un recorrido personalizado de la plataforma Rhinometric.'],
+    'cta_btn' => ['en' => 'Request an Evaluation', 'es' => 'Solicitar evaluación'],
 ];
 $__ = function ($k) use ($t, $lang) { return $t[$k][$lang] ?? $t[$k]['en'] ?? $k; };
 $components = [
@@ -98,7 +98,7 @@ $features = [
   <div class="container" style="text-align:center;">
     <h2><?php echo esc_html($__('cta_t')); ?></h2>
     <p class="cta-lead"><?php echo esc_html($__('cta_d')); ?></p>
-    <a class="btn btn-white btn-lg" href="<?php echo esc_url(rinometry_page_url('contact')); ?>"><?php echo esc_html($__('cta_btn')); ?></a>
+    <a class="btn btn-white btn-lg" href="<?php echo esc_url(rinometry_page_url('evaluation')); ?>"><?php echo esc_html($__('cta_btn')); ?></a>
   </div>
 </section>
 

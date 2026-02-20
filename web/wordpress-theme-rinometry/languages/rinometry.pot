@@ -81,10 +81,10 @@ msgstr ""
 msgid "Submitted at"
 msgstr ""
 
-msgid "Your Rhinometric demo request"
+msgid "Your Rhinometric evaluation request"
 msgstr ""
 
-msgid "Thanks for requesting a demo of Rhinometric."
+msgid "Thanks for requesting an evaluation session with Rhinometric."
 msgstr ""
 
 msgid "We will reach out shortly to coordinate a session."
@@ -105,7 +105,7 @@ msgstr ""
 msgid "We will respond within 1–2 business days."
 msgstr ""
 
-msgid "Helpful links: Download, Roadmap, Request a demo."
+msgid "Helpful links: Download, Roadmap, Request an evaluation."
 msgstr ""
 
 msgid "Website"

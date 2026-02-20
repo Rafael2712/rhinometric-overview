@@ -18,10 +18,10 @@
    - `roadmap`
    - `download`
    - `thank-you`
-   - `request-demo`
+   - `evaluation`
    - `contact`
 4. Assign menus:
-   - Primary menu: Home, Platform, Observability Suite, On-Prem, Security, Roadmap, Download, Request a demo, Contact
+   - Primary menu: Home, Platform, Deployment, Security, Pricing, Resources, Download, Evaluation, Contact
    - Footer menu: Platform, Security, Roadmap, Contact
 
 ## Language setup (EN/ES)

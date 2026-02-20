@@ -24,7 +24,7 @@ $t = [
     'comp_d'  => ['en' => 'Rhinometric is designed with compliance in mind. We do not claim certifications we have not earned — but the architecture is built to support your compliance journey.', 'es' => 'Rhinometric está diseñado con el cumplimiento en mente. No afirmamos certificaciones que no hemos obtenido — pero la arquitectura está construida para apoyar tu proceso de cumplimiento.'],
     'cta_t'   => ['en' => 'Questions about security?', 'es' => '¿Preguntas sobre seguridad?'],
     'cta_d'   => ['en' => 'Our team can walk you through the security architecture in detail.', 'es' => 'Nuestro equipo puede explicarte la arquitectura de seguridad en detalle.'],
-    'cta_btn' => ['en' => 'Contact us', 'es' => 'Contáctanos'],
+    'cta_btn' => ['en' => 'Request an Evaluation', 'es' => 'Solicitar evaluación'],
 ];
 $__ = function ($k) use ($t, $lang) { return $t[$k][$lang] ?? $t[$k]['en'] ?? $k; };
 ?>
@@ -71,7 +71,7 @@ $__ = function ($k) use ($t, $lang) { return $t[$k][$lang] ?? $t[$k]['en'] ?? $k
   <div class="container" style="text-align:center;">
     <h2><?php echo esc_html($__('cta_t')); ?></h2>
     <p class="cta-lead"><?php echo esc_html($__('cta_d')); ?></p>
-    <a class="btn btn-white btn-lg" href="<?php echo esc_url(rinometry_page_url('contact')); ?>"><?php echo esc_html($__('cta_btn')); ?></a>
+    <a class="btn btn-white btn-lg" href="<?php echo esc_url(rinometry_page_url('evaluation')); ?>"><?php echo esc_html($__('cta_btn')); ?></a>
   </div>
 </section>
 

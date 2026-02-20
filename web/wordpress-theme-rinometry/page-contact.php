@@ -63,7 +63,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
               __('Thank you for contacting Rhinometric.', 'rinometry'),
               __('We will respond within 1–2 business days.', 'rinometry'),
               __('Submitted at:', 'rinometry') . ' ' . current_time('mysql'),
-              __('Helpful links: Download, Roadmap, Request a demo.', 'rinometry')
+              __('Helpful links: Download, Roadmap, Request an evaluation.', 'rinometry')
             );
             wp_mail($email, $user_subject, $user_body);
             $success = true;
@@ -86,7 +86,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <ul>
           <li><?php esc_html_e('A response from the Rhinometric team within 1–2 business days.', 'rinometry'); ?></li>
           <li><?php esc_html_e('Clear guidance on the next steps for your evaluation.', 'rinometry'); ?></li>
-          <li><?php esc_html_e('If needed, we can route you to the demo team.', 'rinometry'); ?></li>
+          <li><?php esc_html_e('If needed, we can route you to the evaluation team.', 'rinometry'); ?></li>
         </ul>
       </div>
     </div>

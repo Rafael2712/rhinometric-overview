@@ -21,8 +21,8 @@ get_header();
       </div>
     </div>
     <div style="margin-top: 2rem;">
-      <a class="btn btn-secondary" href="<?php echo esc_url(get_permalink(get_page_by_path('request-demo'))); ?>">
-        <?php esc_html_e('Need help? Request a demo', 'rinometry'); ?>
+      <a class="btn btn-secondary" href="<?php echo esc_url(rinometry_page_url('evaluation')); ?>">
+        <?php esc_html_e('Need help? Request an evaluation', 'rinometry'); ?>
       </a>
     </div>
   </div>

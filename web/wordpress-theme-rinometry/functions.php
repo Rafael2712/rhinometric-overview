@@ -256,7 +256,7 @@ add_action('init', 'rinometry_register_cpt_download_leads');
 
 function rinometry_register_cpt_demo_leads() {
     register_post_type('demo_lead', [
-        'labels' => ['name' => __('Demo Leads', 'rinometry'), 'singular_name' => __('Demo Lead', 'rinometry')],
+        'labels' => ['name' => __('Evaluation Leads', 'rinometry'), 'singular_name' => __('Evaluation Lead', 'rinometry')],
         'public' => false, 'show_ui' => true, 'menu_icon' => 'dashicons-video-alt3', 'supports' => ['title'],
     ]);
 }

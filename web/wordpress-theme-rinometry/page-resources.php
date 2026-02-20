@@ -22,7 +22,7 @@ $t = [
     'r6_d'    => ['en' => 'Connect with other Rhinometric operators, share best practices, and contribute feedback.', 'es' => 'Conéctate con otros operadores de Rhinometric, comparte buenas prácticas y contribuye con retroalimentación.'],
     'cta_t'   => ['en' => 'Need help?', 'es' => '¿Necesitas ayuda?'],
     'cta_d'   => ['en' => 'Our team is here to help you evaluate and deploy Rhinometric.', 'es' => 'Nuestro equipo está aquí para ayudarte a evaluar y desplegar Rhinometric.'],
-    'cta_btn' => ['en' => 'Contact support', 'es' => 'Contactar soporte'],
+    'cta_btn' => ['en' => 'Request an Evaluation', 'es' => 'Solicitar evaluación'],
 ];
 $__ = function ($k) use ($t, $lang) { return $t[$k][$lang] ?? $t[$k]['en'] ?? $k; };
 ?>
@@ -54,7 +54,7 @@ $__ = function ($k) use ($t, $lang) { return $t[$k][$lang] ?? $t[$k]['en'] ?? $k
   <div class="container" style="text-align:center;">
     <h2><?php echo esc_html($__('cta_t')); ?></h2>
     <p class="cta-lead"><?php echo esc_html($__('cta_d')); ?></p>
-    <a class="btn btn-white btn-lg" href="<?php echo esc_url(rinometry_page_url('contact')); ?>"><?php echo esc_html($__('cta_btn')); ?></a>
+    <a class="btn btn-white btn-lg" href="<?php echo esc_url(rinometry_page_url('evaluation')); ?>"><?php echo esc_html($__('cta_btn')); ?></a>
   </div>
 </section>
 
