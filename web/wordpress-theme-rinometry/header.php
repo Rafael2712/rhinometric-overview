@@ -56,9 +56,6 @@
       <?php esc_html_e('Contact us', 'rinometry'); ?>
     </a>
   </div>
-  <div class="mobile-nav-lang">
-    <?php rinometry_language_switcher(); ?>
-  </div>
 </div>
 
 <main id="main" class="site-main" role="main">

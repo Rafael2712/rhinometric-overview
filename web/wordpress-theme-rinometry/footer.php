@@ -66,9 +66,6 @@
 
     <div class="footer-bottom">
       <p>&copy; <?php echo esc_html(date('Y')); ?> Rhinometric. <?php esc_html_e('All rights reserved.', 'rinometry'); ?></p>
-      <div class="language-switcher">
-        <?php rinometry_language_switcher(); ?>
-      </div>
     </div>
   </div>
 </footer>
