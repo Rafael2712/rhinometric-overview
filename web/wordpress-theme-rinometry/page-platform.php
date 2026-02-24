@@ -10,10 +10,8 @@ $t = [
     'lead'    => ['en' => 'Single investigation flow. Statistical anomaly detection. On-prem control.', 'es' => 'Flujo de investigación único. Detección estadística de anomalías. Control on-prem.'],
     'hero_caption' => ['en' => 'Unified operational console integrating metrics, anomalies and alerts in a single view.', 'es' => 'Consola operativa unificada que integra métricas, anomalías y alertas en una sola vista.'],
     'hero_img_alt' => ['en' => 'Rhinometric unified operational console overview', 'es' => 'Vista general de la consola operativa unificada de Rhinometric'],
-    'hero_b1' => ['en' => 'Baseline deviation surfaced automatically', 'es' => 'Desviación de línea base detectada automáticamente'],
-    'hero_b2' => ['en' => 'Metrics, logs and traces linked in context', 'es' => 'Métricas, logs y trazas vinculados en contexto'],
-    'hero_b3' => ['en' => 'Deployment within customer-controlled environments', 'es' => 'Despliegue en entornos controlados por el cliente'],
     'hero_cta'=> ['en' => 'Request technical evaluation', 'es' => 'Solicitar evaluación técnica'],
+    'hero_sandbox' => ['en' => 'Explore the sandbox', 'es' => 'Explorar el sandbox'],
 
     'arch_t'  => ['en' => 'Architecture Overview', 'es' => 'Visión general de la arquitectura'],
     'arch_d'  => ['en' => 'Rhinometric integrates established technologies for metrics, logs and tracing, and connects them through a single operational interface.', 'es' => 'Rhinometric integra tecnologías establecidas para métricas, logs y trazado, y las conecta a través de una interfaz operativa única.'],
@@ -73,11 +71,20 @@ $__ = function ($k) use ($t, $lang) { return $t[$k][$lang] ?? $t[$k]['en'] ?? $k
 ?>
 
 <style>
-.platform-hero-bullets{list-style:none;padding:0;margin:1.5rem auto 0;max-width:480px}
-.platform-hero-bullets li{padding:.3rem 0 .3rem 1.25rem;position:relative;font-size:.925rem;color:#4a5568;line-height:1.5}
-.platform-hero-bullets li::before{content:'\2022';position:absolute;left:0;color:#2563eb;font-weight:700}
-.platform-hero-cta{margin:1.25rem 0 0;text-align:center}
-@media(max-width:768px){.platform-hero-bullets{margin-top:1rem}.platform-hero-cta{margin-top:1rem}}
+/* Platform page scoped styles */
+.platform-hero-cta-wrap{margin-top:1rem;text-align:center}
+.platform-hero-cta-wrap .btn{display:inline-block}
+.platform-hero-cta-wrap .platform-secondary-link{display:block;margin-top:.65rem;font-size:.9rem;color:var(--gray-500,#64748b);text-decoration:none;opacity:.85;transition:opacity .15s}
+.platform-hero-cta-wrap .platform-secondary-link:hover{opacity:1;text-decoration:underline}
+.platform-frame{width:100%;aspect-ratio:16/9;border-radius:var(--radius-sm,8px);border:1px dashed var(--gray-300,#cbd5e1);background:var(--gray-100,#f1f5f9);display:flex;align-items:center;justify-content:center;padding:1rem;margin-top:1.25rem}
+.platform-frame-label{font-size:.88rem;color:var(--gray-400,#94a3b8);text-align:center;line-height:1.35}
+@media(max-width:768px){
+  .page-hero{padding-top:1.25rem;padding-bottom:1rem}
+  .platform-hero-text h1{font-size:1.35rem;margin-bottom:.5rem}
+  .platform-hero-text .hero-lead{font-size:.95rem;margin-bottom:.25rem}
+  .platform-hero-cta-wrap{margin-top:.75rem}
+  .platform-hero-image{margin-top:.75rem}
+}
 </style>
 
 <section class="page-hero">
@@ -86,18 +93,14 @@ $__ = function ($k) use ($t, $lang) { return $t[$k][$lang] ?? $t[$k]['en'] ?? $k
       <div class="platform-hero-text">
         <h1><?php echo esc_html($__('title')); ?></h1>
         <p class="hero-lead"><?php echo esc_html($__('lead')); ?></p>
+        <div class="platform-hero-cta-wrap">
+          <a class="btn btn-primary btn-lg" href="<?php echo esc_url(rinometry_page_url('evaluation')); ?>"><?php echo esc_html($__('hero_cta')); ?></a>
+          <a class="platform-secondary-link" href="<?php echo esc_url(rinometry_page_url('resources')); ?>"><?php echo esc_html($__('hero_sandbox')); ?></a>
+        </div>
       </div>
       <div class="platform-hero-image-wrapper">
         <img src="<?php echo esc_url(get_template_directory_uri() . '/assets/img/platform-console-overview.png'); ?>" alt="<?php echo esc_attr($__('hero_img_alt')); ?>" class="platform-hero-image" loading="eager">
       </div>
-    </div>
-    <ul class="platform-hero-bullets">
-      <li><?php echo esc_html($__('hero_b1')); ?></li>
-      <li><?php echo esc_html($__('hero_b2')); ?></li>
-      <li><?php echo esc_html($__('hero_b3')); ?></li>
-    </ul>
-    <div class="platform-hero-cta">
-      <a class="btn btn-primary btn-lg" href="<?php echo esc_url(rinometry_page_url('evaluation')); ?>"><?php echo esc_html($__('hero_cta')); ?></a>
     </div>
   </div>
 </section>
@@ -112,7 +115,9 @@ $__ = function ($k) use ($t, $lang) { return $t[$k][$lang] ?? $t[$k]['en'] ?? $k
       <?php endforeach; ?>
     </ul>
     <p><?php echo esc_html($__('arch_note')); ?></p>
-    <div class="platform-image-placeholder"><?php echo esc_html($__('ph_arch')); ?></div>
+    <div class="platform-frame">
+      <span class="platform-frame-label"><?php echo esc_html($__('ph_arch')); ?></span>
+    </div>
   </div>
 </section>
 
@@ -122,7 +127,9 @@ $__ = function ($k) use ($t, $lang) { return $t[$k][$lang] ?? $t[$k]['en'] ?? $k
     <p><?php echo esc_html($__('anom_d1')); ?></p>
     <p><?php echo esc_html($__('anom_d2')); ?></p>
     <p><?php echo esc_html($__('anom_d3')); ?></p>
-    <div class="platform-image-placeholder"><?php echo esc_html($__('ph_anom')); ?></div>
+    <div class="platform-frame">
+      <span class="platform-frame-label"><?php echo esc_html($__('ph_anom')); ?></span>
+    </div>
   </div>
 </section>
 
