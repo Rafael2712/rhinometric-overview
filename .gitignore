@@ -1,0 +1,59 @@
+# ──────────────────────────────────────────────
+# Rhinometric Overview — .gitignore
+# This is a documentation-only repository.
+# Source code belongs in the private repo.
+# ──────────────────────────────────────────────
+
+# Secrets & credentials — NEVER commit
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.pfx
+*.p12
+*.lic
+license.key
+credentials.env
+secrets/
+
+# Data directories
+rhinometric_data*/
+**/data/
+**/logs/
+**/models/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.coverage
+*.egg-info/
+dist/
+build/
+
+# Node
+node_modules/
+.npm/
+dist/
+
+# Docker
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Backups
+*.backup
+*.bak
+*.tar.gz
+*.zip
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
