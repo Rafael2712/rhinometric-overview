@@ -20,24 +20,22 @@ $t = [
     'hero_cta_1'    => ['en' => 'Request an Evaluation', 'es' => 'Solicitar evaluación'],
     'hero_cta_2'    => ['en' => 'See anomaly detection in action →', 'es' => 'Ver detección de anomalías en acción →'],
 
-    /* ---- Unified Operational Interface (7 capabilities) ---- */
+    /* ---- Unified Operational Interface (6 capabilities) ---- */
     'ops_title'     => ['en' => 'From scattered signals to guided investigation', 'es' => 'De señales dispersas a investigación guiada'],
-    'ops_lead'      => ['en' => 'Dashboards show data. Alerts show symptoms. But when behavior starts to deviate, teams switch between tools to understand what is happening — metrics in one place, logs in another, traces somewhere else. Context gets fragmented. Investigation slows down. Rhinometric detects abnormal behavior using statistical baselines and anomaly models, then guides you through correlated metrics, logs, and traces in a single operational interface. Dashboards show data. Rhinometric highlights deviation and connects context.', 'es' => 'Los dashboards muestran datos. Las alertas muestran síntomas. Pero cuando el comportamiento empieza a desviarse, los equipos alternan entre herramientas para entender qué está pasando — métricas en un lugar, logs en otro, trazas en otro. El contexto se fragmenta. La investigación se ralentiza. Rhinometric detecta comportamiento anormal usando líneas base estadísticas y modelos de anomalías, y te guía a través de métricas, logs y trazas correlacionadas en una interfaz operativa única. Los dashboards muestran datos. Rhinometric destaca la desviación y conecta el contexto.'],
+    'ops_lead'      => ['en' => 'Dashboards show data. Alerts show symptoms. But when behavior starts to deviate, teams switch between tools to understand what is happening — metrics in one place, logs in another, traces somewhere else. Context gets fragmented. Investigation slows down. Rhinometric detects abnormal behavior using statistical baselines and anomaly models, then guides you through correlated metrics, logs, and traces in a single operational interface. Rhinometric highlights deviation and connects context.', 'es' => 'Los dashboards muestran datos. Las alertas muestran síntomas. Pero cuando el comportamiento empieza a desviarse, los equipos alternan entre herramientas para entender qué está pasando — métricas en un lugar, logs en otro, trazas en otro. El contexto se fragmenta. La investigación se ralentiza. Rhinometric detecta comportamiento anormal usando líneas base estadísticas y modelos de anomalías, y te guía a través de métricas, logs y trazas correlacionadas en una interfaz operativa única. Rhinometric destaca la desviación y conecta el contexto.'],
     'ops_hint'      => ['en' => 'Swipe →', 'es' => 'Desliza →'],
-    'ops_1_t'       => ['en' => 'Anomaly Detection', 'es' => 'Detección de anomalías'],
-    'ops_1_d'       => ['en' => 'Identifies behavioral deviations against statistical baselines. The starting point of every investigation.', 'es' => 'Identifica desviaciones de comportamiento contra líneas base estadísticas. El punto de partida de cada investigación.'],
-    'ops_2_t'       => ['en' => 'Dashboards', 'es' => 'Dashboards'],
-    'ops_2_d'       => ['en' => 'See the deviation in context. Grafana dashboards show what changed and when.', 'es' => 'Visualiza la desviación en contexto. Los dashboards de Grafana muestran qué cambió y cuándo.'],
+    'ops_1_t'       => ['en' => 'Dashboards', 'es' => 'Dashboards'],
+    'ops_1_d'       => ['en' => 'See the deviation in context. Grafana dashboards show what changed and when. Metrics from Prometheus + VictoriaMetrics for collection and long-term retention.', 'es' => 'Visualiza la desviación en contexto. Los dashboards de Grafana muestran qué cambió y cuándo. Métricas de Prometheus + VictoriaMetrics para recolección y retención a largo plazo.'],
+    'ops_2_t'       => ['en' => 'AI Anomalies', 'es' => 'Anomalías IA'],
+    'ops_2_d'       => ['en' => 'Identifies behavioral deviations against statistical baselines. The starting point of every investigation.', 'es' => 'Identifica desviaciones de comportamiento contra líneas base estadísticas. El punto de partida de cada investigación.'],
     'ops_3_t'       => ['en' => 'Alerts', 'es' => 'Alertas'],
     'ops_3_d'       => ['en' => 'Alertmanager routes threshold-based alerts. Anomaly signals add behavioral context.', 'es' => 'Alertmanager enruta alertas basadas en umbrales. Las señales de anomalía añaden contexto de comportamiento.'],
     'ops_4_t'       => ['en' => 'Logs', 'es' => 'Logs'],
     'ops_4_d'       => ['en' => 'Inspect correlated logs via Loki — filtered to the time window and services involved.', 'es' => 'Inspecciona logs correlacionados con Loki — filtrados al intervalo de tiempo y servicios involucrados.'],
     'ops_5_t'       => ['en' => 'Traces', 'es' => 'Trazas'],
     'ops_5_d'       => ['en' => 'Explore distributed traces with Jaeger to follow requests across services and pinpoint root cause.', 'es' => 'Explora trazas distribuidas con Jaeger para seguir peticiones entre servicios e identificar la causa raíz.'],
-    'ops_6_t'       => ['en' => 'Metrics', 'es' => 'Métricas'],
-    'ops_6_d'       => ['en' => 'Access related metrics instantly. Prometheus + VictoriaMetrics for collection and long-term retention.', 'es' => 'Accede a métricas relacionadas de inmediato. Prometheus + VictoriaMetrics para recolección y retención a largo plazo.'],
-    'ops_7_t'       => ['en' => 'Notifications', 'es' => 'Notificaciones'],
-    'ops_7_d'       => ['en' => 'Email and Slack notifications tied to anomaly and alert events. Keep teams aligned in real time.', 'es' => 'Notificaciones por Email y Slack vinculadas a eventos de anomalías y alertas. Mantén al equipo alineado en tiempo real.'],
+    'ops_6_t'       => ['en' => 'Notifications', 'es' => 'Notificaciones'],
+    'ops_6_d'       => ['en' => 'Email and Slack notifications tied to anomaly and alert events. Keep teams aligned in real time.', 'es' => 'Notificaciones por Email y Slack vinculadas a eventos de anomalías y alertas. Mantén al equipo alineado en tiempo real.'],
     /* ---- Why on-prem / Single-tenant EU ---- */
     'why_title'     => ['en' => 'Why on-prem &amp; single-tenant', 'es' => 'Por qué on-prem y single-tenant'],
     'why_1'         => ['en' => 'Your telemetry never leaves your network — full data sovereignty.', 'es' => 'Tu telemetría nunca sale de tu red — soberanía de datos total.'],
@@ -101,8 +99,8 @@ $__ = function ($key) use ($t, $lang) {
     <p class="ops-swipe-hint" data-i18n="ops_hint"><?php echo esc_html($__('ops_hint')); ?></p>
     <div class="ops-cards">
       <?php
-      $ops_icons = ['🤖', '📈', '🔔', '📋', '🔗', '📊', '📧'];
-      for ($i = 1; $i <= 7; $i++) : ?>
+      $ops_icons = ['📈', '🤖', '🔔', '📋', '🔗', '📧'];
+      for ($i = 1; $i <= 6; $i++) : ?>
       <article class="ops-card">
         <div class="ops-icon" aria-hidden="true"><?php echo $ops_icons[$i - 1]; ?></div>
         <h3 data-i18n="ops_<?php echo $i; ?>_t"><?php echo esc_html($__("ops_{$i}_t")); ?></h3>

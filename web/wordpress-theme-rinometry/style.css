@@ -205,8 +205,9 @@ ul, ol { padding-left: 1.25rem; }
 .hero::before {
   content: ''; position: absolute; width: 600px; height: 600px; border-radius: 50%;
   background: radial-gradient(circle, rgba(14,165,165,0.12), transparent 70%);
-  right: -200px; top: -200px;
+  right: -200px; top: -200px; pointer-events: none;
 }
+.hero-inner { position: relative; z-index: 1; }
 .hero-grid { display: grid; grid-template-columns: 1fr; gap: 2rem; align-items: center; position: relative; z-index: 1; }
 .hero-badge {
   display: inline-flex; align-items: center; gap: 0.4rem;
@@ -479,7 +480,7 @@ ul, ol { padding-left: 1.25rem; }
 
 /* Card strip — mobile: horizontal scroll-snap carousel */
 .ops-cards {
-  display: flex; gap: 0.6rem;
+  display: flex; flex-wrap: nowrap; gap: 0.6rem;
   overflow-x: auto; -webkit-overflow-scrolling: touch;
   scroll-snap-type: x mandatory;
   scroll-padding-left: clamp(1rem, 4vw, 2rem);
