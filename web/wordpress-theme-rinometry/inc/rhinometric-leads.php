@@ -294,30 +294,32 @@ function rhinometric_handle_contact_submit() {
         global $phpmailer;
         $err = (isset($phpmailer) && is_object($phpmailer)) ? $phpmailer->ErrorInfo : 'unknown';
         update_post_meta($post_id, '_rino_email_internal_error', $err);
+
+        rhinometric_log($request_id, 'SUBMIT_EMAIL_FAIL: Internal email failed, skipping user confirmation');
+        wp_send_json_error([
+            'message' => ($lang === 'es')
+                ? 'No pudimos enviar la solicitud. Inténtalo de nuevo o escríbenos a sales@rhinometric.com'
+                : 'Could not send the request. Try again or email sales@rhinometric.com',
+            'request_id' => $request_id,
+        ], 500);
     }
 
-    // --- 3. Send acknowledgment email to user ---
-    $user_subj = ($lang === 'es')
-        ? 'Hemos recibido tu solicitud — Rhinometric'
-        : 'We received your request — Rhinometric';
+    // --- 3. Send confirmation email to user (only if internal succeeded) ---
+    $user_subj = '[Rhinometric] We received your request';
 
-    $user_body = ($lang === 'es')
-        ? implode("\n", [
-            "Gracias por tu solicitud.",
-            "",
-            "Nuestro equipo te contactará en 1–2 días laborables.",
-            "Si necesitas añadir información, responde a este correo.",
-            "",
-            "— Equipo Rhinometric",
-        ])
-        : implode("\n", [
-            "Thank you for your request.",
-            "",
-            "Our team will contact you within 1–2 business days.",
-            "If you need to add information, reply to this email.",
-            "",
-            "— Rhinometric Team",
-        ]);
+    $user_body = implode("\n", [
+        "Hello,",
+        "",
+        "We have successfully received your contact request.",
+        "",
+        "Our engineering team will review your submission and get back to you within 24–48 business hours.",
+        "",
+        "Data Protection Notice:",
+        "You are receiving this message because you submitted your contact details through our website. Your information will be processed solely to respond to your request.",
+        "",
+        "Rhinometric Team",
+        "https://rhinometric.com",
+    ]);
 
     $user_ok = rhinometric_send_mail(
         $email,
@@ -334,21 +336,10 @@ function rhinometric_handle_contact_submit() {
         update_post_meta($post_id, '_rino_email_user_error', $err);
     }
 
-    // --- 4. Check if BOTH emails failed ---
-    if (!$sales_ok && !$user_ok) {
-        rhinometric_log($request_id, 'SUBMIT_EMAIL_FAIL: Both emails failed');
-        wp_send_json_error([
-            'message' => ($lang === 'es')
-                ? 'No pudimos enviar la solicitud. Inténtalo de nuevo o escríbenos a sales@rhinometric.com'
-                : 'Could not send the request. Try again or email sales@rhinometric.com',
-            'request_id' => $request_id,
-        ], 500);
-    }
-
-    // --- 5. Success ---
+    // --- 4. Success (internal sent, user may or may not have sent) ---
     rhinometric_log($request_id, 'SUBMIT_OK', [
         'post_id'  => $post_id,
-        'internal' => $sales_ok ? 'sent' : 'failed',
+        'internal' => 'sent',
         'user'     => $user_ok ? 'sent' : 'failed',
     ]);
 
