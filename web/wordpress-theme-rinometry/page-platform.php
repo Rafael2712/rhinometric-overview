@@ -17,13 +17,13 @@ $t = [
         'en' => ['Prometheus for metrics', 'Loki for log aggregation', 'Jaeger for distributed tracing', 'Grafana for dashboards'],
         'es' => ['Prometheus para métricas', 'Loki para agregación de logs', 'Jaeger para trazado distribuido', 'Grafana para dashboards'],
     ],
-    'arch_note' => ['en' => 'These components are not presented as isolated tools. They operate as part of a structured workflow designed to reduce investigation friction.', 'es' => 'Estos componentes no se presentan como herramientas aisladas. Operan como parte de un flujo de trabajo estructurado diseñado para reducir la fricción en la investigación.'],
+    'arch_note' => ['en' => 'These components are not presented as isolated tools. These layers operate as a unified operational system.', 'es' => 'Estos componentes no se presentan como herramientas aisladas. Estas capas operan como un sistema operativo unificado.'],
     'ph_arch' => ['en' => 'Correlated investigation view — metrics → logs → traces (image will be inserted here)', 'es' => 'Vista de investigación correlacionada — métricas → logs → trazas (imagen pendiente)'],
 
     'anom_t'  => ['en' => 'Anomaly Detection', 'es' => 'Detección de anomalías'],
     'anom_d1' => ['en' => 'Rhinometric analyzes time-series behavior using statistical baselines and established anomaly detection models such as Isolation Forest, LOF and Z-score.', 'es' => 'Rhinometric analiza el comportamiento de series temporales utilizando líneas base estadísticas y modelos de detección de anomalías establecidos como Isolation Forest, LOF y Z-score.'],
     'anom_d2' => ['en' => 'When a deviation from expected behavior is identified, the platform highlights it and connects the anomaly to the relevant metrics, logs and traces required for investigation.', 'es' => 'Cuando se identifica una desviación del comportamiento esperado, la plataforma la destaca y conecta la anomalía con las métricas, logs y trazas relevantes necesarias para la investigación.'],
-    'anom_d3' => ['en' => 'The objective is not predictive certainty. The objective is faster, structured understanding of abnormal behavior.', 'es' => 'El objetivo no es certeza predictiva. El objetivo es una comprensión más rápida y estructurada del comportamiento anormal.'],
+    'anom_d3' => ['en' => 'The goal is not guaranteed prediction. The objective is faster, structured understanding of abnormal behavior.', 'es' => 'El objetivo no es predicción garantizada. El objetivo es una comprensión más rápida y estructurada del comportamiento anormal.'],
     'ph_anom' => ['en' => 'AI anomaly view — baseline vs deviation (image will be inserted here)', 'es' => 'Vista de anomalía IA — línea base vs desviación (imagen pendiente)'],
 
     'wf_t'    => ['en' => 'Operational Workflow', 'es' => 'Flujo de trabajo operativo'],
@@ -35,7 +35,7 @@ $t = [
     'wf_close'=> ['en' => 'The workflow is consistent and contained within one interface. This reduces context switching and cognitive overhead during incident response.', 'es' => 'El flujo de trabajo es consistente y está contenido en una sola interfaz. Esto reduce el cambio de contexto y la carga cognitiva durante la respuesta a incidentes.'],
 
     'why_t'   => ['en' => 'Why Not Build It Yourself?', 'es' => '¿Por qué no construirlo tú mismo?'],
-    'why_intro'=> ['en' => 'Prometheus, Loki and Jaeger can be deployed independently. Many engineering teams do exactly that. What becomes challenging over time is not installation, but operational cohesion:', 'es' => 'Prometheus, Loki y Jaeger se pueden desplegar de forma independiente. Muchos equipos de ingeniería hacen exactamente eso. Lo que se vuelve desafiante con el tiempo no es la instalación, sino la cohesión operativa:'],
+    'why_intro'=> ['en' => 'Installing observability tools is straightforward. Operating them coherently over time is not. What becomes challenging is not setup, but operational cohesion:', 'es' => 'Instalar herramientas de observabilidad es sencillo. Operarlas de forma coherente a lo largo del tiempo no lo es. Lo que se vuelve desafiante no es la configuración, sino la cohesión operativa:'],
     'why_items'=> [
         'en' => ['Maintaining ingestion, storage and retention policies', 'Correlating signals across different systems', 'Tuning anomaly detection and thresholds', 'Managing access control and security', 'Validating performance at scale', 'Keeping the stack stable as infrastructure evolves'],
         'es' => ['Mantener políticas de ingesta, almacenamiento y retención', 'Correlacionar señales entre diferentes sistemas', 'Ajustar detección de anomalías y umbrales', 'Gestionar control de acceso y seguridad', 'Validar rendimiento a escala', 'Mantener el stack estable a medida que la infraestructura evoluciona'],
@@ -52,12 +52,12 @@ $t = [
     'perf_note'=> ['en' => 'These figures reflect the performance of the integrated platform, not isolated components.', 'es' => 'Estas cifras reflejan el rendimiento de la plataforma integrada, no de componentes aislados.'],
 
     'dep_t'   => ['en' => 'Deployment', 'es' => 'Despliegue'],
-    'dep_d'   => ['en' => 'Rhinometric supports two deployment models:', 'es' => 'Rhinometric soporta dos modelos de despliegue:'],
-    'dep_1_t' => ['en' => 'On-Premise', 'es' => 'On-Premise'],
-    'dep_1_d' => ['en' => 'Installed on customer-provided infrastructure using a Docker Compose architecture.', 'es' => 'Instalado en infraestructura proporcionada por el cliente usando arquitectura Docker Compose.'],
-    'dep_2_t' => ['en' => 'Single-Tenant VM in the EU', 'es' => 'VM Single-Tenant en la UE'],
-    'dep_2_d' => ['en' => 'Deployed in a dedicated virtual machine under customer control, fully isolated from other environments.', 'es' => 'Desplegado en una máquina virtual dedicada bajo control del cliente, totalmente aislada de otros entornos.'],
-    'dep_note'=> ['en' => 'Both models preserve data sovereignty and operational ownership.', 'es' => 'Ambos modelos preservan la soberanía de datos y la propiedad operativa.'],
+    'dep_d'   => ['en' => 'Rhinometric supports two deployment models depending on operational requirements.', 'es' => 'Rhinometric soporta dos modelos de despliegue según los requisitos operativos.'],
+    'dep_1_t' => ['en' => 'On-premise', 'es' => 'On-premise'],
+    'dep_1_d' => ['en' => 'Deployed within customer-managed infrastructure, preserving full data locality and network isolation.', 'es' => 'Desplegado en infraestructura gestionada por el cliente, preservando la localidad total de datos y el aislamiento de red.'],
+    'dep_2_t' => ['en' => 'Single-tenant VM (EU)', 'es' => 'VM single-tenant (UE)'],
+    'dep_2_d' => ['en' => 'Dedicated and isolated virtual environment with full data control and no shared runtime between customers.', 'es' => 'Entorno virtual dedicado y aislado con control total de datos y sin runtime compartido entre clientes.'],
+    'dep_note'=> ['en' => 'Platform updates and maintenance are coordinated to ensure stability while preserving operational continuity.', 'es' => 'Las actualizaciones y el mantenimiento de la plataforma se coordinan para garantizar estabilidad preservando la continuidad operativa.'],
 
     'close_d' => ['en' => 'Rhinometric is not a monitoring dashboard. It is a detection and operational workflow layer built on proven observability foundations, designed to reduce investigation time and improve clarity during incident response.', 'es' => 'Rhinometric no es un dashboard de monitorización. Es una capa de detección y flujo de trabajo operativo construida sobre fundamentos de observabilidad probados, diseñada para reducir el tiempo de investigación y mejorar la claridad durante la respuesta a incidentes.'],
 
