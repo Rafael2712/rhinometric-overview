@@ -1,96 +1,165 @@
 <?php
 /**
  * page-platform.php — Rhinometric v3
- * Platform overview: unified data plane, operator-first design, enterprise governance.
+ * Platform overview: architecture, anomaly detection, operational workflow.
  */
 get_header();
 $lang = rinometry_get_current_language();
 $t = [
-    'title'   => ['en' => 'Platform overview', 'es' => 'Visión general de la plataforma'],
-    'lead'    => ['en' => 'A single operational interface for metrics, logs, traces, AI anomaly detection, dashboards, alerts, and notifications. Built on Prometheus + VictoriaMetrics, Loki, Jaeger, Grafana, and Alertmanager.', 'es' => 'Una interfaz operativa única para métricas, logs, trazas, detección de anomalías con IA, dashboards, alertas y notificaciones. Construida sobre Prometheus + VictoriaMetrics, Loki, Jaeger, Grafana y Alertmanager.'],
-    'c1_t'    => ['en' => 'Unified data plane', 'es' => 'Plano de datos unificado'],
-    'c1_d'    => ['en' => 'Metrics, logs, and traces in a single operational view with consistent retention policies.', 'es' => 'Métricas, logs y trazas en una única vista operacional con políticas de retención consistentes.'],
-    'c2_t'    => ['en' => 'Operator-first design', 'es' => 'Diseño orientado al operador'],
-    'c2_d'    => ['en' => 'Opinionated dashboards, Alertmanager-based alerts, and runbooks to accelerate incident response. AI-powered anomaly detection to surface unusual patterns and reduce alert noise.', 'es' => 'Dashboards prediseñados, alertas basadas en Alertmanager y runbooks para acelerar la respuesta a incidentes. Detección de anomalías potenciada por IA para identificar patrones inusuales y reducir el ruido de alertas.'],
-    'c3_t'    => ['en' => 'Enterprise governance', 'es' => 'Gobernanza empresarial'],
-    'c3_d'    => ['en' => 'Role-based access, audit visibility, and secure integrations for regulated teams.', 'es' => 'Control de acceso basado en roles, visibilidad de auditoría e integraciones seguras para equipos regulados.'],
-    'comp_t'  => ['en' => 'All in one operational flow', 'es' => 'Todo en un solo flujo operativo'],
-    'comp_d'  => ['en' => 'Built on battle-tested open-source foundations.', 'es' => 'Construido sobre bases open-source probadas en producción.'],
+    'title'   => ['en' => 'Platform Architecture', 'es' => 'Arquitectura de la plataforma'],
+    'lead'    => ['en' => 'Rhinometric combines proven open-source observability components with statistical anomaly detection and a unified operational console. It is built for SRE and Platform teams responsible for uptime and incident response.', 'es' => 'Rhinometric combina componentes de observabilidad open-source probados con detección estadística de anomalías y una consola operativa unificada. Está diseñado para equipos SRE y de Plataforma responsables del uptime y la respuesta a incidentes.'],
+    'ph_hero' => ['en' => 'Screenshot placeholder – Full platform overview', 'es' => 'Captura de pantalla – Vista general de la plataforma'],
+
+    'arch_t'  => ['en' => 'Architecture Overview', 'es' => 'Visión general de la arquitectura'],
+    'arch_d'  => ['en' => 'Rhinometric integrates established technologies for metrics, logs and tracing, and connects them through a single operational interface.', 'es' => 'Rhinometric integra tecnologías establecidas para métricas, logs y trazado, y las conecta a través de una interfaz operativa única.'],
+    'arch_items' => [
+        'en' => ['Prometheus for metrics', 'Loki for log aggregation', 'Jaeger for distributed tracing', 'Grafana for dashboards'],
+        'es' => ['Prometheus para métricas', 'Loki para agregación de logs', 'Jaeger para trazado distribuido', 'Grafana para dashboards'],
+    ],
+    'arch_note' => ['en' => 'These components are not presented as isolated tools. They operate as part of a structured workflow designed to reduce investigation friction.', 'es' => 'Estos componentes no se presentan como herramientas aisladas. Operan como parte de un flujo de trabajo estructurado diseñado para reducir la fricción en la investigación.'],
+    'ph_arch' => ['en' => 'Screenshot placeholder – Integrated metrics/logs/traces view', 'es' => 'Captura de pantalla – Vista integrada de métricas/logs/trazas'],
+
+    'anom_t'  => ['en' => 'Anomaly Detection', 'es' => 'Detección de anomalías'],
+    'anom_d1' => ['en' => 'Rhinometric analyzes time-series behavior using statistical baselines and established anomaly detection models such as Isolation Forest, LOF and Z-score.', 'es' => 'Rhinometric analiza el comportamiento de series temporales utilizando líneas base estadísticas y modelos de detección de anomalías establecidos como Isolation Forest, LOF y Z-score.'],
+    'anom_d2' => ['en' => 'When a deviation from expected behavior is identified, the platform highlights it and connects the anomaly to the relevant metrics, logs and traces required for investigation.', 'es' => 'Cuando se identifica una desviación del comportamiento esperado, la plataforma la destaca y conecta la anomalía con las métricas, logs y trazas relevantes necesarias para la investigación.'],
+    'anom_d3' => ['en' => 'The objective is not predictive certainty. The objective is faster, structured understanding of abnormal behavior.', 'es' => 'El objetivo no es certeza predictiva. El objetivo es una comprensión más rápida y estructurada del comportamiento anormal.'],
+    'ph_anom' => ['en' => 'Screenshot placeholder – AI anomaly with baseline deviation', 'es' => 'Captura de pantalla – Anomalía IA con desviación de línea base'],
+
+    'wf_t'    => ['en' => 'Operational Workflow', 'es' => 'Flujo de trabajo operativo'],
+    'wf_intro'=> ['en' => 'When an anomaly appears:', 'es' => 'Cuando aparece una anomalía:'],
+    'wf_items'=> [
+        'en' => ['The deviation is shown against its behavioral baseline', 'Related metrics are accessible immediately', 'Logs can be inspected without switching systems', 'Relevant traces can be explored within the same context'],
+        'es' => ['La desviación se muestra contra su línea base de comportamiento', 'Las métricas relacionadas son accesibles de inmediato', 'Los logs se pueden inspeccionar sin cambiar de sistema', 'Las trazas relevantes se pueden explorar en el mismo contexto'],
+    ],
+    'wf_close'=> ['en' => 'The workflow is consistent and contained within one interface. This reduces context switching and cognitive overhead during incident response.', 'es' => 'El flujo de trabajo es consistente y está contenido en una sola interfaz. Esto reduce el cambio de contexto y la carga cognitiva durante la respuesta a incidentes.'],
+
+    'why_t'   => ['en' => 'Why Not Build It Yourself?', 'es' => '¿Por qué no construirlo tú mismo?'],
+    'why_intro'=> ['en' => 'Prometheus, Loki and Jaeger can be deployed independently. Many engineering teams do exactly that. What becomes challenging over time is not installation, but operational cohesion:', 'es' => 'Prometheus, Loki y Jaeger se pueden desplegar de forma independiente. Muchos equipos de ingeniería hacen exactamente eso. Lo que se vuelve desafiante con el tiempo no es la instalación, sino la cohesión operativa:'],
+    'why_items'=> [
+        'en' => ['Maintaining ingestion, storage and retention policies', 'Correlating signals across different systems', 'Tuning anomaly detection and thresholds', 'Managing access control and security', 'Validating performance at scale', 'Keeping the stack stable as infrastructure evolves'],
+        'es' => ['Mantener políticas de ingesta, almacenamiento y retención', 'Correlacionar señales entre diferentes sistemas', 'Ajustar detección de anomalías y umbrales', 'Gestionar control de acceso y seguridad', 'Validar rendimiento a escala', 'Mantener el stack estable a medida que la infraestructura evoluciona'],
+    ],
+    'why_close1'=> ['en' => 'Rhinometric packages these elements into a validated and cohesive system built on open standards.', 'es' => 'Rhinometric empaqueta estos elementos en un sistema validado y cohesivo construido sobre estándares abiertos.'],
+    'why_close2'=> ['en' => 'It is not a replacement for open-source tools. It is an operational layer that integrates them with structured detection and workflow logic.', 'es' => 'No es un reemplazo de las herramientas open-source. Es una capa operativa que las integra con detección estructurada y lógica de flujo de trabajo.'],
+
+    'perf_t'  => ['en' => 'Performance &amp; Validation', 'es' => 'Rendimiento y validación'],
+    'perf_d'  => ['en' => 'Rhinometric v2.6.0 has been validated under sustained workload conditions:', 'es' => 'Rhinometric v2.6.0 ha sido validado bajo condiciones de carga sostenida:'],
+    'perf_items'=> [
+        'en' => ['Up to 100 hosts at 15-second scrape intervals', '100 MB/s log ingestion', '10,000 spans per second tracing', '50+ concurrent console users'],
+        'es' => ['Hasta 100 hosts con intervalos de scrape de 15 segundos', 'Ingesta de logs a 100 MB/s', '10.000 spans por segundo en trazado', 'Más de 50 usuarios concurrentes en consola'],
+    ],
+    'perf_note'=> ['en' => 'These figures reflect the performance of the integrated platform, not isolated components.', 'es' => 'Estas cifras reflejan el rendimiento de la plataforma integrada, no de componentes aislados.'],
+
+    'dep_t'   => ['en' => 'Deployment', 'es' => 'Despliegue'],
+    'dep_d'   => ['en' => 'Rhinometric supports two deployment models:', 'es' => 'Rhinometric soporta dos modelos de despliegue:'],
+    'dep_1_t' => ['en' => 'On-Premise', 'es' => 'On-Premise'],
+    'dep_1_d' => ['en' => 'Installed on customer-provided infrastructure using a Docker Compose architecture.', 'es' => 'Instalado en infraestructura proporcionada por el cliente usando arquitectura Docker Compose.'],
+    'dep_2_t' => ['en' => 'Single-Tenant VM in the EU', 'es' => 'VM Single-Tenant en la UE'],
+    'dep_2_d' => ['en' => 'Deployed in a dedicated virtual machine under customer control, fully isolated from other environments.', 'es' => 'Desplegado en una máquina virtual dedicada bajo control del cliente, totalmente aislada de otros entornos.'],
+    'dep_note'=> ['en' => 'Both models preserve data sovereignty and operational ownership.', 'es' => 'Ambos modelos preservan la soberanía de datos y la propiedad operativa.'],
+
+    'close_d' => ['en' => 'Rhinometric is not a monitoring dashboard. It is a detection and operational workflow layer built on proven observability foundations, designed to reduce investigation time and improve clarity during incident response.', 'es' => 'Rhinometric no es un dashboard de monitorización. Es una capa de detección y flujo de trabajo operativo construida sobre fundamentos de observabilidad probados, diseñada para reducir el tiempo de investigación y mejorar la claridad durante la respuesta a incidentes.'],
+
     'cta_t'   => ['en' => 'See it in action', 'es' => 'Vélo en acción'],
     'cta_d'   => ['en' => 'Request an evaluation session for a personalized walkthrough of the Rhinometric platform.', 'es' => 'Solicita una sesión de evaluación para un recorrido personalizado de la plataforma Rhinometric.'],
     'cta_btn' => ['en' => 'Request an Evaluation', 'es' => 'Solicitar evaluación'],
 ];
 $__ = function ($k) use ($t, $lang) { return $t[$k][$lang] ?? $t[$k]['en'] ?? $k; };
-$components = [
-    ['icon' => '📊', 'name' => 'Signals from: Prometheus + VictoriaMetrics', 'desc' => ['en' => 'Metrics collection, long-term storage & high-performance queries', 'es' => 'Recolección de métricas, almacenamiento a largo plazo y consultas de alto rendimiento']],
-    ['icon' => '📋', 'name' => 'Signals from: Loki',       'desc' => ['en' => 'Log aggregation with label-based queries', 'es' => 'Agregación de logs con consultas basadas en etiquetas']],
-    ['icon' => '🔗', 'name' => 'Signals from: Jaeger',     'desc' => ['en' => 'Distributed tracing with service maps', 'es' => 'Trazas distribuidas con mapas de servicios']],
-    ['icon' => '📈', 'name' => 'Signals from: Grafana',    'desc' => ['en' => 'Visualization, dashboards & alerting', 'es' => 'Visualización, dashboards y alertas']],
-];
-$features = [
-    ['icon' => '📈', 't' => ['en' => 'Dashboards', 'es' => 'Dashboards'], 'd' => ['en' => 'Grafana-native panels with real-time data, flexible layout, and built-in alerting.', 'es' => 'Paneles nativos de Grafana con datos en tiempo real, diseño flexible y alertas integradas.']],
-    ['icon' => '🔔', 't' => ['en' => 'Alerting', 'es' => 'Alertas'], 'd' => ['en' => 'Alertmanager-based alerting with routing, silences, and Slack/Email notifications built in.', 'es' => 'Alertas basadas en Alertmanager con enrutamiento, silencios y notificaciones por Slack/Email integradas.']],
-    ['icon' => '🛡️', 't' => ['en' => 'Security', 'es' => 'Seguridad'], 'd' => ['en' => 'mTLS, RBAC, network policies, and audit logging. Enterprise-grade from day one.', 'es' => 'mTLS, RBAC, políticas de red y auditoría de logs. Nivel empresarial desde el día uno.']],
-];
 ?>
 
 <section class="page-hero">
   <div class="container">
     <h1><?php echo esc_html($__('title')); ?></h1>
     <p class="hero-lead"><?php echo esc_html($__('lead')); ?></p>
+    <div class="platform-image-placeholder"><?php echo esc_html($__('ph_hero')); ?></div>
   </div>
 </section>
 
 <section class="section">
   <div class="container">
-    <div class="grid-3">
-      <div class="card">
-        <div class="card-icon" aria-hidden="true">🔄</div>
-        <h3 class="card-title"><?php echo esc_html($__('c1_t')); ?></h3>
-        <p><?php echo esc_html($__('c1_d')); ?></p>
-      </div>
-      <div class="card">
-        <div class="card-icon" aria-hidden="true">🎯</div>
-        <h3 class="card-title"><?php echo esc_html($__('c2_t')); ?></h3>
-        <p><?php echo esc_html($__('c2_d')); ?></p>
-      </div>
-      <div class="card">
-        <div class="card-icon" aria-hidden="true">🏛️</div>
-        <h3 class="card-title"><?php echo esc_html($__('c3_t')); ?></h3>
-        <p><?php echo esc_html($__('c3_d')); ?></p>
-      </div>
-    </div>
+    <h2 class="section-title"><?php echo esc_html($__('arch_t')); ?></h2>
+    <p class="section-subtitle"><?php echo esc_html($__('arch_d')); ?></p>
+    <ul class="check-list">
+      <?php foreach ($t['arch_items'][$lang] ?? $t['arch_items']['en'] as $item) : ?>
+      <li><?php echo esc_html($item); ?></li>
+      <?php endforeach; ?>
+    </ul>
+    <p><?php echo esc_html($__('arch_note')); ?></p>
+    <div class="platform-image-placeholder"><?php echo esc_html($__('ph_arch')); ?></div>
   </div>
 </section>
 
 <section class="section section-alt">
   <div class="container">
-    <h2 class="section-title"><?php echo esc_html($__('comp_t')); ?></h2>
-    <p class="section-subtitle"><?php echo esc_html($__('comp_d')); ?></p>
-    <div class="grid-2">
-      <?php foreach ($components as $c) : ?>
-      <div class="card">
-        <div class="card-icon" aria-hidden="true"><?php echo $c['icon']; ?></div>
-        <h3 class="card-title"><?php echo esc_html($c['name']); ?></h3>
-        <p><?php echo esc_html($c['desc'][$lang] ?? $c['desc']['en']); ?></p>
-      </div>
-      <?php endforeach; ?>
-    </div>
+    <h2 class="section-title"><?php echo esc_html($__('anom_t')); ?></h2>
+    <p><?php echo esc_html($__('anom_d1')); ?></p>
+    <p><?php echo esc_html($__('anom_d2')); ?></p>
+    <p><?php echo esc_html($__('anom_d3')); ?></p>
+    <div class="platform-image-placeholder"><?php echo esc_html($__('ph_anom')); ?></div>
   </div>
 </section>
 
 <section class="section">
   <div class="container">
-    <h2 class="section-title"><?php echo esc_html($lang === 'es' ? 'Capacidades adicionales' : 'Additional capabilities'); ?></h2>
-    <div class="grid-3">
-      <?php foreach ($features as $f) : ?>
-      <div class="card">
-        <div class="card-icon" aria-hidden="true"><?php echo $f['icon']; ?></div>
-        <h3 class="card-title"><?php echo esc_html($f['t'][$lang] ?? $f['t']['en']); ?></h3>
-        <p><?php echo esc_html($f['d'][$lang] ?? $f['d']['en']); ?></p>
-      </div>
+    <h2 class="section-title"><?php echo esc_html($__('wf_t')); ?></h2>
+    <p><?php echo esc_html($__('wf_intro')); ?></p>
+    <ul class="check-list">
+      <?php foreach ($t['wf_items'][$lang] ?? $t['wf_items']['en'] as $item) : ?>
+      <li><?php echo esc_html($item); ?></li>
       <?php endforeach; ?>
+    </ul>
+    <p><?php echo esc_html($__('wf_close')); ?></p>
+  </div>
+</section>
+
+<section class="section section-alt">
+  <div class="container">
+    <h2 class="section-title"><?php echo esc_html($__('why_t')); ?></h2>
+    <p><?php echo esc_html($__('why_intro')); ?></p>
+    <ul class="check-list">
+      <?php foreach ($t['why_items'][$lang] ?? $t['why_items']['en'] as $item) : ?>
+      <li><?php echo esc_html($item); ?></li>
+      <?php endforeach; ?>
+    </ul>
+    <p><?php echo esc_html($__('why_close1')); ?></p>
+    <p><?php echo esc_html($__('why_close2')); ?></p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container">
+    <h2 class="section-title"><?php echo $__('perf_t'); ?></h2>
+    <p><?php echo esc_html($__('perf_d')); ?></p>
+    <ul class="check-list">
+      <?php foreach ($t['perf_items'][$lang] ?? $t['perf_items']['en'] as $item) : ?>
+      <li><?php echo esc_html($item); ?></li>
+      <?php endforeach; ?>
+    </ul>
+    <p><?php echo esc_html($__('perf_note')); ?></p>
+  </div>
+</section>
+
+<section class="section section-alt">
+  <div class="container">
+    <h2 class="section-title"><?php echo esc_html($__('dep_t')); ?></h2>
+    <p><?php echo esc_html($__('dep_d')); ?></p>
+    <div class="grid-2">
+      <div class="card">
+        <h3 class="card-title"><?php echo esc_html($__('dep_1_t')); ?></h3>
+        <p><?php echo esc_html($__('dep_1_d')); ?></p>
+      </div>
+      <div class="card">
+        <h3 class="card-title"><?php echo esc_html($__('dep_2_t')); ?></h3>
+        <p><?php echo esc_html($__('dep_2_d')); ?></p>
+      </div>
     </div>
+    <p style="margin-top:1rem;"><?php echo esc_html($__('dep_note')); ?></p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container">
+    <p class="section-subtitle" style="max-width:720px;"><?php echo esc_html($__('close_d')); ?></p>
   </div>
 </section>
 
