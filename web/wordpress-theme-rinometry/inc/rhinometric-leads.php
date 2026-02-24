@@ -305,20 +305,18 @@ function rhinometric_handle_contact_submit() {
     }
 
     // --- 3. Send confirmation email to user (only if internal succeeded) ---
-    $user_subj = '[Rhinometric] We received your request';
+    $user_subj = 'We received your request — Rhinometric';
 
     $user_body = implode("\n", [
-        "Hello,",
+        "Hi,",
         "",
-        "We have successfully received your contact request.",
+        "We've received your request. Our team will contact you within 24–48 hours.",
         "",
-        "Our engineering team will review your submission and get back to you within 24–48 business hours.",
+        "If you did not submit this request, you can ignore this email.",
         "",
-        "Data Protection Notice:",
-        "You are receiving this message because you submitted your contact details through our website. Your information will be processed solely to respond to your request.",
+        "By submitting the form, you consent to be contacted regarding your request.",
         "",
-        "Rhinometric Team",
-        "https://rhinometric.com",
+        "— Rhinometric",
     ]);
 
     $user_ok = rhinometric_send_mail(
