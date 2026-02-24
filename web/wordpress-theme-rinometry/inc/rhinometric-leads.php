@@ -263,7 +263,10 @@ function rhinometric_handle_contact_submit() {
         ], 500);
     }
 
-    // --- 2. Send internal email to sales@rhinometric.com ---
+    // --- 2. Send internal email to lead recipient ---
+    // NOTE: Cannot send FROM sales@ TO sales@ — Zoho puts it in Sent
+    // but never delivers to Inbox. Use a different recipient.
+    $internal_recipient = rinometry_get_lead_recipient(); // rafael.canelon@rhinometric.com
     $timestamp     = current_time('Y-m-d H:i:s T');
     $internal_subj = "[Rhinometric] New contact request — {$role}";
     $internal_body = implode("\n", [
@@ -279,7 +282,7 @@ function rhinometric_handle_contact_submit() {
     ]);
 
     $sales_ok = rhinometric_send_mail(
-        'sales@rhinometric.com',
+        $internal_recipient,
         $internal_subj,
         $internal_body,
         $email,       // Reply-To = user's email
