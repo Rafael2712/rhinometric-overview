@@ -8,7 +8,8 @@ $lang = rinometry_get_current_language();
 $t = [
     'title'   => ['en' => 'Platform Architecture', 'es' => 'Arquitectura de la plataforma'],
     'lead'    => ['en' => 'Rhinometric combines proven open-source observability components with statistical anomaly detection and a unified operational console. It is built for SRE and Platform teams responsible for uptime and incident response.', 'es' => 'Rhinometric combina componentes de observabilidad open-source probados con detección estadística de anomalías y una consola operativa unificada. Está diseñado para equipos SRE y de Plataforma responsables del uptime y la respuesta a incidentes.'],
-    'ph_hero' => ['en' => 'Screenshot placeholder – Full platform overview', 'es' => 'Captura de pantalla – Vista general de la plataforma'],
+    'hero_caption' => ['en' => 'Unified operational console integrating metrics, anomalies and alerts in a single view.', 'es' => 'Consola operativa unificada que integra métricas, anomalías y alertas en una sola vista.'],
+    'hero_img_alt' => ['en' => 'Rhinometric unified operational console overview', 'es' => 'Vista general de la consola operativa unificada de Rhinometric'],
 
     'arch_t'  => ['en' => 'Architecture Overview', 'es' => 'Visión general de la arquitectura'],
     'arch_d'  => ['en' => 'Rhinometric integrates established technologies for metrics, logs and tracing, and connects them through a single operational interface.', 'es' => 'Rhinometric integra tecnologías establecidas para métricas, logs y trazado, y las conecta a través de una interfaz operativa única.'],
@@ -17,13 +18,13 @@ $t = [
         'es' => ['Prometheus para métricas', 'Loki para agregación de logs', 'Jaeger para trazado distribuido', 'Grafana para dashboards'],
     ],
     'arch_note' => ['en' => 'These components are not presented as isolated tools. They operate as part of a structured workflow designed to reduce investigation friction.', 'es' => 'Estos componentes no se presentan como herramientas aisladas. Operan como parte de un flujo de trabajo estructurado diseñado para reducir la fricción en la investigación.'],
-    'ph_arch' => ['en' => 'Screenshot placeholder – Integrated metrics/logs/traces view', 'es' => 'Captura de pantalla – Vista integrada de métricas/logs/trazas'],
+    'ph_arch' => ['en' => 'Correlated investigation view — metrics → logs → traces (image will be inserted here)', 'es' => 'Vista de investigación correlacionada — métricas → logs → trazas (imagen pendiente)'],
 
     'anom_t'  => ['en' => 'Anomaly Detection', 'es' => 'Detección de anomalías'],
     'anom_d1' => ['en' => 'Rhinometric analyzes time-series behavior using statistical baselines and established anomaly detection models such as Isolation Forest, LOF and Z-score.', 'es' => 'Rhinometric analiza el comportamiento de series temporales utilizando líneas base estadísticas y modelos de detección de anomalías establecidos como Isolation Forest, LOF y Z-score.'],
     'anom_d2' => ['en' => 'When a deviation from expected behavior is identified, the platform highlights it and connects the anomaly to the relevant metrics, logs and traces required for investigation.', 'es' => 'Cuando se identifica una desviación del comportamiento esperado, la plataforma la destaca y conecta la anomalía con las métricas, logs y trazas relevantes necesarias para la investigación.'],
     'anom_d3' => ['en' => 'The objective is not predictive certainty. The objective is faster, structured understanding of abnormal behavior.', 'es' => 'El objetivo no es certeza predictiva. El objetivo es una comprensión más rápida y estructurada del comportamiento anormal.'],
-    'ph_anom' => ['en' => 'Screenshot placeholder – AI anomaly with baseline deviation', 'es' => 'Captura de pantalla – Anomalía IA con desviación de línea base'],
+    'ph_anom' => ['en' => 'AI anomaly view — baseline vs deviation (image will be inserted here)', 'es' => 'Vista de anomalía IA — línea base vs desviación (imagen pendiente)'],
 
     'wf_t'    => ['en' => 'Operational Workflow', 'es' => 'Flujo de trabajo operativo'],
     'wf_intro'=> ['en' => 'When an anomaly appears:', 'es' => 'Cuando aparece una anomalía:'],
@@ -69,9 +70,16 @@ $__ = function ($k) use ($t, $lang) { return $t[$k][$lang] ?? $t[$k]['en'] ?? $k
 
 <section class="page-hero">
   <div class="container">
-    <h1><?php echo esc_html($__('title')); ?></h1>
-    <p class="hero-lead"><?php echo esc_html($__('lead')); ?></p>
-    <div class="platform-image-placeholder"><?php echo esc_html($__('ph_hero')); ?></div>
+    <div class="platform-hero-container">
+      <div class="platform-hero-text">
+        <h1><?php echo esc_html($__('title')); ?></h1>
+        <p class="hero-lead"><?php echo esc_html($__('lead')); ?></p>
+      </div>
+      <div class="platform-hero-image-wrapper">
+        <img src="<?php echo esc_url(get_template_directory_uri() . '/assets/img/platform-console-overview.png'); ?>" alt="<?php echo esc_attr($__('hero_img_alt')); ?>" class="platform-hero-image" loading="eager">
+        <p class="platform-image-caption"><?php echo esc_html($__('hero_caption')); ?></p>
+      </div>
+    </div>
   </div>
 </section>
 

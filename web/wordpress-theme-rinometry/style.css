@@ -553,7 +553,35 @@ ul, ol { padding-left: 1.25rem; }
 }
 
 /* ==========================================================================
-   22. Print
+   22. Platform hero layout
+   ========================================================================== */
+.platform-hero-container {
+  display: flex; align-items: center; gap: 2.5rem; flex-wrap: wrap;
+}
+.platform-hero-text {
+  flex: 1 1 400px;
+}
+.platform-hero-text h1 { margin-bottom: 0.75rem; }
+.platform-hero-text .hero-lead { margin-bottom: 0; }
+.platform-hero-image-wrapper {
+  flex: 1 1 600px; text-align: center;
+}
+.platform-hero-image {
+  max-width: 100%; height: auto; border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-md);
+}
+.platform-image-caption {
+  font-size: 0.82rem; color: rgba(255,255,255,0.55);
+  margin-top: 0.6rem; margin-bottom: 0;
+}
+@media (max-width: 768px) {
+  .platform-hero-container { flex-direction: column; gap: 1.25rem; }
+  .platform-hero-text { flex-basis: auto; }
+  .platform-hero-image-wrapper { flex-basis: auto; }
+}
+
+/* ==========================================================================
+   23. Print
    ========================================================================== */
 @media print {
   .site-header, .site-footer, .cookie-banner, .nav-toggle { display: none; }
