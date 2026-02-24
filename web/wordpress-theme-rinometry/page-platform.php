@@ -34,7 +34,7 @@ $t = [
     ],
     'wf_close'=> ['en' => 'The workflow is consistent and contained within one interface. This reduces context switching and cognitive overhead during incident response.', 'es' => 'El flujo de trabajo es consistente y está contenido en una sola interfaz. Esto reduce el cambio de contexto y la carga cognitiva durante la respuesta a incidentes.'],
 
-    'why_t'   => ['en' => 'Why Not Build It Yourself?', 'es' => '¿Por qué no construirlo tú mismo?'],
+    'why_t'   => ['en' => 'Operational Complexity', 'es' => 'Complejidad operativa'],
     'why_intro'=> ['en' => 'Installing observability tools is straightforward. Operating them coherently over time is not. What becomes challenging is not setup, but operational cohesion:', 'es' => 'Instalar herramientas de observabilidad es sencillo. Operarlas de forma coherente a lo largo del tiempo no lo es. Lo que se vuelve desafiante no es la configuración, sino la cohesión operativa:'],
     'why_items'=> [
         'en' => ['Maintaining ingestion, storage and retention policies', 'Correlating signals across different systems', 'Tuning anomaly detection and thresholds', 'Managing access control and security', 'Validating performance at scale', 'Keeping the stack stable as infrastructure evolves'],
@@ -56,7 +56,7 @@ $t = [
     'dep_1_t' => ['en' => 'On-premise', 'es' => 'On-premise'],
     'dep_1_d' => ['en' => 'Deployed within customer-managed infrastructure, preserving full data locality and network isolation.', 'es' => 'Desplegado en infraestructura gestionada por el cliente, preservando la localidad total de datos y el aislamiento de red.'],
     'dep_2_t' => ['en' => 'Single-tenant VM (EU)', 'es' => 'VM single-tenant (UE)'],
-    'dep_2_d' => ['en' => 'Dedicated and isolated virtual environment with full data control and no shared runtime between customers.', 'es' => 'Entorno virtual dedicado y aislado con control total de datos y sin runtime compartido entre clientes.'],
+    'dep_2_d' => ['en' => 'Deployed in a dedicated and isolated virtual machine, with full data control and no shared runtime.', 'es' => 'Desplegado en una máquina virtual dedicada y aislada, con control total de datos y sin runtime compartido.'],
     'dep_note'=> ['en' => 'Platform updates and maintenance are coordinated to ensure stability while preserving operational continuity.', 'es' => 'Las actualizaciones y el mantenimiento de la plataforma se coordinan para garantizar estabilidad preservando la continuidad operativa.'],
 
     'close_d' => ['en' => 'Rhinometric is not a monitoring dashboard. It is a detection and operational workflow layer built on proven observability foundations, designed to reduce investigation time and improve clarity during incident response.', 'es' => 'Rhinometric no es un dashboard de monitorización. Es una capa de detección y flujo de trabajo operativo construida sobre fundamentos de observabilidad probados, diseñada para reducir el tiempo de investigación y mejorar la claridad durante la respuesta a incidentes.'],
