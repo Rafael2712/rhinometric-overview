@@ -581,7 +581,124 @@ ul, ol { padding-left: 1.25rem; }
 }
 
 /* ==========================================================================
-   23. Print
+   23. Lead capture form (contact page)
+   ========================================================================== */
+.contact-layout {
+  display: grid;
+  grid-template-columns: 1fr 560px;
+  gap: 2.5rem;
+  align-items: start;
+}
+.contact-sidebar .card { position: sticky; top: calc(var(--header-h) + 2rem); }
+.contact-form-wrap { max-width: 560px; }
+.contact-form {
+  background: var(--navy);
+  border-radius: var(--radius-md);
+  padding: clamp(1.5rem, 4vw, 2.5rem);
+  color: var(--white);
+  box-shadow: var(--shadow-lg);
+}
+.contact-form .form-field label {
+  color: rgba(255,255,255,0.85);
+  font-weight: 600;
+  font-size: 0.88rem;
+  margin-bottom: 0.35rem;
+  display: block;
+}
+.contact-form .form-field label span[aria-hidden] { color: var(--teal-light); }
+.contact-form .form-field input,
+.contact-form .form-field select {
+  width: 100%;
+  padding: 0.65rem 0.85rem;
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: var(--radius-sm);
+  font: inherit;
+  font-size: 0.95rem;
+  background: var(--navy-light);
+  color: var(--white);
+  transition: border-color 0.15s;
+}
+.contact-form .form-field input::placeholder { color: rgba(255,255,255,0.4); }
+.contact-form .form-field input:focus,
+.contact-form .form-field select:focus {
+  border-color: var(--teal);
+  outline: 2px solid var(--teal);
+  outline-offset: 1px;
+}
+.contact-form .form-field select option {
+  background: var(--navy-light);
+  color: var(--white);
+}
+.contact-form .form-field--checkbox { display: flex; gap: 0.5rem; align-items: flex-start; }
+.contact-form .form-field--checkbox label { display: flex; gap: 0.5rem; align-items: flex-start; cursor: pointer; font-size: 0.85rem; color: rgba(255,255,255,0.7); }
+.contact-form .form-field--checkbox input[type="checkbox"] { margin-top: 0.2rem; accent-color: var(--teal); flex-shrink: 0; }
+.contact-form .form-field--checkbox a { color: var(--teal-light); text-decoration: underline; }
+.contact-form .field-error {
+  display: block;
+  font-size: 0.82rem;
+  color: #FECACA;
+  margin-top: 0.25rem;
+  min-height: 0;
+}
+.contact-form .form-field--invalid input,
+.contact-form .form-field--invalid select { border-color: #F87171; }
+.contact-form .form-errors {
+  background: rgba(248,113,113,0.12);
+  border: 1px solid rgba(248,113,113,0.3);
+  border-radius: var(--radius-sm);
+  padding: 0.75rem 1rem;
+  margin-bottom: 1.25rem;
+  color: #FECACA;
+  font-size: 0.9rem;
+}
+.contact-form .form-success {
+  background: rgba(14,165,165,0.1);
+  border: 1px solid rgba(14,165,165,0.3);
+  border-radius: var(--radius-sm);
+  padding: 1.25rem;
+  text-align: center;
+}
+.contact-form .form-success h3 { color: var(--teal-light); font-size: 1.25rem; margin-bottom: 0.5rem; }
+.contact-form .form-success p { color: rgba(255,255,255,0.8); margin: 0; }
+.btn-block { width: 100%; display: block; text-align: center; }
+.btn-block:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Confirm page */
+.confirm-card {
+  max-width: 520px;
+  margin: 0 auto;
+  text-align: center;
+  padding: 2.5rem 2rem;
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  box-shadow: var(--shadow-md);
+}
+.confirm-icon {
+  width: 56px; height: 56px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 1rem; font-size: 1.5rem; font-weight: 700;
+}
+.confirm-ok .confirm-icon { background: rgba(14,165,165,0.12); color: var(--teal); }
+.confirm-warn .confirm-icon { background: rgba(245,158,11,0.12); color: #F59E0B; }
+.confirm-err .confirm-icon { background: rgba(239,68,68,0.12); color: #EF4444; }
+.confirm-actions { display: flex; gap: 0.75rem; justify-content: center; margin-top: 1.5rem; flex-wrap: wrap; }
+
+@media (max-width: 900px) {
+  .contact-layout {
+    grid-template-columns: 1fr;
+  }
+  .contact-sidebar { order: 2; }
+  .contact-form-wrap { max-width: 100%; order: 1; }
+}
+@media (max-width: 480px) {
+  .contact-form { padding: 1.25rem; }
+}
+
+/* ==========================================================================
+   24. Print
    ========================================================================== */
 @media print {
   .site-header, .site-footer, .cookie-banner, .nav-toggle { display: none; }

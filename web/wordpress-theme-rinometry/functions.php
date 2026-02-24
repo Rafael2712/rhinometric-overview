@@ -9,6 +9,11 @@ if (!defined('ABSPATH')) {
 }
 
 /* ------------------------------------------------------------------
+   Lead capture backend (Zoho CRM, scoring, double opt-in)
+   ------------------------------------------------------------------ */
+require_once get_template_directory() . '/inc/rhinometric-leads.php';
+
+/* ------------------------------------------------------------------
    Theme setup
    ------------------------------------------------------------------ */
 function rinometry_setup() {
@@ -73,6 +78,20 @@ function rinometry_enqueue_assets() {
                 $theme_uri . '/assets/js/frontpage-i18n.js',
                 [],
                 filemtime($i18n_file),
+                true
+            );
+        }
+    }
+
+    // reCAPTCHA v3 (contact page only)
+    if (is_page('contact')) {
+        $recaptcha_key = get_option('rhinometric_recaptcha_site_key', '');
+        if ($recaptcha_key) {
+            wp_enqueue_script(
+                'google-recaptcha',
+                'https://www.google.com/recaptcha/api.js?render=' . urlencode($recaptcha_key),
+                [],
+                null,
                 true
             );
         }
