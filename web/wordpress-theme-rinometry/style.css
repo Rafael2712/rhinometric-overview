@@ -607,6 +607,7 @@ ul, ol { padding-left: 1.25rem; }
 }
 .contact-form .form-field label span[aria-hidden] { color: var(--teal-light); }
 .contact-form .form-field input,
+.contact-form .form-field textarea,
 .contact-form .form-field select {
   width: 100%;
   padding: 0.65rem 0.85rem;
@@ -618,8 +619,14 @@ ul, ol { padding-left: 1.25rem; }
   color: var(--white);
   transition: border-color 0.15s;
 }
-.contact-form .form-field input::placeholder { color: rgba(255,255,255,0.4); }
+.contact-form .form-field textarea {
+  min-height: 80px;
+  resize: vertical;
+}
+.contact-form .form-field input::placeholder,
+.contact-form .form-field textarea::placeholder { color: rgba(255,255,255,0.4); }
 .contact-form .form-field input:focus,
+.contact-form .form-field textarea:focus,
 .contact-form .form-field select:focus {
   border-color: var(--teal);
   outline: 2px solid var(--teal);
@@ -629,10 +636,6 @@ ul, ol { padding-left: 1.25rem; }
   background: var(--navy-light);
   color: var(--white);
 }
-.contact-form .form-field--checkbox { display: flex; gap: 0.5rem; align-items: flex-start; }
-.contact-form .form-field--checkbox label { display: flex; gap: 0.5rem; align-items: flex-start; cursor: pointer; font-size: 0.85rem; color: rgba(255,255,255,0.7); }
-.contact-form .form-field--checkbox input[type="checkbox"] { margin-top: 0.2rem; accent-color: var(--teal); flex-shrink: 0; }
-.contact-form .form-field--checkbox a { color: var(--teal-light); text-decoration: underline; }
 .contact-form .field-error {
   display: block;
   font-size: 0.82rem;
@@ -641,6 +644,7 @@ ul, ol { padding-left: 1.25rem; }
   min-height: 0;
 }
 .contact-form .form-field--invalid input,
+.contact-form .form-field--invalid textarea,
 .contact-form .form-field--invalid select { border-color: #F87171; }
 .contact-form .form-errors {
   background: rgba(248,113,113,0.12);
@@ -658,33 +662,12 @@ ul, ol { padding-left: 1.25rem; }
   padding: 1.25rem;
   text-align: center;
 }
-.contact-form .form-success h3 { color: var(--teal-light); font-size: 1.25rem; margin-bottom: 0.5rem; }
-.contact-form .form-success p { color: rgba(255,255,255,0.8); margin: 0; }
+.contact-form .form-success p { color: rgba(255,255,255,0.85); margin: 0; font-size: 1rem; }
 .btn-block { width: 100%; display: block; text-align: center; }
 .btn-block:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }
-
-/* Confirm page */
-.confirm-card {
-  max-width: 520px;
-  margin: 0 auto;
-  text-align: center;
-  padding: 2.5rem 2rem;
-  border-radius: var(--radius-md);
-  background: var(--surface);
-  box-shadow: var(--shadow-md);
-}
-.confirm-icon {
-  width: 56px; height: 56px; border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  margin: 0 auto 1rem; font-size: 1.5rem; font-weight: 700;
-}
-.confirm-ok .confirm-icon { background: rgba(14,165,165,0.12); color: var(--teal); }
-.confirm-warn .confirm-icon { background: rgba(245,158,11,0.12); color: #F59E0B; }
-.confirm-err .confirm-icon { background: rgba(239,68,68,0.12); color: #EF4444; }
-.confirm-actions { display: flex; gap: 0.75rem; justify-content: center; margin-top: 1.5rem; flex-wrap: wrap; }
 
 @media (max-width: 900px) {
   .contact-layout {
