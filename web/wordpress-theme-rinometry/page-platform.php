@@ -46,18 +46,18 @@ $t = [
     'perf_t'  => ['en' => 'Performance &amp; Validation', 'es' => 'Rendimiento y validación'],
     'perf_d'  => ['en' => 'Rhinometric v2.6.0 has been validated under sustained workload conditions:', 'es' => 'Rhinometric v2.6.0 ha sido validado bajo condiciones de carga sostenida:'],
     'perf_items'=> [
-        'en' => ['Up to 100 hosts at 15-second scrape intervals', '100 MB/s log ingestion', '10,000 spans per second tracing', '50+ concurrent console users'],
-        'es' => ['Hasta 100 hosts con intervalos de scrape de 15 segundos', 'Ingesta de logs a 100 MB/s', '10.000 spans por segundo en trazado', 'Más de 50 usuarios concurrentes en consola'],
+        'en' => ['Validated with up to 100 hosts at 15-second scrape intervals', '100 MB/s log ingestion', '10,000 spans per second tracing', '50+ concurrent console users'],
+        'es' => ['Validado con hasta 100 hosts con intervalos de scrape de 15 segundos', 'Ingesta de logs a 100 MB/s', '10.000 spans por segundo en trazado', 'Más de 50 usuarios concurrentes en consola'],
     ],
-    'perf_note'=> ['en' => 'These figures reflect the performance of the integrated platform, not isolated components.', 'es' => 'Estas cifras reflejan el rendimiento de la plataforma integrada, no de componentes aislados.'],
+    'perf_note'=> ['en' => 'These figures reflect sustained validation of the integrated platform under load.', 'es' => 'Estas cifras reflejan la validación sostenida de la plataforma integrada bajo carga.'],
 
     'dep_t'   => ['en' => 'Deployment', 'es' => 'Despliegue'],
     'dep_d'   => ['en' => 'Rhinometric supports two deployment models depending on operational requirements.', 'es' => 'Rhinometric soporta dos modelos de despliegue según los requisitos operativos.'],
     'dep_1_t' => ['en' => 'On-premise', 'es' => 'On-premise'],
     'dep_1_d' => ['en' => 'Deployed within customer-managed infrastructure, preserving full data locality and network isolation.', 'es' => 'Desplegado en infraestructura gestionada por el cliente, preservando la localidad total de datos y el aislamiento de red.'],
     'dep_2_t' => ['en' => 'Single-tenant VM (EU)', 'es' => 'VM single-tenant (UE)'],
-    'dep_2_d' => ['en' => 'Deployed in a dedicated and isolated virtual machine, with full data control and no shared runtime.', 'es' => 'Desplegado en una máquina virtual dedicada y aislada, con control total de datos y sin runtime compartido.'],
-    'dep_note'=> ['en' => 'Platform updates and maintenance are coordinated to ensure stability while preserving operational continuity.', 'es' => 'Las actualizaciones y el mantenimiento de la plataforma se coordinan para garantizar estabilidad preservando la continuidad operativa.'],
+    'dep_2_d' => ['en' => 'Deployed in a dedicated and isolated virtual machine, with full data control and no shared runtime between customers.', 'es' => 'Desplegado en una máquina virtual dedicada y aislada, con control total de datos y sin runtime compartido entre clientes.'],
+    'dep_note'=> ['en' => 'Platform updates are managed in coordination with the customer to preserve operational stability.', 'es' => 'Las actualizaciones de la plataforma se gestionan en coordinación con el cliente para preservar la estabilidad operativa.'],
 
     'close_d' => ['en' => 'Rhinometric is not a monitoring dashboard. It is a detection and operational workflow layer built on proven observability foundations, designed to reduce investigation time and improve clarity during incident response.', 'es' => 'Rhinometric no es un dashboard de monitorización. Es una capa de detección y flujo de trabajo operativo construida sobre fundamentos de observabilidad probados, diseñada para reducir el tiempo de investigación y mejorar la claridad durante la respuesta a incidentes.'],
 
