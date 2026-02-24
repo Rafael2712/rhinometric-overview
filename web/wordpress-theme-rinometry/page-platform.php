@@ -88,7 +88,7 @@ $__ = function ($k) use ($t, $lang) { return $t[$k][$lang] ?? $t[$k]['en'] ?? $k
         <h1><?php echo esc_html($__('title')); ?></h1>
         <p class="hero-lead"><?php echo esc_html($__('lead')); ?></p>
         <div class="platform-hero-cta-wrap">
-          <a class="btn btn-primary btn-lg" href="<?php echo esc_url(rinometry_page_url('evaluation')); ?>"><?php echo esc_html($__('hero_cta')); ?></a>
+          <a class="btn btn-primary btn-lg" href="<?php echo esc_url(rinometry_page_url('contact')); ?>"><?php echo esc_html($__('hero_cta')); ?></a>
           <a class="platform-secondary-link" href="<?php echo esc_url(rinometry_page_url('resources')); ?>"><?php echo esc_html($__('hero_sandbox')); ?></a>
         </div>
       </div>
@@ -179,7 +179,7 @@ $__ = function ($k) use ($t, $lang) { return $t[$k][$lang] ?? $t[$k]['en'] ?? $k
 <section class="section section-dark cta-section">
   <div class="container" style="text-align:center;">
     <h2><?php echo esc_html($__('cta_t')); ?></h2>
-    <a class="btn btn-white btn-lg" href="<?php echo esc_url(rinometry_page_url('evaluation')); ?>"><?php echo esc_html($__('cta_btn')); ?></a>
+    <a class="btn btn-white btn-lg" href="<?php echo esc_url(rinometry_page_url('contact')); ?>"><?php echo esc_html($__('cta_btn')); ?></a>
   </div>
 </section>
 

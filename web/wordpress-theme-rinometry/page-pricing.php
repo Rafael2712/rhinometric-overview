@@ -71,7 +71,7 @@ $tiers = [
           <li><?php echo esc_html($__("{$k}_f4")); ?></li>
         </ul>
         <a class="btn <?php echo $tier['highlight'] ? 'btn-primary' : 'btn-outline'; ?>"
-           href="<?php echo esc_url(rinometry_page_url('evaluation')); ?>">
+           href="<?php echo esc_url(rinometry_page_url('contact')); ?>">
           <?php echo esc_html($__('cta_btn')); ?>
         </a>
       </div>

@@ -14,6 +14,18 @@ if (!defined('ABSPATH')) {
 require_once get_template_directory() . '/inc/rhinometric-leads.php';
 
 /* ------------------------------------------------------------------
+   Redirect /evaluation/ → /contact/ (301 permanent)
+   Unified form: all "Request an Evaluation" and "Contact" use /contact/
+   ------------------------------------------------------------------ */
+function rinometry_redirect_evaluation_to_contact() {
+    if (is_page('evaluation')) {
+        wp_redirect(home_url('/contact/'), 301);
+        exit;
+    }
+}
+add_action('template_redirect', 'rinometry_redirect_evaluation_to_contact');
+
+/* ------------------------------------------------------------------
    Theme setup
    ------------------------------------------------------------------ */
 function rinometry_setup() {

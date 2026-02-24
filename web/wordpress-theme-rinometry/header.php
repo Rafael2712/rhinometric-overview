@@ -33,7 +33,7 @@
     <!-- Header actions: lang + CTA -->
     <div class="header-actions">
       <?php rinometry_language_switcher(); ?>
-      <a class="btn btn-primary btn-sm" href="<?php echo esc_url(rinometry_page_url('evaluation')); ?>">
+      <a class="btn btn-primary btn-sm" href="<?php echo esc_url(rinometry_page_url('contact')); ?>">
         <?php esc_html_e('Request an Evaluation', 'rinometry'); ?>
       </a>
     </div>
@@ -52,7 +52,7 @@
     <?php rinometry_v3_nav_links(); ?>
   </nav>
   <div class="mobile-nav-actions">
-    <a class="btn btn-primary" href="<?php echo esc_url(rinometry_page_url('evaluation')); ?>">
+    <a class="btn btn-primary" href="<?php echo esc_url(rinometry_page_url('contact')); ?>">
       <?php esc_html_e('Request an Evaluation', 'rinometry'); ?>
     </a>
   </div>

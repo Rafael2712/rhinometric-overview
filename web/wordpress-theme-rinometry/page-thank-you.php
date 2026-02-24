@@ -21,7 +21,7 @@ get_header();
       </div>
     </div>
     <div style="margin-top: 2rem;">
-      <a class="btn btn-secondary" href="<?php echo esc_url(rinometry_page_url('evaluation')); ?>">
+      <a class="btn btn-secondary" href="<?php echo esc_url(rinometry_page_url('contact')); ?>">
         <?php esc_html_e('Need help? Request an evaluation', 'rinometry'); ?>
       </a>
     </div>

@@ -2,13 +2,15 @@
 /**
  * rhinometric-leads.php — Contact form backend
  *
- * Email via Zoho SMTP (smtp.zoho.com:587, STARTTLS).
+ * Email via Zoho SMTP (smtp.zoho.eu:587, STARTTLS).
+ * From: rafael.canelon@rhinometric.com (real account, no alias yet).
  * No SendGrid. No sendmail. No mail().
  * Persistent lead storage via WP CPT (contact_lead).
+ * GDPR consent evidence logged per submission.
  * Full logging on every request + email attempt.
  *
  * Required wp_option (Settings → General):
- *   rhinometric_zoho_smtp_password  — App Password for sales@rhinometric.com
+ *   rhinometric_zoho_smtp_password  — App Password for rafael.canelon@rhinometric.com
  */
 
 if (!defined('ABSPATH')) {
@@ -26,13 +28,13 @@ function rhinometric_leads_register_settings() {
     ]);
     add_settings_field(
         'rhinometric_zoho_smtp_password',
-        'Zoho SMTP Password (sales@rhinometric.com)',
+        'Zoho SMTP Password (rafael.canelon@rhinometric.com)',
         function () {
             $val = esc_attr(get_option('rhinometric_zoho_smtp_password', ''));
             echo '<input type="password" id="rhinometric_zoho_smtp_password" '
                 . 'name="rhinometric_zoho_smtp_password" value="' . $val
                 . '" class="regular-text" autocomplete="off" />'
-                . '<p class="description">App Password from Zoho for sales@rhinometric.com</p>';
+                . '<p class="description">App Password from Zoho for rafael.canelon@rhinometric.com</p>';
         },
         'general'
     );
@@ -55,11 +57,11 @@ function rhinometric_configure_zoho_smtp($phpmailer) {
     $phpmailer->Port       = 587;
     $phpmailer->SMTPSecure = 'tls';
     $phpmailer->SMTPAuth   = true;
-    $phpmailer->Username   = 'sales@rhinometric.com';
+    $phpmailer->Username   = 'rafael.canelon@rhinometric.com';
     $phpmailer->Password   = $password;
 
-    // Force From — never let WP override this
-    $phpmailer->From     = 'sales@rhinometric.com';
+    // Force From — real account, no alias until configured
+    $phpmailer->From     = 'rafael.canelon@rhinometric.com';
     $phpmailer->FromName = 'Rhinometric';
 
     // Enable debug logging to error_log (level 2 = full SMTP conversation)
@@ -72,7 +74,7 @@ add_action('phpmailer_init', 'rhinometric_configure_zoho_smtp');
    3. Force From header (belt + suspenders with phpmailer_init above)
    ========================================================================== */
 function rhinometric_force_from_email($email) {
-    return 'sales@rhinometric.com';
+    return 'rafael.canelon@rhinometric.com';
 }
 function rhinometric_force_from_name($name) {
     return 'Rhinometric';
@@ -101,7 +103,7 @@ add_action('init', 'rhinometric_register_cpt_contact_leads');
    5. Request ID
    ========================================================================== */
 function rhinometric_generate_request_id() {
-    return 'REQ-' . strtoupper(bin2hex(random_bytes(6)));
+    return 'REQ-' . strtoupper(bin2hex(random_bytes(8)));
 }
 
 /* ==========================================================================
@@ -155,7 +157,7 @@ function rhinometric_send_mail($to, $subject, $body, $reply_to = '', $request_id
 function rhinometric_save_lead($data, $request_id) {
     $post_id = wp_insert_post([
         'post_type'   => 'contact_lead',
-        'post_title'  => $data['role'] . ' — ' . $data['email'],
+        'post_title'  => ($data['role'] ?: 'Contact') . ' — ' . $data['email'],
         'post_status' => 'private',
     ]);
 
@@ -173,8 +175,11 @@ function rhinometric_save_lead($data, $request_id) {
         '_rino_role'            => $data['role'],
         '_rino_comments'        => $data['comments'],
         '_rino_lang'            => $data['lang'],
-        '_rino_ip'              => isset($_SERVER['REMOTE_ADDR'])
-            ? sanitize_text_field(wp_unslash($_SERVER['REMOTE_ADDR'])) : '',
+        '_rino_ip'              => $data['ip'],
+        '_rino_user_agent'      => $data['user_agent'],
+        '_rino_page_url'        => $data['page_url'],
+        '_rino_consent'         => $data['consent'] ? 'true' : 'false',
+        '_rino_consent_ts'      => $data['consent_ts'],
         '_rino_submitted_at'    => current_time('mysql'),
         '_rino_email_internal'  => 'pending',
         '_rino_email_user'      => 'pending',
@@ -220,6 +225,15 @@ function rhinometric_handle_contact_submit() {
     $role     = sanitize_text_field(wp_unslash($_POST['role'] ?? ''));
     $comments = sanitize_textarea_field(wp_unslash($_POST['comments'] ?? ''));
     $lang     = sanitize_text_field(wp_unslash($_POST['lang'] ?? 'en'));
+    $consent  = !empty($_POST['gdpr_consent']);
+    $page_url = esc_url_raw(wp_unslash($_POST['page_url'] ?? ''));
+
+    // Evidence fields
+    $ip         = isset($_SERVER['REMOTE_ADDR'])
+        ? sanitize_text_field(wp_unslash($_SERVER['REMOTE_ADDR'])) : 'unknown';
+    $user_agent = isset($_SERVER['HTTP_USER_AGENT'])
+        ? sanitize_text_field(wp_unslash($_SERVER['HTTP_USER_AGENT'])) : 'unknown';
+    $consent_ts = gmdate('Y-m-d\TH:i:s\Z'); // UTC ISO-8601
 
     // --- Validate required ---
     $errors = [];
@@ -238,6 +252,11 @@ function rhinometric_handle_contact_submit() {
             ? 'El cargo es obligatorio.'
             : 'Role is required.';
     }
+    if (!$consent) {
+        $errors['gdpr_consent'] = ($lang === 'es')
+            ? 'Debes aceptar la política de privacidad para continuar.'
+            : 'You must agree to the Privacy Policy to continue.';
+    }
 
     if (!empty($errors)) {
         rhinometric_log($request_id, 'VALIDATION_FAIL', $errors);
@@ -246,11 +265,16 @@ function rhinometric_handle_contact_submit() {
 
     // --- 1. Save lead FIRST (before any email attempt) ---
     $lead_data = [
-        'email'    => $email,
-        'phone'    => $phone,
-        'role'     => $role,
-        'comments' => $comments,
-        'lang'     => $lang,
+        'email'      => $email,
+        'phone'      => $phone,
+        'role'       => $role,
+        'comments'   => $comments,
+        'lang'       => $lang,
+        'ip'         => $ip,
+        'user_agent' => $user_agent,
+        'page_url'   => $page_url,
+        'consent'    => $consent,
+        'consent_ts' => $consent_ts,
     ];
     $post_id = rhinometric_save_lead($lead_data, $request_id);
 
@@ -258,17 +282,15 @@ function rhinometric_handle_contact_submit() {
         rhinometric_log($request_id, 'SUBMIT_FAIL: Could not save lead');
         wp_send_json_error([
             'message' => ($lang === 'es')
-                ? 'No pudimos procesar la solicitud. Inténtalo de nuevo o escríbenos a sales@rhinometric.com'
-                : 'Could not process the request. Try again or email sales@rhinometric.com',
+                ? 'No pudimos procesar la solicitud. Inténtalo de nuevo o escríbenos a rafael.canelon@rhinometric.com'
+                : 'Could not process the request. Try again or email rafael.canelon@rhinometric.com',
         ], 500);
     }
 
-    // --- 2. Send internal email to lead recipient ---
-    // NOTE: Cannot send FROM sales@ TO sales@ — Zoho puts it in Sent
-    // but never delivers to Inbox. Use a different recipient.
+    // --- 2. EMAIL #1: Internal notification ---
     $internal_recipient = rinometry_get_lead_recipient(); // rafael.canelon@rhinometric.com
     $timestamp     = current_time('Y-m-d H:i:s T');
-    $internal_subj = "[Rhinometric] New contact request — {$role}";
+    $internal_subj = "[Rhinometric] New request — " . ($role ?: 'Contact') . " — {$request_id}";
     $internal_body = implode("\n", [
         "New contact request received.",
         "",
@@ -278,10 +300,15 @@ function rhinometric_handle_contact_submit() {
         "Comments:   " . ($comments ?: '—'),
         "",
         "Timestamp:  {$timestamp}",
+        "Page:       {$page_url}",
+        "IP:         {$ip}",
+        "UA:         {$user_agent}",
+        "Consent:    TRUE",
+        "Consent TS: {$consent_ts}",
         "Request ID: {$request_id}",
     ]);
 
-    $sales_ok = rhinometric_send_mail(
+    $internal_ok = rhinometric_send_mail(
         $internal_recipient,
         $internal_subj,
         $internal_body,
@@ -289,32 +316,27 @@ function rhinometric_handle_contact_submit() {
         $request_id
     );
 
-    update_post_meta($post_id, '_rino_email_internal', $sales_ok ? 'sent' : 'failed');
-    if (!$sales_ok) {
+    update_post_meta($post_id, '_rino_email_internal', $internal_ok ? 'sent' : 'failed');
+    if (!$internal_ok) {
         global $phpmailer;
         $err = (isset($phpmailer) && is_object($phpmailer)) ? $phpmailer->ErrorInfo : 'unknown';
         update_post_meta($post_id, '_rino_email_internal_error', $err);
-
-        rhinometric_log($request_id, 'SUBMIT_EMAIL_FAIL: Internal email failed, skipping user confirmation');
-        wp_send_json_error([
-            'message' => ($lang === 'es')
-                ? 'No pudimos enviar la solicitud. Inténtalo de nuevo o escríbenos a sales@rhinometric.com'
-                : 'Could not send the request. Try again or email sales@rhinometric.com',
-            'request_id' => $request_id,
-        ], 500);
+        rhinometric_log($request_id, 'INTERNAL_SEND_FAIL', ['error' => $err]);
     }
 
-    // --- 3. Send confirmation email to user (only if internal succeeded) ---
-    $user_subj = 'We received your request — Rhinometric';
-
-    $user_body = implode("\n", [
-        "Hi,",
+    // --- 3. EMAIL #2: Autoreply to user (always attempted, independent of internal) ---
+    $privacy_url = home_url('/privacy-cookies/');
+    $user_subj   = 'We received your request — Rhinometric';
+    $user_body   = implode("\n", [
+        "Hi there,",
         "",
         "We've received your request. Our team will contact you within 24–48 hours.",
         "",
-        "If you did not submit this request, you can ignore this email.",
+        "If you didn't submit this request, you can ignore this email.",
         "",
-        "By submitting the form, you consent to be contacted regarding your request.",
+        "Privacy Policy: {$privacy_url}",
+        "",
+        "Request ID: {$request_id}",
         "",
         "— Rhinometric",
     ]);
@@ -323,7 +345,7 @@ function rhinometric_handle_contact_submit() {
         $email,
         $user_subj,
         $user_body,
-        'sales@rhinometric.com',   // Reply-To = sales
+        'rafael.canelon@rhinometric.com',   // Reply-To
         $request_id
     );
 
@@ -332,9 +354,26 @@ function rhinometric_handle_contact_submit() {
         global $phpmailer;
         $err = (isset($phpmailer) && is_object($phpmailer)) ? $phpmailer->ErrorInfo : 'unknown';
         update_post_meta($post_id, '_rino_email_user_error', $err);
+        rhinometric_log($request_id, 'AUTOREPLY_SEND_FAIL', ['error' => $err]);
     }
 
-    // --- 4. Success (internal sent, user may or may not have sent) ---
+    // --- 4. Determine response ---
+    // Internal fail = 500. Autoreply fail is logged but still returns success to user.
+    if (!$internal_ok) {
+        rhinometric_log($request_id, 'SUBMIT_PARTIAL_FAIL', [
+            'post_id'  => $post_id,
+            'internal' => 'failed',
+            'user'     => $user_ok ? 'sent' : 'failed',
+        ]);
+        wp_send_json_error([
+            'message' => ($lang === 'es')
+                ? 'No pudimos enviar la solicitud. Inténtalo de nuevo o escríbenos a rafael.canelon@rhinometric.com'
+                : 'Could not send the request. Try again or email rafael.canelon@rhinometric.com',
+            'request_id' => $request_id,
+        ], 500);
+    }
+
+    // --- 5. Success (internal sent; autoreply may or may not have sent) ---
     rhinometric_log($request_id, 'SUBMIT_OK', [
         'post_id'  => $post_id,
         'internal' => 'sent',
@@ -387,6 +426,7 @@ function rhinometric_render_recent_leads_page() {
     echo '<table class="widefat striped"><thead><tr>'
         . '<th>Request ID</th><th>Email</th><th>Phone</th>'
         . '<th>Role</th><th>Comments</th>'
+        . '<th>Consent</th><th>IP</th>'
         . '<th>Internal Email</th><th>User Email</th>'
         . '<th>Date</th>'
         . '</tr></thead><tbody>';
@@ -406,6 +446,8 @@ function rhinometric_render_recent_leads_page() {
             . '<td>' . $m('_rino_phone') . '</td>'
             . '<td>' . $m('_rino_role') . '</td>'
             . '<td>' . $m('_rino_comments') . '</td>'
+            . '<td>' . $m('_rino_consent') . '</td>'
+            . '<td>' . $m('_rino_ip') . '</td>'
             . '<td style="' . $int_class . '">' . $int_status . '</td>'
             . '<td style="' . $usr_class . '">' . $usr_status . '</td>'
             . '<td>' . esc_html($lead->post_date) . '</td>'
@@ -442,6 +484,9 @@ function rhinometric_export_contact_leads_handler() {
             'phone'          => get_post_meta($lead->ID, '_rino_phone', true),
             'role'           => get_post_meta($lead->ID, '_rino_role', true),
             'comments'       => get_post_meta($lead->ID, '_rino_comments', true),
+            'consent'        => get_post_meta($lead->ID, '_rino_consent', true),
+            'ip'             => get_post_meta($lead->ID, '_rino_ip', true),
+            'page_url'       => get_post_meta($lead->ID, '_rino_page_url', true),
             'email_internal' => get_post_meta($lead->ID, '_rino_email_internal', true),
             'email_user'     => get_post_meta($lead->ID, '_rino_email_user', true),
             'date'           => $lead->post_date,
@@ -455,7 +500,7 @@ function rhinometric_export_contact_leads_handler() {
     header('Content-Type: text/csv; charset=utf-8');
     header('Content-Disposition: attachment; filename=contact-leads-' . gmdate('Y-m-d') . '.csv');
     $out = fopen('php://output', 'w');
-    fputcsv($out, ['request_id','email','phone','role','comments','email_internal','email_user','date']);
+    fputcsv($out, ['request_id','email','phone','role','comments','consent','ip','page_url','email_internal','email_user','date']);
     foreach ($rows as $row) {
         fputcsv($out, $row);
     }
