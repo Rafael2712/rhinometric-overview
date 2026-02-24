@@ -2,7 +2,7 @@
 /**
  * Template Name: Contact
  *
- * 5-field lead form. Emails via SendGrid API.
+ * 4-field lead form. Emails via Zoho SMTP.
  * No double opt-in. No confirmation link.
  */
 get_header();
@@ -20,7 +20,6 @@ $t = [
 
     'label_email'   => ['en' => 'Email',                                 'es' => 'Email'],
     'label_phone'   => ['en' => 'Phone',                                 'es' => 'Teléfono'],
-    'label_company' => ['en' => 'Company',                               'es' => 'Empresa'],
     'label_role'    => ['en' => 'Role / Title',                          'es' => 'Cargo'],
     'label_comments'=> ['en' => 'Comments (optional)',                   'es' => 'Comentarios (opcional)'],
 
@@ -95,14 +94,7 @@ $__ = function ($key) use ($t, $lang) {
             <span class="field-error" data-field="phone"></span>
           </div>
 
-          <!-- 3. Company -->
-          <div class="form-field">
-            <label for="company"><?php echo esc_html($__('label_company')); ?> <span aria-hidden="true">*</span></label>
-            <input id="company" name="company" type="text" required autocomplete="organization">
-            <span class="field-error" data-field="company"></span>
-          </div>
-
-          <!-- 4. Role -->
+          <!-- 3. Role -->
           <div class="form-field">
             <label for="role"><?php echo esc_html($__('label_role')); ?> <span aria-hidden="true">*</span></label>
             <input id="role" name="role" type="text" required
@@ -110,7 +102,7 @@ $__ = function ($key) use ($t, $lang) {
             <span class="field-error" data-field="role"></span>
           </div>
 
-          <!-- 5. Comments (optional) -->
+          <!-- 4. Comments (optional) -->
           <div class="form-field">
             <label for="comments"><?php echo esc_html($__('label_comments')); ?></label>
             <textarea id="comments" name="comments" rows="3"

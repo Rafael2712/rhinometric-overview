@@ -9,7 +9,7 @@ if (!defined('ABSPATH')) {
 }
 
 /* ------------------------------------------------------------------
-   Lead capture backend (SendGrid API, lead storage, logging)
+   Lead capture backend (Zoho SMTP, lead storage, logging)
    ------------------------------------------------------------------ */
 require_once get_template_directory() . '/inc/rhinometric-leads.php';
 
