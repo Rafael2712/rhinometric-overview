@@ -18,7 +18,7 @@ $t = [
     'hero_lead'     => ['en' => 'Rhinometric identifies behavioral deviations across your metrics and connects them with logs and traces — so your team can diagnose faster, with full operational context in one place.', 'es' => 'Rhinometric identifica desviaciones de comportamiento en tus métricas y las conecta con logs y trazas — para que tu equipo diagnostique más rápido, con contexto operativo completo en un solo lugar.'],
     'hero_trust'    => ['en' => 'One operational interface. Correlated signals. Faster decisions. Built for SRE and Platform teams who own uptime and incident response.', 'es' => 'Una interfaz operativa. Señales correlacionadas. Decisiones más rápidas. Diseñado para equipos SRE y de Plataforma responsables del uptime y la respuesta a incidentes.'],
     'hero_cta_1'    => ['en' => 'Request an Evaluation', 'es' => 'Solicitar evaluación'],
-    'hero_cta_2'    => ['en' => 'Explore the Platform', 'es' => 'Explorar la plataforma'],
+    'hero_cta_2'    => ['en' => 'See anomaly detection in action →', 'es' => 'Ver detección de anomalías en acción →'],
 
     /* ---- Unified Operational Interface (7 capabilities) ---- */
     'ops_title'     => ['en' => 'From scattered signals to guided investigation', 'es' => 'De señales dispersas a investigación guiada'],

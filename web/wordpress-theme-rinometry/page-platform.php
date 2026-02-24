@@ -14,7 +14,7 @@ $t = [
     'c2_d'    => ['en' => 'Opinionated dashboards, Alertmanager-based alerts, and runbooks to accelerate incident response. AI-powered anomaly detection to surface unusual patterns and reduce alert noise.', 'es' => 'Dashboards prediseñados, alertas basadas en Alertmanager y runbooks para acelerar la respuesta a incidentes. Detección de anomalías potenciada por IA para identificar patrones inusuales y reducir el ruido de alertas.'],
     'c3_t'    => ['en' => 'Enterprise governance', 'es' => 'Gobernanza empresarial'],
     'c3_d'    => ['en' => 'Role-based access, audit visibility, and secure integrations for regulated teams.', 'es' => 'Control de acceso basado en roles, visibilidad de auditoría e integraciones seguras para equipos regulados.'],
-    'comp_t'  => ['en' => 'Core components', 'es' => 'Componentes principales'],
+    'comp_t'  => ['en' => 'All in one operational flow', 'es' => 'Todo en un solo flujo operativo'],
     'comp_d'  => ['en' => 'Built on battle-tested open-source foundations.', 'es' => 'Construido sobre bases open-source probadas en producción.'],
     'cta_t'   => ['en' => 'See it in action', 'es' => 'Vélo en acción'],
     'cta_d'   => ['en' => 'Request an evaluation session for a personalized walkthrough of the Rhinometric platform.', 'es' => 'Solicita una sesión de evaluación para un recorrido personalizado de la plataforma Rhinometric.'],
@@ -22,10 +22,10 @@ $t = [
 ];
 $__ = function ($k) use ($t, $lang) { return $t[$k][$lang] ?? $t[$k]['en'] ?? $k; };
 $components = [
-    ['icon' => '📊', 'name' => 'Prometheus + VictoriaMetrics', 'desc' => ['en' => 'Metrics collection, long-term storage & high-performance queries', 'es' => 'Recolección de métricas, almacenamiento a largo plazo y consultas de alto rendimiento']],
-    ['icon' => '📋', 'name' => 'Loki',       'desc' => ['en' => 'Log aggregation with label-based queries', 'es' => 'Agregación de logs con consultas basadas en etiquetas']],
-    ['icon' => '🔗', 'name' => 'Jaeger',     'desc' => ['en' => 'Distributed tracing with service maps', 'es' => 'Trazas distribuidas con mapas de servicios']],
-    ['icon' => '📈', 'name' => 'Grafana',    'desc' => ['en' => 'Visualization, dashboards & alerting', 'es' => 'Visualización, dashboards y alertas']],
+    ['icon' => '📊', 'name' => 'Signals from: Prometheus + VictoriaMetrics', 'desc' => ['en' => 'Metrics collection, long-term storage & high-performance queries', 'es' => 'Recolección de métricas, almacenamiento a largo plazo y consultas de alto rendimiento']],
+    ['icon' => '📋', 'name' => 'Signals from: Loki',       'desc' => ['en' => 'Log aggregation with label-based queries', 'es' => 'Agregación de logs con consultas basadas en etiquetas']],
+    ['icon' => '🔗', 'name' => 'Signals from: Jaeger',     'desc' => ['en' => 'Distributed tracing with service maps', 'es' => 'Trazas distribuidas con mapas de servicios']],
+    ['icon' => '📈', 'name' => 'Signals from: Grafana',    'desc' => ['en' => 'Visualization, dashboards & alerting', 'es' => 'Visualización, dashboards y alertas']],
 ];
 $features = [
     ['icon' => '📈', 't' => ['en' => 'Dashboards', 'es' => 'Dashboards'], 'd' => ['en' => 'Grafana-native panels with real-time data, flexible layout, and built-in alerting.', 'es' => 'Paneles nativos de Grafana con datos en tiempo real, diseño flexible y alertas integradas.']],
