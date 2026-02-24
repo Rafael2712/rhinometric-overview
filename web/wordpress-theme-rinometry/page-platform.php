@@ -23,27 +23,25 @@ $t = [
     'ph_arch' => ['en' => 'Correlated investigation view — metrics → logs → traces (image will be inserted here)', 'es' => 'Vista de investigación correlacionada — métricas → logs → trazas (imagen pendiente)'],
 
     'anom_t'  => ['en' => 'Anomaly Detection', 'es' => 'Detección de anomalías'],
-    'anom_d1' => ['en' => 'Rhinometric analyzes time-series behavior using statistical baselines and established anomaly detection models such as Isolation Forest, LOF and Z-score.', 'es' => 'Rhinometric analiza el comportamiento de series temporales utilizando líneas base estadísticas y modelos de detección de anomalías establecidos como Isolation Forest, LOF y Z-score.'],
-    'anom_d2' => ['en' => 'When a deviation from expected behavior is identified, the platform highlights it and connects the anomaly to the relevant metrics, logs and traces required for investigation.', 'es' => 'Cuando se identifica una desviación del comportamiento esperado, la plataforma la destaca y conecta la anomalía con las métricas, logs y trazas relevantes necesarias para la investigación.'],
-    'anom_d3' => ['en' => 'The goal is not guaranteed prediction. The objective is faster, structured understanding of abnormal behavior.', 'es' => 'El objetivo no es predicción garantizada. El objetivo es una comprensión más rápida y estructurada del comportamiento anormal.'],
+    'anom_d1' => ['en' => 'Rhinometric uses statistical baselines and models such as Isolation Forest, LOF and Z-score to detect deviations in time-series behavior and connect them to the relevant metrics, logs and traces.', 'es' => 'Rhinometric utiliza líneas base estadísticas y modelos como Isolation Forest, LOF y Z-score para detectar desviaciones en el comportamiento de series temporales y conectarlas con las métricas, logs y trazas relevantes.'],
+    'anom_d3' => ['en' => 'The goal is not guaranteed prediction.', 'es' => 'El objetivo no es predicción garantizada.'],
     'ph_anom' => ['en' => 'AI anomaly view — baseline vs deviation (image will be inserted here)', 'es' => 'Vista de anomalía IA — línea base vs desviación (imagen pendiente)'],
 
     'wf_t'    => ['en' => 'Operational Workflow', 'es' => 'Flujo de trabajo operativo'],
     'wf_intro'=> ['en' => 'When an anomaly appears:', 'es' => 'Cuando aparece una anomalía:'],
     'wf_items'=> [
-        'en' => ['The deviation is shown against its behavioral baseline', 'Related metrics are accessible immediately', 'Logs can be inspected without switching systems', 'Relevant traces can be explored within the same context'],
-        'es' => ['La desviación se muestra contra su línea base de comportamiento', 'Las métricas relacionadas son accesibles de inmediato', 'Los logs se pueden inspeccionar sin cambiar de sistema', 'Las trazas relevantes se pueden explorar en el mismo contexto'],
+        'en' => ['Baseline deviation surfaced automatically', 'Related metrics accessible in context', 'Logs inspected without switching tools', 'Traces explored within the same flow'],
+        'es' => ['Desviación de línea base detectada automáticamente', 'Métricas relacionadas accesibles en contexto', 'Logs inspeccionados sin cambiar de herramienta', 'Trazas exploradas en el mismo flujo'],
     ],
-    'wf_close'=> ['en' => 'The workflow is consistent and contained within one interface. This reduces context switching and cognitive overhead during incident response.', 'es' => 'El flujo de trabajo es consistente y está contenido en una sola interfaz. Esto reduce el cambio de contexto y la carga cognitiva durante la respuesta a incidentes.'],
+    'wf_example_t' => ['en' => 'Example scenario:', 'es' => 'Escenario de ejemplo:'],
+    'wf_example'   => ['en' => 'A latency deviation is detected in a production service. Related metrics and recent logs surface automatically. A trace confirms the upstream dependency causing the spike.', 'es' => 'Se detecta una desviación de latencia en un servicio en producción. Las métricas relacionadas y los logs recientes aparecen automáticamente. Una traza confirma la dependencia upstream que causa el pico.'],
 
     'why_t'   => ['en' => 'Operational Complexity', 'es' => 'Complejidad operativa'],
-    'why_intro'=> ['en' => 'Installing observability tools is straightforward. Operating them coherently over time is not. What becomes challenging is not setup, but operational cohesion:', 'es' => 'Instalar herramientas de observabilidad es sencillo. Operarlas de forma coherente a lo largo del tiempo no lo es. Lo que se vuelve desafiante no es la configuración, sino la cohesión operativa:'],
+    'why_intro'=> ['en' => 'Installing tools is straightforward. Operating them coherently is not:', 'es' => 'Instalar herramientas es sencillo. Operarlas de forma coherente no lo es:'],
     'why_items'=> [
-        'en' => ['Maintaining ingestion, storage and retention policies', 'Correlating signals across different systems', 'Tuning anomaly detection and thresholds', 'Managing access control and security', 'Validating performance at scale', 'Keeping the stack stable as infrastructure evolves'],
-        'es' => ['Mantener políticas de ingesta, almacenamiento y retención', 'Correlacionar señales entre diferentes sistemas', 'Ajustar detección de anomalías y umbrales', 'Gestionar control de acceso y seguridad', 'Validar rendimiento a escala', 'Mantener el stack estable a medida que la infraestructura evoluciona'],
+        'en' => ['Maintaining ingestion, storage and retention policies', 'Correlating signals across different systems', 'Tuning anomaly detection and thresholds', 'Managing access control and security', 'Keeping the stack stable as infrastructure evolves'],
+        'es' => ['Mantener políticas de ingesta, almacenamiento y retención', 'Correlacionar señales entre diferentes sistemas', 'Ajustar detección de anomalías y umbrales', 'Gestionar control de acceso y seguridad', 'Mantener el stack estable a medida que la infraestructura evoluciona'],
     ],
-    'why_close1'=> ['en' => 'Rhinometric packages these elements into a validated and cohesive system built on open standards.', 'es' => 'Rhinometric empaqueta estos elementos en un sistema validado y cohesivo construido sobre estándares abiertos.'],
-    'why_close2'=> ['en' => 'It is not a replacement for open-source tools. It is an operational layer that integrates them with structured detection and workflow logic.', 'es' => 'No es un reemplazo de las herramientas open-source. Es una capa operativa que las integra con detección estructurada y lógica de flujo de trabajo.'],
 
     'perf_t'  => ['en' => 'Performance &amp; Validation', 'es' => 'Rendimiento y validación'],
     'perf_d'  => ['en' => 'Rhinometric v2.6.0 has been validated under sustained workload conditions:', 'es' => 'Rhinometric v2.6.0 ha sido validado bajo condiciones de carga sostenida:'],
@@ -54,17 +52,13 @@ $t = [
     'perf_note'=> ['en' => 'These figures reflect sustained validation of the integrated platform under load.', 'es' => 'Estas cifras reflejan la validación sostenida de la plataforma integrada bajo carga.'],
 
     'dep_t'   => ['en' => 'Deployment', 'es' => 'Despliegue'],
-    'dep_d'   => ['en' => 'Rhinometric supports two deployment models depending on operational requirements.', 'es' => 'Rhinometric soporta dos modelos de despliegue según los requisitos operativos.'],
-    'dep_1_t' => ['en' => 'On-premise', 'es' => 'On-premise'],
-    'dep_1_d' => ['en' => 'Deployed within customer-managed infrastructure, preserving full data locality and network isolation.', 'es' => 'Desplegado en infraestructura gestionada por el cliente, preservando la localidad total de datos y el aislamiento de red.'],
-    'dep_2_t' => ['en' => 'Single-tenant VM (EU)', 'es' => 'VM single-tenant (UE)'],
-    'dep_2_d' => ['en' => 'Deployed in a dedicated and isolated virtual machine, with full data control and no shared runtime between customers.', 'es' => 'Desplegado en una máquina virtual dedicada y aislada, con control total de datos y sin runtime compartido entre clientes.'],
-    'dep_note'=> ['en' => 'Platform updates are managed in coordination with the customer to preserve operational stability.', 'es' => 'Las actualizaciones de la plataforma se gestionan en coordinación con el cliente para preservar la estabilidad operativa.'],
+    'dep_body'=> ['en' => 'Deployment options for Rhinometric are documented separately.', 'es' => 'Las opciones de despliegue de Rhinometric están documentadas por separado.'],
+    'dep_link'=> ['en' => 'See Deployment', 'es' => 'Ver Despliegue'],
+    'dep_link_after'=> ['en' => 'for installation and operational details.', 'es' => 'para detalles de instalación y operación.'],
 
-    'close_d' => ['en' => 'Rhinometric is not a monitoring dashboard. It is a detection and operational workflow layer built on proven observability foundations, designed to reduce investigation time and improve clarity during incident response.', 'es' => 'Rhinometric no es un dashboard de monitorización. Es una capa de detección y flujo de trabajo operativo construida sobre fundamentos de observabilidad probados, diseñada para reducir el tiempo de investigación y mejorar la claridad durante la respuesta a incidentes.'],
+    'close_d' => ['en' => 'For SRE, Platform and DevOps teams responsible for uptime — especially in regulated or on-prem environments.', 'es' => 'Para equipos SRE, Plataforma y DevOps responsables del uptime — especialmente en entornos regulados u on-prem.'],
 
     'cta_t'   => ['en' => 'See it in action', 'es' => 'Vélo en acción'],
-    'cta_d'   => ['en' => 'Request an evaluation session for a personalized walkthrough of the Rhinometric platform.', 'es' => 'Solicita una sesión de evaluación para un recorrido personalizado de la plataforma Rhinometric.'],
     'cta_btn' => ['en' => 'Request an Evaluation', 'es' => 'Solicitar evaluación'],
 ];
 $__ = function ($k) use ($t, $lang) { return $t[$k][$lang] ?? $t[$k]['en'] ?? $k; };
@@ -125,7 +119,6 @@ $__ = function ($k) use ($t, $lang) { return $t[$k][$lang] ?? $t[$k]['en'] ?? $k
   <div class="container">
     <h2 class="section-title"><?php echo esc_html($__('anom_t')); ?></h2>
     <p><?php echo esc_html($__('anom_d1')); ?></p>
-    <p><?php echo esc_html($__('anom_d2')); ?></p>
     <p><?php echo esc_html($__('anom_d3')); ?></p>
     <div class="platform-frame">
       <span class="platform-frame-label"><?php echo esc_html($__('ph_anom')); ?></span>
@@ -136,13 +129,12 @@ $__ = function ($k) use ($t, $lang) { return $t[$k][$lang] ?? $t[$k]['en'] ?? $k
 <section class="section">
   <div class="container">
     <h2 class="section-title"><?php echo esc_html($__('wf_t')); ?></h2>
-    <p><?php echo esc_html($__('wf_intro')); ?></p>
     <ul class="check-list">
       <?php foreach ($t['wf_items'][$lang] ?? $t['wf_items']['en'] as $item) : ?>
       <li><?php echo esc_html($item); ?></li>
       <?php endforeach; ?>
     </ul>
-    <p><?php echo esc_html($__('wf_close')); ?></p>
+    <p><strong><?php echo esc_html($__('wf_example_t')); ?></strong><br><?php echo esc_html($__('wf_example')); ?></p>
   </div>
 </section>
 
@@ -155,8 +147,6 @@ $__ = function ($k) use ($t, $lang) { return $t[$k][$lang] ?? $t[$k]['en'] ?? $k
       <li><?php echo esc_html($item); ?></li>
       <?php endforeach; ?>
     </ul>
-    <p><?php echo esc_html($__('why_close1')); ?></p>
-    <p><?php echo esc_html($__('why_close2')); ?></p>
   </div>
 </section>
 
@@ -176,18 +166,7 @@ $__ = function ($k) use ($t, $lang) { return $t[$k][$lang] ?? $t[$k]['en'] ?? $k
 <section class="section section-alt">
   <div class="container">
     <h2 class="section-title"><?php echo esc_html($__('dep_t')); ?></h2>
-    <p><?php echo esc_html($__('dep_d')); ?></p>
-    <div class="grid-2">
-      <div class="card">
-        <h3 class="card-title"><?php echo esc_html($__('dep_1_t')); ?></h3>
-        <p><?php echo esc_html($__('dep_1_d')); ?></p>
-      </div>
-      <div class="card">
-        <h3 class="card-title"><?php echo esc_html($__('dep_2_t')); ?></h3>
-        <p><?php echo esc_html($__('dep_2_d')); ?></p>
-      </div>
-    </div>
-    <p style="margin-top:1rem;"><?php echo esc_html($__('dep_note')); ?></p>
+    <p><?php echo esc_html($__('dep_body')); ?> <a href="<?php echo esc_url(rinometry_page_url('deployment')); ?>"><?php echo esc_html($__('dep_link')); ?></a> <?php echo esc_html($__('dep_link_after')); ?></p>
   </div>
 </section>
 
@@ -200,7 +179,6 @@ $__ = function ($k) use ($t, $lang) { return $t[$k][$lang] ?? $t[$k]['en'] ?? $k
 <section class="section section-dark cta-section">
   <div class="container" style="text-align:center;">
     <h2><?php echo esc_html($__('cta_t')); ?></h2>
-    <p class="cta-lead"><?php echo esc_html($__('cta_d')); ?></p>
     <a class="btn btn-white btn-lg" href="<?php echo esc_url(rinometry_page_url('evaluation')); ?>"><?php echo esc_html($__('cta_btn')); ?></a>
   </div>
 </section>
