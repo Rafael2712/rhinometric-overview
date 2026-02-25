@@ -30,15 +30,10 @@ $t = [
     /* Section headers */
     'section_id'       => ['en' => 'Identification',            'es' => 'Identificación'],
     'section_intent'   => ['en' => 'What are you looking for?', 'es' => '¿Qué estás buscando?'],
-    'section_context'  => ['en' => 'Technical context',         'es' => 'Contexto técnico'],
-    'section_message'  => ['en' => 'Additional details',        'es' => 'Detalles adicionales'],
-
     /* Fields */
     'label_fullname'   => ['en' => 'Full name',                 'es' => 'Nombre y apellido'],
     'label_email'      => ['en' => 'Email',                     'es' => 'Email'],
     'label_company'    => ['en' => 'Company',                   'es' => 'Empresa'],
-    'label_role'       => ['en' => 'Role in the company',       'es' => 'Rol en la empresa'],
-    'label_env_size'   => ['en' => 'Approximate environment size', 'es' => 'Tamaño aproximado del entorno'],
     'label_phone'      => ['en' => 'Phone (optional)',          'es' => 'Teléfono (opcional)'],
     'label_message'    => ['en' => 'Message (optional)',         'es' => 'Mensaje (opcional)'],
 
@@ -46,13 +41,6 @@ $t = [
     'intent_demo'    => ['en' => 'Request a demo',                  'es' => 'Solicitar una demo'],
     'intent_eval'    => ['en' => 'Evaluate Rhinometric for my team','es' => 'Evaluar Rhinometric para mi equipo'],
     'intent_info'    => ['en' => 'Receive more information',        'es' => 'Recibir más información'],
-
-    /* Env size options */
-    'env_placeholder' => ['en' => 'Select…',        'es' => 'Seleccionar…'],
-    'env_1_10'        => ['en' => '1–10 servers',    'es' => '1–10 servidores'],
-    'env_10_50'       => ['en' => '10–50 servers',   'es' => '10–50 servidores'],
-    'env_50_200'      => ['en' => '50–200 servers',  'es' => '50–200 servidores'],
-    'env_200_plus'    => ['en' => '200+ servers',    'es' => '200+ servidores'],
 
     /* Legal */
     'label_gdpr' => [
@@ -164,15 +152,15 @@ $__ = function ($key) use ($t, $lang) {
             <legend class="form-section__title"><?php echo esc_html($__('section_intent')); ?> <span aria-hidden="true">*</span></legend>
 
             <div class="form-field form-field--radios" id="intentionGroup">
-              <label class="radio-label">
+              <label class="radio-option">
                 <input type="radio" name="intention" value="demo" required>
                 <span><?php echo esc_html($__('intent_demo')); ?></span>
               </label>
-              <label class="radio-label">
+              <label class="radio-option">
                 <input type="radio" name="intention" value="evaluate">
                 <span><?php echo esc_html($__('intent_eval')); ?></span>
               </label>
-              <label class="radio-label">
+              <label class="radio-option">
                 <input type="radio" name="intention" value="info">
                 <span><?php echo esc_html($__('intent_info')); ?></span>
               </label>
@@ -180,38 +168,7 @@ $__ = function ($key) use ($t, $lang) {
             </div>
           </fieldset>
 
-          <!-- ═══ C) CONTEXT ═══ -->
-          <fieldset class="form-section">
-            <legend class="form-section__title"><?php echo esc_html($__('section_context')); ?></legend>
-
-            <div class="form-row form-row--2col">
-              <!-- Role (optional) -->
-              <div class="form-field">
-                <label for="role"><?php echo esc_html($__('label_role')); ?></label>
-                <input id="role" name="role" type="text"
-                       placeholder="<?php echo esc_attr($lang === 'es' ? 'Ej.: CTO, DevOps Lead' : 'e.g. CTO, DevOps Lead'); ?>">
-                <span class="field-error" data-field="role"></span>
-              </div>
-
-              <!-- Env size (conditionally required) -->
-              <div class="form-field" id="envSizeField">
-                <label for="env_size">
-                  <?php echo esc_html($__('label_env_size')); ?>
-                  <span class="env-required-star" aria-hidden="true" hidden>*</span>
-                </label>
-                <select id="env_size" name="env_size">
-                  <option value=""><?php echo esc_html($__('env_placeholder')); ?></option>
-                  <option value="1-10"><?php echo esc_html($__('env_1_10')); ?></option>
-                  <option value="10-50"><?php echo esc_html($__('env_10_50')); ?></option>
-                  <option value="50-200"><?php echo esc_html($__('env_50_200')); ?></option>
-                  <option value="200+"><?php echo esc_html($__('env_200_plus')); ?></option>
-                </select>
-                <span class="field-error" data-field="env_size"></span>
-              </div>
-            </div>
-          </fieldset>
-
-          <!-- ═══ D) PHONE ═══ -->
+          <!-- ═══ C) PHONE ═══ -->
           <div class="form-field">
             <label for="phone"><?php echo esc_html($__('label_phone')); ?></label>
             <input id="phone" name="phone" type="tel" autocomplete="tel"
@@ -286,25 +243,7 @@ $__ = function ($key) use ($t, $lang) {
     charCount.parentElement.classList.toggle('char-counter--limit', remaining === 0);
   });
 
-  /* ── Conditional env_size requirement ── */
-  var radios   = document.querySelectorAll('input[name="intention"]');
-  var envSelect= document.getElementById('env_size');
-  var envStar  = document.querySelector('.env-required-star');
 
-  function updateEnvRequired(){
-    var selected = document.querySelector('input[name="intention"]:checked');
-    var needsEnv = selected && (selected.value === 'demo' || selected.value === 'evaluate');
-    if (needsEnv) {
-      envSelect.setAttribute('required', '');
-      envStar.hidden = false;
-    } else {
-      envSelect.removeAttribute('required');
-      envStar.hidden = true;
-    }
-  }
-  for (var r = 0; r < radios.length; r++) {
-    radios[r].addEventListener('change', updateEnvRequired);
-  }
 
   /* ── Error helpers ── */
   function clearErrors(){
@@ -353,10 +292,6 @@ $__ = function ($key) use ($t, $lang) {
     }
     if (!intentSel) {
       showFieldError('intention', <?php echo wp_json_encode($lang === 'es' ? 'Selecciona una opción.' : 'Please select an option.'); ?>);
-      ok = false;
-    }
-    if (intentSel && (intentSel.value === 'demo' || intentSel.value === 'evaluate') && !envSelect.value) {
-      showFieldError('env_size', <?php echo wp_json_encode($lang === 'es' ? 'Este campo es obligatorio para demo/evaluación.' : 'This field is required for demo/evaluation requests.'); ?>);
       ok = false;
     }
     if (textarea.value.length > maxLen) {

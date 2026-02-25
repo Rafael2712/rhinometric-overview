@@ -689,50 +689,40 @@ ul, ol { padding-left: 1.25rem; }
   color: var(--white);
 }
 
-/* Radio group – infra console style */
+/* Radio group – plain standard */
 .form-field--radios {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 10px;
 }
-.radio-label {
+.radio-option {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 0 0.75rem;
-  min-height: 60px;
-  border: 1px solid rgba(255,255,255,0.10);
-  border-radius: var(--radius-sm);
   cursor: pointer;
-  transition: border-color 0.15s, background-color 0.15s;
-  font-size: 0.9rem;
-  color: rgba(255,255,255,0.78);
-  letter-spacing: 0.01em;
+  font-size: 0.88rem;
+  color: rgba(255,255,255,0.82);
+  line-height: 1.4;
+  padding: 4px 0;
+  -webkit-tap-highlight-color: transparent;
 }
-.radio-label:hover {
-  border-color: rgba(255,255,255,0.22);
-  background-color: rgba(255,255,255,0.02);
-}
-.radio-label:focus-within {
-  border-color: var(--teal);
-}
-/* Custom circular radio indicator */
-.radio-label input[type="radio"] {
+.radio-option input[type="radio"] {
   -webkit-appearance: none;
   -moz-appearance: none;
   appearance: none;
   width: 18px;
   height: 18px;
   min-width: 18px;
-  border: 1.5px solid rgba(255,255,255,0.30);
+  border: 1.5px solid rgba(255,255,255,0.35);
   border-radius: 50%;
   background: transparent;
   cursor: pointer;
   margin: 0;
   position: relative;
+  flex-shrink: 0;
   transition: border-color 0.15s;
 }
-.radio-label input[type="radio"]::after {
+.radio-option input[type="radio"]::after {
   content: '';
   position: absolute;
   top: 50%;
@@ -745,40 +735,33 @@ ul, ol { padding-left: 1.25rem; }
   opacity: 0;
   transition: opacity 0.12s ease;
 }
-.radio-label input[type="radio"]:checked {
+.radio-option input[type="radio"]:checked {
   border-color: var(--teal);
 }
-.radio-label input[type="radio"]:checked::after {
+.radio-option input[type="radio"]:checked::after {
   opacity: 1;
 }
-.radio-label input[type="radio"]:focus-visible {
-  outline: 2px solid rgba(14,165,165,0.45);
+.radio-option input[type="radio"]:focus-visible {
+  outline: 2px solid rgba(14,165,165,0.5);
   outline-offset: 2px;
 }
-.radio-label:has(input[type="radio"]:checked) {
-  border-color: rgba(14,165,165,0.40);
-  background-color: rgba(14,165,165,0.04);
-}
-.radio-label input[type="radio"]:checked + span {
+.radio-option input[type="radio"]:checked + span {
   color: rgba(255,255,255,0.95);
-  font-weight: 500;
 }
-/* Radio responsive: desktop compact */
+/* Radio responsive: desktop */
 @media (min-width: 600px) {
-  .radio-label {
-    min-height: 52px;
-    font-size: 0.88rem;
-  }
-  .radio-label input[type="radio"] {
+  .radio-option input[type="radio"] {
     width: 16px;
     height: 16px;
     min-width: 16px;
   }
-  .radio-label input[type="radio"]::after {
+  .radio-option input[type="radio"]::after {
     width: 7px;
     height: 7px;
   }
 }
+/* Radio error state */
+.contact-form .form-field--invalid .radio-option input[type="radio"] { border-color: #F87171; }
 
 /* Character counter */
 .char-counter {
@@ -802,7 +785,6 @@ ul, ol { padding-left: 1.25rem; }
 .contact-form .form-field--invalid input,
 .contact-form .form-field--invalid textarea,
 .contact-form .form-field--invalid select { border-color: #F87171; }
-.contact-form .form-field--invalid .radio-label { border-color: #F87171; }
 
 /* Valid state */
 .contact-form .form-field--valid input,
@@ -836,25 +818,26 @@ ul, ol { padding-left: 1.25rem; }
   cursor: not-allowed;
 }
 
-/* GDPR / marketing checkbox */
+/* GDPR / marketing checkbox – standard */
 .form-field--checkbox {
-  margin-bottom: 0.75rem;
+  margin-bottom: 0.5rem;
 }
 .gdpr-label {
   display: flex;
   align-items: flex-start;
-  gap: 0.5rem;
+  gap: 10px;
   cursor: pointer;
   font-weight: 400 !important;
   font-size: 0.82rem !important;
   color: rgba(255,255,255,0.7) !important;
   line-height: 1.5;
+  padding: 4px 0;
   min-height: 44px;
-  padding: 0.45rem 0;
   -webkit-tap-highlight-color: transparent;
 }
 .gdpr-label input[type="checkbox"] {
   -webkit-appearance: none;
+  -moz-appearance: none;
   appearance: none;
   width: 16px;
   height: 16px;
@@ -862,11 +845,11 @@ ul, ol { padding-left: 1.25rem; }
   margin-top: 0.15em;
   border: 1.5px solid rgba(255,255,255,0.35);
   border-radius: 3px;
-  background: var(--navy-light);
+  background: transparent;
   cursor: pointer;
   position: relative;
   flex-shrink: 0;
-  transition: border-color 0.15s, background-color 0.15s;
+  transition: border-color 0.15s;
 }
 .gdpr-label input[type="checkbox"]:checked {
   background: var(--teal);
@@ -875,7 +858,7 @@ ul, ol { padding-left: 1.25rem; }
 .gdpr-label input[type="checkbox"]:checked::after {
   content: '';
   position: absolute;
-  top: 2px;
+  top: 1.5px;
   left: 4.5px;
   width: 5px;
   height: 9px;
@@ -884,11 +867,8 @@ ul, ol { padding-left: 1.25rem; }
   transform: rotate(45deg);
 }
 .gdpr-label input[type="checkbox"]:focus-visible {
-  outline: 2px solid var(--teal);
+  outline: 2px solid rgba(14,165,165,0.5);
   outline-offset: 2px;
-}
-.gdpr-label span {
-  padding-top: 0;
 }
 .gdpr-label a {
   color: var(--teal-light);
@@ -903,7 +883,7 @@ ul, ol { padding-left: 1.25rem; }
   font-size: 0.8rem;
   color: #FECACA;
   margin-top: 0.2rem;
-  margin-left: calc(16px + 0.5rem);
+  margin-left: calc(16px + 10px);
   min-height: 0;
 }
 .form-field--checkbox.form-field--invalid .gdpr-label {
@@ -913,7 +893,7 @@ ul, ol { padding-left: 1.25rem; }
   border-color: #F87171;
 }
 
-/* Mobile checkbox refinement */
+/* Mobile checkbox: 18px */
 @media (max-width: 599px) {
   .gdpr-label input[type="checkbox"] {
     width: 18px;
@@ -921,13 +901,13 @@ ul, ol { padding-left: 1.25rem; }
     min-width: 18px;
   }
   .gdpr-label input[type="checkbox"]:checked::after {
-    top: 2.5px;
+    top: 2px;
     left: 5.5px;
     width: 5px;
     height: 10px;
   }
   .form-field--checkbox .field-error {
-    margin-left: calc(18px + 0.5rem);
+    margin-left: calc(18px + 10px);
   }
 }
 

@@ -182,8 +182,6 @@ function rhinometric_save_lead($data, $request_id) {
         '_rino_email'           => $data['email'],
         '_rino_company'         => $data['company'] ?? '',
         '_rino_intention'       => $data['intention'] ?? '',
-        '_rino_role'            => $data['role'],
-        '_rino_env_size'        => $data['env_size'] ?? '',
         '_rino_phone'           => $data['phone'],
         '_rino_comments'        => $data['comments'],
         '_rino_lang'            => $data['lang'],
@@ -237,8 +235,6 @@ function rhinometric_handle_contact_submit() {
     $email      = sanitize_email(wp_unslash($_POST['email'] ?? ''));
     $company    = sanitize_text_field(wp_unslash($_POST['company'] ?? ''));
     $intention  = sanitize_text_field(wp_unslash($_POST['intention'] ?? ''));
-    $role       = sanitize_text_field(wp_unslash($_POST['role'] ?? ''));
-    $env_size   = sanitize_text_field(wp_unslash($_POST['env_size'] ?? ''));
     $phone      = sanitize_text_field(wp_unslash($_POST['phone'] ?? ''));
     $comments   = sanitize_textarea_field(wp_unslash($_POST['comments'] ?? ''));
     $lang       = sanitize_text_field(wp_unslash($_POST['lang'] ?? 'en'));
@@ -276,12 +272,6 @@ function rhinometric_handle_contact_submit() {
             ? 'Selecciona una opción.'
             : 'Please select an option.';
     }
-    // env_size required only for demo/evaluate
-    if (in_array($intention, ['demo', 'evaluate'], true) && !$env_size) {
-        $errors['env_size'] = ($lang === 'es')
-            ? 'Este campo es obligatorio para demo/evaluación.'
-            : 'This field is required for demo/evaluation requests.';
-    }
     if (mb_strlen($comments) > 255) {
         $errors['comments'] = ($lang === 'es')
             ? 'Máximo 255 caracteres.'
@@ -304,8 +294,6 @@ function rhinometric_handle_contact_submit() {
         'email'      => $email,
         'company'    => $company,
         'intention'  => $intention,
-        'role'       => $role,
-        'env_size'   => $env_size,
         'phone'      => $phone,
         'comments'   => $comments,
         'lang'       => $lang,
@@ -339,8 +327,6 @@ function rhinometric_handle_contact_submit() {
         "Email:      {$email}",
         "Company:    {$company}",
         "Intention:  {$intention_label}",
-        "Role:       " . ($role ?: '—'),
-        "Env. size:  " . ($env_size ?: '—'),
         "Phone:      " . ($phone ?: '—'),
         "Comments:   " . ($comments ?: '—'),
         "",
@@ -471,8 +457,8 @@ function rhinometric_render_recent_leads_page() {
 
     echo '<table class="widefat striped"><thead><tr>'
         . '<th>Request ID</th><th>Name</th><th>Email</th>'
-        . '<th>Company</th><th>Intention</th><th>Env Size</th>'
-        . '<th>Role</th><th>Phone</th><th>Comments</th>'
+        . '<th>Company</th><th>Intention</th>'
+        . '<th>Phone</th><th>Comments</th>'
         . '<th>Consent</th><th>Mktg</th><th>IP</th>'
         . '<th>Internal</th><th>User</th>'
         . '<th>Date</th>'
@@ -493,8 +479,6 @@ function rhinometric_render_recent_leads_page() {
             . '<td>' . $m('_rino_email') . '</td>'
             . '<td>' . $m('_rino_company') . '</td>'
             . '<td>' . $m('_rino_intention') . '</td>'
-            . '<td>' . $m('_rino_env_size') . '</td>'
-            . '<td>' . $m('_rino_role') . '</td>'
             . '<td>' . $m('_rino_phone') . '</td>'
             . '<td>' . $m('_rino_comments') . '</td>'
             . '<td>' . $m('_rino_consent') . '</td>'
@@ -536,8 +520,6 @@ function rhinometric_export_contact_leads_handler() {
             'email'          => get_post_meta($lead->ID, '_rino_email', true),
             'company'        => get_post_meta($lead->ID, '_rino_company', true),
             'intention'      => get_post_meta($lead->ID, '_rino_intention', true),
-            'role'           => get_post_meta($lead->ID, '_rino_role', true),
-            'env_size'       => get_post_meta($lead->ID, '_rino_env_size', true),
             'phone'          => get_post_meta($lead->ID, '_rino_phone', true),
             'comments'       => get_post_meta($lead->ID, '_rino_comments', true),
             'consent'        => get_post_meta($lead->ID, '_rino_consent', true),
@@ -557,7 +539,7 @@ function rhinometric_export_contact_leads_handler() {
     header('Content-Type: text/csv; charset=utf-8');
     header('Content-Disposition: attachment; filename=contact-leads-' . gmdate('Y-m-d') . '.csv');
     $out = fopen('php://output', 'w');
-    fputcsv($out, ['request_id','full_name','email','company','intention','role','env_size','phone','comments','consent','marketing','ip','page_url','email_internal','email_user','date']);
+    fputcsv($out, ['request_id','full_name','email','company','intention','phone','comments','consent','marketing','ip','page_url','email_internal','email_user','date']);
     foreach ($rows as $row) {
         fputcsv($out, $row);
     }
