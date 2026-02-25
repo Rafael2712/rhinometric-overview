@@ -1,0 +1,168 @@
+#!/usr/bin/env bash
+###############################################################################
+# rhinoctl — Rhinometric Platform Management CLI v2.6.0
+###############################################################################
+set -euo pipefail
+
+RHINO_DIR="/opt/rhinometric"
+COMPOSE_FILE="docker-compose.yml"
+
+R="\033[0m"; G="\033[0;32m"; Y="\033[1;33m"; RD="\033[0;31m"; BD="\033[1m"
+
+cd "$RHINO_DIR" 2>/dev/null || { echo "ERROR: $RHINO_DIR not found"; exit 1; }
+
+case "${1:-help}" in
+    status)
+        echo ""
+        echo -e "${BD}Rhinometric Platform Status${R}"
+        echo ""
+        docker compose ps --format 'table {{.Name}}\t{{.Status}}\t{{.Image}}' 2>/dev/null
+        echo ""
+        ;;
+
+    start)
+        echo "Starting Rhinometric..."
+        docker compose up -d --remove-orphans
+        echo "Done. Run 'rhinoctl health' to verify."
+        ;;
+
+    stop)
+        echo "Stopping Rhinometric..."
+        docker compose down
+        echo "All services stopped."
+        ;;
+
+    restart)
+        if [[ -n "${2:-}" ]]; then
+            echo "Restarting $2..."
+            docker compose restart "$2"
+        else
+            echo "Restarting all services..."
+            docker compose restart
+        fi
+        ;;
+
+    logs)
+        local_svc="${2:-}"
+        local_lines="${3:-100}"
+        if [[ -n "$local_svc" ]]; then
+            docker compose logs --tail="$local_lines" -f "$local_svc"
+        else
+            docker compose logs --tail="$local_lines" -f
+        fi
+        ;;
+
+    health)
+        echo ""
+        echo -e "${BD}=== Container Health ===${R}"
+        echo ""
+        docker ps --filter "name=rhinometric" --format '{{.Names}}||{{.Status}}' 2>/dev/null | sort | while IFS='|' read -r name status; do
+            [[ -z "$name" ]] && continue
+            short="${name#rhinometric-}"
+            if echo "$status" | grep -q "(healthy)"; then
+                echo -e "  ${G}✓${R} $short"
+            elif echo "$status" | grep -q "Up"; then
+                echo -e "  ${Y}~${R} $short (starting)"
+            else
+                echo -e "  ${RD}✗${R} $short ($status)"
+            fi
+        done
+
+        echo ""
+        echo -e "${BD}=== HTTP Check ===${R}"
+        local http_code
+        http_code=$(curl -sf -w "%{http_code}" -o /dev/null --connect-timeout 5 --max-time 10 "http://localhost/" 2>/dev/null || echo "000")
+        if echo "$http_code" | grep -qE "^(200|301|302)$"; then
+            echo -e "  ${G}✓${R} Frontend: HTTP $http_code"
+        else
+            echo -e "  ${Y}~${R} Frontend: HTTP $http_code"
+        fi
+        echo ""
+        ;;
+
+    fingerprint)
+        local mac ip_addr hostname_val
+        mac=$(ip -o link show 2>/dev/null | awk -F'[: ]+' '/ether/ {print $NF}' | grep -v "00:00:00:00:00:00" | head -1)
+        ip_addr=$(hostname -I | awk '{print $1}')
+        hostname_val=$(hostname)
+        local raw="${mac}-${ip_addr}-${hostname_val}"
+        local hwid=$(echo -n "$raw" | sha256sum | cut -c1-16 | tr 'a-f' 'A-F')
+        echo ""
+        echo -e "${BD}  Machine Fingerprint${R}"
+        echo "  ─────────────────────────────────"
+        echo "  Hardware ID:  $hwid"
+        echo "  MAC:          $mac"
+        echo "  IP:           $ip_addr"
+        echo "  Hostname:     $hostname_val"
+        echo ""
+        echo "  Send this HWID to: licenses@rhinometric.com"
+        echo ""
+        ;;
+
+    apply-license)
+        if [[ -z "${2:-}" ]]; then
+            echo "Usage: rhinoctl apply-license /path/to/file.lic"
+            exit 1
+        fi
+        if [[ ! -f "$2" ]]; then
+            echo "ERROR: File not found: $2"
+            exit 1
+        fi
+        cp "$2" "$RHINO_DIR/license.key"
+        chmod 600 "$RHINO_DIR/license.key"
+        echo "License file copied."
+        echo "Restarting license server..."
+        docker compose restart license-server-v2
+        echo "License applied successfully."
+        ;;
+
+    credentials)
+        if [[ -f "$RHINO_DIR/CREDENTIALS.txt" ]]; then
+            cat "$RHINO_DIR/CREDENTIALS.txt"
+        else
+            echo "No CREDENTIALS.txt found. Check .env for passwords."
+        fi
+        ;;
+
+    update)
+        echo "Pulling latest updates..."
+        cd "$RHINO_DIR"
+        git pull origin feature/use-direct-grafana-links 2>/dev/null || echo "Git pull failed (offline?)"
+        docker compose build
+        docker compose up -d --remove-orphans
+        echo "Update complete."
+        ;;
+
+    uninstall)
+        echo -e "${RD}WARNING: This will stop and remove all Rhinometric containers and data.${R}"
+        read -rp "Are you sure? (type YES to confirm): " confirm
+        if [[ "$confirm" == "YES" ]]; then
+            docker compose down -v --remove-orphans
+            echo "Containers removed. Data directories preserved at ~/rhinometric_data_v2.5/"
+            echo "To fully remove: rm -rf $RHINO_DIR ~/rhinometric_data_v2.5/"
+        else
+            echo "Cancelled."
+        fi
+        ;;
+
+    *)
+        echo ""
+        echo -e "${BD}rhinoctl${R} — Rhinometric Platform Manager v2.6.0"
+        echo ""
+        echo "Usage: rhinoctl <command> [args]"
+        echo ""
+        echo "Commands:"
+        echo "  status              Show container status"
+        echo "  start               Start all services"
+        echo "  stop                Stop all services"
+        echo "  restart [service]   Restart all or specific service"
+        echo "  logs [service] [n]  View logs (default: all, last 100)"
+        echo "  health              Detailed health check"
+        echo "  fingerprint         Generate hardware ID for licensing"
+        echo "  apply-license FILE  Apply a license file"
+        echo "  credentials         Show saved credentials"
+        echo "  update              Pull latest and rebuild"
+        echo "  uninstall           Remove platform (with confirmation)"
+        echo ""
+        ;;
+esac
