@@ -64,8 +64,8 @@ function rhinometric_configure_zoho_smtp($phpmailer) {
     $phpmailer->From     = 'rafael.canelon@rhinometric.com';
     $phpmailer->FromName = 'Rhinometric';
 
-    // Enable debug logging to error_log (level 2 = full SMTP conversation)
-    $phpmailer->SMTPDebug   = 0; // Set to 2 for full debug in error_log
+    // TEMP: level 2 = full SMTP conversation dumped to error_log
+    $phpmailer->SMTPDebug   = 2;
     $phpmailer->Debugoutput = 'error_log';
 }
 add_action('phpmailer_init', 'rhinometric_configure_zoho_smtp');
