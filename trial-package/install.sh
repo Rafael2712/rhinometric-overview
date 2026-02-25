@@ -258,6 +258,7 @@ setup_data_dirs() {
         "${data_base}/alertmanager"
         "${data_base}/ai-anomaly/models"
         "${data_base}/ai-anomaly/logs"
+        "${data_base}/ai-anomaly/data"
         "${data_base}/console-backend/logs"
         "${data_base}/console-backend/uploads"
         "${data_base}/license-server/logs"
@@ -269,6 +270,7 @@ setup_data_dirs() {
     done
 
     # Fix permissions
+    chmod -R 777 "${data_base}/ai-anomaly" 2>/dev/null || true
     chown -R 472:472 "${data_base}/grafana" 2>/dev/null || true
     chown -R 65534:65534 "${data_base}/prometheus" 2>/dev/null || true
 
@@ -346,6 +348,11 @@ ADMIN_USERNAME=admin
 ADMIN_PASSWORD=${admin_pass}
 API_VERSION=${INST_VERSION}
 
+# === Bootstrap Admin (used by backend auto-init) ===
+RHINO_ADMIN_USER=admin
+RHINO_ADMIN_PASSWORD=admin123
+RHINO_ADMIN_EMAIL=admin@rhinometric.local
+
 # === License ===
 LICENSE_ENCRYPTION_KEY=${license_key}
 
@@ -387,7 +394,7 @@ Edition: trial (30 days)
 RHINOMETRIC CONSOLE
   URL:      http://${public_ip}
   Username: admin
-  Password: ${admin_pass}
+  Password: admin123  (default — change after first login)
 
 GRAFANA DASHBOARDS
   URL:      http://${public_ip}/grafana/
@@ -449,7 +456,7 @@ load_images() {
     else
         # Online mode: pull + build
         log INFO "Pulling public images..."
-        docker compose pull --ignore-pull-failures >> "$LOG_FILE" 2>&1 || true
+        docker compose -f "$COMPOSE_FILE" --env-file .env pull --ignore-pull-failures >> "$LOG_FILE" 2>&1 || true
         log OK "Public images pulled"
 
         if ! $SKIP_BUILD; then
@@ -457,7 +464,7 @@ load_images() {
             local build_services=("license-server-v2" "rhinometric-ai-anomaly" "rhinometric-console-backend" "rhinometric-console-frontend" "license-ui")
             for svc in "${build_services[@]}"; do
                 printf "  Building %-45s" "$svc..."
-                if docker compose build "$svc" >> "$LOG_FILE" 2>&1; then
+                if docker compose -f "$COMPOSE_FILE" --env-file .env build "$svc" >> "$LOG_FILE" 2>&1; then
                     echo -e "${G}OK${R}"
                 else
                     echo -e "${Y}SKIP${R}"
@@ -510,7 +517,7 @@ start_stack() {
     fi
 
     log INFO "Starting 21 services..."
-    docker compose up -d --remove-orphans >> "$LOG_FILE" 2>&1 || {
+    docker compose -f "$COMPOSE_FILE" --env-file .env up -d --remove-orphans >> "$LOG_FILE" 2>&1 || {
         log WARN "Some services may have failed to start"
     }
 
@@ -625,6 +632,27 @@ show_completion() {
     echo "    2. Send HWID to licenses@rhinometric.com"
     echo "    3. rhinoctl apply-license /path/to/file.lic"
     echo "    4. rhinoctl health             # Verify"
+    echo ""
+    # Generate machine fingerprint
+    local fingerprint=""
+    if command -v rhinoctl &>/dev/null; then
+        fingerprint=$(rhinoctl fingerprint 2>/dev/null | grep -oP "HWID: \K.*" || echo "")
+    fi
+    if [[ -z "$fingerprint" ]]; then
+        fingerprint=$(cat /etc/machine-id 2>/dev/null || echo "unknown")
+    fi
+
+    echo "  ── Machine Fingerprint ──"
+    echo "    ${fingerprint}"
+    echo ""
+    echo "  ── Next Steps ──"
+    echo "    1. Copy the fingerprint above"
+    echo "    2. Send to licenses@rhinometric.com to get your trial license"
+    echo "    3. rhinoctl apply-license /path/to/file.lic"
+    echo ""
+    echo "  ── Default Login ──"
+    echo "    Username: admin"
+    echo "    Password: admin123  (change immediately after login!)"
     echo ""
     echo "  Management:   rhinoctl help"
     echo "  Full log:     ${LOG_FILE}"

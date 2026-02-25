@@ -565,6 +565,9 @@ services:
       MAIL_SSL_TLS: ${MAIL_SSL_TLS:-False}
       MAIL_FROM_NAME: ${MAIL_FROM_NAME:-Rhinometric Platform}
       # Frontend URL for password reset links
+      RHINO_ADMIN_USER: ${RHINO_ADMIN_USER:-admin}
+      RHINO_ADMIN_PASSWORD: ${RHINO_ADMIN_PASSWORD:-admin123}
+      RHINO_ADMIN_EMAIL: ${RHINO_ADMIN_EMAIL:-admin@rhinometric.local}
       FRONTEND_URL: http://${PUBLIC_IP:-localhost}
     volumes:
     - ${HOME}/rhinometric_data_v2.5/console-backend/logs:/app/logs

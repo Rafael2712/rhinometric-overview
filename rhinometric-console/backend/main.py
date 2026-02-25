@@ -103,9 +103,7 @@ async def startup_event():
             )
     except Exception as e:
         logger.warning("Startup license check failed: %s" % e)
-    # If you need to create tables automatically (not recommended for production):
-    # UserBase.metadata.create_all(bind=engine)
-    # RoleBase.metadata.create_all(bind=engine)
+    # Tables are now auto-created in startup_event above
 
 
 # CORS Configuration
