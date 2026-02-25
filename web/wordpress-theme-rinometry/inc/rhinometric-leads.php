@@ -45,6 +45,15 @@ add_action('admin_init', 'rhinometric_leads_register_settings');
    2. Force Zoho SMTP on every wp_mail() call
    ========================================================================== */
 function rhinometric_configure_zoho_smtp($phpmailer) {
+    // If WP Mail SMTP (or similar) plugin is active and already configured SMTP,
+    // skip our custom configuration to avoid conflicts.
+    if (class_exists('WPMailSMTP\\WP') || defined('WPMS_PLUGIN_VER')) {
+        // WP Mail SMTP handles credentials — only force From identity
+        $phpmailer->From     = 'rafael.canelon@rhinometric.com';
+        $phpmailer->FromName = 'Rhinometric';
+        return;
+    }
+
     $password = get_option('rhinometric_zoho_smtp_password', '');
 
     if (!$password) {
@@ -60,12 +69,10 @@ function rhinometric_configure_zoho_smtp($phpmailer) {
     $phpmailer->Username   = 'rafael.canelon@rhinometric.com';
     $phpmailer->Password   = $password;
 
-    // Force From — real account, no alias until configured
     $phpmailer->From     = 'rafael.canelon@rhinometric.com';
     $phpmailer->FromName = 'Rhinometric';
 
-    // TEMP: level 2 = full SMTP conversation dumped to error_log
-    $phpmailer->SMTPDebug   = 2;
+    $phpmailer->SMTPDebug   = 0;
     $phpmailer->Debugoutput = 'error_log';
 }
 add_action('phpmailer_init', 'rhinometric_configure_zoho_smtp');
