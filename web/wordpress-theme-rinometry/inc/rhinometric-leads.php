@@ -162,9 +162,10 @@ function rhinometric_send_mail($to, $subject, $body, $reply_to = '', $request_id
    8. Save lead to WP (CPT) — ALWAYS runs before email
    ========================================================================== */
 function rhinometric_save_lead($data, $request_id) {
+    $title_parts = array_filter([$data['full_name'] ?? '', $data['company'] ?? '', $data['email']]);
     $post_id = wp_insert_post([
         'post_type'   => 'contact_lead',
-        'post_title'  => ($data['role'] ?: 'Contact') . ' — ' . $data['email'],
+        'post_title'  => implode(' — ', $title_parts) ?: $data['email'],
         'post_status' => 'private',
     ]);
 
@@ -177,15 +178,20 @@ function rhinometric_save_lead($data, $request_id) {
 
     $meta = [
         '_rino_request_id'      => $request_id,
+        '_rino_full_name'       => $data['full_name'] ?? '',
         '_rino_email'           => $data['email'],
-        '_rino_phone'           => $data['phone'],
+        '_rino_company'         => $data['company'] ?? '',
+        '_rino_intention'       => $data['intention'] ?? '',
         '_rino_role'            => $data['role'],
+        '_rino_env_size'        => $data['env_size'] ?? '',
+        '_rino_phone'           => $data['phone'],
         '_rino_comments'        => $data['comments'],
         '_rino_lang'            => $data['lang'],
         '_rino_ip'              => $data['ip'],
         '_rino_user_agent'      => $data['user_agent'],
         '_rino_page_url'        => $data['page_url'],
         '_rino_consent'         => $data['consent'] ? 'true' : 'false',
+        '_rino_marketing'       => ($data['marketing'] ?? false) ? 'true' : 'false',
         '_rino_consent_ts'      => $data['consent_ts'],
         '_rino_submitted_at'    => current_time('mysql'),
         '_rino_email_internal'  => 'pending',
@@ -227,13 +233,18 @@ function rhinometric_handle_contact_submit() {
     }
 
     // --- Sanitize ---
-    $email    = sanitize_email(wp_unslash($_POST['email'] ?? ''));
-    $phone    = sanitize_text_field(wp_unslash($_POST['phone'] ?? ''));
-    $role     = sanitize_text_field(wp_unslash($_POST['role'] ?? ''));
-    $comments = sanitize_textarea_field(wp_unslash($_POST['comments'] ?? ''));
-    $lang     = sanitize_text_field(wp_unslash($_POST['lang'] ?? 'en'));
-    $consent  = !empty($_POST['gdpr_consent']);
-    $page_url = esc_url_raw(wp_unslash($_POST['page_url'] ?? ''));
+    $full_name  = sanitize_text_field(wp_unslash($_POST['full_name'] ?? ''));
+    $email      = sanitize_email(wp_unslash($_POST['email'] ?? ''));
+    $company    = sanitize_text_field(wp_unslash($_POST['company'] ?? ''));
+    $intention  = sanitize_text_field(wp_unslash($_POST['intention'] ?? ''));
+    $role       = sanitize_text_field(wp_unslash($_POST['role'] ?? ''));
+    $env_size   = sanitize_text_field(wp_unslash($_POST['env_size'] ?? ''));
+    $phone      = sanitize_text_field(wp_unslash($_POST['phone'] ?? ''));
+    $comments   = sanitize_textarea_field(wp_unslash($_POST['comments'] ?? ''));
+    $lang       = sanitize_text_field(wp_unslash($_POST['lang'] ?? 'en'));
+    $consent    = !empty($_POST['gdpr_consent']);
+    $marketing  = !empty($_POST['marketing_consent']);
+    $page_url   = esc_url_raw(wp_unslash($_POST['page_url'] ?? ''));
 
     // Evidence fields
     $ip         = isset($_SERVER['REMOTE_ADDR'])
@@ -244,25 +255,42 @@ function rhinometric_handle_contact_submit() {
 
     // --- Validate required ---
     $errors = [];
+    if (!$full_name) {
+        $errors['full_name'] = ($lang === 'es')
+            ? 'El nombre es obligatorio.'
+            : 'Full name is required.';
+    }
     if (!$email || !is_email($email)) {
         $errors['email'] = ($lang === 'es')
             ? 'Introduce un email válido.'
             : 'Enter a valid email address.';
     }
-    if (!$phone) {
-        $errors['phone'] = ($lang === 'es')
-            ? 'El teléfono es obligatorio.'
-            : 'Phone number is required.';
+    if (!$company) {
+        $errors['company'] = ($lang === 'es')
+            ? 'La empresa es obligatoria.'
+            : 'Company is required.';
     }
-    if (!$role) {
-        $errors['role'] = ($lang === 'es')
-            ? 'El cargo es obligatorio.'
-            : 'Role is required.';
+    $valid_intentions = ['demo', 'evaluate', 'info'];
+    if (!$intention || !in_array($intention, $valid_intentions, true)) {
+        $errors['intention'] = ($lang === 'es')
+            ? 'Selecciona una opción.'
+            : 'Please select an option.';
+    }
+    // env_size required only for demo/evaluate
+    if (in_array($intention, ['demo', 'evaluate'], true) && !$env_size) {
+        $errors['env_size'] = ($lang === 'es')
+            ? 'Este campo es obligatorio para demo/evaluación.'
+            : 'This field is required for demo/evaluation requests.';
+    }
+    if (mb_strlen($comments) > 255) {
+        $errors['comments'] = ($lang === 'es')
+            ? 'Máximo 255 caracteres.'
+            : 'Maximum 255 characters.';
     }
     if (!$consent) {
         $errors['gdpr_consent'] = ($lang === 'es')
-            ? 'Debes aceptar la política de privacidad para continuar.'
-            : 'You must agree to the Privacy Policy to continue.';
+            ? 'Debes aceptar los Términos y la Política de Privacidad.'
+            : 'You must accept the Terms and Privacy Policy.';
     }
 
     if (!empty($errors)) {
@@ -272,15 +300,20 @@ function rhinometric_handle_contact_submit() {
 
     // --- 1. Save lead FIRST (before any email attempt) ---
     $lead_data = [
+        'full_name'  => $full_name,
         'email'      => $email,
-        'phone'      => $phone,
+        'company'    => $company,
+        'intention'  => $intention,
         'role'       => $role,
+        'env_size'   => $env_size,
+        'phone'      => $phone,
         'comments'   => $comments,
         'lang'       => $lang,
         'ip'         => $ip,
         'user_agent' => $user_agent,
         'page_url'   => $page_url,
         'consent'    => $consent,
+        'marketing'  => $marketing,
         'consent_ts' => $consent_ts,
     ];
     $post_id = rhinometric_save_lead($lead_data, $request_id);
@@ -297,13 +330,18 @@ function rhinometric_handle_contact_submit() {
     // --- 2. EMAIL #1: Internal notification ---
     $internal_recipient = rinometry_get_lead_recipient(); // rafael.canelon@rhinometric.com
     $timestamp     = current_time('Y-m-d H:i:s T');
-    $internal_subj = "[Rhinometric] New request — " . ($role ?: 'Contact') . " — {$request_id}";
+    $intention_label = ucfirst($intention ?: 'contact');
+    $internal_subj = "[Rhinometric] New request — {$intention_label} — {$request_id}";
     $internal_body = implode("\n", [
         "New contact request received.",
         "",
+        "Name:       {$full_name}",
         "Email:      {$email}",
-        "Phone:      {$phone}",
-        "Role:       {$role}",
+        "Company:    {$company}",
+        "Intention:  {$intention_label}",
+        "Role:       " . ($role ?: '—'),
+        "Env. size:  " . ($env_size ?: '—'),
+        "Phone:      " . ($phone ?: '—'),
         "Comments:   " . ($comments ?: '—'),
         "",
         "Timestamp:  {$timestamp}",
@@ -311,6 +349,7 @@ function rhinometric_handle_contact_submit() {
         "IP:         {$ip}",
         "UA:         {$user_agent}",
         "Consent:    TRUE",
+        "Marketing:  " . ($marketing ? 'YES' : 'NO'),
         "Consent TS: {$consent_ts}",
         "Request ID: {$request_id}",
     ]);
@@ -431,10 +470,11 @@ function rhinometric_render_recent_leads_page() {
     }
 
     echo '<table class="widefat striped"><thead><tr>'
-        . '<th>Request ID</th><th>Email</th><th>Phone</th>'
-        . '<th>Role</th><th>Comments</th>'
-        . '<th>Consent</th><th>IP</th>'
-        . '<th>Internal Email</th><th>User Email</th>'
+        . '<th>Request ID</th><th>Name</th><th>Email</th>'
+        . '<th>Company</th><th>Intention</th><th>Env Size</th>'
+        . '<th>Role</th><th>Phone</th><th>Comments</th>'
+        . '<th>Consent</th><th>Mktg</th><th>IP</th>'
+        . '<th>Internal</th><th>User</th>'
         . '<th>Date</th>'
         . '</tr></thead><tbody>';
 
@@ -449,11 +489,16 @@ function rhinometric_render_recent_leads_page() {
 
         echo '<tr>'
             . '<td><code>' . $m('_rino_request_id') . '</code></td>'
+            . '<td>' . $m('_rino_full_name') . '</td>'
             . '<td>' . $m('_rino_email') . '</td>'
-            . '<td>' . $m('_rino_phone') . '</td>'
+            . '<td>' . $m('_rino_company') . '</td>'
+            . '<td>' . $m('_rino_intention') . '</td>'
+            . '<td>' . $m('_rino_env_size') . '</td>'
             . '<td>' . $m('_rino_role') . '</td>'
+            . '<td>' . $m('_rino_phone') . '</td>'
             . '<td>' . $m('_rino_comments') . '</td>'
             . '<td>' . $m('_rino_consent') . '</td>'
+            . '<td>' . $m('_rino_marketing') . '</td>'
             . '<td>' . $m('_rino_ip') . '</td>'
             . '<td style="' . $int_class . '">' . $int_status . '</td>'
             . '<td style="' . $usr_class . '">' . $usr_status . '</td>'
@@ -487,11 +532,16 @@ function rhinometric_export_contact_leads_handler() {
     foreach ($leads as $lead) {
         $rows[] = [
             'request_id'     => get_post_meta($lead->ID, '_rino_request_id', true),
+            'full_name'      => get_post_meta($lead->ID, '_rino_full_name', true),
             'email'          => get_post_meta($lead->ID, '_rino_email', true),
-            'phone'          => get_post_meta($lead->ID, '_rino_phone', true),
+            'company'        => get_post_meta($lead->ID, '_rino_company', true),
+            'intention'      => get_post_meta($lead->ID, '_rino_intention', true),
             'role'           => get_post_meta($lead->ID, '_rino_role', true),
+            'env_size'       => get_post_meta($lead->ID, '_rino_env_size', true),
+            'phone'          => get_post_meta($lead->ID, '_rino_phone', true),
             'comments'       => get_post_meta($lead->ID, '_rino_comments', true),
             'consent'        => get_post_meta($lead->ID, '_rino_consent', true),
+            'marketing'      => get_post_meta($lead->ID, '_rino_marketing', true),
             'ip'             => get_post_meta($lead->ID, '_rino_ip', true),
             'page_url'       => get_post_meta($lead->ID, '_rino_page_url', true),
             'email_internal' => get_post_meta($lead->ID, '_rino_email_internal', true),
@@ -507,7 +557,7 @@ function rhinometric_export_contact_leads_handler() {
     header('Content-Type: text/csv; charset=utf-8');
     header('Content-Disposition: attachment; filename=contact-leads-' . gmdate('Y-m-d') . '.csv');
     $out = fopen('php://output', 'w');
-    fputcsv($out, ['request_id','email','phone','role','comments','consent','ip','page_url','email_internal','email_user','date']);
+    fputcsv($out, ['request_id','full_name','email','company','intention','role','env_size','phone','comments','consent','marketing','ip','page_url','email_internal','email_user','date']);
     foreach ($rows as $row) {
         fputcsv($out, $row);
     }
