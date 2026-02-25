@@ -689,41 +689,95 @@ ul, ol { padding-left: 1.25rem; }
   color: var(--white);
 }
 
-/* Radio group */
+/* Radio group – infra console style */
 .form-field--radios {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 6px;
 }
 .radio-label {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
-  padding: 0.6rem 0.75rem;
-  min-height: 44px;
-  border: 1px solid rgba(255,255,255,0.12);
+  gap: 10px;
+  padding: 0 0.75rem;
+  min-height: 60px;
+  border: 1px solid rgba(255,255,255,0.10);
   border-radius: var(--radius-sm);
   cursor: pointer;
-  transition: border-color 0.15s, background 0.15s;
-  font-size: 0.93rem;
-  color: rgba(255,255,255,0.85);
+  transition: border-color 0.15s, background-color 0.15s;
+  font-size: 0.9rem;
+  color: rgba(255,255,255,0.78);
+  letter-spacing: 0.01em;
 }
-.radio-label:hover,
+.radio-label:hover {
+  border-color: rgba(255,255,255,0.22);
+  background-color: rgba(255,255,255,0.02);
+}
 .radio-label:focus-within {
   border-color: var(--teal);
-  background: rgba(14,165,165,0.06);
 }
+/* Custom circular radio indicator */
 .radio-label input[type="radio"] {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
   width: 18px;
   height: 18px;
   min-width: 18px;
-  accent-color: var(--teal);
+  border: 1.5px solid rgba(255,255,255,0.30);
+  border-radius: 50%;
+  background: transparent;
   cursor: pointer;
   margin: 0;
+  position: relative;
+  transition: border-color 0.15s;
+}
+.radio-label input[type="radio"]::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--teal);
+  transform: translate(-50%, -50%);
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+.radio-label input[type="radio"]:checked {
+  border-color: var(--teal);
+}
+.radio-label input[type="radio"]:checked::after {
+  opacity: 1;
+}
+.radio-label input[type="radio"]:focus-visible {
+  outline: 2px solid rgba(14,165,165,0.45);
+  outline-offset: 2px;
+}
+.radio-label:has(input[type="radio"]:checked) {
+  border-color: rgba(14,165,165,0.40);
+  background-color: rgba(14,165,165,0.04);
 }
 .radio-label input[type="radio"]:checked + span {
-  color: var(--white);
-  font-weight: 600;
+  color: rgba(255,255,255,0.95);
+  font-weight: 500;
+}
+/* Radio responsive: desktop compact */
+@media (min-width: 600px) {
+  .radio-label {
+    min-height: 52px;
+    font-size: 0.88rem;
+  }
+  .radio-label input[type="radio"] {
+    width: 16px;
+    height: 16px;
+    min-width: 16px;
+  }
+  .radio-label input[type="radio"]::after {
+    width: 7px;
+    height: 7px;
+  }
 }
 
 /* Character counter */
