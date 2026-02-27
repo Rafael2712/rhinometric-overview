@@ -16,8 +16,15 @@ Supported plans (Rust license):
 - trial: 14 days, 5 hosts
 - annual_standard: 1 year, 20 hosts
 - enterprise: unlimited hosts, custom expiry
+
+Environment variables:
+- RHINO_LICENSE_VALIDATOR: "rust" | "legacy" | "auto" (default: "auto")
+    - rust: Use ONLY the Rust validator. Fail with HTTP 503 if unavailable.
+    - legacy: Use ONLY the Legacy Server v2. Skip Rust entirely.
+    - auto: Try Rust first, fallback to Legacy if Rust is unavailable.
 """
 
+import os
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from datetime import datetime, timezone
@@ -36,9 +43,19 @@ from utils.rust_license_validator import (
 router = APIRouter()
 logger = logging.getLogger("rhinometric.license")
 
-# ═══════════════════════════════════════════════════════════════
+# Validator mode: "rust", "legacy", or "auto" (default)
+VALIDATOR_MODE = os.getenv("RHINO_LICENSE_VALIDATOR", "auto").lower().strip()
+if VALIDATOR_MODE not in ("rust", "legacy", "auto"):
+    logger.warning(
+        f"Invalid RHINO_LICENSE_VALIDATOR='{VALIDATOR_MODE}', defaulting to 'auto'"
+    )
+    VALIDATOR_MODE = "auto"
+
+logger.info(f"License validator mode: {VALIDATOR_MODE}")
+
+# ---------------------------------------------------------------------------
 # MODELS
-# ═══════════════════════════════════════════════════════════════
+# ---------------------------------------------------------------------------
 
 class LicenseStatusResponse(BaseModel):
     """License status for Rhinometric Console UI"""
@@ -75,9 +92,9 @@ class LicenseStatusResponse(BaseModel):
     features: Optional[list] = None
     validator: str = "rust"  # "rust" or "legacy"
 
-# ═══════════════════════════════════════════════════════════════
+# ---------------------------------------------------------------------------
 # HELPER FUNCTIONS
-# ═══════════════════════════════════════════════════════════════
+# ---------------------------------------------------------------------------
 
 async def get_monitored_hosts_count() -> int:
     """
@@ -127,7 +144,7 @@ async def get_monitored_hosts_count() -> int:
 
     except Exception as e:
         logger.error(f"Error getting host count from Prometheus: {str(e)}")
-        return 0
+    return 0
 
 
 def _calculate_time_remaining(expires_at_str: Optional[str]):
@@ -224,17 +241,19 @@ class LicenseActivationRequest(BaseModel):
     """Request to activate a license"""
     license_key: str
 
-# ═══════════════════════════════════════════════════════════════
+# ---------------------------------------------------------------------------
 # ENDPOINTS
-# ═══════════════════════════════════════════════════════════════
+# ---------------------------------------------------------------------------
 
 @router.get("/status", response_model=LicenseStatusResponse)
 async def get_license_status(current_user: UserModel = Depends(get_current_user)):
     """
     Get comprehensive license status.
 
-    Primary path: Rust validator (rhino-lic) for Ed25519 signed license.
-    Fallback: License Server v2 (legacy, port 5000).
+    Validation strategy controlled by RHINO_LICENSE_VALIDATOR env var:
+    - "rust"  : Rust validator ONLY. HTTP 503 if binary unavailable.
+    - "legacy": Legacy Server v2 ONLY. Rust is skipped entirely.
+    - "auto"  : Try Rust first, fallback to Legacy. (default)
 
     This is the PRIMARY endpoint consumed by the Rhinometric Console UI.
     """
@@ -242,13 +261,42 @@ async def get_license_status(current_user: UserModel = Depends(get_current_user)
     # Step 1: Get monitored hosts count from Prometheus
     hosts_used = await get_monitored_hosts_count()
 
-    # Step 2: Try Rust validator first (preferred)
+    # ── Mode: legacy ──────────────────────────────────────────────
+    if VALIDATOR_MODE == "legacy":
+        logger.info("RHINO_LICENSE_VALIDATOR=legacy, using Legacy Server v2")
+        return await _legacy_license_status(hosts_used)
+
+    # ── Mode: rust (strict) ───────────────────────────────────────
+    if VALIDATOR_MODE == "rust":
+        if not rust_binary_available():
+            logger.error(
+                "RHINO_LICENSE_VALIDATOR=rust but rhino-lic binary is NOT available"
+            )
+            raise HTTPException(
+                status_code=503,
+                detail=(
+                    "Rust license validator (rhino-lic) is required but not available. "
+                    "Set RHINO_LICENSE_VALIDATOR=auto to allow legacy fallback."
+                ),
+            )
+        logger.info("RHINO_LICENSE_VALIDATOR=rust, using Rust validator")
+        lic = rust_validate()
+        if lic.status in ("binary_not_found", "license_file_missing"):
+            logger.error(f"Rust validator hard failure: {lic.status}")
+            raise HTTPException(
+                status_code=503,
+                detail=f"Rust license validator error: {lic.status}. "
+                       f"No fallback allowed (RHINO_LICENSE_VALIDATOR=rust).",
+            )
+        return _build_response_from_rust(lic, hosts_used)
+
+    # ── Mode: auto (default) ─────────────────────────────────────
     if rust_binary_available():
         logger.info("Using Rust license validator (rhino-lic)")
         lic = rust_validate()
 
         if lic.status not in ("binary_not_found", "license_file_missing"):
-            # Rust validator ran — use its result (even if license is invalid/expired)
+            # Rust validator ran -- use its result (even if license is invalid/expired)
             return _build_response_from_rust(lic, hosts_used)
         else:
             logger.warning(f"Rust validator issue: {lic.status}, falling back to legacy")
@@ -376,7 +424,6 @@ async def activate_license(
     via start-rhinometric.sh. This endpoint is kept for legacy
     License Server v2 compatibility.
     """
-    import os
 
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
