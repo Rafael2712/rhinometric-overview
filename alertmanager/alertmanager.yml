@@ -17,9 +17,10 @@ route:
   group_interval: 5m
   repeat_interval: 4h
   routes:
-    # Route 1: Critical AI anomalies - toggled receiver (ai-anomaly-alerts when ON, blackhole when OFF)
+    # Route AI: All AI anomaly alerts (controlled by toggle)
+    # rhinometric_source label is set by AlertBuilder for ALL AI alerts
     - match:
-        component: ai-anomaly
+        rhinometric_source: ai-anomaly
         severity: critical
       receiver: "blackhole"
       group_by: ["alertname", "metric", "severity"]
@@ -28,9 +29,9 @@ route:
       repeat_interval: 4h
       continue: false
 
-    # Route 2: ALL other AI anomalies (non-critical) - always blackhole
+    # Route AI catch-all: non-critical AI anomalies always blackhole
     - match:
-        component: ai-anomaly
+        rhinometric_source: ai-anomaly
       receiver: "blackhole"
       group_by: ["alertname", "metric", "severity"]
       group_wait: 30s

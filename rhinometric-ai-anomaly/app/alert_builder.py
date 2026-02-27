@@ -185,6 +185,7 @@ class AlertBuilder:
                     "service": service,
                     "team": "platform",
                     "component": "ai-anomaly",
+                    "rhinometric_source": "ai-anomaly",
                     "fingerprint": fingerprint
                 },
                 "annotations": {

@@ -1,3 +1,4 @@
+import os
 """
 FastAPI Application
 REST API for anomaly detection service
@@ -227,6 +228,15 @@ async def startup_event():
             import traceback
             traceback.print_exc()
         
+
+        # Load persisted notification setting (defense in depth)
+        try:
+            persisted_enabled = _load_notification_setting()
+            config_manager.config.features.enable_notifications = persisted_enabled
+            logger.info(f"AI notifications loaded from persistence: enabled={persisted_enabled}")
+        except Exception as notify_err:
+            logger.warning(f"Failed to load notification settings: {notify_err}")
+
     except Exception as e:
         logger.error(f"Failed to initialize detector: {e}")
         raise
@@ -845,3 +855,82 @@ async def refresh_baselines(background_tasks: BackgroundTasks):
         logger.error(f"Error triggering baseline refresh: {e}")
         prom_requests.labels(endpoint="/api/v1/baselines/refresh", method="POST", status="500").inc()
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# =============================================================================
+# SETTINGS: Runtime notification toggle (synced from console-backend)
+# =============================================================================
+
+NOTIFICATION_SETTINGS_FILE = "/app/data/notification_settings.json"
+
+def _load_notification_setting() -> bool:
+    """Load persisted notification setting from disk."""
+    import json
+    try:
+        if os.path.exists(NOTIFICATION_SETTINGS_FILE):
+            with open(NOTIFICATION_SETTINGS_FILE, "r") as f:
+                data = json.load(f)
+                return data.get("enabled", False)
+    except Exception as e:
+        logger.warning(f"Failed to load notification settings: {e}")
+    return False
+
+def _save_notification_setting(enabled: bool):
+    """Persist notification setting to disk."""
+    import json
+    try:
+        os.makedirs(os.path.dirname(NOTIFICATION_SETTINGS_FILE), exist_ok=True)
+        with open(NOTIFICATION_SETTINGS_FILE, "w") as f:
+            json.dump({"enabled": enabled}, f)
+        logger.info(f"Notification setting persisted: enabled={enabled}")
+    except Exception as e:
+        logger.error(f"Failed to save notification settings: {e}")
+
+
+@app.post("/api/settings/notifications", tags=["Settings"])
+async def update_notification_settings(body: dict):
+    """
+    Toggle AI anomaly notifications at runtime.
+    Called by console-backend when the UI toggle changes.
+    
+    Body: {"enabled": true|false}
+    
+    Effects:
+    - Updates config.features.enable_notifications in memory
+    - Persists to /app/data/notification_settings.json
+    """
+    enabled = body.get("enabled")
+    if enabled is None:
+        raise HTTPException(status_code=400, detail="'enabled' field required")
+    
+    enabled = bool(enabled)
+    
+    # Update in-memory config
+    config_manager.config.features.enable_notifications = enabled
+    
+    # Persist to disk
+    _save_notification_setting(enabled)
+    
+    state = "enabled" if enabled else "disabled"
+    logger.info(f"AI notifications {state} via runtime API")
+    
+    prom_requests.labels(
+        endpoint="/api/settings/notifications", method="POST", status="200"
+    ).inc()
+    
+    return {
+        "status": "ok",
+        "notifications_enabled": enabled,
+        "message": f"AI anomaly notifications {state}",
+        "timestamp": datetime.now().isoformat()
+    }
+
+
+@app.get("/api/settings/notifications", tags=["Settings"])
+async def get_notification_settings():
+    """Get current notification setting."""
+    enabled = config_manager.config.features.enable_notifications
+    return {
+        "notifications_enabled": enabled,
+        "persisted": os.path.exists(NOTIFICATION_SETTINGS_FILE)
+    }

@@ -391,6 +391,6 @@ logging:
 features:
   enable_api: true
   enable_web_ui: false  # Future feature
-  enable_notifications: true
+  enable_notifications: false
   enable_auto_remediation: false  # Future feature
   enable_model_explanation: true  # SHAP values for explainability
