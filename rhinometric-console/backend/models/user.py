@@ -36,6 +36,11 @@ class User(Base):
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     created_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"))
     
+    # Soft-delete fields
+    is_deleted = Column(Boolean, default=False, index=True)
+    deleted_at = Column(DateTime(timezone=True), nullable=True)
+    deleted_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+
     # Additional fields
     avatar_url = Column(Text)
     phone = Column(String(50))

@@ -36,6 +36,9 @@ export function UsersPage() {
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null)
   const [newPassword, setNewPassword] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<{id: number, username: string} | null>(null)
+  const [deleteLoading, setDeleteLoading] = useState(false)
   const [newUser, setNewUser] = useState<CreateUserData>({
     username: '',
     email: '',
@@ -164,13 +167,17 @@ export function UsersPage() {
     }
   }
 
-  const deleteUser = async (userId: number, username: string) => {
-    if (!confirm(`¿Está seguro que desea eliminar al usuario "${username}"? Esta acción no se puede deshacer.`)) {
-      return
-    }
+  const openDeleteModal = (userId: number, username: string) => {
+    setDeleteTarget({ id: userId, username })
+    setShowDeleteModal(true)
+  }
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return
+    setDeleteLoading(true)
 
     try {
-      const response = await fetch(`/api/users/${userId}`, {
+      const response = await fetch(`/api/users/${deleteTarget.id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -178,7 +185,8 @@ export function UsersPage() {
       })
 
       if (response.ok) {
-        alert('Usuario eliminado exitosamente')
+        setShowDeleteModal(false)
+        setDeleteTarget(null)
         fetchUsers()
       } else {
         const error = await response.json()
@@ -187,6 +195,8 @@ export function UsersPage() {
     } catch (error) {
       console.error('Error deleting user:', error)
       alert('Error al eliminar usuario')
+    } finally {
+      setDeleteLoading(false)
     }
   }
 
@@ -332,11 +342,11 @@ export function UsersPage() {
                   >
                     <Shield className="h-4 w-4" />
                   </button>
-                  {isOwner() && (
+                  {(isOwner() || canManageUsers()) && (
                     <button
-                      onClick={() => deleteUser(user.id, user.username)}
+                      onClick={() => openDeleteModal(user.id, user.username)}
                       className="text-red-600 hover:text-red-900"
-                      title="Delete User (OWNER only)"
+                      title="Delete User"
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>
@@ -491,6 +501,44 @@ export function UsersPage() {
         </div>
       )}
 
+      
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && deleteTarget && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4 shadow-xl">
+            <div className="flex items-center mb-4">
+              <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center mr-3">
+                <AlertTriangle className="h-5 w-5 text-red-600" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900">Eliminar Usuario</h3>
+            </div>
+            <p className="text-gray-600 mb-2">
+              \u00bfEst\u00e1 seguro que desea eliminar al usuario <strong>{deleteTarget.username}</strong>?
+            </p>
+            <p className="text-sm text-gray-500 mb-6">
+              El usuario ser\u00e1 desactivado y no podr\u00e1 iniciar sesi\u00f3n. Esta acci\u00f3n puede ser revertida por un administrador.
+            </p>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => { setShowDeleteModal(false); setDeleteTarget(null) }}
+                className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+                disabled={deleteLoading}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={confirmDelete}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
+                disabled={deleteLoading}
+              >
+                {deleteLoading ? 'Eliminando...' : 'Eliminar Usuario'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      
       {/* Reset Password Modal */}
       {showResetPasswordModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">

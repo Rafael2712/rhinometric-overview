@@ -126,6 +126,13 @@ async def get_current_user(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="User account is disabled"
         )
+
+    # Block soft-deleted users
+    if getattr(user, 'is_deleted', False):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User account is disabled"
+        )
     
     return user
 
@@ -222,6 +229,13 @@ async def login(
     
     # Check if user is active
     if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User account is disabled"
+        )
+
+    # Block soft-deleted users
+    if getattr(user, 'is_deleted', False):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="User account is disabled"
@@ -424,13 +438,18 @@ async def forgot_password(
     email = request_data.email.lower().strip()
 
     # Always return success to prevent email enumeration
-    # Check SMTP config FIRST (system-level, no user enumeration risk)
-    from services.email_service import is_smtp_configured
-    smtp_configured = is_smtp_configured()
+    # Check email service availability (TCP pre-check, no user enumeration risk)
+    from services.email_service import is_email_service_available
+    email_ok, email_reason = is_email_service_available()
+
+    import logging as _log
+    _log.getLogger("rhinometric.email").info(
+        "[EMAIL] forgot-password probe: available=%s reason=%s", email_ok, email_reason
+    )
 
     generic_response = {
         "message": "If an account with that email exists, a password reset link has been sent.",
-        "email_available": smtp_configured
+        "email_available": email_ok
     }
 
     try:

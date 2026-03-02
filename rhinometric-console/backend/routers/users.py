@@ -357,6 +357,18 @@ async def list_users(
     if role_filter:
         query = query.join(UserModel.roles).filter(RoleModel.name == role_filter)
     
+    # Exclude soft-deleted users
+    if hasattr(UserModel, 'is_deleted'):
+        query = query.filter(
+            (UserModel.is_deleted == False) | (UserModel.is_deleted == None)
+        )
+
+    # Exclude soft-deleted users
+    if hasattr(UserModel, 'is_deleted'):
+        query = query.filter(
+            (UserModel.is_deleted == False) | (UserModel.is_deleted == None)
+        )
+
     # Apply active filter
     if active_only:
         query = query.filter(UserModel.is_active == True)
@@ -511,17 +523,21 @@ async def update_user(
         language=user.language
     )
 
-@router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{user_id}")
 async def delete_user(
     user_id: int,
-    current_user: UserModel = Depends(require_role(["OWNER"])),
-    db: Session = Depends(get_db)
+    current_user: UserModel = Depends(require_role(["OWNER", "ADMIN"])),
+    db: Session = Depends(get_db),
+    request: Request = None
 ):
     """
-    Delete user (OWNER only).
-    
-    - Cannot delete OWNER (must transfer ownership first)
+    Soft-delete user (OWNER/ADMIN).
+
+    Safety rules:
     - Cannot delete yourself
+    - Cannot delete the last OWNER
+    - Cannot delete an already-deleted user
+    - ADMIN cannot delete OWNER users
     """
     user = db.query(UserModel).filter(UserModel.id == user_id).first()
     if not user:
@@ -529,25 +545,147 @@ async def delete_user(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found"
         )
-    
-    # Cannot delete OWNER
-    if user.is_owner():
+
+    # Already deleted?
+    if getattr(user, 'is_deleted', False):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot delete OWNER account. Transfer ownership first."
+            detail="User is already deleted"
         )
-    
+
     # Cannot delete yourself
     if user.id == current_user.id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Cannot delete your own account"
         )
-    
-    db.delete(user)
+
+    # ADMIN cannot delete OWNER
+    if user.is_owner() and not current_user.is_owner():
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only OWNER can delete another OWNER account"
+        )
+
+    # Cannot delete the LAST owner
+    if user.is_owner():
+        from models.role import Role as RoleModel
+        owner_role = db.query(RoleModel).filter(RoleModel.name == "OWNER").first()
+        if owner_role:
+            from models.role import UserRole as UserRoleModel
+            owner_count = db.query(UserRoleModel).filter(
+                UserRoleModel.role_id == owner_role.id
+            ).join(UserModel, UserModel.id == UserRoleModel.user_id).filter(
+                UserModel.is_active == True,
+                (UserModel.is_deleted == False) | (UserModel.is_deleted == None)
+            ).count()
+            if owner_count <= 1:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Cannot delete the last OWNER. Transfer ownership first."
+                )
+
+    # Soft-delete
+    user.is_active = False
+    if hasattr(user, 'is_deleted'):
+        user.is_deleted = True
+    if hasattr(user, 'deleted_at'):
+        user.deleted_at = datetime.utcnow()
+    if hasattr(user, 'deleted_by'):
+        user.deleted_by = current_user.id
+    user.updated_at = datetime.utcnow()
+
     db.commit()
-    
-    return None
+
+    # Audit log
+    try:
+        from services.audit_logger import log_audit_event, AuditEvent
+        await log_audit_event(
+            category=AuditEvent.USER_MANAGEMENT,
+            action="user_deleted",
+            user_id=current_user.id,
+            username=current_user.username,
+            target_user_id=user.id,
+            target_username=user.username,
+            ip_address=request.client.host if request and request.client else None,
+            status="success",
+            message=f"User {user.username} ({user.email}) soft-deleted by {current_user.username}",
+        )
+    except Exception:
+        pass
+
+    import logging
+    logging.getLogger("rhinometric.users").info(
+        "[USER] DELETED user_id=%d username=%s deleted_by=%s",
+        user.id, user.username, current_user.username,
+    )
+
+    return {"message": f"User {user.username} has been deleted", "user_id": user.id}
+
+
+    # ADMIN cannot delete OWNER
+    if user.is_owner() and not current_user.is_owner():
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only OWNER can delete another OWNER account"
+        )
+
+    # Cannot delete the LAST owner
+    if user.is_owner():
+        from models.role import Role as RoleModel
+        owner_role = db.query(RoleModel).filter(RoleModel.name == "OWNER").first()
+        if owner_role:
+            from models.role import UserRole as UserRoleModel
+            owner_count = db.query(UserRoleModel).filter(
+                UserRoleModel.role_id == owner_role.id
+            ).join(UserModel, UserModel.id == UserRoleModel.user_id).filter(
+                UserModel.is_active == True,
+                (UserModel.is_deleted == False) | (UserModel.is_deleted == None)
+            ).count()
+            if owner_count <= 1:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Cannot delete the last OWNER. Transfer ownership first."
+                )
+
+    # Soft-delete
+    user.is_active = False
+    if hasattr(user, 'is_deleted'):
+        user.is_deleted = True
+    if hasattr(user, 'deleted_at'):
+        user.deleted_at = datetime.utcnow()
+    if hasattr(user, 'deleted_by'):
+        user.deleted_by = current_user.id
+    user.updated_at = datetime.utcnow()
+
+    db.commit()
+
+    # Audit log
+    try:
+        from services.audit_logger import log_audit_event, AuditEvent
+        await log_audit_event(
+            category=AuditEvent.USER_MANAGEMENT,
+            action="user_deleted",
+            user_id=current_user.id,
+            username=current_user.username,
+            target_user_id=user.id,
+            target_username=user.username,
+            ip_address=request.client.host if request and request.client else None,
+            status="success",
+            message=f"User {user.username} ({user.email}) soft-deleted by {current_user.username}",
+        )
+    except Exception:
+        pass
+
+    import logging
+    logging.getLogger("rhinometric.users").info(
+        "[USER] DELETED user_id=%d username=%s deleted_by=%s",
+        user.id, user.username, current_user.username,
+    )
+
+    return {"message": f"User {user.username} has been deleted", "user_id": user.id}
+
+
 
 # ============================================================================
 # ROLE MANAGEMENT ENDPOINTS

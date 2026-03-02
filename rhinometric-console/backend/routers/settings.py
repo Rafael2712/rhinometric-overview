@@ -412,3 +412,43 @@ async def get_system_info(current_user: UserModel = Depends(get_current_user)):
             except Exception:
                 pass
     return {"services": services, "version": settings.API_VERSION, "environment": "production"}
+
+
+# ???????????????????????????????????????????????????
+# EMAIL SERVICE STATUS (admin-only)
+# ???????????????????????????????????????????????????
+
+@router.get("/email/status")
+async def get_email_status(
+    current_user: UserModel = Depends(get_current_user),
+):
+    """
+    Admin-only: Check email delivery service availability.
+    Performs TCP pre-check against configured SMTP host/port.
+    Returns: {available: bool, reason: str, config_summary: {...}}
+    """
+    from routers.auth import require_role
+    # Manual role check (OWNER/ADMIN only)
+    user_roles = current_user.get_roles()
+    if not any(r in user_roles for r in ["OWNER", "ADMIN"]):
+        raise HTTPException(status_code=403, detail="Insufficient permissions")
+
+    from services.email_service import is_email_service_available, _load_email_config
+
+    available, reason = is_email_service_available()
+    cfg = _load_email_config()
+
+    config_summary = None
+    if cfg:
+        config_summary = {
+            "smtp_host": cfg.get("smtp_host"),
+            "smtp_port": cfg.get("smtp_port"),
+            "from_email": cfg.get("from_email"),
+            "tls": cfg.get("smtp_require_tls", True),
+        }
+
+    return {
+        "available": available,
+        "reason": reason,
+        "config_summary": config_summary,
+    }
