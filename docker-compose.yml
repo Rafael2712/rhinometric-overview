@@ -567,7 +567,10 @@ services:
       MAIL_SSL_TLS: ${MAIL_SSL_TLS:-False}
       MAIL_FROM_NAME: ${MAIL_FROM_NAME:-Rhinometric Platform}
       # Frontend URL for password reset links
-      FRONTEND_URL: https://console.rhinometric.com
+      # Public console URL — MUST match the domain of THIS environment
+      RHINO_PUBLIC_CONSOLE_URL: https://console-staging.rhinometric.com
+      RHINO_ENV: staging
+      FRONTEND_URL: https://console-staging.rhinometric.com
     volumes:
     - ${HOME}/rhinometric_data_v2.5/console-backend/logs:/app/logs
     - ${HOME}/rhinometric_data_v2.5/console-backend/data:/app/data

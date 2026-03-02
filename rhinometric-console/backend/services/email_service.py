@@ -7,6 +7,14 @@ Transport strategy (automatic fallback):
   1. SMTP (Port 587 STARTTLS / Port 465 SMTPS)  – preferred
   2. Zoho Mail REST API over HTTPS (Port 443)    – fallback when SMTP ports are blocked
 
+Public URL resolution (for links in emails):
+  Priority 1: RHINO_PUBLIC_CONSOLE_URL env var  (recommended)
+  Priority 2: FRONTEND_URL env var              (legacy)
+  Fallback:   http://localhost:3002
+
+Environment-aware email subjects:
+  If RHINO_ENV is set and != "production", subjects are prefixed with [STAGING], [DEV], etc.
+
 Logging: all operations under [EMAIL] prefix.
 """
 
@@ -30,9 +38,43 @@ CHANNELS_PATH = os.path.join(
 _zoho_token_cache: Dict = {"token": None, "expires_at": 0}
 
 
-# ################################################################
+# ####################################################################
+# PUBLIC URL + ENVIRONMENT HELPERS
+# ####################################################################
+
+def _get_public_base_url() -> str:
+    """
+    Resolve the public console URL for links embedded in emails.
+
+    Priority:
+      1. RHINO_PUBLIC_CONSOLE_URL  (explicitly set per environment)
+      2. FRONTEND_URL               (legacy / backward-compatible)
+      3. http://localhost:3002       (safe dev fallback)
+    """
+    url = os.getenv("RHINO_PUBLIC_CONSOLE_URL") or os.getenv("FRONTEND_URL", "")
+    if not url:
+        try:
+            from config import settings as _s
+            url = _s.FRONTEND_URL
+        except Exception:
+            url = "http://localhost:3002"
+    return url.rstrip("/")
+
+
+def _env_subject_prefix() -> str:
+    """
+    If RHINO_ENV is set and is NOT 'production', return a prefix like '[STAGING] '.
+    Otherwise return empty string — production emails are clean.
+    """
+    env = os.getenv("RHINO_ENV", "").strip().lower()
+    if env and env != "production":
+        return f"[{env.upper()}] "
+    return ""
+
+
+# ####################################################################
 # CONFIG LOADERS
-# ################################################################
+# ####################################################################
 
 def _load_email_config() -> Optional[dict]:
     """Return email block from notification_channels.json or None."""
@@ -65,9 +107,9 @@ def is_smtp_configured() -> bool:
     return _load_email_config() is not None
 
 
-# ################################################################
+# ####################################################################
 # TCP PRE-CHECK
-# ################################################################
+# ####################################################################
 
 def _tcp_check(host: str, port: int, timeout: float = 4.0) -> Tuple[bool, str]:
     """
@@ -115,9 +157,9 @@ def is_email_service_available() -> Tuple[bool, str]:
     return True, "smtp-available"
 
 
-# ################################################################
+# ####################################################################
 # ZOHO MAIL API OVER HTTPS (FALLBACK)
-# ################################################################
+# ####################################################################
 
 def _get_zoho_access_token(zoho_cfg: dict) -> str:
     """Exchange refresh_token for a fresh access_token. Caches result."""
@@ -238,9 +280,9 @@ async def _send_via_zoho_api(
         raise RuntimeError(f"Zoho API error: {status_code} {desc}")
 
 
-# ################################################################
+# ####################################################################
 # SMTP SEND + FALLBACK LOGIC
-# ################################################################
+# ####################################################################
 
 async def _send_mime(msg: MIMEMultipart, cfg: dict) -> bool:
     """
@@ -314,9 +356,9 @@ def _mask_email(email: str) -> str:
     return "***"
 
 
-# ################################################################
+# ####################################################################
 # PASSWORD RESET EMAIL
-# ################################################################
+# ####################################################################
 
 async def send_password_reset_email(
     email: str,
@@ -326,9 +368,21 @@ async def send_password_reset_email(
 ) -> bool:
     """Send password-reset email. Returns True on success."""
     try:
-        from config import settings as app_settings
-        if not frontend_url:
-            frontend_url = app_settings.FRONTEND_URL
+        # ── Resolve public URL ───────────────────────
+        base_url = _get_public_base_url()
+        if frontend_url:
+            # Caller override (backward compat), but env var still wins
+            rhino_url = os.getenv("RHINO_PUBLIC_CONSOLE_URL")
+            if rhino_url:
+                base_url = rhino_url.rstrip("/")
+            else:
+                base_url = frontend_url.rstrip("/")
+
+        reset_link = f"{base_url}/reset-password?token={reset_token}"
+        prefix = _env_subject_prefix()
+        subject = f"{prefix}Reset Your Password - Rhinometric"
+
+        logger.info("[EMAIL] reset link built: %s (base_url=%s)", reset_link[:60] + "...", base_url)
 
         cfg = _load_email_config()
         if cfg is None:
@@ -336,22 +390,19 @@ async def send_password_reset_email(
             zoho_cfg = _load_zoho_api_config()
             if zoho_cfg:
                 from_email = zoho_cfg.get("from_email", "noreply@rhinometric.com")
-                reset_link = f"{frontend_url}/reset-password?token={reset_token}"
                 html = _reset_html(username, reset_link)
-                await _send_via_zoho_api(email, "Reset Your Password - Rhinometric", html, from_email, zoho_cfg)
+                await _send_via_zoho_api(email, subject, html, from_email, zoho_cfg)
                 logger.info("[EMAIL] RESET sent (zoho-api) target=%s", _mask_email(email))
                 return True
             logger.warning("[EMAIL] RESET skip: smtp not configured, zoho api not configured")
             return False
 
         from_email = cfg.get("from_email", cfg["smtp_username"])
-        reset_link = f"{frontend_url}/reset-password?token={reset_token}"
-
         html = _reset_html(username, reset_link)
         text = f"Hello {username},\nReset your password: {reset_link}\nExpires in 1 hour."
 
         msg = MIMEMultipart("alternative")
-        msg["Subject"] = "Reset Your Password - Rhinometric"
+        msg["Subject"] = subject
         msg["From"] = f"Rhinometric <{from_email}>"
         msg["To"] = email
         msg.attach(MIMEText(text, "plain", "utf-8"))
@@ -366,9 +417,9 @@ async def send_password_reset_email(
         return False
 
 
-# ################################################################
+# ####################################################################
 # WELCOME EMAIL
-# ################################################################
+# ####################################################################
 
 async def send_welcome_email(
     email: str,
@@ -380,35 +431,44 @@ async def send_welcome_email(
 ) -> bool:
     """Send welcome email with temporary credentials. Returns True on success."""
     try:
+        # ── Resolve public URL ───────────────────────
+        base_url = _get_public_base_url()
+        # If caller passed login_url, env var still takes priority
+        if login_url:
+            rhino_url = os.getenv("RHINO_PUBLIC_CONSOLE_URL")
+            if rhino_url:
+                base_url = rhino_url.rstrip("/")
+            else:
+                base_url = login_url.rstrip("/")
+
+        prefix = _env_subject_prefix()
+        subject = f"{prefix}Welcome to Rhinometric Platform"
+
+        display = full_name or username
+        roles_str = ", ".join(roles) if roles else "VIEWER"
+
         cfg = _load_email_config()
         if cfg is None:
             zoho_cfg = _load_zoho_api_config()
             if zoho_cfg:
                 from_email = zoho_cfg.get("from_email", "noreply@rhinometric.com")
-                display = full_name or username
-                roles_str = ", ".join(roles) if roles else "VIEWER"
-                url = login_url or "http://rhinometric.local"
-                html = _welcome_html(display, username, password, roles_str, url)
-                await _send_via_zoho_api(email, "Welcome to Rhinometric Platform", html, from_email, zoho_cfg)
+                html = _welcome_html(display, username, password, roles_str, base_url)
+                await _send_via_zoho_api(email, subject, html, from_email, zoho_cfg)
                 logger.info("[EMAIL] WELCOME sent (zoho-api) target=%s user=%s", _mask_email(email), username)
                 return True
             logger.warning("[EMAIL] WELCOME skip: smtp not configured, zoho api not configured")
             return False
 
         from_email = cfg.get("from_email", cfg["smtp_username"])
-        display = full_name or username
-        roles_str = ", ".join(roles) if roles else "VIEWER"
-        url = login_url or "http://rhinometric.local"
-
-        html = _welcome_html(display, username, password, roles_str, url)
+        html = _welcome_html(display, username, password, roles_str, base_url)
         text = (
             f"Welcome {display}!\n"
             f"Username: {username}\nPassword: {password}\nRole: {roles_str}\n"
-            f"Login: {url}\nYou must change your password on first login."
+            f"Login: {base_url}\nYou must change your password on first login."
         )
 
         msg = MIMEMultipart("alternative")
-        msg["Subject"] = "Welcome to Rhinometric Platform"
+        msg["Subject"] = subject
         msg["From"] = f"Rhinometric <{from_email}>"
         msg["To"] = email
         msg.attach(MIMEText(text, "plain", "utf-8"))
@@ -423,9 +483,9 @@ async def send_welcome_email(
         return False
 
 
-# ################################################################
+# ####################################################################
 # HTML TEMPLATES
-# ################################################################
+# ####################################################################
 _HEADER = """<tr><td style="padding:40px 40px 20px;text-align:center;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);border-radius:8px 8px 0 0;"><h1 style="margin:0;color:#fff;font-size:28px">Rhinometric</h1><p style="margin:10px 0 0;color:#e0e7ff;font-size:14px">AI-Powered Observability Platform</p></td></tr>"""
 _FOOTER = """<tr><td style="padding:24px 40px;background:#f9fafb;border-top:1px solid #e5e7eb;border-radius:0 0 8px 8px;text-align:center;color:#9ca3af;font-size:12px">&copy; 2026 Rhinometric. All rights reserved.</td></tr>"""
 _WRAP = '<body style="margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;background:#f5f5f5"><table style="width:100%;background:#f5f5f5"><tr><td align="center" style="padding:40px 0"><table style="width:600px;max-width:100%;background:#fff;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.1)">'
