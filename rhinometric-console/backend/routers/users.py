@@ -96,6 +96,9 @@ class UserResponse(BaseModel):
     phone: Optional[str]
     timezone: Optional[str]
     language: Optional[str]
+    is_deleted: bool = False
+    deleted_at: Optional[datetime] = None
+    deleted_by: Optional[int] = None
     
     class Config:
         from_attributes = True
@@ -332,6 +335,7 @@ async def list_users(
     search: Optional[str] = None,
     role_filter: Optional[str] = None,
     active_only: bool = True,
+    include_deleted: bool = Query(False),
     current_user: UserModel = Depends(require_role(["OWNER", "ADMIN", "OPERATOR"])),
     db: Session = Depends(get_db)
 ):
@@ -357,17 +361,12 @@ async def list_users(
     if role_filter:
         query = query.join(UserModel.roles).filter(RoleModel.name == role_filter)
     
-    # Exclude soft-deleted users
-    if hasattr(UserModel, 'is_deleted'):
-        query = query.filter(
-            (UserModel.is_deleted == False) | (UserModel.is_deleted == None)
-        )
-
-    # Exclude soft-deleted users
-    if hasattr(UserModel, 'is_deleted'):
-        query = query.filter(
-            (UserModel.is_deleted == False) | (UserModel.is_deleted == None)
-        )
+    # Exclude soft-deleted users unless include_deleted=True
+    if not include_deleted:
+        if hasattr(UserModel, 'is_deleted'):
+            query = query.filter(
+                (UserModel.is_deleted == False) | (UserModel.is_deleted == None)
+            )
 
     # Apply active filter
     if active_only:
@@ -395,7 +394,10 @@ async def list_users(
             roles=user.get_roles(),
             phone=user.phone,
             timezone=user.timezone,
-            language=user.language
+            language=user.language,
+            is_deleted=getattr(user, 'is_deleted', False),
+            deleted_at=getattr(user, 'deleted_at', None),
+            deleted_by=getattr(user, 'deleted_by', None),
         )
         for user in users
     ]
@@ -436,7 +438,10 @@ async def get_user(
         roles=user.get_roles(),
         phone=user.phone,
         timezone=user.timezone,
-        language=user.language
+        language=user.language,
+        is_deleted=getattr(user, 'is_deleted', False),
+        deleted_at=getattr(user, 'deleted_at', None),
+        deleted_by=getattr(user, 'deleted_by', None),
     )
 
 @router.put("/{user_id}", response_model=UserResponse)
@@ -520,7 +525,10 @@ async def update_user(
         roles=user.get_roles(),
         phone=user.phone,
         timezone=user.timezone,
-        language=user.language
+        language=user.language,
+        is_deleted=getattr(user, 'is_deleted', False),
+        deleted_at=getattr(user, 'deleted_at', None),
+        deleted_by=getattr(user, 'deleted_by', None),
     )
 
 @router.delete("/{user_id}")
@@ -556,7 +564,7 @@ async def delete_user(
     # Cannot delete yourself
     if user.id == current_user.id:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=status.HTTP_403_FORBIDDEN,
             detail="Cannot delete your own account"
         )
 
@@ -581,7 +589,7 @@ async def delete_user(
             ).count()
             if owner_count <= 1:
                 raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
+                    status_code=status.HTTP_409_CONFLICT,
                     detail="Cannot delete the last OWNER. Transfer ownership first."
                 )
 
@@ -620,71 +628,70 @@ async def delete_user(
         user.id, user.username, current_user.username,
     )
 
-    return {"message": f"User {user.username} has been deleted", "user_id": user.id}
+    return {"ok": True, "user_id": user.id, "deleted_at": str(user.deleted_at) if hasattr(user, 'deleted_at') and user.deleted_at else None, "deleted_by": user.deleted_by if hasattr(user, 'deleted_by') else None}
 
 
-    # ADMIN cannot delete OWNER
-    if user.is_owner() and not current_user.is_owner():
+# -------------------------------------------------------
+# RESTORE ENDPOINT
+# -------------------------------------------------------
+
+@router.post("/{user_id}/restore")
+async def restore_user(
+    user_id: int,
+    current_user: UserModel = Depends(require_role(["OWNER", "ADMIN"])),
+    db: Session = Depends(get_db),
+    request: Request = None
+):
+    """
+    Restore a soft-deleted user (OWNER/ADMIN only).
+    Sets is_deleted=False, is_active=True, clears deleted_at/deleted_by.
+    """
+    user = db.query(UserModel).filter(UserModel.id == user_id).first()
+    if not user:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only OWNER can delete another OWNER account"
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
         )
 
-    # Cannot delete the LAST owner
-    if user.is_owner():
-        from models.role import Role as RoleModel
-        owner_role = db.query(RoleModel).filter(RoleModel.name == "OWNER").first()
-        if owner_role:
-            from models.role import UserRole as UserRoleModel
-            owner_count = db.query(UserRoleModel).filter(
-                UserRoleModel.role_id == owner_role.id
-            ).join(UserModel, UserModel.id == UserRoleModel.user_id).filter(
-                UserModel.is_active == True,
-                (UserModel.is_deleted == False) | (UserModel.is_deleted == None)
-            ).count()
-            if owner_count <= 1:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Cannot delete the last OWNER. Transfer ownership first."
-                )
+    if not getattr(user, 'is_deleted', False):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User is not deleted"
+        )
 
-    # Soft-delete
-    user.is_active = False
-    if hasattr(user, 'is_deleted'):
-        user.is_deleted = True
-    if hasattr(user, 'deleted_at'):
-        user.deleted_at = datetime.utcnow()
-    if hasattr(user, 'deleted_by'):
-        user.deleted_by = current_user.id
+    user.is_deleted = False
+    user.is_active = True
+    user.deleted_at = None
+    user.deleted_by = None
     user.updated_at = datetime.utcnow()
 
     db.commit()
+    db.refresh(user)
 
     # Audit log
     try:
         from services.audit_logger import log_audit_event, AuditEvent
         await log_audit_event(
             category=AuditEvent.USER_MANAGEMENT,
-            action="user_deleted",
+            action="user_restored",
             user_id=current_user.id,
             username=current_user.username,
             target_user_id=user.id,
             target_username=user.username,
             ip_address=request.client.host if request and request.client else None,
             status="success",
-            message=f"User {user.username} ({user.email}) soft-deleted by {current_user.username}",
+            message=f"User {user.username} restored by {current_user.username}",
         )
     except Exception:
         pass
 
     import logging
     logging.getLogger("rhinometric.users").info(
-        "[USER] DELETED user_id=%d username=%s deleted_by=%s",
+        "[USER] RESTORED user_id=%d username=%s restored_by=%s",
         user.id, user.username, current_user.username,
     )
 
-    return {"message": f"User {user.username} has been deleted", "user_id": user.id}
-
+    return {"ok": True, "user_id": user.id, "message": f"User {user.username} has been restored"}
 
 
 # ============================================================================
@@ -779,7 +786,10 @@ async def assign_role(
         roles=user.get_roles(),
         phone=user.phone,
         timezone=user.timezone,
-        language=user.language
+        language=user.language,
+        is_deleted=getattr(user, 'is_deleted', False),
+        deleted_at=getattr(user, 'deleted_at', None),
+        deleted_by=getattr(user, 'deleted_by', None),
     )
 
 @router.delete("/{user_id}/roles/{role_name}", response_model=UserResponse)
@@ -852,7 +862,10 @@ async def remove_role(
         roles=user.get_roles(),
         phone=user.phone,
         timezone=user.timezone,
-        language=user.language
+        language=user.language,
+        is_deleted=getattr(user, 'is_deleted', False),
+        deleted_at=getattr(user, 'deleted_at', None),
+        deleted_by=getattr(user, 'deleted_by', None),
     )
 
 @router.get("/{user_id}/permissions")

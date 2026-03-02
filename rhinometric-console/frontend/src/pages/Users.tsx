@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useAuthStore } from '../lib/auth/store'
-import { Users as UsersIcon, UserPlus, Shield, Edit2, Search, CheckCircle, XCircle, Trash2, Copy, Mail, AlertTriangle } from 'lucide-react'
+import { Users as UsersIcon, UserPlus, Shield, Edit2, Search, CheckCircle, XCircle, Trash2, Copy, Mail, AlertTriangle, RotateCcw, Eye, EyeOff } from 'lucide-react'
 
 interface User {
   id: number
@@ -12,6 +12,9 @@ interface User {
   roles: string[]
   last_login?: string
   created_at: string
+  is_deleted?: boolean
+  deleted_at?: string
+  deleted_by?: number
 }
 
 interface CreateUserData {
@@ -20,6 +23,12 @@ interface CreateUserData {
   password: string
   full_name?: string
   role_names: string[]
+}
+
+interface Toast {
+  id: number
+  type: 'success' | 'error' | 'info'
+  message: string
 }
 
 export function UsersPage() {
@@ -39,6 +48,9 @@ export function UsersPage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<{id: number, username: string} | null>(null)
   const [deleteLoading, setDeleteLoading] = useState(false)
+  const [showDeleted, setShowDeleted] = useState(false)
+  const [restoreLoading, setRestoreLoading] = useState<number | null>(null)
+  const [toasts, setToasts] = useState<Toast[]>([])
   const [newUser, setNewUser] = useState<CreateUserData>({
     username: '',
     email: '',
@@ -47,6 +59,14 @@ export function UsersPage() {
     role_names: ['VIEWER']
   })
 
+  const addToast = (type: Toast['type'], message: string) => {
+    const id = Date.now()
+    setToasts(prev => [...prev, { id, type, message }])
+    setTimeout(() => {
+      setToasts(prev => prev.filter(t => t.id !== id))
+    }, 4000)
+  }
+
   useEffect(() => {
     if (!canManageUsers()) {
       return
@@ -54,14 +74,23 @@ export function UsersPage() {
     fetchUsers()
   }, [token, canManageUsers])
 
+  useEffect(() => {
+    fetchUsers()
+  }, [showDeleted])
+
   const fetchUsers = async () => {
     try {
-      const response = await fetch('/api/users/', {
+      const params = new URLSearchParams()
+      if (showDeleted) {
+        params.set('include_deleted', 'true')
+        params.set('active_only', 'false')
+      }
+      const response = await fetch(`/api/users/?${params.toString()}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       })
-      
+
       if (response.ok) {
         const data = await response.json()
         setUsers(data.users || [])
@@ -95,7 +124,6 @@ export function UsersPage() {
           role_names: ['VIEWER']
         })
         fetchUsers()
-        // Show result modal with delivery info
         setShowCreatedResult({
           username: data.username,
           email: data.email,
@@ -109,17 +137,17 @@ export function UsersPage() {
         const errorMsg = typeof errorData.detail === 'string'
           ? errorData.detail
           : errorData.detail?.[0]?.msg || JSON.stringify(errorData.detail) || 'Failed to create user'
-        alert(errorMsg)
+        addToast('error', errorMsg)
       }
     } catch (error) {
       console.error('Error creating user:', error)
-      alert('Failed to create user')
+      addToast('error', 'Failed to create user')
     }
   }
 
   const resetPassword = async () => {
     if (!selectedUserId || !newPassword) {
-      alert('Please enter a new password')
+      addToast('error', 'Please enter a new password')
       return
     }
 
@@ -134,17 +162,17 @@ export function UsersPage() {
       })
 
       if (response.ok) {
-        alert('Password reset successfully. User must change password on next login.')
+        addToast('success', 'Password reset successfully. User must change password on next login.')
         setShowResetPasswordModal(false)
         setSelectedUserId(null)
         setNewPassword('')
       } else {
         const error = await response.json()
-        alert(error.detail || 'Failed to reset password')
+        addToast('error', error.detail || 'Failed to reset password')
       }
     } catch (error) {
       console.error('Error resetting password:', error)
-      alert('Error resetting password')
+      addToast('error', 'Error resetting password')
     }
   }
 
@@ -188,15 +216,41 @@ export function UsersPage() {
         setShowDeleteModal(false)
         setDeleteTarget(null)
         fetchUsers()
+        addToast('success', `User "${deleteTarget.username}" has been deleted`)
       } else {
         const error = await response.json()
-        alert(error.detail || 'Error al eliminar usuario')
+        addToast('error', error.detail || 'Error deleting user')
       }
     } catch (error) {
       console.error('Error deleting user:', error)
-      alert('Error al eliminar usuario')
+      addToast('error', 'Error deleting user')
     } finally {
       setDeleteLoading(false)
+    }
+  }
+
+  const restoreUser = async (userId: number, username: string) => {
+    setRestoreLoading(userId)
+    try {
+      const response = await fetch(`/api/users/${userId}/restore`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+
+      if (response.ok) {
+        addToast('success', `User "${username}" has been restored`)
+        fetchUsers()
+      } else {
+        const error = await response.json()
+        addToast('error', error.detail || 'Error restoring user')
+      }
+    } catch (error) {
+      console.error('Error restoring user:', error)
+      addToast('error', 'Error restoring user')
+    } finally {
+      setRestoreLoading(null)
     }
   }
 
@@ -246,9 +300,9 @@ export function UsersPage() {
         </div>
       </div>
 
-      {/* Search */}
-      <div className="mb-6">
-        <div className="relative">
+      {/* Search + Show Deleted Toggle */}
+      <div className="mb-6 flex gap-4 items-center">
+        <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
           <input
             type="text"
@@ -258,6 +312,17 @@ export function UsersPage() {
             className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
         </div>
+        <button
+          onClick={() => setShowDeleted(!showDeleted)}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-medium transition ${
+            showDeleted
+              ? 'bg-red-50 border-red-300 text-red-700 hover:bg-red-100'
+              : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'
+          }`}
+        >
+          {showDeleted ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+          {showDeleted ? 'Showing deleted' : 'Show deleted'}
+        </button>
       </div>
 
       {/* Users Table */}
@@ -275,11 +340,11 @@ export function UsersPage() {
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {filteredUsers.map((user) => (
-              <tr key={user.id} className="hover:bg-gray-50">
+              <tr key={user.id} className={`hover:bg-gray-50 ${user.is_deleted ? 'bg-red-50 opacity-75' : ''}`}>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="flex items-center">
-                    <div className="flex-shrink-0 h-10 w-10 bg-blue-100 rounded-full flex items-center justify-center">
-                      <span className="text-blue-600 font-semibold">{user.username[0].toUpperCase()}</span>
+                    <div className={`flex-shrink-0 h-10 w-10 rounded-full flex items-center justify-center ${user.is_deleted ? 'bg-red-100' : 'bg-blue-100'}`}>
+                      <span className={`font-semibold ${user.is_deleted ? 'text-red-600' : 'text-blue-600'}`}>{user.username[0].toUpperCase()}</span>
                     </div>
                     <div className="ml-4">
                       <div className="text-sm font-medium text-gray-900">{user.username}</div>
@@ -309,7 +374,12 @@ export function UsersPage() {
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  {user.is_active ? (
+                  {user.is_deleted ? (
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                      <Trash2 className="h-3 w-3 mr-1" />
+                      Deleted
+                    </span>
+                  ) : user.is_active ? (
                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                       <CheckCircle className="h-3 w-3 mr-1" />
                       Active
@@ -325,31 +395,49 @@ export function UsersPage() {
                   {user.last_login ? new Date(user.last_login).toLocaleString() : 'Never'}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                  <button
-                    onClick={() => toggleUserStatus(user.id, user.is_active)}
-                    className="text-blue-600 hover:text-blue-900 mr-3"
-                    title="Toggle Active/Inactive"
-                  >
-                    <Edit2 className="h-4 w-4" />
-                  </button>
-                  <button
-                    onClick={() => {
-                      setSelectedUserId(user.id)
-                      setShowResetPasswordModal(true)
-                    }}
-                    className="text-orange-600 hover:text-orange-900 mr-3"
-                    title="Reset Password"
-                  >
-                    <Shield className="h-4 w-4" />
-                  </button>
-                  {(isOwner() || canManageUsers()) && (
-                    <button
-                      onClick={() => openDeleteModal(user.id, user.username)}
-                      className="text-red-600 hover:text-red-900"
-                      title="Delete User"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
+                  {user.is_deleted ? (
+                    /* Restore button for deleted users */
+                    (isOwner() || canManageUsers()) && (
+                      <button
+                        onClick={() => restoreUser(user.id, user.username)}
+                        className="inline-flex items-center gap-1 px-3 py-1 text-green-700 bg-green-50 border border-green-200 rounded-lg hover:bg-green-100 transition disabled:opacity-50"
+                        disabled={restoreLoading === user.id}
+                        title="Restore User"
+                      >
+                        <RotateCcw className={`h-4 w-4 ${restoreLoading === user.id ? 'animate-spin' : ''}`} />
+                        {restoreLoading === user.id ? 'Restoring...' : 'Restore'}
+                      </button>
+                    )
+                  ) : (
+                    /* Normal action buttons */
+                    <>
+                      <button
+                        onClick={() => toggleUserStatus(user.id, user.is_active)}
+                        className="text-blue-600 hover:text-blue-900 mr-3"
+                        title="Toggle Active/Inactive"
+                      >
+                        <Edit2 className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => {
+                          setSelectedUserId(user.id)
+                          setShowResetPasswordModal(true)
+                        }}
+                        className="text-orange-600 hover:text-orange-900 mr-3"
+                        title="Reset Password"
+                      >
+                        <Shield className="h-4 w-4" />
+                      </button>
+                      {(isOwner() || canManageUsers()) && (
+                        <button
+                          onClick={() => openDeleteModal(user.id, user.username)}
+                          className="text-red-600 hover:text-red-900"
+                          title="Delete User"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      )}
+                    </>
                   )}
                 </td>
               </tr>
@@ -361,8 +449,8 @@ export function UsersPage() {
       {/* Create User Modal */}
       {showCreateModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-            <h3 className="text-lg font-semibold mb-4">Create New User</h3>
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-xl">
+            <h3 className="text-lg font-semibold mb-4 text-gray-900">Create New User</h3>
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Username *</label>
@@ -406,7 +494,7 @@ export function UsersPage() {
                   placeholder="Enter secure password"
                   required
                 />
-                <p className="text-xs text-gray-600 mt-1">• Mínimo 8 caracteres<br/>• 1 mayúscula (A-Z)<br/>• 1 minúscula (a-z)<br/>• 1 número (0-9)</p>
+                <p className="text-xs text-gray-600 mt-1">{'\u2022'} Min 8 characters<br/>{'\u2022'} 1 uppercase (A-Z)<br/>{'\u2022'} 1 lowercase (a-z)<br/>{'\u2022'} 1 number (0-9)</p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Role *</label>
@@ -415,9 +503,9 @@ export function UsersPage() {
                   onChange={(e) => setNewUser({ ...newUser, role_names: [e.target.value] })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"
                 >
-                  <option value="VIEWER">Viewer (Solo Lectura)</option>
-                  <option value="OPERATOR">Operator (Escritura Limitada)</option>
-                  <option value="ADMIN">Admin (Acceso Completo)</option>
+                  <option value="VIEWER">Viewer (Read Only)</option>
+                  <option value="OPERATOR">Operator (Limited Write)</option>
+                  <option value="ADMIN">Admin (Full Access)</option>
                 </select>
               </div>
             </div>
@@ -463,7 +551,7 @@ export function UsersPage() {
               <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4">
                 <div className="flex items-center gap-2 mb-2">
                   <AlertTriangle className="text-amber-600" size={18} />
-                  <span className="font-medium text-amber-800">SMTP unavailable — copy credentials now</span>
+                  <span className="font-medium text-amber-800">SMTP unavailable &mdash; copy credentials now</span>
                 </div>
                 <p className="text-sm text-amber-700 mb-3">
                   The welcome email could not be sent. Please copy the credentials below and share them securely with the user. <strong>This is the only time the password will be shown.</strong>
@@ -501,7 +589,7 @@ export function UsersPage() {
         </div>
       )}
 
-      
+
       {/* Delete Confirmation Modal */}
       {showDeleteModal && deleteTarget && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -510,13 +598,13 @@ export function UsersPage() {
               <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center mr-3">
                 <AlertTriangle className="h-5 w-5 text-red-600" />
               </div>
-              <h3 className="text-lg font-semibold text-gray-900">Eliminar Usuario</h3>
+              <h3 className="text-lg font-semibold text-gray-900">Delete User</h3>
             </div>
             <p className="text-gray-600 mb-2">
-              \u00bfEst\u00e1 seguro que desea eliminar al usuario <strong>{deleteTarget.username}</strong>?
+              Are you sure you want to delete user <strong>{deleteTarget.username}</strong>?
             </p>
             <p className="text-sm text-gray-500 mb-6">
-              El usuario ser\u00e1 desactivado y no podr\u00e1 iniciar sesi\u00f3n. Esta acci\u00f3n puede ser revertida por un administrador.
+              The user will be deactivated and blocked from logging in. This action can be reverted by an administrator.
             </p>
             <div className="flex justify-end space-x-3">
               <button
@@ -524,39 +612,39 @@ export function UsersPage() {
                 className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
                 disabled={deleteLoading}
               >
-                Cancelar
+                Cancel
               </button>
               <button
                 onClick={confirmDelete}
                 className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
                 disabled={deleteLoading}
               >
-                {deleteLoading ? 'Eliminando...' : 'Eliminar Usuario'}
+                {deleteLoading ? 'Deleting...' : 'Delete User'}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      
+
       {/* Reset Password Modal */}
       {showResetPasswordModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-            <h3 className="text-lg font-semibold mb-4 text-gray-900">Resetear Contraseña</h3>
+            <h3 className="text-lg font-semibold mb-4 text-gray-900">Reset Password</h3>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Nueva Contraseña *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">New Password *</label>
                 <input
                   type="password"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 bg-white text-gray-900"
-                  placeholder="Ingrese contraseña segura"
+                  placeholder="Enter secure password"
                   required
                 />
-                <p className="text-xs text-gray-600 mt-1">• Mínimo 8 caracteres • 1 mayúscula • 1 minúscula • 1 número</p>
-                <p className="text-xs text-orange-600 mt-1 font-medium">⚠️ El usuario deberá cambiar la contraseña en el próximo login</p>
+                <p className="text-xs text-gray-600 mt-1">{'\u2022'} Min 8 characters {'\u2022'} 1 uppercase {'\u2022'} 1 lowercase {'\u2022'} 1 number</p>
+                <p className="text-xs text-orange-600 mt-1 font-medium">{'\u26A0\uFE0F'} User must change password on next login</p>
               </div>
             </div>
             <div className="mt-6 flex gap-3">
@@ -580,6 +668,24 @@ export function UsersPage() {
           </div>
         </div>
       )}
+
+      {/* Toast Notifications */}
+      <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2">
+        {toasts.map(toast => (
+          <div
+            key={toast.id}
+            className={`flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg text-sm font-medium animate-slide-in ${
+              toast.type === 'success' ? 'bg-green-600 text-white' :
+              toast.type === 'error' ? 'bg-red-600 text-white' :
+              'bg-blue-600 text-white'
+            }`}
+          >
+            {toast.type === 'success' && <CheckCircle className="h-4 w-4" />}
+            {toast.type === 'error' && <XCircle className="h-4 w-4" />}
+            {toast.message}
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
