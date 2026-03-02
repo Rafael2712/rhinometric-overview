@@ -1,17 +1,22 @@
 """
 Email Service for Rhinometric Console
-?????????????????????????????????????
+--------------------------------------
 Single source of truth: /app/data/notification_channels.json
-Supports:
-  - Port 587 (STARTTLS)
-  - Port 465 (implicit SSL / SMTPS)
-  - TCP pre-check to fail-fast when ports are blocked
+
+Transport strategy (automatic fallback):
+  1. SMTP (Port 587 STARTTLS / Port 465 SMTPS)  – preferred
+  2. Zoho Mail REST API over HTTPS (Port 443)    – fallback when SMTP ports are blocked
+
+Logging: all operations under [EMAIL] prefix.
 """
 
-import os, json, socket, asyncio, logging
-from typing import Optional, Tuple
+import os, json, socket, asyncio, logging, ssl, time
+from typing import Optional, Tuple, Dict
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from urllib.request import Request, urlopen
+from urllib.parse import urlencode
+from urllib.error import HTTPError
 import aiosmtplib
 
 logger = logging.getLogger("rhinometric.email")
@@ -21,10 +26,14 @@ CHANNELS_PATH = os.path.join(
     "data", "notification_channels.json",
 )
 
+# In-memory cache for Zoho access token
+_zoho_token_cache: Dict = {"token": None, "expires_at": 0}
 
-# ???????????????????????????????????????????????????
-# CONFIG LOADER
-# ???????????????????????????????????????????????????
+
+# ################################################################
+# CONFIG LOADERS
+# ################################################################
+
 def _load_email_config() -> Optional[dict]:
     """Return email block from notification_channels.json or None."""
     try:
@@ -38,14 +47,28 @@ def _load_email_config() -> Optional[dict]:
     return None
 
 
+def _load_zoho_api_config() -> Optional[dict]:
+    """Return zoho_api block from notification_channels.json or None."""
+    try:
+        with open(CHANNELS_PATH, "r") as f:
+            channels = json.load(f)
+        cfg = channels.get("zoho_api", {})
+        if cfg.get("client_id") and cfg.get("client_secret") and cfg.get("refresh_token"):
+            return cfg
+    except Exception as exc:
+        logger.error("[EMAIL] zoho-api-config-error: %s", exc)
+    return None
+
+
 def is_smtp_configured() -> bool:
     """Quick check: is SMTP configured (no network test)."""
     return _load_email_config() is not None
 
 
-# ???????????????????????????????????????????????????
+# ################################################################
 # TCP PRE-CHECK
-# ???????????????????????????????????????????????????
+# ################################################################
+
 def _tcp_check(host: str, port: int, timeout: float = 4.0) -> Tuple[bool, str]:
     """
     Attempt a raw TCP connect.  Returns (ok, reason).
@@ -64,33 +87,164 @@ def _tcp_check(host: str, port: int, timeout: float = 4.0) -> Tuple[bool, str]:
 def is_email_service_available() -> Tuple[bool, str]:
     """
     Full availability probe:
-      1. Config present?
-      2. TCP reachable?
+      1. SMTP config + TCP reachable?
+      2. Zoho API configured?
     Returns (available, reason).
     """
     cfg = _load_email_config()
     if cfg is None:
+        zoho_cfg = _load_zoho_api_config()
+        if zoho_cfg:
+            return True, "zoho-api-configured (smtp not configured)"
         return False, "smtp-not-configured"
+
     host = cfg["smtp_host"]
     port = cfg.get("smtp_port", 587)
     ok, reason = _tcp_check(host, port)
     if not ok:
-        # Try port 465 as fallback if 587 is blocked
+        # Try port 465 as fallback
         if port != 465:
             ok2, reason2 = _tcp_check(host, 465)
             if ok2:
                 return True, f"tcp-ok-fallback-465 (primary {port} blocked)"
+        # SMTP blocked — check Zoho API fallback
+        zoho_cfg = _load_zoho_api_config()
+        if zoho_cfg:
+            return True, f"zoho-api-fallback (smtp {reason})"
         return False, reason
     return True, "smtp-available"
 
 
-# ???????????????????????????????????????????????????
-# SEND HELPERS
-# ???????????????????????????????????????????????????
+# ################################################################
+# ZOHO MAIL API OVER HTTPS (FALLBACK)
+# ################################################################
+
+def _get_zoho_access_token(zoho_cfg: dict) -> str:
+    """Exchange refresh_token for a fresh access_token. Caches result."""
+    global _zoho_token_cache
+    if _zoho_token_cache["token"] and time.time() < _zoho_token_cache["expires_at"]:
+        return _zoho_token_cache["token"]
+
+    base = zoho_cfg.get("accounts_url", "https://accounts.zoho.eu")
+    token_url = f"{base}/oauth/v2/token"
+    params = urlencode({
+        "grant_type": "refresh_token",
+        "refresh_token": zoho_cfg["refresh_token"],
+        "client_id": zoho_cfg["client_id"],
+        "client_secret": zoho_cfg["client_secret"],
+    }).encode("utf-8")
+
+    ctx = ssl.create_default_context()
+    req = Request(token_url, data=params, method="POST")
+    req.add_header("Content-Type", "application/x-www-form-urlencoded")
+
+    resp = urlopen(req, timeout=15, context=ctx)
+    result = json.loads(resp.read().decode("utf-8"))
+
+    access_token = result.get("access_token")
+    if not access_token:
+        raise ValueError(f"Zoho token refresh failed: {result}")
+
+    expires_in = result.get("expires_in", 3600)
+    _zoho_token_cache["token"] = access_token
+    _zoho_token_cache["expires_at"] = time.time() + expires_in - 120
+
+    logger.info("[EMAIL] Zoho API token refreshed, expires_in=%ds", expires_in)
+    return access_token
+
+
+def _get_zoho_account_id(zoho_cfg: dict, access_token: str) -> str:
+    """Discover Zoho Mail account ID (or use cached value from config)."""
+    if zoho_cfg.get("account_id"):
+        return str(zoho_cfg["account_id"])
+
+    base = zoho_cfg.get("mail_url", "https://mail.zoho.eu")
+    url = f"{base}/api/accounts"
+    ctx = ssl.create_default_context()
+    req = Request(url, method="GET")
+    req.add_header("Authorization", f"Zoho-oauthtoken {access_token}")
+
+    resp = urlopen(req, timeout=15, context=ctx)
+    result = json.loads(resp.read().decode("utf-8"))
+
+    accounts = result.get("data", [])
+    if not accounts:
+        raise ValueError("No Zoho Mail accounts found")
+
+    from_email = zoho_cfg.get("from_email", "")
+    for acc in accounts:
+        if from_email and acc.get("primaryEmailAddress") == from_email:
+            account_id = str(acc["accountId"])
+            logger.info("[EMAIL] Zoho account matched by email: %s", account_id)
+            _cache_zoho_account_id(account_id)
+            return account_id
+
+    account_id = str(accounts[0]["accountId"])
+    logger.info("[EMAIL] Zoho account auto-selected: %s", account_id)
+    _cache_zoho_account_id(account_id)
+    return account_id
+
+
+def _cache_zoho_account_id(account_id: str):
+    """Persist discovered account_id to config for faster next lookup."""
+    try:
+        with open(CHANNELS_PATH, "r") as f:
+            channels = json.load(f)
+        if "zoho_api" in channels:
+            channels["zoho_api"]["account_id"] = account_id
+            with open(CHANNELS_PATH, "w") as f:
+                json.dump(channels, f, indent=2)
+    except Exception:
+        pass  # Non-critical — will rediscover next time
+
+
+async def _send_via_zoho_api(
+    to_email: str, subject: str, html_body: str,
+    from_email: str, zoho_cfg: dict,
+) -> bool:
+    """Send email via Zoho Mail REST API (HTTPS port 443)."""
+    loop = asyncio.get_event_loop()
+
+    access_token = await loop.run_in_executor(None, _get_zoho_access_token, zoho_cfg)
+    account_id = await loop.run_in_executor(None, _get_zoho_account_id, zoho_cfg, access_token)
+
+    base = zoho_cfg.get("mail_url", "https://mail.zoho.eu")
+    url = f"{base}/api/accounts/{account_id}/messages"
+    payload = {
+        "fromAddress": from_email,
+        "toAddress": to_email,
+        "subject": subject,
+        "content": html_body,
+        "mailFormat": "html",
+    }
+
+    def _do_send():
+        ctx = ssl.create_default_context()
+        body = json.dumps(payload).encode("utf-8")
+        req = Request(url, data=body, method="POST")
+        req.add_header("Authorization", f"Zoho-oauthtoken {access_token}")
+        req.add_header("Content-Type", "application/json")
+        resp = urlopen(req, timeout=15, context=ctx)
+        return json.loads(resp.read().decode("utf-8"))
+
+    result = await loop.run_in_executor(None, _do_send)
+    status_code = result.get("status", {}).get("code", -1)
+    if status_code == 200:
+        logger.info("[EMAIL] Zoho API send OK to=%s", _mask_email(to_email))
+        return True
+    else:
+        desc = result.get("status", {}).get("description", "unknown")
+        logger.error("[EMAIL] Zoho API send failed code=%s desc=%s", status_code, desc)
+        raise RuntimeError(f"Zoho API error: {status_code} {desc}")
+
+
+# ################################################################
+# SMTP SEND + FALLBACK LOGIC
+# ################################################################
+
 async def _send_mime(msg: MIMEMultipart, cfg: dict) -> bool:
     """
-    Low-level send via aiosmtplib.
-    Detects port to choose STARTTLS vs implicit-SSL.
+    Attempt SMTP delivery; if TCP-blocked, auto-fallback to Zoho API.
     """
     host = cfg["smtp_host"]
     port = cfg.get("smtp_port", 587)
@@ -98,27 +252,39 @@ async def _send_mime(msg: MIMEMultipart, cfg: dict) -> bool:
     pwd  = cfg.get("smtp_password", "")
     use_tls = cfg.get("smtp_require_tls", True)
 
-    # Decide send strategy based on port
     send_kwargs = dict(
-        hostname=host,
-        port=port,
-        username=user,
-        password=pwd,
-        timeout=15,
+        hostname=host, port=port, username=user, password=pwd, timeout=15,
     )
 
     # TCP pre-check primary port
     tcp_ok, tcp_reason = _tcp_check(host, port, timeout=5)
     if not tcp_ok and port != 465:
-        # fallback 465
         tcp_ok2, _ = _tcp_check(host, 465, timeout=5)
         if tcp_ok2:
             port = 465
             send_kwargs["port"] = 465
+            tcp_ok = True
             logger.info("[EMAIL] primary port blocked, falling back to 465 SMTPS")
 
+    # If SMTP totally blocked → try Zoho API
+    if not tcp_ok:
+        zoho_cfg = _load_zoho_api_config()
+        if zoho_cfg:
+            logger.info("[EMAIL] SMTP blocked (%s), routing via Zoho API (HTTPS)", tcp_reason)
+            to_email = msg["To"]
+            subject = msg["Subject"]
+            from_email = cfg.get("from_email", user)
+            html_body = _extract_html(msg)
+            return await _send_via_zoho_api(to_email, subject, html_body, from_email, zoho_cfg)
+        else:
+            raise ConnectionError(
+                f"SMTP blocked ({tcp_reason}) and Zoho API fallback not configured. "
+                "Add zoho_api section to notification_channels.json."
+            )
+
+    # SMTP path — ports are reachable
     if port == 465:
-        send_kwargs["use_tls"] = True      # implicit SSL
+        send_kwargs["use_tls"] = True
         send_kwargs.pop("start_tls", None)
     else:
         send_kwargs["start_tls"] = use_tls
@@ -126,6 +292,17 @@ async def _send_mime(msg: MIMEMultipart, cfg: dict) -> bool:
 
     await aiosmtplib.send(msg, **send_kwargs)
     return True
+
+
+def _extract_html(msg: MIMEMultipart) -> str:
+    """Extract HTML body from MIMEMultipart, fall back to plain text."""
+    for part in msg.walk():
+        if part.get_content_type() == "text/html":
+            return part.get_payload(decode=True).decode("utf-8")
+    for part in msg.walk():
+        if part.get_content_type() == "text/plain":
+            return part.get_payload(decode=True).decode("utf-8")
+    return ""
 
 
 def _mask_email(email: str) -> str:
@@ -137,9 +314,10 @@ def _mask_email(email: str) -> str:
     return "***"
 
 
-# ???????????????????????????????????????????????????
+# ################################################################
 # PASSWORD RESET EMAIL
-# ???????????????????????????????????????????????????
+# ################################################################
+
 async def send_password_reset_email(
     email: str,
     username: str,
@@ -154,7 +332,16 @@ async def send_password_reset_email(
 
         cfg = _load_email_config()
         if cfg is None:
-            logger.warning("[EMAIL] RESET skip: smtp not configured")
+            # Try pure Zoho API (no SMTP config at all)
+            zoho_cfg = _load_zoho_api_config()
+            if zoho_cfg:
+                from_email = zoho_cfg.get("from_email", "noreply@rhinometric.com")
+                reset_link = f"{frontend_url}/reset-password?token={reset_token}"
+                html = _reset_html(username, reset_link)
+                await _send_via_zoho_api(email, "Reset Your Password - Rhinometric", html, from_email, zoho_cfg)
+                logger.info("[EMAIL] RESET sent (zoho-api) target=%s", _mask_email(email))
+                return True
+            logger.warning("[EMAIL] RESET skip: smtp not configured, zoho api not configured")
             return False
 
         from_email = cfg.get("from_email", cfg["smtp_username"])
@@ -179,9 +366,10 @@ async def send_password_reset_email(
         return False
 
 
-# ???????????????????????????????????????????????????
+# ################################################################
 # WELCOME EMAIL
-# ???????????????????????????????????????????????????
+# ################################################################
+
 async def send_welcome_email(
     email: str,
     username: str,
@@ -194,7 +382,17 @@ async def send_welcome_email(
     try:
         cfg = _load_email_config()
         if cfg is None:
-            logger.warning("[EMAIL] WELCOME skip: smtp not configured")
+            zoho_cfg = _load_zoho_api_config()
+            if zoho_cfg:
+                from_email = zoho_cfg.get("from_email", "noreply@rhinometric.com")
+                display = full_name or username
+                roles_str = ", ".join(roles) if roles else "VIEWER"
+                url = login_url or "http://rhinometric.local"
+                html = _welcome_html(display, username, password, roles_str, url)
+                await _send_via_zoho_api(email, "Welcome to Rhinometric Platform", html, from_email, zoho_cfg)
+                logger.info("[EMAIL] WELCOME sent (zoho-api) target=%s user=%s", _mask_email(email), username)
+                return True
+            logger.warning("[EMAIL] WELCOME skip: smtp not configured, zoho api not configured")
             return False
 
         from_email = cfg.get("from_email", cfg["smtp_username"])
@@ -225,9 +423,9 @@ async def send_welcome_email(
         return False
 
 
-# ???????????????????????????????????????????????????
+# ################################################################
 # HTML TEMPLATES
-# ???????????????????????????????????????????????????
+# ################################################################
 _HEADER = """<tr><td style="padding:40px 40px 20px;text-align:center;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);border-radius:8px 8px 0 0;"><h1 style="margin:0;color:#fff;font-size:28px">Rhinometric</h1><p style="margin:10px 0 0;color:#e0e7ff;font-size:14px">AI-Powered Observability Platform</p></td></tr>"""
 _FOOTER = """<tr><td style="padding:24px 40px;background:#f9fafb;border-top:1px solid #e5e7eb;border-radius:0 0 8px 8px;text-align:center;color:#9ca3af;font-size:12px">&copy; 2026 Rhinometric. All rights reserved.</td></tr>"""
 _WRAP = '<body style="margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;background:#f5f5f5"><table style="width:100%;background:#f5f5f5"><tr><td align="center" style="padding:40px 0"><table style="width:600px;max-width:100%;background:#fff;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.1)">'

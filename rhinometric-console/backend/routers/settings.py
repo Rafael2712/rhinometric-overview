@@ -320,67 +320,71 @@ async def test_slack(current_user: UserModel = Depends(get_current_user)):
 @router.post("/notification-channels/test/email")
 async def test_email(current_user: UserModel = Depends(get_current_user)):
     """
-    Send a test email using the configured SMTP settings.
-    Sends directly via SMTP (not through Alertmanager).
+    Send a test email using SMTP or Zoho API fallback.
+    Uses email_service._send_mime (same path as real emails).
     """
     user_roles = current_user.get_roles()
     if "ADMIN" not in user_roles and "OWNER" not in user_roles:
         raise HTTPException(status_code=403, detail="Admin or Owner role required")
 
-    channels = load_channels()
-    email = channels.get("email", {})
+    from services.email_service import (
+        _load_email_config, _load_zoho_api_config,
+        _send_mime, _send_via_zoho_api, is_email_service_available,
+    )
 
-    if not email.get("smtp_host") or not email.get("smtp_username"):
-        raise HTTPException(status_code=400, detail="SMTP not configured")
-    if not email.get("to_emails"):
+    available, reason = is_email_service_available()
+    if not available:
+        raise HTTPException(status_code=400, detail=f"Email not available: {reason}")
+
+    cfg = _load_email_config()
+    channels = load_channels()
+    email_ch = channels.get("email", {})
+    recipients = email_ch.get("to_emails", [])
+    if not recipients:
         raise HTTPException(status_code=400, detail="No recipient email addresses configured")
 
     try:
-        msg = MIMEMultipart("alternative")
-        msg["Subject"] = "Rhinometric - Test Email Notification"
-        msg["From"] = email.get("from_email", email["smtp_username"])
-        msg["To"] = ", ".join(email["to_emails"])
+        to_addr = ", ".join(recipients)
+        from_addr = email_ch.get("from_email", email_ch.get("smtp_username", "noreply@rhinometric.com"))
 
         html = f"""
         <html>
         <body style="font-family: -apple-system, sans-serif; background: #0f1923; color: #e0e0e0; padding: 40px;">
           <div style="max-width: 600px; margin: 0 auto; background: #1a2332; border-radius: 12px; padding: 32px; border: 1px solid #2a3a4a;">
             <h1 style="color: #00d4aa; margin: 0 0 8px;">&#x2705; Rhinometric Test</h1>
-            <p style="color: #8899aa; margin: 0 0 24px;">Email notifications are configured correctly.</p>
+            <p style="color: #8899aa; margin: 0 0 24px;">Email notifications are working ({reason}).</p>
             <div style="background: #0f1923; border-radius: 8px; padding: 16px; border: 1px solid #2a3a4a;">
               <p style="margin: 0; color: #e0e0e0;">This is a test email from <strong>Rhinometric Console</strong>.</p>
-              <p style="margin: 8px 0 0; color: #8899aa; font-size: 13px;">Sent by: {current_user.username}</p>
+              <p style="margin: 8px 0 0; color: #8899aa; font-size: 13px;">Sent by: {current_user.username} | Transport: {reason}</p>
             </div>
             <p style="color: #556677; font-size: 12px; margin: 24px 0 0;">Rhinometric AI-Powered Observability Platform</p>
           </div>
         </body>
         </html>
         """
-        msg.attach(MIMEText(html, "html"))
 
-        smtp_host = email["smtp_host"]
-        smtp_port = email.get("smtp_port", 587)
-        use_tls = email.get("smtp_require_tls", True)
-
-        if use_tls:
-            server = smtplib.SMTP(smtp_host, smtp_port, timeout=10)
-            server.starttls()
+        if cfg:
+            # Build MIME and send through _send_mime (handles SMTP + Zoho API fallback)
+            msg = MIMEMultipart("alternative")
+            msg["Subject"] = "Rhinometric - Test Email Notification"
+            msg["From"] = from_addr
+            msg["To"] = to_addr
+            msg.attach(MIMEText(html, "html"))
+            await _send_mime(msg, cfg)
         else:
-            server = smtplib.SMTP_SSL(smtp_host, smtp_port, timeout=10)
+            # No SMTP config, send directly via Zoho API
+            zoho_cfg = _load_zoho_api_config()
+            if not zoho_cfg:
+                raise HTTPException(status_code=400, detail="Neither SMTP nor Zoho API configured")
+            await _send_via_zoho_api(to_addr, "Rhinometric - Test Email Notification", html, from_addr, zoho_cfg)
 
-        server.login(email["smtp_username"], email["smtp_password"])
-        server.sendmail(msg["From"], email["to_emails"], msg.as_string())
-        server.quit()
+        logger.info(f"Test email sent by {current_user.username} to {recipients} via {reason}")
+        return {"status": "ok", "message": f"Test email sent to {to_addr}", "transport": reason}
 
-        logger.info(f"Test email sent by {current_user.username} to {email['to_emails']}")
-        return {"status": "ok", "message": f"Test email sent to {', '.join(email['to_emails'])}"}
-
-    except smtplib.SMTPAuthenticationError as e:
-        raise HTTPException(status_code=401, detail=f"SMTP authentication failed: {str(e)}")
-    except smtplib.SMTPConnectError as e:
-        raise HTTPException(status_code=502, detail=f"Cannot connect to SMTP server: {str(e)}")
+    except HTTPException:
+        raise
     except TimeoutError:
-        raise HTTPException(status_code=504, detail=f"SMTP connection timed out ({email['smtp_host']}:{email.get('smtp_port', 587)})")
+        raise HTTPException(status_code=504, detail=f"Connection timed out")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Email test failed: {str(e)}")
 
