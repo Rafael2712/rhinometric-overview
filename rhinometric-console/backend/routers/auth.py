@@ -424,8 +424,13 @@ async def forgot_password(
     email = request_data.email.lower().strip()
 
     # Always return success to prevent email enumeration
+    # Check SMTP config FIRST (system-level, no user enumeration risk)
+    from services.email_service import is_smtp_configured
+    smtp_configured = is_smtp_configured()
+
     generic_response = {
-        "message": "If an account with that email exists, a password reset link has been sent."
+        "message": "If an account with that email exists, a password reset link has been sent.",
+        "email_available": smtp_configured
     }
 
     try:

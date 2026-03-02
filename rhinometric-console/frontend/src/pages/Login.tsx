@@ -23,6 +23,7 @@ export function LoginPage() {
   const [forgotEmail, setForgotEmail] = useState('')
   const [forgotLoading, setForgotLoading] = useState(false)
   const [forgotSuccess, setForgotSuccess] = useState(false)
+  const [emailAvailable, setEmailAvailable] = useState(true)
   const [forgotError, setForgotError] = useState('')
 
   const navigate = useNavigate()
@@ -66,6 +67,8 @@ export function LoginPage() {
       })
 
       if (response.ok) {
+        const data = await response.json()
+        setEmailAvailable(data.email_available !== false)
         setForgotSuccess(true)
       } else if (response.status === 422) {
         setForgotError('Please enter a valid email address.')
@@ -87,6 +90,7 @@ export function LoginPage() {
     setForgotEmail('')
     setForgotError('')
     setForgotSuccess(false)
+    setEmailAvailable(true)
   }
 
   const switchToLogin = () => {
@@ -237,12 +241,22 @@ export function LoginPage() {
               </form>
             ) : (
               <div className="space-y-4">
-                <div className="bg-success/10 border border-success text-success px-4 py-3 rounded-md">
-                  <p className="font-medium">Check your inbox</p>
-                  <p className="text-sm mt-1">
-                    If an account exists with that email, you will receive a password reset link shortly.
-                  </p>
-                </div>
+                {emailAvailable ? (
+                  <div className="bg-success/10 border border-success text-success px-4 py-3 rounded-md">
+                    <p className="font-medium">Check your inbox</p>
+                    <p className="text-sm mt-1">
+                      If an account exists with that email, you will receive a password reset link shortly.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="bg-warning/10 border border-warning text-warning px-4 py-3 rounded-md">
+                    <p className="font-medium">Email service unavailable</p>
+                    <p className="text-sm mt-1">
+                      The email delivery system is currently not available.
+                      Please contact your system administrator to reset your password.
+                    </p>
+                  </div>
+                )}
                 <button
                   onClick={switchToLogin}
                   className="btn btn-primary w-full"

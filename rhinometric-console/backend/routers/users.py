@@ -61,6 +61,22 @@ class UserUpdate(BaseModel):
     language: Optional[str] = None
     is_active: Optional[bool] = None
 
+class AdminResetPasswordRequest(BaseModel):
+    """Schema for admin-initiated password reset"""
+    new_password: str
+
+    @validator('new_password')
+    def validate_password(cls, v):
+        if len(v) < 8:
+            raise ValueError('Password must be at least 8 characters')
+        if not re.search(r"[A-Z]", v):
+            raise ValueError('Password must contain at least one uppercase letter')
+        if not re.search(r"[a-z]", v):
+            raise ValueError('Password must contain at least one lowercase letter')
+        if not re.search(r"[0-9]", v):
+            raise ValueError('Password must contain at least one number')
+        return v
+
 class UserRoleAssignment(BaseModel):
     """Schema for assigning/removing roles"""
     role_name: str
@@ -734,9 +750,10 @@ async def get_user_permissions(
 @router.post("/{user_id}/reset-password")
 async def reset_user_password(
     user_id: int,
-    new_password: str,
+    request_data: AdminResetPasswordRequest,
     current_user: UserModel = Depends(require_role(["OWNER", "ADMIN"])),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    request: Request = None
 ):
     """
     Reset a user's password (OWNER/ADMIN only).
@@ -764,6 +781,8 @@ async def reset_user_password(
         )
     
     # Validate new password complexity
+    new_password = request_data.new_password
+
     if len(new_password) < 8:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -792,6 +811,23 @@ async def reset_user_password(
     
     db.commit()
     
+    # Audit log
+    from services.audit_logger import log_audit_event, AuditEvent
+    try:
+        await log_audit_event(
+            category=AuditEvent.USER_MANAGEMENT,
+            action="admin_password_reset",
+            user_id=current_user.id,
+            username=current_user.username,
+            target_user_id=user.id,
+            target_username=user.username,
+            ip_address=request.client.host if request and request.client else None,
+            status="success",
+            message=f"Admin {current_user.username} reset password for {user.username}",
+        )
+    except Exception:
+        pass
+
     return {
         "message": f"Password reset successfully for user {user.username}",
         "user_id": user.id,

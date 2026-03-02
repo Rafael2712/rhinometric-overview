@@ -121,11 +121,13 @@ export function UsersPage() {
     }
 
     try {
-      const response = await fetch(`/api/users/${selectedUserId}/reset-password?new_password=${encodeURIComponent(newPassword)}`, {
+      const response = await fetch(`/api/users/${selectedUserId}/reset-password`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`
-        }
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ new_password: newPassword })
       })
 
       if (response.ok) {
