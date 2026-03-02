@@ -432,5 +432,5 @@ Rhinometric Platform
         return True
 
     except Exception as e:
-        logger.error(f"Failed to send welcome email to {email}: {e}")
+        logger.error("WELCOME_EMAIL_FAILED: target=%s error=%s", email, str(e))
         return False

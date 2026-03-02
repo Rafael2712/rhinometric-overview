@@ -84,6 +84,12 @@ class UserResponse(BaseModel):
     class Config:
         from_attributes = True
 
+class UserCreateResponse(UserResponse):
+    """Extended response for user creation - includes email delivery info."""
+    welcome_email_sent: bool = False
+    delivery_mode: str = "manual"  # "email" or "manual"
+    temporary_password: Optional[str] = None  # Only returned when must_change_password=True AND email failed
+
 class UserListResponse(BaseModel):
     """Schema for paginated user list"""
     total: int
@@ -128,7 +134,7 @@ def check_role_assignment_allowed(
 # USER CRUD ENDPOINTS
 # ============================================================================
 
-@router.post("/", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=UserCreateResponse, status_code=status.HTTP_201_CREATED)
 async def create_user(
     user_data: UserCreate,
     current_user: UserModel = Depends(require_role(["OWNER", "ADMIN"])),
@@ -225,35 +231,66 @@ async def create_user(
         metadata={"roles": user_data.role_names, "email": new_user.email}
     )
     
-    # Send welcome email (non-blocking, won't fail user creation)
+    # ── Welcome email (graceful degradation) ──────────────────────
+    welcome_email_sent = False
+    delivery_mode = "manual"
     try:
         from services.email_service import send_welcome_email
         login_url = str(request.base_url).rstrip("/") if request else None
-        email_sent = await send_welcome_email(
+        welcome_email_sent = await send_welcome_email(
             email=new_user.email,
             username=new_user.username,
-            password=user_data.password,  # plain text password before it was hashed
+            password=user_data.password,
             full_name=new_user.full_name,
             roles=user_data.role_names,
             login_url=login_url,
         )
-        if email_sent:
-            import logging
-            logging.getLogger("rhinometric.users").info(
-                f"Welcome email sent to {new_user.email}"
-            )
-        else:
-            import logging
-            logging.getLogger("rhinometric.users").warning(
-                f"Welcome email could not be sent to {new_user.email} (SMTP may not be configured)"
-            )
-    except Exception as e:
-        import logging
-        logging.getLogger("rhinometric.users").error(
-            f"Error sending welcome email to {new_user.email}: {e}"
+        if welcome_email_sent:
+            delivery_mode = "email"
+    except Exception as exc:
+        welcome_email_sent = False
+
+    # ── Observability: structured warning on SMTP failure ──────
+    import logging
+    _log = logging.getLogger("rhinometric.users")
+    if welcome_email_sent:
+        _log.info("WELCOME_EMAIL_OK: sent to %s for user %s", new_user.email, new_user.username)
+    else:
+        import json as _json
+        try:
+            _ch_path = "/app/data/notification_channels.json"
+            with open(_ch_path) as _f:
+                _ch = _json.load(_f).get("email", {})
+            smtp_host = _ch.get("smtp_host", "N/A")
+            smtp_port = _ch.get("smtp_port", "N/A")
+        except Exception:
+            smtp_host, smtp_port = "N/A", "N/A"
+        _log.warning(
+            "WELCOME_EMAIL_FAILED: smtp timeout — host=%s port=%s target=%s user=%s",
+            smtp_host, smtp_port, new_user.email, new_user.username,
         )
 
-    return UserResponse(
+    # ── Audit: record delivery mode ───────────────────────────
+    from services.audit_logger import log_audit_event, AuditEvent
+    await log_audit_event(
+        category=AuditEvent.USER_MANAGEMENT,
+        action="welcome_email_delivery",
+        user_id=current_user.id,
+        username=current_user.username,
+        target_user_id=new_user.id,
+        target_username=new_user.username,
+        ip_address=request.client.host if request and request.client else None,
+        status="success" if welcome_email_sent else "failed",
+        message=f"welcome_email_delivery_mode={delivery_mode} target={new_user.email}",
+        metadata={"delivery_mode": delivery_mode, "target_email": new_user.email},
+    )
+
+    # ── Build response (include temp password ONLY if email failed + must_change) ──
+    temp_password = None
+    if not welcome_email_sent and new_user.must_change_password:
+        temp_password = user_data.password  # plain text; never stored, shown once
+
+    return UserCreateResponse(
         id=new_user.id,
         username=new_user.username,
         email=new_user.email,
@@ -266,7 +303,10 @@ async def create_user(
         roles=new_user.get_roles(),
         phone=new_user.phone,
         timezone=new_user.timezone,
-        language=new_user.language
+        language=new_user.language,
+        welcome_email_sent=welcome_email_sent,
+        delivery_mode=delivery_mode,
+        temporary_password=temp_password,
     )
 
 @router.get("/", response_model=UserListResponse)

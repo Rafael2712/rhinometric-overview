@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useAuthStore } from '../lib/auth/store'
-import { Users as UsersIcon, UserPlus, Shield, Edit2, Search, CheckCircle, XCircle, Trash2 } from 'lucide-react'
+import { Users as UsersIcon, UserPlus, Shield, Edit2, Search, CheckCircle, XCircle, Trash2, Copy, Mail, AlertTriangle } from 'lucide-react'
 
 interface User {
   id: number
@@ -28,6 +28,11 @@ export function UsersPage() {
   const [loading, setLoading] = useState(true)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showResetPasswordModal, setShowResetPasswordModal] = useState(false)
+  const [showCreatedResult, setShowCreatedResult] = useState<{
+    username: string; email: string; welcome_email_sent: boolean;
+    delivery_mode: string; temporary_password?: string;
+  } | null>(null)
+  const [copied, setCopied] = useState(false)
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null)
   const [newPassword, setNewPassword] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
@@ -77,6 +82,7 @@ export function UsersPage() {
       })
 
       if (response.ok) {
+        const data = await response.json()
         setShowCreateModal(false)
         setNewUser({
           username: '',
@@ -86,11 +92,19 @@ export function UsersPage() {
           role_names: ['VIEWER']
         })
         fetchUsers()
-        alert('User created successfully')
+        // Show result modal with delivery info
+        setShowCreatedResult({
+          username: data.username,
+          email: data.email,
+          welcome_email_sent: data.welcome_email_sent ?? false,
+          delivery_mode: data.delivery_mode ?? 'manual',
+          temporary_password: data.temporary_password ?? undefined,
+        })
+        setCopied(false)
       } else {
         const errorData = await response.json()
-        const errorMsg = typeof errorData.detail === 'string' 
-          ? errorData.detail 
+        const errorMsg = typeof errorData.detail === 'string'
+          ? errorData.detail
           : errorData.detail?.[0]?.msg || JSON.stringify(errorData.detail) || 'Failed to create user'
         alert(errorMsg)
       }
@@ -409,6 +423,68 @@ export function UsersPage() {
                 Cancel
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* User Created Result Modal */}
+      {showCreatedResult && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-xl">
+            <div className="flex items-center gap-3 mb-4">
+              <CheckCircle className="text-green-600" size={28} />
+              <h3 className="text-lg font-semibold text-gray-900">User Created Successfully</h3>
+            </div>
+
+            {showCreatedResult.welcome_email_sent ? (
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Mail className="text-green-600" size={18} />
+                  <span className="font-medium text-green-800">Welcome email sent</span>
+                </div>
+                <p className="text-sm text-green-700">
+                  Credentials were sent to <strong>{showCreatedResult.email}</strong>.
+                  The user must change their password on first login.
+                </p>
+              </div>
+            ) : (
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <AlertTriangle className="text-amber-600" size={18} />
+                  <span className="font-medium text-amber-800">SMTP unavailable — copy credentials now</span>
+                </div>
+                <p className="text-sm text-amber-700 mb-3">
+                  The welcome email could not be sent. Please copy the credentials below and share them securely with the user. <strong>This is the only time the password will be shown.</strong>
+                </p>
+                <div className="bg-white border border-gray-200 rounded p-3 font-mono text-sm space-y-1">
+                  <div><span className="text-gray-500">Username:</span> <strong className="text-gray-900">{showCreatedResult.username}</strong></div>
+                  <div><span className="text-gray-500">Email:</span> <strong className="text-gray-900">{showCreatedResult.email}</strong></div>
+                  {showCreatedResult.temporary_password && (
+                    <div><span className="text-gray-500">Password:</span> <strong className="text-gray-900">{showCreatedResult.temporary_password}</strong></div>
+                  )}
+                </div>
+                {showCreatedResult.temporary_password && (
+                  <button
+                    onClick={() => {
+                      const text = `Username: ${showCreatedResult.username}\nEmail: ${showCreatedResult.email}\nPassword: ${showCreatedResult.temporary_password}\nNote: You must change your password on first login.`
+                      navigator.clipboard.writeText(text).then(() => setCopied(true))
+                    }}
+                    className={`mt-3 w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      copied ? 'bg-green-100 text-green-800 border border-green-300' : 'bg-blue-600 text-white hover:bg-blue-700'
+                    }`}
+                  >
+                    {copied ? <><CheckCircle size={16} /> Copied to clipboard</> : <><Copy size={16} /> Copy credentials</>}
+                  </button>
+                )}
+              </div>
+            )}
+
+            <button
+              onClick={() => setShowCreatedResult(null)}
+              className="w-full mt-4 bg-gray-200 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-300 font-medium"
+            >
+              Close
+            </button>
           </div>
         </div>
       )}
