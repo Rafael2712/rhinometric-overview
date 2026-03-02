@@ -235,3 +235,202 @@ async def test_smtp_connection() -> dict:
             "port": settings.MAIL_PORT,
             "from": settings.MAIL_FROM
         }
+
+
+async def send_welcome_email(
+    email: str,
+    username: str,
+    password: str,
+    full_name: str = None,
+    roles: list = None,
+    login_url: str = None,
+) -> bool:
+    """
+    Send welcome email to newly created user with their credentials.
+    Uses SMTP config from notification_channels.json (configured via Settings UI).
+    Falls back gracefully if SMTP is not configured or unreachable.
+    
+    Args:
+        email: New user's email address
+        username: New user's username
+        password: Temporary password (user must change on first login)
+        full_name: User's full name (optional)
+        roles: List of assigned role names
+        login_url: URL to access the platform
+    
+    Returns:
+        True if email sent successfully, False otherwise
+    """
+    import json
+    import aiosmtplib
+    from email.mime.text import MIMEText
+    from email.mime.multipart import MIMEMultipart
+
+    try:
+        # Load SMTP config from notification_channels.json
+        channels_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "notification_channels.json")
+        if not os.path.exists(channels_path):
+            logger.warning("notification_channels.json not found — skipping welcome email")
+            return False
+
+        with open(channels_path, "r") as f:
+            channels = json.load(f)
+
+        email_cfg = channels.get("email", {})
+        if not email_cfg.get("enabled"):
+            logger.info("Email channel is disabled — skipping welcome email")
+            return False
+
+        smtp_host = email_cfg.get("smtp_host", "")
+        smtp_port = email_cfg.get("smtp_port", 587)
+        smtp_user = email_cfg.get("smtp_username", "")
+        smtp_pass = email_cfg.get("smtp_password", "")
+        smtp_tls  = email_cfg.get("smtp_require_tls", True)
+        from_email = email_cfg.get("from_email", smtp_user)
+
+        if not smtp_host or not smtp_user:
+            logger.warning("SMTP not configured — skipping welcome email")
+            return False
+
+        display_name = full_name or username
+        roles_str = ", ".join(roles) if roles else "VIEWER"
+        platform_url = login_url or "http://rhinometric.local"
+
+        # HTML email body
+        html_body = f"""<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome to Rhinometric</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f5f5f5;">
+    <table role="presentation" style="width: 100%; border-collapse: collapse; background-color: #f5f5f5;">
+        <tr>
+            <td align="center" style="padding: 40px 0;">
+                <table role="presentation" style="width: 600px; max-width: 100%; border-collapse: collapse; background-color: #ffffff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                    <!-- Header -->
+                    <tr>
+                        <td style="padding: 40px 40px 20px; text-align: center; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 8px 8px 0 0;">
+                            <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 600;">Rhinometric</h1>
+                            <p style="margin: 10px 0 0; color: #e0e7ff; font-size: 14px;">AI-Powered Observability Platform</p>
+                        </td>
+                    </tr>
+
+                    <!-- Body -->
+                    <tr>
+                        <td style="padding: 40px;">
+                            <h2 style="margin: 0 0 20px; color: #1f2937; font-size: 24px; font-weight: 600;">Welcome to Rhinometric!</h2>
+
+                            <p style="margin: 0 0 16px; color: #4b5563; font-size: 16px; line-height: 1.5;">
+                                Hello <strong>{display_name}</strong>,
+                            </p>
+
+                            <p style="margin: 0 0 24px; color: #4b5563; font-size: 16px; line-height: 1.5;">
+                                Your account has been created on the Rhinometric observability platform.
+                                Below are your login credentials. <strong>You will be required to change your password on first login.</strong>
+                            </p>
+
+                            <!-- Credentials Box -->
+                            <div style="padding: 24px; background-color: #f9fafb; border-radius: 8px; border: 1px solid #e5e7eb; margin-bottom: 24px;">
+                                <table style="width: 100%; border-collapse: collapse;">
+                                    <tr>
+                                        <td style="padding: 8px 0; color: #6b7280; font-size: 14px; width: 120px;">Username:</td>
+                                        <td style="padding: 8px 0; color: #1f2937; font-size: 16px; font-weight: 600;">{username}</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Password:</td>
+                                        <td style="padding: 8px 0; color: #1f2937; font-size: 16px; font-weight: 600; font-family: 'Courier New', monospace;">{password}</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Role(s):</td>
+                                        <td style="padding: 8px 0; color: #1f2937; font-size: 16px; font-weight: 600;">{roles_str}</td>
+                                    </tr>
+                                </table>
+                            </div>
+
+                            <!-- Login Button -->
+                            <table role="presentation" style="margin: 32px 0; width: 100%;">
+                                <tr>
+                                    <td align="center">
+                                        <a href="{platform_url}" style="display: inline-block; padding: 16px 32px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #ffffff; text-decoration: none; border-radius: 6px; font-size: 16px; font-weight: 600; box-shadow: 0 4px 6px rgba(102, 126, 234, 0.3);">
+                                            Login to Rhinometric
+                                        </a>
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <div style="margin-top: 32px; padding: 16px; background-color: #fef3c7; border-radius: 4px; border-left: 4px solid #f59e0b;">
+                                <p style="margin: 0; color: #92400e; font-size: 14px; line-height: 1.5;">
+                                    <strong>Security Notice:</strong> Please change your password immediately after your first login. Do not share your credentials with anyone.
+                                </p>
+                            </div>
+                        </td>
+                    </tr>
+
+                    <!-- Footer -->
+                    <tr>
+                        <td style="padding: 32px 40px; background-color: #f9fafb; border-top: 1px solid #e5e7eb; border-radius: 0 0 8px 8px;">
+                            <p style="margin: 0 0 8px; color: #6b7280; font-size: 12px; text-align: center;">
+                                This is an automated message from Rhinometric Platform.
+                            </p>
+                            <p style="margin: 0; color: #9ca3af; font-size: 12px; text-align: center;">
+                                &copy; 2026 Rhinometric. All rights reserved.
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>"""
+
+        # Plain text fallback
+        text_body = f"""Welcome to Rhinometric!
+
+Hello {display_name},
+
+Your account has been created on the Rhinometric observability platform.
+
+Your login credentials:
+  Username: {username}
+  Password: {password}
+  Role(s):  {roles_str}
+
+Login URL: {platform_url}
+
+IMPORTANT: You must change your password on first login.
+Do not share your credentials with anyone.
+
+---
+Rhinometric Platform
+(c) 2026 Rhinometric. All rights reserved.
+"""
+
+        # Build MIME message
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = "Welcome to Rhinometric Platform - Your Account Has Been Created"
+        msg["From"] = f"Rhinometric Platform <{from_email}>"
+        msg["To"] = email
+
+        msg.attach(MIMEText(text_body, "plain", "utf-8"))
+        msg.attach(MIMEText(html_body, "html", "utf-8"))
+
+        # Send via aiosmtplib (already installed as fastapi-mail dependency)
+        await aiosmtplib.send(
+            msg,
+            hostname=smtp_host,
+            port=smtp_port,
+            username=smtp_user,
+            password=smtp_pass,
+            start_tls=smtp_tls,
+            timeout=15,
+        )
+
+        logger.info(f"Welcome email sent to {email} for user {username}")
+        return True
+
+    except Exception as e:
+        logger.error(f"Failed to send welcome email to {email}: {e}")
+        return False

@@ -225,6 +225,34 @@ async def create_user(
         metadata={"roles": user_data.role_names, "email": new_user.email}
     )
     
+    # Send welcome email (non-blocking, won't fail user creation)
+    try:
+        from services.email_service import send_welcome_email
+        login_url = str(request.base_url).rstrip("/") if request else None
+        email_sent = await send_welcome_email(
+            email=new_user.email,
+            username=new_user.username,
+            password=user_data.password,  # plain text password before it was hashed
+            full_name=new_user.full_name,
+            roles=user_data.role_names,
+            login_url=login_url,
+        )
+        if email_sent:
+            import logging
+            logging.getLogger("rhinometric.users").info(
+                f"Welcome email sent to {new_user.email}"
+            )
+        else:
+            import logging
+            logging.getLogger("rhinometric.users").warning(
+                f"Welcome email could not be sent to {new_user.email} (SMTP may not be configured)"
+            )
+    except Exception as e:
+        import logging
+        logging.getLogger("rhinometric.users").error(
+            f"Error sending welcome email to {new_user.email}: {e}"
+        )
+
     return UserResponse(
         id=new_user.id,
         username=new_user.username,
