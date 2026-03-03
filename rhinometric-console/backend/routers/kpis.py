@@ -347,55 +347,156 @@ async def get_kpis_historical(current_user: UserModel = Depends(get_current_user
         )
 
 
+# Service category detection based on job name patterns
+SERVICE_CATEGORIES = {
+    "prometheus": "monitoring",
+    "grafana": "visualization",
+    "loki": "logging",
+    "jaeger": "tracing",
+    "alertmanager": "alerting",
+    "otel-collector": "telemetry",
+    "console-backend": "application",
+    "license-server-v2": "licensing",
+    "ai-anomaly": "intelligence",
+    "postgres": "database",
+    "redis": "cache",
+    "promtail": "logging",
+    "node-exporter": "infrastructure",
+    "cadvisor": "infrastructure",
+    "blackbox-exporter": "monitoring",
+    "blackbox-http": "healthcheck",
+}
+
+def _detect_external_category(job: str, instance: str) -> str:
+    """Detect the category of an external (client) service based on job name and instance URL."""
+    job_lower = job.lower()
+    instance_lower = instance.lower()
+    # Web / HTTP probes
+    if "blackbox-web" in job_lower or "http" in job_lower:
+        if any(kw in instance_lower for kw in ["api", "rest", "/api/"]):
+            return "api-rest"
+        return "website"
+    # Database exporters
+    if any(kw in job_lower for kw in ["postgres", "mysql", "mongo", "mariadb", "oracle", "sqlserver", "db", "database"]):
+        return "database"
+    # Message brokers / MQTT
+    if any(kw in job_lower for kw in ["mqtt", "rabbitmq", "kafka", "nats", "amqp", "mosquitto"]):
+        return "message-broker"
+    # Webhook endpoints
+    if "webhook" in job_lower:
+        return "webhook"
+    # Node exporter (remote hosts)
+    if "node-exporter" in job_lower or "node_exporter" in job_lower:
+        return "host-metrics"
+    # API / REST
+    if any(kw in job_lower for kw in ["api", "rest", "graphql"]):
+        return "api-rest"
+    # Logs
+    if any(kw in job_lower for kw in ["log", "syslog", "filebeat"]):
+        return "logging"
+    # Traces
+    if any(kw in job_lower for kw in ["trace", "otel", "zipkin", "tempo"]):
+        return "tracing"
+    # DNS
+    if "dns" in job_lower:
+        return "dns"
+    # SSL/TLS
+    if any(kw in job_lower for kw in ["ssl", "tls", "cert"]):
+        return "ssl-certificate"
+    # SNMP
+    if "snmp" in job_lower:
+        return "snmp"
+    # Custom / fallback
+    return "custom"
+
+
 @router.get("/services")
 async def get_monitored_services(current_user: UserModel = Depends(get_current_user)):
     # TODO-RBAC: Scope service list to current_user tenant when multi-tenancy is enabled
     """
-    Get list of all monitored services with their status
+    Get list of all monitored services with their status.
     
-    Returns detailed information about each service being monitored
+    Each service includes:
+      - is_platform: True for core Rhinometric services, False for external/client services
+      - service_category: Semantic category (website, database, api-rest, webhook, host-metrics, etc.)
+    
+    Returns separate counts for platform vs external services.
     """
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
             prom_url = f"{settings.PROMETHEUS_URL}/api/v1/query"
             
-            # Get all services excluding infrastructure exporters
+            # Get ALL services (we classify them ourselves now)
             services_response = await client.get(
                 prom_url,
-                params={"query": 'up{job!~"node-exporter|cadvisor|blackbox-exporter|blackbox-http"}'}
+                params={"query": "up"}
             )
             services_data = services_response.json()
             
-            services_list = []
+            platform_services = []
+            external_services = []
+            
             if services_data.get("status") == "success":
                 results = services_data.get("data", {}).get("result", [])
                 
                 for result in results:
                     metric = result.get("metric", {})
                     value = result.get("value", [None, "0"])
+                    job = metric.get("job", "unknown")
+                    instance = metric.get("instance", "unknown")
+                    
+                    is_platform = job in PLATFORM_JOBS or job in INFRA_JOBS or job in INTERNAL_PROBE_JOBS
+                    
+                    if is_platform:
+                        category = SERVICE_CATEGORIES.get(job, "platform")
+                    else:
+                        category = _detect_external_category(job, instance)
                     
                     service = {
-                        "name": metric.get("job", "unknown"),
-                        "instance": metric.get("instance", "unknown"),
+                        "name": job,
+                        "instance": instance,
                         "status": "up" if value[1] == "1" else "down",
                         "tier": metric.get("tier", "application"),
-                        "service_type": metric.get("service", metric.get("job", "unknown")),
+                        "service_type": metric.get("service", job),
                         "version": metric.get("version", "N/A"),
+                        "is_platform": is_platform,
+                        "service_category": category,
                         "labels": {k: v for k, v in metric.items() if k not in ["__name__", "job", "instance"]}
                     }
-                    services_list.append(service)
+                    
+                    if is_platform:
+                        platform_services.append(service)
+                    else:
+                        external_services.append(service)
             
-            # Sort by status (down first, then up) and then by name
-            services_list.sort(key=lambda x: (0 if x["status"] == "down" else 1, x["name"]))
+            # Sort each list: down first, then by name
+            for lst in (platform_services, external_services):
+                lst.sort(key=lambda x: (0 if x["status"] == "down" else 1, x["name"]))
             
-            up_count = sum(1 for s in services_list if s["status"] == "up")
-            down_count = len(services_list) - up_count
+            all_services = platform_services + external_services
+            up_count = sum(1 for s in all_services if s["status"] == "up")
+            down_count = len(all_services) - up_count
+            
+            platform_up = sum(1 for s in platform_services if s["status"] == "up")
+            external_up = sum(1 for s in external_services if s["status"] == "up")
             
             return {
-                "services": services_list,
-                "total": len(services_list),
+                "services": all_services,
+                "total": len(all_services),
                 "up": up_count,
                 "down": down_count,
+                "platform": {
+                    "services": platform_services,
+                    "total": len(platform_services),
+                    "up": platform_up,
+                    "down": len(platform_services) - platform_up,
+                },
+                "external": {
+                    "services": external_services,
+                    "total": len(external_services),
+                    "up": external_up,
+                    "down": len(external_services) - external_up,
+                },
                 "timestamp": datetime.now().isoformat()
             }
             
