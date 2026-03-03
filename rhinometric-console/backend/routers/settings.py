@@ -246,7 +246,7 @@ async def save_notification_channels(
     existing = load_channels()
 
     # Preserve secrets if redacted values are sent back
-    if new_data["slack"]["webhook_url"].endswith("...") or new_data["slack"]["webhook_url"] == "***configured***":
+    if "..." in new_data["slack"]["webhook_url"] or new_data["slack"]["webhook_url"] == "***configured***":
         new_data["slack"]["webhook_url"] = existing.get("slack", {}).get("webhook_url", "")
     if new_data["email"]["smtp_password"] == "••••••••":
         new_data["email"]["smtp_password"] = existing.get("email", {}).get("smtp_password", "")
@@ -461,3 +461,134 @@ async def get_email_status(
         "reason": reason,
         "config_summary": config_summary,
     }
+
+
+
+# --- Alertmanager Webhook for Email Forwarding via Zoho API ---
+from fastapi import Request
+
+RED_CIRCLE = chr(0x1F534)
+ORANGE_CIRCLE = chr(0x1F7E0)
+
+@router.post("/alertmanager-webhook/email", include_in_schema=False)
+async def alertmanager_email_webhook(request: Request):
+    """
+    Webhook called by Alertmanager to send email alerts via Zoho API.
+    Alertmanager cannot use native SMTP because Hetzner blocks SMTP ports.
+    This endpoint receives alert data and sends it via Zoho Mail API.
+    No auth required - only accessible from internal Docker network.
+    """
+    import html as html_mod
+    try:
+        data = await request.json()
+        alerts = data.get("alerts", [])
+        status = data.get("status", "firing")
+        
+        from services.email_service import _load_zoho_api_config, _send_via_zoho_api
+        from services.alertmanager_template import load_channels
+        
+        channels = load_channels()
+        email_cfg = channels.get("email", {})
+        zoho_cfg = _load_zoho_api_config()
+        
+        if not zoho_cfg:
+            return {"status": "error", "message": "Zoho API not configured"}
+        
+        to_emails = email_cfg.get("to_emails", [])
+        if not to_emails:
+            return {"status": "error", "message": "No recipient emails configured"}
+        
+        console_url = os.getenv("RHINO_PUBLIC_CONSOLE_URL", "https://console-staging.rhinometric.com")
+        
+        for alert in alerts:
+            labels = alert.get("labels", {})
+            annotations = alert.get("annotations", {})
+            alert_status = alert.get("status", status)
+            severity = labels.get("severity", "unknown").upper()
+            metric = labels.get("metric", labels.get("alertname", "unknown"))
+            
+            subject = "[{}] Rhinometric AI Alert: {}".format(severity, metric)
+            if alert_status == "resolved":
+                subject = "[RESOLVED] " + subject
+            
+            icon = RED_CIRCLE if severity == "CRITICAL" else ORANGE_CIRCLE
+            bg_color = "#dc2626" if severity == "CRITICAL" else "#f59e0b" if severity in ("WARNING", "HIGH") else "#3b82f6"
+            metric_escaped = html_mod.escape(metric)
+            component = html_mod.escape(labels.get("component", "unknown"))
+            service = html_mod.escape(labels.get("service", "unknown"))
+            cur_val = html_mod.escape(annotations.get("current_value", "N/A"))
+            base_val = html_mod.escape(annotations.get("baseline_value", "N/A"))
+            dev_pct = html_mod.escape(annotations.get("deviation_percent", "N/A"))
+            
+
+            # Map metric to correct Grafana dashboard/panel
+            grafana_base = "http://46.225.231.117/grafana"
+            metric_raw = labels.get("metric", labels.get("alertname", "unknown"))
+            grafana_map = {
+                "node_cpu_usage": grafana_base + "/d/rhinometric-system-overview/01-system-overview?viewPanel=1&theme=dark",
+                "node_memory_usage": grafana_base + "/d/rhinometric-system-overview/01-system-overview?viewPanel=2&theme=dark",
+                "node_disk_usage": grafana_base + "/d/rhinometric-system-overview/01-system-overview?viewPanel=3&theme=dark",
+                "node_disk_io": grafana_base + "/d/rhinometric-system-overview/01-system-overview?viewPanel=3&theme=dark",
+                "node_network_receive": grafana_base + "/d/rhinometric-system-overview/01-system-overview?viewPanel=6&theme=dark",
+                "node_network_transmit": grafana_base + "/d/rhinometric-system-overview/01-system-overview?viewPanel=6&theme=dark",
+            }
+            grafana_url = grafana_map.get(metric_raw, grafana_base + "/d/ai-anomaly-service/05-ai-anomaly-service?theme=dark")
+
+            # Map metric to Console dashboard viewer path
+            console_dashboard_map = {
+                "node_cpu_usage": "/dashboards/rhinometric-system-overview/view",
+                "node_memory_usage": "/dashboards/rhinometric-system-overview/view",
+                "node_disk_usage": "/dashboards/rhinometric-system-overview/view",
+                "node_disk_io": "/dashboards/rhinometric-system-overview/view",
+                "node_network_receive": "/dashboards/rhinometric-system-overview/view",
+                "node_network_transmit": "/dashboards/rhinometric-system-overview/view",
+            }
+            console_dash_path = console_dashboard_map.get(metric_raw, "/dashboards/ai-anomaly-service/view")
+
+            body_html = (
+                '<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">'
+                '<div style="background:{bg};color:white;padding:16px;border-radius:8px 8px 0 0;">'
+                '<h2 style="margin:0;">{icon} [{sev}] AI Anomaly: {met}</h2>'
+                '<p style="margin:4px 0 0 0;opacity:0.9;">Status: {st}</p>'
+                '</div>'
+                '<div style="background:#1e293b;color:#e2e8f0;padding:20px;border-radius:0 0 8px 8px;">'
+                '<p><strong>Metric:</strong> {met}</p>'
+                '<p><strong>Severity:</strong> {sev}</p>'
+                '<p><strong>Component:</strong> {comp}</p>'
+                '<p><strong>Service:</strong> {svc}</p>'
+                '<p><strong>Current Value:</strong> {cur}</p>'
+                '<p><strong>Expected Value:</strong> {base}</p>'
+                '<p><strong>Deviation:</strong> {dev}</p>'
+                '<hr style="border-color:#334155;">'
+                '<p style="margin-top:16px;">'
+                '<a href="{url}{console_dash}" style="background:#3b82f6;color:white;padding:10px 20px;border-radius:6px;text-decoration:none;margin-right:10px;">Ver Dashboard en Consola</a> '
+                '<a href="{grafana_url}" style="background:#f59e0b;color:white;padding:10px 20px;border-radius:6px;text-decoration:none;">Ver en Grafana</a>'
+                '</p>'
+                '</div></div>'
+
+            ).format(
+                bg=bg_color, icon=icon, sev=severity, met=metric_escaped,
+                st=alert_status.upper(), comp=component, svc=service,
+                cur=cur_val, base=base_val, dev=dev_pct, url=console_url,
+                grafana_url=grafana_url,
+                console_dash=console_dash_path
+            )
+            
+            for to_email in to_emails:
+                try:
+                    from_addr = zoho_cfg.get("from_address", "rafael.canelon@rhinometric.com")
+                    await _send_via_zoho_api(
+                        zoho_cfg=zoho_cfg,
+                        to_email=to_email,
+                        subject=subject,
+                        html_body=body_html,
+                        from_email=from_addr
+                    )
+                    logger.info("Alert email sent to %s: %s", to_email, subject)
+                except Exception as e:
+                    logger.error("Failed to send alert email to %s: %s", to_email, e)
+        
+        return {"status": "ok", "message": "Processed {} alerts".format(len(alerts))}
+    except Exception as e:
+        logger.error("Alertmanager webhook error: %s", e)
+        return {"status": "error", "message": str(e)}

@@ -98,6 +98,27 @@ Anomalia detectada por IA en {{ .Labels.metric }}.
 *Troubleshooting:*
 {{ template "ai_anomaly_slack_troubleshooting" . }}
 
+{{ if or (eq .Labels.metric "node_cpu_usage") (eq .Labels.metric "node_memory_usage") (eq .Labels.metric "node_disk_usage") (eq .Labels.metric "node_disk_io") (eq .Labels.metric "node_network_receive") (eq .Labels.metric "node_network_transmit") -}}
+:desktop_computer: <https://console-staging.rhinometric.com/dashboards/rhinometric-system-overview/view|Ver Dashboard en Consola>
+{{- else -}}
+:desktop_computer: <https://console-staging.rhinometric.com/dashboards/ai-anomaly-service/view|Ver Dashboard en Consola>
+{{- end }}
+{{ if eq .Labels.metric "node_cpu_usage" -}}
+:chart_with_upwards_trend: <http://46.225.231.117/grafana/d/rhinometric-system-overview/01-system-overview?viewPanel=1&theme=dark|Ver CPU en Grafana>
+{{- else if eq .Labels.metric "node_memory_usage" -}}
+:chart_with_upwards_trend: <http://46.225.231.117/grafana/d/rhinometric-system-overview/01-system-overview?viewPanel=2&theme=dark|Ver Memoria en Grafana>
+{{- else if eq .Labels.metric "node_disk_usage" -}}
+:chart_with_upwards_trend: <http://46.225.231.117/grafana/d/rhinometric-system-overview/01-system-overview?viewPanel=3&theme=dark|Ver Disco en Grafana>
+{{- else if eq .Labels.metric "node_disk_io" -}}
+:chart_with_upwards_trend: <http://46.225.231.117/grafana/d/rhinometric-system-overview/01-system-overview?viewPanel=3&theme=dark|Ver Disco IO en Grafana>
+{{- else if eq .Labels.metric "node_network_receive" -}}
+:chart_with_upwards_trend: <http://46.225.231.117/grafana/d/rhinometric-system-overview/01-system-overview?viewPanel=6&theme=dark|Ver Red en Grafana>
+{{- else if eq .Labels.metric "node_network_transmit" -}}
+:chart_with_upwards_trend: <http://46.225.231.117/grafana/d/rhinometric-system-overview/01-system-overview?viewPanel=6&theme=dark|Ver Red en Grafana>
+{{- else -}}
+:chart_with_upwards_trend: <http://46.225.231.117/grafana/d/ai-anomaly-service/05-ai-anomaly-service?theme=dark|Ver Anomalia en Grafana>
+{{- end }}
+
 ---
 {{ end }}
 {{ end }}

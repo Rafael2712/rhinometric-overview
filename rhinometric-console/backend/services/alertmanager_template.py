@@ -170,21 +170,23 @@ def render_alertmanager_config(channels: dict, ai_alerting_enabled: bool) -> str
             "actions": [
                 {
                     "type": "button",
-                    "text": "Open Rhinometric Console",
+                    "text": "View in Console",
                     "url": os.getenv("RHINO_PUBLIC_CONSOLE_URL", "https://console-staging.rhinometric.com").rstrip("/") + "/anomalies"
+                },
+                {
+                    "type": "button",
+                    "text": "View in Grafana",
+                    "url": "http://46.225.231.117/grafana/d/rhinometric-system-overview?theme=dark&kiosk=tv"
                 },
             ],
             "send_resolved": True,
         }]
 
     if email_cfg.get("enabled") and email_cfg.get("to_emails"):
-        to_addr = ", ".join(email_cfg["to_emails"])
-        ai_anomaly_receiver["email_configs"] = [{
-            "to": to_addr,
-            "html": '{{ template "ai_anomaly_email.html" . }}',
-            "headers": {
-                "Subject": 'Rhinometric AI Alert [{{ (index .Alerts 0).Labels.severity | toUpper }}] {{ (index .Alerts 0).Labels.metric }}'
-            },
+        # Use webhook to send emails via Zoho API (SMTP ports blocked on Hetzner)
+        backend_url = "http://rhinometric-console-backend:8105"
+        ai_anomaly_receiver["webhook_configs"] = [{
+            "url": f"{backend_url}/api/settings/alertmanager-webhook/email",
             "send_resolved": True,
         }]
 
