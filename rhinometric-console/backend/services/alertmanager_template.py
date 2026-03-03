@@ -170,13 +170,13 @@ def render_alertmanager_config(channels: dict, ai_alerting_enabled: bool) -> str
             "actions": [
                 {
                     "type": "button",
-                    "text": "View in Console",
-                    "url": os.getenv("RHINO_PUBLIC_CONSOLE_URL", "https://console-staging.rhinometric.com").rstrip("/") + "/anomalies"
+                    "text": "Ver Dashboard en Consola",
+                    "url": '{{- $m := (index .Alerts 0).Labels.metric -}}{{- if or (eq $m "node_cpu_usage") (eq $m "node_memory_usage") (eq $m "node_disk_usage") (eq $m "node_disk_io") (eq $m "node_network_receive") (eq $m "node_network_transmit") -}}https://console-staging.rhinometric.com/dashboards/rhinometric-system-overview/view{{- else -}}https://console-staging.rhinometric.com/dashboards/ai-anomaly-service/view{{- end -}}'
                 },
                 {
                     "type": "button",
-                    "text": "View in Grafana",
-                    "url": "http://46.225.231.117/grafana/d/rhinometric-system-overview?theme=dark&kiosk=tv"
+                    "text": "Ver en Grafana",
+                    "url": '{{- $m := (index .Alerts 0).Labels.metric -}}{{- if eq $m "node_cpu_usage" -}}http://46.225.231.117/grafana/d/rhinometric-system-overview/01-system-overview?viewPanel=1&theme=dark{{- else if eq $m "node_memory_usage" -}}http://46.225.231.117/grafana/d/rhinometric-system-overview/01-system-overview?viewPanel=2&theme=dark{{- else if or (eq $m "node_disk_usage") (eq $m "node_disk_io") -}}http://46.225.231.117/grafana/d/rhinometric-system-overview/01-system-overview?viewPanel=3&theme=dark{{- else if or (eq $m "node_network_receive") (eq $m "node_network_transmit") -}}http://46.225.231.117/grafana/d/rhinometric-system-overview/01-system-overview?viewPanel=6&theme=dark{{- else -}}http://46.225.231.117/grafana/d/ai-anomaly-service/05-ai-anomaly-service?theme=dark{{- end -}}'
                 },
             ],
             "send_resolved": True,
