@@ -87,13 +87,13 @@ Anomalia detectada por IA en {{ .Labels.metric }}.
 *Valor actual:* {{ .Annotations.current_value }} | *Baseline esperado:* {{ .Annotations.baseline_value }}{{ end }}
 
 *Contexto:*
-\u2022 *Componente:* {{ .Labels.component }}
-\u2022 *Metrica:* {{ .Labels.metric }}
-\u2022 *Severidad:* {{ .Labels.severity | toUpper }}
-\u2022 *Estado:* {{ .Status }}
-\u2022 *Servicio:* {{ .Labels.service }}
-\u2022 *Confianza:* {{ .Annotations.confidence }}
-\u2022 *Detectado:* {{ .StartsAt.Format "2006-01-02 15:04:05 UTC" }}
+• *Componente:* {{ .Labels.component }}
+• *Metrica:* {{ .Labels.metric }}
+• *Severidad:* {{ .Labels.severity | toUpper }}
+• *Estado:* {{ .Status }}
+• *Servicio:* {{ .Labels.service }}
+• *Confianza:* {{ .Annotations.confidence }}
+• *Detectado:* {{ .StartsAt.Format "2006-01-02 15:04:05 UTC" }}
 
 *Troubleshooting:*
 {{ template "ai_anomaly_slack_troubleshooting" . }}

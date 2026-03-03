@@ -1,144 +1,152 @@
-﻿global:
+global:
   resolve_timeout: 5m
-  smtp_from: "rafael.canelon@rhinometric.com"
-  smtp_smarthost: "smtp.zoho.eu:587"
-  smtp_auth_username: "rafael.canelon@rhinometric.com"
-  smtp_auth_password: "271211Rc$"
+  smtp_from: 'rafael.canelon@rhinometric.com'
+  smtp_smarthost: smtp.zoho.eu:587
+  smtp_auth_username: 'rafael.canelon@rhinometric.com'
+  smtp_auth_password: ''
   smtp_require_tls: true
-  slack_api_url: "https://hooks.slack.com/services/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"
-
+  slack_api_url: https://hooks.slack.com/services/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
 templates:
-  - "/etc/alertmanager/templates/*.tmpl"
-
+- '/etc/alertmanager/templates/*.tmpl'
 route:
-  receiver: "team-notifications"
-  group_by: ["alertname", "instance", "severity"]
+  receiver: team-notifications
+  group_by:
+  - alertname
+  - instance
+  - severity
   group_wait: 30s
   group_interval: 5m
   repeat_interval: 4h
   routes:
-    # Route AI: All AI anomaly alerts (controlled by toggle)
-    # rhinometric_source label is set by AlertBuilder for ALL AI alerts
-    - match:
-        rhinometric_source: ai-anomaly
-        severity: critical
-      receiver: "ai-anomaly-alerts"
-      group_by: ["alertname", "metric", "severity"]
-      group_wait: 30s
-      group_interval: 5m
-      repeat_interval: 4h
-      continue: false
-
-    # Route AI catch-all: non-critical AI anomalies always blackhole
-    - match:
-        rhinometric_source: ai-anomaly
-      receiver: "blackhole"
-      group_by: ["alertname", "metric", "severity"]
-      group_wait: 30s
-      group_interval: 5m
-      repeat_interval: 4h
-      continue: false
-
-    - match:
-        severity: critical
-      receiver: "critical-alerts"
-      group_wait: 10s
-      group_interval: 1m
-      repeat_interval: 1h
-    - match:
-        severity: warning
-      receiver: "warning-alerts"
-      repeat_interval: 6h
-    - match:
-        severity: info
-      receiver: "info-alerts"
-      repeat_interval: 24h
-
+  - match:
+      rhinometric_source: ai-anomaly
+      severity: critical
+    receiver: ai-anomaly-alerts
+    group_by:
+    - alertname
+    - metric
+    - severity
+    group_wait: 30s
+    group_interval: 5m
+    repeat_interval: 4h
+    continue: false
+  - match:
+      rhinometric_source: ai-anomaly
+    receiver: blackhole
+    group_by:
+    - alertname
+    - metric
+    - severity
+    group_wait: 30s
+    group_interval: 5m
+    repeat_interval: 4h
+    continue: false
+  - match:
+      severity: critical
+    receiver: critical-alerts
+    group_wait: 10s
+    group_interval: 1m
+    repeat_interval: 1h
+  - match:
+      severity: warning
+    receiver: warning-alerts
+    repeat_interval: 6h
+  - match:
+      severity: info
+    receiver: info-alerts
+    repeat_interval: 24h
 receivers:
-  - name: "ai-anomaly-alerts"
-    slack_configs:
-      - channel: "#rhinometric-alerts"
-        username: "Rhinometric AI"
-        icon_emoji: ":brain:"
-        title: '{{ template "ai_anomaly_slack_title" (index .Alerts 0) }}'
-        text: '{{ template "ai_anomaly_slack" . }}'
-        actions:
-          - type: button
-            text: "Abrir en consola Rhinometric"
-            url: "https://console.rhinometric.com/anomalies"
-          - type: button
-            text: "Ver metricas en Grafana (admin)"
-            url: "https://console.rhinometric.com/grafana/explore?schemaVersion=1&panes=%7B%22a%22%3A%7B%22datasource%22%3A%22victoriametrics%22%2C%22queries%22%3A%5B%7B%22refId%22%3A%22A%22%2C%22expr%22%3A%22rhinometric_anomaly_current_value%7Bmetric_name%3D%5C%22{{ (index .Alerts 0).Labels.metric }}%5C%22%7D%22%7D%5D%2C%22range%22%3A%7B%22from%22%3A%22now-1h%22%2C%22to%22%3A%22now%22%7D%7D%7D"
-        send_resolved: true
-    email_configs:
-      - to: "rafael.canelon@rhinometric.com"
-        html: '{{ template "ai_anomaly_email.html" . }}'
-        headers:
-          Subject: 'Rhinometric AI Alert [{{ (index .Alerts 0).Labels.severity | toUpper }}] {{ (index .Alerts 0).Labels.metric }}'
-        send_resolved: true
-
-  - name: "team-notifications"
-    email_configs:
-      - to: "rafael.canelon@rhinometric.com"
-        html: "{{ template \"email.html\" . }}"
-        headers:
-          Subject: "Rhinometric Alert: {{ .GroupLabels.alertname }}"
-    slack_configs:
-      - channel: "#rhinometric-alerts"
-        title: "{{ .GroupLabels.alertname }}"
-        text: "{{ range .Alerts }}{{ .Annotations.summary }}\n{{ end }}"
-
-  - name: "critical-alerts"
-    email_configs:
-      - to: "rafael.canelon@rhinometric.com"
-        html: "{{ template \"email.html\" . }}"
-        headers:
-          Subject: "[CRITICAL] {{ .GroupLabels.alertname }}"
-          Priority: "urgent"
-    slack_configs:
-      - channel: "#rhinometric-critical"
-        color: "danger"
-        title: "[CRITICAL] {{ .GroupLabels.alertname }}"
-        text: "{{ range .Alerts }}*Instance:* {{ .Labels.instance }}\n*Summary:* {{ .Annotations.summary }}\n*Description:* {{ .Annotations.description }}\n{{ end }}"
-
-  - name: "warning-alerts"
-    email_configs:
-      - to: "rafael.canelon@rhinometric.com"
-        html: "{{ template \"email.html\" . }}"
-        headers:
-          Subject: "[WARNING] {{ .GroupLabels.alertname }}"
-    slack_configs:
-      - channel: "#rhinometric-alerts"
-        color: "warning"
-        title: "[WARNING] {{ .GroupLabels.alertname }}"
-        text: "{{ range .Alerts }}{{ .Annotations.summary }}{{ end }}"
-
-  - name: "info-alerts"
-    email_configs:
-      - to: "rafael.canelon@rhinometric.com"
-        html: "{{ template \"email.html\" . }}"
-        headers:
-          Subject: "[INFO] {{ .GroupLabels.alertname }}"
-    slack_configs:
-      - channel: "#rhinometric-info"
-        color: "#439FE0"
-        title: "[INFO] {{ .GroupLabels.alertname }}"
-
-  - name: "blackhole"
-
+- name: ai-anomaly-alerts
+  slack_configs:
+  - channel: '#general-rhinometric'
+    username: Rhinometric AI
+    icon_emoji: ':brain:'
+    title: '{{ template "ai_anomaly_slack_title" (index .Alerts 0) }}'
+    text: '{{ template "ai_anomaly_slack" . }}'
+    actions:
+    - type: button
+      text: Open Rhinometric Console
+      url: https://console-staging.rhinometric.com/anomalies
+    send_resolved: true
+  email_configs:
+  - to: 'rafael.canelon@rhinometric.com'
+    html: '{{ template "ai_anomaly_email.html" . }}'
+    headers:
+      Subject: 'Rhinometric AI Alert [{{ (index .Alerts 0).Labels.severity | toUpper
+        }}] {{ (index .Alerts 0).Labels.metric }}'
+    send_resolved: true
+- name: team-notifications
+  email_configs:
+  - to: 'rafael.canelon@rhinometric.com'
+    html: '{{ template "email.html" . }}'
+    headers:
+      Subject: 'Rhinometric Alert: {{ .GroupLabels.alertname }}'
+  slack_configs:
+  - channel: '#rhinometric-alerts'
+    title: '{{ .GroupLabels.alertname }}'
+    text: |-
+      {{ range .Alerts }}{{ .Annotations.summary }}
+      {{ end }}
+- name: critical-alerts
+  email_configs:
+  - to: 'rafael.canelon@rhinometric.com'
+    html: '{{ template "email.html" . }}'
+    headers:
+      Subject: '[CRITICAL] {{ .GroupLabels.alertname }}'
+      Priority: urgent
+  slack_configs:
+  - channel: '#rhinometric-critical'
+    title: '{{ .GroupLabels.alertname }}'
+    text: |-
+      {{ range .Alerts }}{{ .Annotations.summary }}
+      {{ end }}
+    color: danger
+- name: warning-alerts
+  email_configs:
+  - to: 'rafael.canelon@rhinometric.com'
+    html: '{{ template "email.html" . }}'
+    headers:
+      Subject: '[WARNING] {{ .GroupLabels.alertname }}'
+  slack_configs:
+  - channel: '#rhinometric-alerts'
+    title: '{{ .GroupLabels.alertname }}'
+    text: |-
+      {{ range .Alerts }}{{ .Annotations.summary }}
+      {{ end }}
+    color: warning
+- name: info-alerts
+  email_configs:
+  - to: 'rafael.canelon@rhinometric.com'
+    html: '{{ template "email.html" . }}'
+    headers:
+      Subject: '[INFO] {{ .GroupLabels.alertname }}'
+  slack_configs:
+  - channel: '#rhinometric-info'
+    title: '{{ .GroupLabels.alertname }}'
+    text: |-
+      {{ range .Alerts }}{{ .Annotations.summary }}
+      {{ end }}
+    color: '#439FE0'
+- name: blackhole
 inhibit_rules:
-  - source_match:
-      severity: critical
-    target_match:
-      severity: warning
-    equal: ["alertname", "instance"]
-  - source_match:
-      severity: critical
-    target_match:
-      severity: info
-    equal: ["alertname", "instance"]
-  - source_match:
-      severity: warning
-    target_match:
-      severity: info
-    equal: ["alertname", "instance"]
+- source_match:
+    severity: critical
+  target_match:
+    severity: warning
+  equal:
+  - alertname
+  - instance
+- source_match:
+    severity: critical
+  target_match:
+    severity: info
+  equal:
+  - alertname
+  - instance
+- source_match:
+    severity: warning
+  target_match:
+    severity: info
+  equal:
+  - alertname
+  - instance

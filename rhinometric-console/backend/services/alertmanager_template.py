@@ -171,7 +171,7 @@ def render_alertmanager_config(channels: dict, ai_alerting_enabled: bool) -> str
                 {
                     "type": "button",
                     "text": "Open Rhinometric Console",
-                    "url": "https://console.rhinometric.com/anomalies"
+                    "url": os.getenv("RHINO_PUBLIC_CONSOLE_URL", "https://console-staging.rhinometric.com").rstrip("/") + "/anomalies"
                 },
             ],
             "send_resolved": True,
