@@ -125,29 +125,59 @@ export function SettingsPage() {
     }
   })
 
-  // ---- Test Slack mutation ----
+  // ---- Test Slack mutation (auto-saves first) ----
   const testSlackMutation = useMutation({
     mutationFn: async () => {
+      // Auto-save current form values before testing
+      const payload = {
+        slack: { enabled: slackEnabled, webhook_url: slackWebhook, channel: slackChannel },
+        email: { enabled: emailEnabled, smtp_host: smtpHost, smtp_port: parseInt(smtpPort) || 587, smtp_username: smtpUsername, smtp_password: smtpPassword, smtp_require_tls: smtpTls, from_email: fromEmail, to_emails: toEmails.split(',').map(e => e.trim()).filter(Boolean) }
+      }
+      const saveResp = await fetch('/api/settings/notification-channels', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify(payload)
+      })
+      if (!saveResp.ok) throw new Error('Failed to save channels before test')
+      // Now run the actual test
       const response = await fetch('/api/settings/notification-channels/test/slack', {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` }
       })
       return response.json()
     },
-    onSuccess: (data) => { setSlackTestResult(data); setTimeout(() => setSlackTestResult(null), 5000) },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['notification-channels'] })
+      setSlackTestResult(data); setTimeout(() => setSlackTestResult(null), 5000)
+    },
     onError: (e: any) => { setSlackTestResult({ status: 'error', message: e.message }); setTimeout(() => setSlackTestResult(null), 5000) }
   })
 
-  // ---- Test Email mutation ----
+  // ---- Test Email mutation (auto-saves first) ----
   const testEmailMutation = useMutation({
     mutationFn: async () => {
+      // Auto-save current form values before testing
+      const payload = {
+        slack: { enabled: slackEnabled, webhook_url: slackWebhook, channel: slackChannel },
+        email: { enabled: emailEnabled, smtp_host: smtpHost, smtp_port: parseInt(smtpPort) || 587, smtp_username: smtpUsername, smtp_password: smtpPassword, smtp_require_tls: smtpTls, from_email: fromEmail, to_emails: toEmails.split(',').map(e => e.trim()).filter(Boolean) }
+      }
+      const saveResp = await fetch('/api/settings/notification-channels', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify(payload)
+      })
+      if (!saveResp.ok) throw new Error('Failed to save channels before test')
+      // Now run the actual test
       const response = await fetch('/api/settings/notification-channels/test/email', {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` }
       })
       return response.json()
     },
-    onSuccess: (data) => { setEmailTestResult(data); setTimeout(() => setEmailTestResult(null), 5000) },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['notification-channels'] })
+      setEmailTestResult(data); setTimeout(() => setEmailTestResult(null), 5000)
+    },
     onError: (e: any) => { setEmailTestResult({ status: 'error', message: e.message }); setTimeout(() => setEmailTestResult(null), 5000) }
   })
 
