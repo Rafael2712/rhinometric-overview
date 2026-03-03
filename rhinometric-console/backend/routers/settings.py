@@ -251,6 +251,11 @@ async def save_notification_channels(
     if new_data["email"]["smtp_password"] == "••••••••":
         new_data["email"]["smtp_password"] = existing.get("email", {}).get("smtp_password", "")
 
+    # Preserve extra sections (zoho_api, etc.) that the UI doesn't manage
+    for key in existing:
+        if key not in new_data:
+            new_data[key] = existing[key]
+
     # Save channels
     save_channels(new_data)
 

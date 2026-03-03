@@ -40,7 +40,7 @@ EXPOSE 3002
 
 # Healthcheck
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
-    CMD wget --quiet --tries=1 --spider http://localhost:3002/ || exit 1
+    CMD wget --quiet --tries=1 --spider http://127.0.0.1:3002/ || exit 1
 
 # Nginx se inicia automáticamente
 CMD ["nginx", "-g", "daemon off;"]
