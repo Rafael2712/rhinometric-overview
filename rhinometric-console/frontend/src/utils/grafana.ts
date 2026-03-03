@@ -9,7 +9,7 @@
  */
 
 const GRAFANA_PUBLIC_URL =
-  import.meta.env.VITE_GRAFANA_PUBLIC_URL || "http://89.167.22.228/grafana";
+  import.meta.env.VITE_GRAFANA_PUBLIC_URL || "http://46.225.231.117/grafana";
 
 /**
  * Build Grafana URL without credentials (relies on session/cookies)

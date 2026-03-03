@@ -90,7 +90,7 @@ export function getJaegerTracesUrl(
 
   // Usar puerto directo de Jaeger (16686) hasta configurar QUERY_BASE_PATH
   // Alternativa: return `/jaeger` para usar redirect de nginx
-  return `http://89.167.22.228:16686/search?${params.toString()}`;
+  return `http://46.225.231.117:16686/search?${params.toString()}`;
 }
 
 /**
