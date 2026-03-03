@@ -18,6 +18,7 @@ import { ReportsPage } from './pages/Reports'
 import { UsersPage } from './pages/Users'
 import ServicesPage from './pages/Services'
 import { SystemHealthPage } from './pages/SystemHealth'
+import { RoadmapPage } from './pages/Roadmap'
 import { useAuthStore } from './lib/auth/store'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -51,7 +52,8 @@ function App() {
           <Route path="license" element={<LicensePage />} />
           <Route path="users" element={<UsersPage />} />
           <Route path="settings" element={<AdminRoute><SettingsPage /></AdminRoute>} />
-          <Route path="integrations" element={<IntegrationsPage />} />
+          <Route path="roadmap" element={<RoadmapPage />} />
+            <Route path="integrations" element={<IntegrationsPage />} />
           <Route path="reports" element={<ReportsPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />

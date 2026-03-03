@@ -1,4 +1,4 @@
-import { Activity, Server, AlertTriangle, Bell, TrendingUp, TrendingDown } from 'lucide-react'
+import { Activity, Server, AlertTriangle, Bell, TrendingUp, TrendingDown, Map } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useAuthStore } from '../lib/auth/store'
@@ -264,6 +264,28 @@ export function HomePage() {
                 <p className="text-xs text-text-muted">5 minutes ago</p>
               </div>
             </div>
+          </div>
+        </div>
+      </div>
+
+
+      {/* Roadmap Snapshot */}
+      <div
+        className="card hover:border-secondary/50 cursor-pointer transition-all duration-200 hover:shadow-lg hover:shadow-secondary/10"
+        onClick={() => navigate('/roadmap')}
+      >
+        <div className="flex items-start gap-3">
+          <div className="p-2 bg-secondary/10 rounded-lg flex-shrink-0">
+            <Map className="w-5 h-5 sm:w-6 sm:h-6 text-secondary" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <h3 className="text-base sm:text-lg font-semibold text-white mb-1">Roadmap Snapshot</h3>
+            <div className="flex flex-wrap gap-2 mb-2">
+              <span className="text-[10px] sm:text-xs px-2 py-0.5 rounded-full bg-primary/15 text-primary font-medium">P0: 5 items</span>
+              <span className="text-[10px] sm:text-xs px-2 py-0.5 rounded-full bg-secondary/15 text-secondary font-medium">P1: 7 items</span>
+              <span className="text-[10px] sm:text-xs px-2 py-0.5 rounded-full bg-warning/10 text-warning font-medium">P2: 4 items</span>
+            </div>
+            <p className="text-text-muted text-xs sm:text-sm">View full product roadmap →</p>
           </div>
         </div>
       </div>

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useLocation, Outlet } from 'react-router-dom'
-import { Home, LayoutDashboard, AlertTriangle, Bell, FileText, Network, CreditCard, Settings, LogOut, Menu, X, Users } from 'lucide-react'
+import { Home, LayoutDashboard, AlertTriangle, Bell, FileText, Network, CreditCard, Settings, LogOut, Menu, X, Users, Map } from 'lucide-react'
 import { useAuthStore } from '../lib/auth/store'
 
 const navigation = [
@@ -12,6 +12,7 @@ const navigation = [
   { name: 'Traces', href: '/traces', icon: Network },
   { name: 'License', href: '/license', icon: CreditCard },
   { name: 'Users', href: '/users', icon: Users, requiresAdmin: true },
+  { name: 'Roadmap', href: '/roadmap', icon: Map },
   { name: 'Settings', href: '/settings', icon: Settings, requiresAdmin: true },
 ]
 
