@@ -1,18 +1,22 @@
 #!/usr/bin/env bash
 # ═══════════════════════════════════════════════════════════════════════════════
-# RHINOMETRIC v3.0.0 — PRODUCTION INSTALLER
+# RHINOMETRIC v3.0.1 — PRODUCTION INSTALLER
 # Integrates Ed25519 license validation via rhino-lic
 # Date: 2026-03-04
 # Requires: Ubuntu 20.04+, Docker 24.x+, Docker Compose v2
 #
 # IMPORTANT: This installer NEVER aborts due to license issues.
 #            The platform always starts. License status is informational.
+#
+# EXIT CODES:
+#   0 — Installation completed, platform healthy
+#   1 — Critical failure (docker compose failed, health check failed, etc.)
 # ═══════════════════════════════════════════════════════════════════════════════
 
 # ── Do NOT use set -e — we handle every error explicitly ──────────────────────
 
 # ─── Constants ────────────────────────────────────────────────────────────────
-readonly VERSION="3.0.0"
+readonly VERSION="3.0.1"
 readonly INSTALL_DIR="${INSTALL_DIR:-/opt/rhinometric}"
 readonly COMPOSE_FILE="docker-compose.yml"
 readonly CREDENTIALS_FILE="${INSTALL_DIR}/install-info.txt"
@@ -22,8 +26,8 @@ readonly MIN_RAM_GB=8
 readonly MIN_CPU_CORES=4
 readonly REQUIRED_SPACE_GB=150
 readonly HEALTH_URL="http://127.0.0.1:3002"
-readonly HEALTH_RETRIES=10
-readonly HEALTH_DELAY=6
+readonly HEALTH_RETRIES=20
+readonly HEALTH_DELAY=10
 readonly PULL_RETRIES=3
 readonly PULL_DELAY=10
 
@@ -48,13 +52,24 @@ GRAFANA_PASSWORD=""
 ADMIN_PASSWORD=""
 INSTALL_WARNINGS=()
 
+# ─── Critical failure tracking ────────────────────────────────────
+INSTALL_CRITICAL_FAILURE=false
+FAILURE_REASONS=()
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # UTILITIES
 # ═══════════════════════════════════════════════════════════════════════════════
 
 log_info()  { echo -e "${GREEN}[INFO]${NC}  $1"; }
 log_warn()  { echo -e "${YELLOW}[WARN]${NC}  $1"; INSTALL_WARNINGS+=("$1"); }
-log_error() { echo -e "${RED}[ERROR]${NC} $1"; INSTALL_WARNINGS+=("$1"); }
+log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
+
+# ── Mark a critical (non-recoverable) failure ─────────────────────────────────
+fail_critical() {
+    INSTALL_CRITICAL_FAILURE=true
+    FAILURE_REASONS+=("$1")
+    log_error "$1"
+}
 log_step()  { echo -e "\n${BLUE}${BOLD}═══ $1 ═══${NC}\n"; }
 
 banner() {
@@ -69,7 +84,7 @@ banner() {
 ║   ██║  ██║██║  ██║██║██║ ╚████║╚██████╔╝██║ ╚═╝ ██║             ║
 ║   ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝╚═╝  ╚═══╝ ╚═════╝ ╚═╝     ╚═╝             ║
 ║                                                                  ║
-║          Enterprise Observability Platform v3.0.0                ║
+║          Enterprise Observability Platform v3.0.1                ║
 ║                   Production Installer                           ║
 ║                                                                  ║
 ╚══════════════════════════════════════════════════════════════════╝
@@ -174,8 +189,7 @@ check_docker() {
         if retry "Docker install" bash -c "curl -fsSL https://get.docker.com | sh"; then
             log_info "✓ Docker installed successfully"
         else
-            log_error "Docker installation failed. Install manually: curl -fsSL https://get.docker.com | sh"
-            log_warn "Installation continues but docker compose up will fail."
+            fail_critical "Docker installation failed. Install manually: curl -fsSL https://get.docker.com | sh"
             return 1
         fi
     fi
@@ -185,7 +199,7 @@ check_docker() {
     log_info "✓ Docker ${docker_ver} installed"
 
     if ! docker compose version &>/dev/null; then
-        log_warn "Docker Compose v2 not available. Required for multi-container stack."
+        fail_critical "Docker Compose v2 not available. Required for multi-container stack."
         return 1
     fi
 
@@ -418,9 +432,16 @@ create_directories() {
     local dirs=(
         "${INSTALL_DIR}"
         "${INSTALL_DIR}/config"
+        "${INSTALL_DIR}/config/rules"
         "${INSTALL_DIR}/grafana/provisioning/dashboards/json"
+        "${INSTALL_DIR}/grafana/provisioning/dashboards/json-clean"
+        "${INSTALL_DIR}/grafana/provisioning/datasources"
+        "${INSTALL_DIR}/grafana/provisioning/plugins"
         "${INSTALL_DIR}/prometheus"
-        "${INSTALL_DIR}/alertmanager"
+        "${INSTALL_DIR}/alertmanager/templates"
+        "${INSTALL_DIR}/nginx"
+        "${INSTALL_DIR}/blackbox"
+        "${INSTALL_DIR}/init-db"
         "${INSTALL_DIR}/loki"
         "${INSTALL_DIR}/data"
     )
@@ -504,7 +525,8 @@ copy_files() {
     elif [[ -f "${INSTALL_DIR}/docker-compose.yml" ]]; then
         log_info "✓ Docker Compose file already exists"
     else
-        log_warn "docker-compose.yml not found in package. The installer may fail at docker compose up."
+        fail_critical "docker-compose.yml not found in package or ${INSTALL_DIR}. Cannot proceed."
+        return 1
     fi
 
     # Copy rhino-lic to install dir for future reference
@@ -520,17 +542,115 @@ copy_files() {
         log_info "✓ Uninstall script copied"
     fi
 
-    # Copy Grafana dashboards if present
-    if [[ -d "${script_dir}/grafana/provisioning/dashboards" ]]; then
-        cp -r "${script_dir}/grafana/provisioning/dashboards/"* \
-            "${INSTALL_DIR}/grafana/provisioning/dashboards/" 2>/dev/null || true
-        log_info "✓ Grafana dashboards copied"
+    # ── Copy all configuration directories from package ───────────────────────
+    # These are required by docker-compose.yml volume mounts.
+    local config_dirs=("config" "alertmanager" "grafana" "nginx" "blackbox" "init-db" "prometheus" "loki")
+    for dir in "${config_dirs[@]}"; do
+        if [[ -d "${script_dir}/${dir}" ]]; then
+            cp -a "${script_dir}/${dir}/." "${INSTALL_DIR}/${dir}/" 2>/dev/null || true
+            log_info "✓ ${dir}/ copied"
+        fi
+    done
+
+    # ── Copy build context directories for locally-built services ─────────────
+    # These directories contain Dockerfiles and source code that docker compose
+    # builds at startup. They MUST exist at ${INSTALL_DIR} for compose to work.
+    local build_dirs=("rhinometric-ai-anomaly" "rhinometric-console" "license-server-v2" "license-management-ui")
+    for dir in "${build_dirs[@]}"; do
+        if [[ -d "${script_dir}/${dir}" ]]; then
+            mkdir -p "${INSTALL_DIR}/${dir}" 2>/dev/null || true
+            cp -a "${script_dir}/${dir}/." "${INSTALL_DIR}/${dir}/" 2>/dev/null || true
+            log_info "✓ ${dir}/ copied (build context)"
+        fi
+    done
+
+    # Verify critical file exists after copy
+    if [[ ! -f "${INSTALL_DIR}/docker-compose.yml" ]]; then
+        fail_critical "docker-compose.yml missing in ${INSTALL_DIR} after copy step."
+        return 1
+    fi
+}
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# STEP 7b — LOAD PRE-BUILT DOCKER IMAGES
+# ═══════════════════════════════════════════════════════════════════════════════
+
+load_images() {
+    local script_dir
+    script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" ; pwd)"
+
+    local images_file=""
+    if [[ -f "${script_dir}/images.tar.gz" ]]; then
+        images_file="${script_dir}/images.tar.gz"
+    elif [[ -f "${script_dir}/images.tar" ]]; then
+        images_file="${script_dir}/images.tar"
     fi
 
-    # Copy config files if present
-    if [[ -d "${script_dir}/config" ]]; then
-        cp -r "${script_dir}/config/"* "${INSTALL_DIR}/config/" 2>/dev/null || true
-        log_info "✓ Configuration files copied"
+    if [[ -z "$images_file" ]]; then
+        log_info "No pre-built images archive found. Will build locally and pull from registries."
+        return 0
+    fi
+
+    log_info "Loading pre-built Docker images from $(basename "$images_file")..."
+    local load_output
+    if [[ "$images_file" == *.gz ]]; then
+        load_output=$(gunzip -c "$images_file" | docker load 2>&1)
+    else
+        load_output=$(docker load -i "$images_file" 2>&1)
+    fi
+    local load_exit=$?
+
+    if [[ $load_exit -eq 0 ]]; then
+        local loaded_count
+        loaded_count=$(echo "$load_output" | grep -c "Loaded image" || echo 0)
+        log_info "✓ Docker images loaded successfully (${loaded_count} images)"
+    else
+        fail_critical "Failed to load Docker images from ${images_file}."
+        return 1
+    fi
+}
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# STEP 7c — VERIFY BUILD CONTEXTS
+# ═══════════════════════════════════════════════════════════════════════════════
+
+verify_build_contexts() {
+    log_info "Verifying Docker Compose build contexts..."
+    cd "${INSTALL_DIR}" || return 1
+
+    local missing_contexts=()
+    local context_path
+    while IFS= read -r context_path; do
+        context_path=$(echo "$context_path" | sed 's/^[[:space:]]*context:[[:space:]]*//' | sed 's/[[:space:]]*$//')
+        if [[ "$context_path" == ./* ]]; then
+            context_path="${INSTALL_DIR}/${context_path#./}"
+        fi
+        if [[ ! -d "$context_path" ]]; then
+            missing_contexts+=("$context_path")
+        fi
+    done < <(grep 'context:' "${INSTALL_DIR}/docker-compose.yml" 2>/dev/null | grep -v '#')
+
+    if [[ ${#missing_contexts[@]} -gt 0 ]]; then
+        log_error "Missing build context directories:"
+        for ctx in "${missing_contexts[@]}"; do
+            log_error "  - ${ctx}"
+        done
+        local can_continue=true
+        for ctx in "${missing_contexts[@]}"; do
+            local dir_name
+            dir_name=$(basename "$ctx")
+            if ! docker images --format "{{.Repository}}" 2>/dev/null | grep -qi "$dir_name"; then
+                can_continue=false
+            fi
+        done
+        if $can_continue; then
+            log_warn "Build context dirs missing but matching Docker images found locally."
+        else
+            fail_critical "Build context directories missing and no pre-built images found. Package may be incomplete."
+            return 1
+        fi
+    else
+        log_info "✓ All build context directories present"
     fi
 }
 
@@ -551,21 +671,62 @@ start_stack() {
         return 1
     fi
 
-    # Pull images with retry
+    # Validate compose config before anything else
+    log_info "Validating Docker Compose configuration..."
+    local config_output
+    config_output=$(docker compose config 2>&1)
+    local config_exit=$?
+    if [[ $config_exit -ne 0 ]]; then
+        fail_critical "Docker Compose configuration is invalid: $(echo "$config_output" | tail -5)"
+        return 1
+    fi
+    log_info "✓ Compose configuration valid"
+
+    # Pull public images (ignore failures for locally-built images)
     log_info "Pulling Docker images (this may take several minutes)..."
-    if retry "docker compose pull" docker compose pull; then
-        log_info "✓ Docker images pulled successfully"
+    docker compose pull --ignore-buildable 2>&1 || true
+
+    # Build locally-built images
+    log_info "Building local images (this may take several minutes on first install)..."
+    local build_output
+    build_output=$(docker compose build 2>&1)
+    local build_exit=$?
+    if [[ $build_exit -ne 0 ]]; then
+        log_warn "docker compose build had issues: $(echo "$build_output" | tail -10)"
     else
-        log_warn "Some images failed to pull. Attempting to start with cached images..."
+        log_info "✓ Local images built successfully"
     fi
 
     # Start stack
-    log_info "Starting services..."
-    if docker compose up -d 2>&1; then
-        log_info "✓ Docker Compose started"
-    else
-        log_warn "docker compose up returned an error. Some containers may not start."
+    log_info "Starting services with docker compose up -d..."
+    local compose_output
+    compose_output=$(docker compose up -d 2>&1)
+    local compose_exit=$?
+
+    if [[ $compose_exit -ne 0 ]]; then
+        fail_critical "docker compose up failed (exit code ${compose_exit})"
+        echo ""
+        log_error "Docker Compose output:"
+        echo "$compose_output" | tail -30
+        echo ""
+        log_error "Container statuses:"
+        docker compose ps --format "table {{.Name}}\t{{.Status}}" 2>/dev/null || true
+        return 1
     fi
+
+    log_info "✓ Docker Compose started"
+
+    # Verify at least some containers came up
+    sleep 10
+    local running_count
+    running_count=$(docker compose ps --status running -q 2>/dev/null | wc -l || echo 0)
+    if [[ "$running_count" -eq 0 ]]; then
+        fail_critical "docker compose up succeeded but 0 containers are running."
+        docker compose ps --format "table {{.Name}}\t{{.Status}}" 2>/dev/null || true
+        return 1
+    fi
+
+    log_info "Containers starting: ${running_count} running so far"
 
     # Wait for initialization
     log_info "Waiting for services to initialize (30s)..."
@@ -588,8 +749,20 @@ health_check() {
 
     log_info "Containers: ${running}/${total} running"
 
-    # Backend health check with retries
+    if [[ "$running" -eq 0 ]]; then
+        fail_critical "No containers are running. The platform failed to start."
+        echo ""
+        log_error "Container statuses:"
+        docker compose ps --format "table {{.Name}}\t{{.Status}}" 2>/dev/null || true
+        echo ""
+        log_error "Recent logs from failed containers:"
+        docker compose logs --tail=20 2>/dev/null | tail -40 || true
+        return 1
+    fi
+
+    # Health check with retries
     log_info "Checking platform health (Console + Grafana)..."
+    log_info "Timeout: $((HEALTH_RETRIES * HEALTH_DELAY))s (${HEALTH_RETRIES} attempts x ${HEALTH_DELAY}s)"
     local n=0
     local console_ok=false
     local grafana_ok=false
@@ -627,6 +800,49 @@ health_check() {
     echo ""
 
     return 1
+}
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# FAILURE REPORT
+# ═══════════════════════════════════════════════════════════════════════════════
+
+print_failure_report() {
+    echo ""
+    echo -e "${RED}${BOLD}"
+    cat << 'FAILBANNER'
+╔══════════════════════════════════════════════════════════════════╗
+║                                                                  ║
+║               ✗ INSTALLATION FAILED                              ║
+║                                                                  ║
+╚══════════════════════════════════════════════════════════════════╝
+FAILBANNER
+    echo -e "${NC}"
+
+    echo -e "  ${RED}${BOLD}Critical failures:${NC}"
+    local i=1
+    for reason in "${FAILURE_REASONS[@]}"; do
+        echo -e "  ${RED}${i}.${NC} ${reason}"
+        i=$((i + 1))
+    done
+    echo ""
+
+    if [[ ${#INSTALL_WARNINGS[@]} -gt 0 ]]; then
+        echo -e "  ${YELLOW}${BOLD}Warnings:${NC}"
+        for w in "${INSTALL_WARNINGS[@]}"; do
+            echo -e "  ${YELLOW}⚠${NC}  ${w}"
+        done
+        echo ""
+    fi
+
+    echo -e "  ${BOLD}Troubleshooting:${NC}"
+    echo "    1. Check container logs : cd ${INSTALL_DIR} ; docker compose logs --tail=50"
+    echo "    2. Check container state: cd ${INSTALL_DIR} ; docker compose ps"
+    echo "    3. Check disk space     : df -h ${INSTALL_DIR}"
+    echo "    4. Check Docker daemon  : systemctl status docker"
+    echo "    5. Retry installation   : sudo bash install-rhinometric.sh"
+    echo ""
+    echo -e "  ${BOLD}Support:${NC} Contact Rhinometric with the output above."
+    echo ""
 }
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -761,6 +977,12 @@ main() {
     check_ports
     echo ""
 
+    # ── Abort early if Docker is missing (critical dependency) ──
+    if [[ "$INSTALL_CRITICAL_FAILURE" == "true" ]]; then
+        print_failure_report
+        exit 1
+    fi
+
     # ── Fingerprint detection ──
     detect_fingerprint
 
@@ -787,16 +1009,50 @@ main() {
     copy_files
     echo ""
 
+    # ── Abort if copy failed critically ──
+    if [[ "$INSTALL_CRITICAL_FAILURE" == "true" ]]; then
+        print_failure_report
+        exit 1
+    fi
+
+    # ── Load pre-built images (if archive exists in package) ──
+    log_step "STEP 4b/7 — Load Docker Images"
+    load_images
+    echo ""
+
+    if [[ "$INSTALL_CRITICAL_FAILURE" == "true" ]]; then
+        print_failure_report
+        exit 1
+    fi
+
+    # ── Verify build contexts exist ──
+    verify_build_contexts
+
+    if [[ "$INSTALL_CRITICAL_FAILURE" == "true" ]]; then
+        print_failure_report
+        exit 1
+    fi
+
     # ── Start stack ──
     start_stack
 
-    # ── Health check ──
-    health_check
+    # ── Health check (only if stack started) ──
+    if [[ "$INSTALL_CRITICAL_FAILURE" != "true" ]]; then
+        health_check
+    fi
 
-    # ── Save & show ──
+    # ══════════════════════════════════════════════════════════════════════════
+    # FINAL DECISION: SUCCESS or FAILURE
+    # ══════════════════════════════════════════════════════════════════════════
+    if [[ "$INSTALL_CRITICAL_FAILURE" == "true" ]]; then
+        print_failure_report
+        exit 1
+    fi
+
+    # ── All good — save credentials and show success ──
     save_credentials
-
     log_info "Installation completed. Rhinometric v${VERSION} is ready."
+    exit 0
 }
 
 # ── Entry point ──
