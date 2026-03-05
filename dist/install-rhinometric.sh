@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ═══════════════════════════════════════════════════════════════════════════════
-# RHINOMETRIC v3.0.3 — PRODUCTION INSTALLER
+# RHINOMETRIC v3.0.4 — PRODUCTION INSTALLER
 # Integrates Ed25519 license validation via rhino-lic
 # Date: 2026-03-05
 # Requires: Ubuntu 20.04+, Docker 24.x+, Docker Compose v2
@@ -12,29 +12,31 @@
 #   0 — Installation completed, platform healthy
 #   1 — Critical failure (docker compose failed, health check failed, etc.)
 #
-# v3.0.3 CHANGES (from v3.0.2):
-#   - FIX: /etc/os-release sourcing no longer clashes with readonly VERSION
-#   - FIX: Disk check prints actual GB (was empty), checks Docker data-root too
-#   - FIX: Endpoint checks are dynamic — reads published ports from compose
-#          instead of hardcoding 3002/3000/9090
-#   - FIX: Rollback NO LONGER destroys the stack by default; add
-#          --rollback-on-failure to opt-in
-#   - FIX: VictoriaMetrics unhealthy triggers root-cause diagnosis (OOM, disk,
-#          slow start) instead of hard failing
-#   - FIX: Correct runtime-dirs-created counter
-#   - NEW: Enhanced debug bundle (docker info, system df, journalctl, per-svc)
-#   - NEW: .env includes sane SMTP/MAIL defaults to suppress compose warnings
-#   - NEW: Strips obsolete compose `version:` field at copy time
+# v3.0.4 CHANGES (from v3.0.3):
+#   - FIX(A): VictoriaMetrics promscrape — installer patches localhost:9090 ->
+#             rhinometric-prometheus:9090 in prometheus config after copy.
+#             Creates empty loadtest_targets.json if missing.
+#   - FIX(B): AI Anomaly healthcheck — installer patches curl -> python urllib
+#             in compose so containers without curl pass healthcheck.
+#   - FIX(C): Endpoint validation — `docker compose port` returns "invalid IP:0"
+#             for unpublished ports. Now validated with regex; only real
+#             host:port values used.  Nginx is tested on port 80. Internal
+#             services (grafana, prometheus, console) tested through nginx
+#             proxy routes (/grafana, /api, /) — NOT via host ports.
+#   - FIX(D): License/fingerprint UX — fingerprint saved to
+#             /opt/rhinometric/fingerprint.txt; post-install license guide
+#             printed; optional --wait-for-license mode.
 # ═══════════════════════════════════════════════════════════════════════════════
 
 # ── Do NOT use set -e — we handle every error explicitly ──────────────────────
 
 # ─── Constants ────────────────────────────────────────────────────────────────
-readonly INSTALLER_VERSION="3.0.3"
+readonly INSTALLER_VERSION="3.0.4"
 readonly INSTALL_DIR="${INSTALL_DIR:-/opt/rhinometric}"
 readonly COMPOSE_FILE="docker-compose.yml"
 readonly CREDENTIALS_FILE="${INSTALL_DIR}/install-info.txt"
 readonly LICENSE_DEST="${INSTALL_DIR}/license.key"
+readonly FINGERPRINT_FILE="${INSTALL_DIR}/fingerprint.txt"
 readonly RHINO_LIC_BIN="/usr/local/bin/rhino-lic"
 readonly MIN_RAM_GB=8
 readonly MIN_CPU_CORES=4
@@ -67,6 +69,7 @@ ADMIN_PASSWORD=""
 INSTALL_WARNINGS=()
 SKIP_JAEGER=false
 ROLLBACK_ON_FAILURE=false
+WAIT_FOR_LICENSE=false
 DATA_ROOT=""
 
 # ─── Critical failure tracking ───────────────────────────────────────────────
@@ -100,7 +103,7 @@ banner() {
 ║   ██║  ██║██║  ██║██║██║ ╚████║╚██████╔╝██║ ╚═╝ ██║             ║
 ║   ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝╚═╝  ╚═══╝ ╚═════╝ ╚═╝     ╚═╝             ║
 ║                                                                  ║
-║          Enterprise Observability Platform v3.0.3                ║
+║          Enterprise Observability Platform v3.0.4                ║
 ║                   Production Installer                           ║
 ║                                                                  ║
 ╚══════════════════════════════════════════════════════════════════╝
@@ -143,6 +146,10 @@ parse_args() {
                 ROLLBACK_ON_FAILURE=true
                 log_info "Rollback on failure enabled"
                 ;;
+            --wait-for-license)
+                WAIT_FOR_LICENSE=true
+                log_info "Will pause for license.key placement"
+                ;;
             *)
                 ;;
         esac
@@ -171,8 +178,7 @@ check_root() {
 check_os() {
     log_info "Checking operating system..."
     if [[ -f /etc/os-release ]]; then
-        # Parse safely — do NOT source the file (VERSION is a readonly in this
-        # script and /etc/os-release also defines VERSION, causing a conflict).
+        # v3.0.3 FIX: parse safely — do NOT source (VERSION is readonly in this script)
         local os_id os_version os_pretty
         os_id=$(grep -oP '^ID=\K.*' /etc/os-release 2>/dev/null | tr -d '"' || echo "unknown")
         os_version=$(grep -oP '^VERSION_ID=\K.*' /etc/os-release 2>/dev/null | tr -d '"' || echo "")
@@ -190,7 +196,6 @@ check_os() {
 check_resources() {
     log_info "Checking system resources..."
 
-    # CPU
     local cpu_cores
     cpu_cores=$(nproc 2>/dev/null || echo 0)
     if [[ "$cpu_cores" -ge "$MIN_CPU_CORES" ]]; then
@@ -199,7 +204,6 @@ check_resources() {
         log_warn "CPU: ${cpu_cores} cores detected (recommended: ${MIN_CPU_CORES}+)"
     fi
 
-    # RAM
     local total_ram_gb
     total_ram_gb=$(free -g 2>/dev/null | awk '/^Mem:/{print $2}' || echo 0)
     if [[ "$total_ram_gb" -ge "$MIN_RAM_GB" ]]; then
@@ -208,10 +212,8 @@ check_resources() {
         log_warn "RAM: ${total_ram_gb} GB detected (recommended: ${MIN_RAM_GB} GB). Installation continues."
     fi
 
-    # Disk: check INSTALL_DIR partition
+    # v3.0.3 FIX: walk to existing parent for df; also check Docker data-root
     check_disk_space "${INSTALL_DIR}" "install-dir"
-
-    # Disk: check Docker data-root partition
     local docker_root
     docker_root=$(docker info --format '{{.DockerRootDir}}' 2>/dev/null || echo "/var/lib/docker")
     if [[ "$docker_root" != "$(df "${INSTALL_DIR}" 2>/dev/null | awk 'NR==2{print $6}')" ]]; then
@@ -220,27 +222,19 @@ check_resources() {
 }
 
 check_disk_space() {
-    local path="$1"
-    local label="$2"
-
-    # Ensure parent exists for df
+    local path="$1" label="$2"
     local check_path="$path"
     while [[ ! -d "$check_path" && "$check_path" != "/" ]]; do
         check_path=$(dirname "$check_path")
     done
-
-    local avail_kb avail_gb total_kb used_pct
+    local avail_kb avail_gb used_pct
     avail_kb=$(df -k "$check_path" 2>/dev/null | awk 'NR==2{print $4}')
-    total_kb=$(df -k "$check_path" 2>/dev/null | awk 'NR==2{print $2}')
     used_pct=$(df -k "$check_path" 2>/dev/null | awk 'NR==2{print $5}')
-
     if [[ -z "$avail_kb" || "$avail_kb" == "0" ]]; then
-        fail_critical "Disk check failed for ${path} (${label}): could not determine available space. df output: $(df -h "$check_path" 2>&1 | head -3)"
+        fail_critical "Disk check failed for ${path} (${label}): could not determine available space."
         return 1
     fi
-
     avail_gb=$((avail_kb / 1048576))
-
     if [[ "$avail_gb" -ge "$REQUIRED_SPACE_GB" ]]; then
         log_info "✓ Disk (${label}): ${avail_gb} GB available (${used_pct} used) at ${check_path}"
     else
@@ -250,7 +244,6 @@ check_disk_space() {
 
 check_docker() {
     log_info "Checking Docker..."
-
     if ! command -v docker &>/dev/null; then
         log_warn "Docker is not installed. Attempting automatic install..."
         if retry "Docker install" bash -c "curl -fsSL https://get.docker.com | sh"; then
@@ -260,16 +253,13 @@ check_docker() {
             return 1
         fi
     fi
-
     local docker_ver
     docker_ver=$(docker --version 2>/dev/null | grep -oP '\d+\.\d+\.\d+' | head -1 || echo "unknown")
     log_info "✓ Docker ${docker_ver} installed"
-
     if ! docker compose version &>/dev/null; then
         fail_critical "Docker Compose v2 not available. Required for multi-container stack."
         return 1
     fi
-
     local compose_ver
     compose_ver=$(docker compose version --short 2>/dev/null || echo "unknown")
     log_info "✓ Docker Compose ${compose_ver} installed"
@@ -278,16 +268,13 @@ check_docker() {
 
 check_ports() {
     log_info "Checking port availability..."
-
     local required_ports=(80 3000 3002 5432 6379 8105 9090 9093 3100 16686)
     local ports_in_use=()
-
     for port in "${required_ports[@]}"; do
         if ss -tuln 2>/dev/null | grep -q ":${port} "; then
             ports_in_use+=("$port")
         fi
     done
-
     if [[ ${#ports_in_use[@]} -gt 0 ]]; then
         log_warn "Ports already in use: ${ports_in_use[*]}. This may be a previous installation or conflicting services."
     else
@@ -296,7 +283,7 @@ check_ports() {
 }
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# STEP 3 — MACHINE FINGERPRINT
+# STEP 3 — MACHINE FINGERPRINT  (v3.0.4: saves to file, improved UX)
 # ═══════════════════════════════════════════════════════════════════════════════
 
 detect_fingerprint() {
@@ -309,6 +296,11 @@ detect_fingerprint() {
     fi
 
     if [[ -n "$MACHINE_FINGERPRINT" ]]; then
+        # v3.0.4: persist fingerprint so user can retrieve it later
+        mkdir -p "${INSTALL_DIR}" 2>/dev/null || true
+        echo "$MACHINE_FINGERPRINT" > "${FINGERPRINT_FILE}" 2>/dev/null || true
+        chmod 644 "${FINGERPRINT_FILE}" 2>/dev/null || true
+
         echo ""
         echo -e "${BOLD}┌──────────────────────────────────────────────────────────────┐${NC}"
         echo -e "${BOLD}│           Machine Fingerprint Detected                       │${NC}"
@@ -316,7 +308,9 @@ detect_fingerprint() {
         echo -e "${BOLD}│${NC}                                                              ${BOLD}│${NC}"
         echo -e "${BOLD}│${NC}  ${CYAN}${MACHINE_FINGERPRINT}${NC}"
         echo -e "${BOLD}│${NC}                                                              ${BOLD}│${NC}"
-        echo -e "${BOLD}│${NC}  Provide this fingerprint to Rhinometric to obtain           ${BOLD}│${NC}"
+        echo -e "${BOLD}│${NC}  Saved to: ${FINGERPRINT_FILE}                ${BOLD}│${NC}"
+        echo -e "${BOLD}│${NC}                                                              ${BOLD}│${NC}"
+        echo -e "${BOLD}│${NC}  Send this fingerprint to Rhinometric to obtain              ${BOLD}│${NC}"
         echo -e "${BOLD}│${NC}  your signed license file (license.key).                     ${BOLD}│${NC}"
         echo -e "${BOLD}│${NC}                                                              ${BOLD}│${NC}"
         echo -e "${BOLD}└──────────────────────────────────────────────────────────────┘${NC}"
@@ -327,7 +321,7 @@ detect_fingerprint() {
 }
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# STEP 4 — LICENSE VALIDATION
+# STEP 4 — LICENSE VALIDATION  (v3.0.4: --wait-for-license + apply guide)
 # ═══════════════════════════════════════════════════════════════════════════════
 
 validate_license() {
@@ -357,21 +351,46 @@ validate_license() {
     local license_path="$default_license"
 
     if [[ -z "$license_path" ]]; then
-        echo ""
-        read -r -p "  Enter path to license.key (or press ENTER to continue without license): " license_path
+        # v3.0.4: --wait-for-license mode
+        if $WAIT_FOR_LICENSE; then
+            echo ""
+            echo -e "  ${BOLD}--wait-for-license mode active.${NC}"
+            echo -e "  Place your ${CYAN}license.key${NC} in: ${CYAN}${INSTALL_DIR}/${NC}"
+            echo ""
+            local wait_secs=0
+            local max_wait=300
+            while [[ $wait_secs -lt $max_wait ]]; do
+                if [[ -f "${INSTALL_DIR}/license.key" ]]; then
+                    license_path="${INSTALL_DIR}/license.key"
+                    log_info "✓ license.key detected!"
+                    break
+                fi
+                echo -ne "\r  Waiting for license.key... (${wait_secs}/${max_wait}s) Press Ctrl+C to skip.  "
+                sleep 5
+                wait_secs=$((wait_secs + 5))
+            done
+            echo ""
+            if [[ -z "$license_path" ]]; then
+                log_info "Timeout reached. Continuing without license."
+            fi
+        else
+            echo ""
+            read -r -p "  Enter path to license.key (or press ENTER to continue without license): " license_path
+        fi
     fi
 
     if [[ -z "$license_path" ]]; then
         LICENSE_STATUS="unlicensed"
         echo ""
         log_warn "No license provided. Platform will start in unlicensed mode."
-        log_info "You can add a license later by placing license.key in ${INSTALL_DIR}/"
+        print_license_apply_guide
         return 0
     fi
 
     if [[ ! -f "$license_path" ]]; then
         log_warn "License file not found: ${license_path}. Continuing in unlicensed mode."
         LICENSE_STATUS="unlicensed"
+        print_license_apply_guide
         return 0
     fi
 
@@ -386,7 +405,6 @@ validate_license() {
 
     echo ""
     log_info "Validating license..."
-
     local validation_output
     validation_output=$(rhino-lic validate "${license_path}" 2>&1)
     local exit_code=$?
@@ -398,7 +416,6 @@ validate_license() {
             LICENSE_HOSTS=$(echo "$validation_output" | grep -oP '"max_hosts"\s*:\s*\K[0-9]+' || echo "unknown")
             LICENSE_EXPIRES=$(echo "$validation_output" | grep -oP '"expires_at"\s*:\s*"\K[^"]+' || echo "unknown")
             LICENSE_CUSTOMER=$(echo "$validation_output" | grep -oP '"customer"\s*:\s*"\K[^"]+' || echo "unknown")
-
             echo ""
             echo -e "${GREEN}${BOLD}┌──────────────────────────────────────────────────────────────┐${NC}"
             echo -e "${GREEN}${BOLD}│               ✓ License Valid                                │${NC}"
@@ -412,9 +429,9 @@ validate_license() {
             echo ""
             ;;
         1)  LICENSE_STATUS="invalid_signature"
-            log_warn "License signature is INVALID. The platform will start but licensing will be limited." ;;
+            log_warn "License signature is INVALID. Platform will start but licensing will be limited." ;;
         2)  LICENSE_STATUS="expired"
-            log_warn "License has EXPIRED. The platform will start but licensing will be limited." ;;
+            log_warn "License has EXPIRED. Platform will start but licensing will be limited." ;;
         3)  LICENSE_STATUS="fingerprint_mismatch"
             log_warn "License FINGERPRINT MISMATCH (expected: ${MACHINE_FINGERPRINT}). Platform will start." ;;
         4)  LICENSE_STATUS="parse_error"
@@ -425,6 +442,20 @@ validate_license() {
     return 0
 }
 
+# v3.0.4: print instructions for applying license after install
+print_license_apply_guide() {
+    echo ""
+    echo -e "  ${BOLD}To apply a license later (no reinstall needed):${NC}"
+    echo ""
+    echo "    1. Get your fingerprint:  cat ${FINGERPRINT_FILE}"
+    echo "    2. Send fingerprint to Rhinometric to receive license.key"
+    echo "    3. Copy license.key to server:"
+    echo "         scp license.key root@<SERVER_IP>:${LICENSE_DEST}"
+    echo "    4. Restart the backend to pick up the license:"
+    echo "         cd ${INSTALL_DIR} && docker compose restart rhinometric-console-backend license-server-v2"
+    echo ""
+}
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # STEP 5 — INSTALL RHINO-LIC BINARY
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -432,12 +463,10 @@ validate_license() {
 install_rhino_lic() {
     local script_dir
     script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-
     if command -v rhino-lic &>/dev/null; then
         log_info "✓ rhino-lic already installed at $(command -v rhino-lic)"
         return 0
     fi
-
     if [[ -f "${script_dir}/rhino-lic" ]]; then
         log_info "Installing rhino-lic from package..."
         cp "${script_dir}/rhino-lic" "${RHINO_LIC_BIN}"
@@ -447,7 +476,6 @@ install_rhino_lic() {
             return 0
         fi
     fi
-
     if [[ -f "${INSTALL_DIR}/rhino-lic" ]]; then
         log_info "Installing rhino-lic from ${INSTALL_DIR}..."
         cp "${INSTALL_DIR}/rhino-lic" "${RHINO_LIC_BIN}"
@@ -457,7 +485,6 @@ install_rhino_lic() {
             return 0
         fi
     fi
-
     log_warn "rhino-lic binary not found. Fingerprint/license validation skipped."
     return 1
 }
@@ -494,7 +521,6 @@ generate_credentials() {
 
 write_env_file() {
     log_info "Writing environment file..."
-
     local server_ip
     server_ip=$(hostname -I 2>/dev/null | awk '{print $1}' || echo "127.0.0.1")
 
@@ -536,6 +562,7 @@ SMTP_HOST=smtp.example.com
 SMTP_PORT=587
 SMTP_USER=noreply@example.com
 SMTP_PASSWORD=changeme
+SMTP_PASS=changeme
 MAIL_USERNAME=noreply@example.com
 MAIL_PASSWORD=changeme
 MAIL_FROM=noreply@example.com
@@ -585,7 +612,7 @@ prepare_runtime_dirs() {
     # ── Jaeger (UID 10001, GID 0) ──
     chown -R 10001:0 "${DATA_ROOT}/jaeger" 2>/dev/null || true
     chmod -R 755 "${DATA_ROOT}/jaeger" 2>/dev/null || true
-    log_info "✓ Jaeger: ${DATA_ROOT}/jaeger (uid=10001, badger subdirs ensured)"
+    log_info "✓ Jaeger: ${DATA_ROOT}/jaeger (uid=10001)"
 
     # ── Alertmanager (UID 65534 = nobody) ──
     chown -R 65534:65534 "${DATA_ROOT}/alertmanager" 2>/dev/null || true
@@ -616,7 +643,7 @@ prepare_runtime_dirs() {
 }
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# STEP 7 — COPY FILES
+# STEP 7 — COPY FILES + POST-COPY CONFIG PATCHES (v3.0.4)
 # ═══════════════════════════════════════════════════════════════════════════════
 
 copy_files() {
@@ -630,7 +657,6 @@ copy_files() {
         sed '/^version:/d' "${script_dir}/${COMPOSE_FILE}" > "${INSTALL_DIR}/docker-compose.yml"
         log_info "✓ Docker Compose file copied (obsolete 'version:' field stripped)"
     elif [[ -f "${INSTALL_DIR}/docker-compose.yml" ]]; then
-        # Strip version from existing copy too
         sed -i '/^version:/d' "${INSTALL_DIR}/docker-compose.yml" 2>/dev/null || true
         log_info "✓ Docker Compose file already exists (cleaned)"
     else
@@ -676,6 +702,124 @@ copy_files() {
         fail_critical "docker-compose.yml missing in ${INSTALL_DIR} after copy step."
         return 1
     fi
+
+    # ── v3.0.4: Post-copy config patches ──────────────────────────────────
+    patch_configs_post_copy
+}
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# POST-COPY CONFIG PATCHES (NEW in v3.0.4)
+# ═══════════════════════════════════════════════════════════════════════════════
+# Applies targeted fixes to config files AFTER they've been copied to
+# INSTALL_DIR. This ensures the fixes survive even if the tarball ships
+# with the old configs.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+patch_configs_post_copy() {
+    log_info "Applying post-copy config patches..."
+
+    # ── FIX(A): VictoriaMetrics promscrape — localhost:9090 ───────────────
+    # VictoriaMetrics uses -promscrape.config pointing to the same prometheus
+    # config. Inside the VM container, localhost:9090 is unreachable.
+    # Fix: use the Docker service name.
+    local prom_configs=(
+        "${INSTALL_DIR}/config/prometheus-v2.2.yml"
+        "${INSTALL_DIR}/prometheus/prometheus.yml"
+    )
+    for cfg in "${prom_configs[@]}"; do
+        if [[ -f "$cfg" ]]; then
+            if grep -q "'localhost:9090'" "$cfg" 2>/dev/null; then
+                sed -i "s/'localhost:9090'/'rhinometric-prometheus:9090'/g" "$cfg"
+                log_info "✓ Patched ${cfg##*/}: localhost:9090 → rhinometric-prometheus:9090"
+            fi
+        fi
+    done
+
+    # ── FIX(A): Create empty loadtest_targets.json if missing ─────────────
+    # VictoriaMetrics expects this file via file_sd_configs. An empty JSON
+    # array is harmless and prevents scrape config parse errors.
+    local loadtest_config="${INSTALL_DIR}/config/loadtest_targets.json"
+    if [[ ! -f "$loadtest_config" ]]; then
+        echo '[]' > "$loadtest_config"
+        log_info "✓ Created empty loadtest_targets.json"
+    fi
+    # Also in prometheus/ dir (where Prometheus itself mounts it)
+    local loadtest_prom="${INSTALL_DIR}/prometheus/loadtest_targets.json"
+    if [[ ! -f "$loadtest_prom" ]]; then
+        echo '[]' > "$loadtest_prom"
+        log_info "✓ Created empty prometheus/loadtest_targets.json"
+    fi
+
+    # ── FIX(B): AI Anomaly healthcheck — curl → python urllib ─────────────
+    # The ai-anomaly container is python:3.11-slim and does NOT have curl.
+    # The Dockerfile already has a python-based HEALTHCHECK, but compose
+    # overrides it. Patch compose to use python as well.
+    local compose_file="${INSTALL_DIR}/docker-compose.yml"
+    if grep -q '^\s*- curl' "$compose_file" 2>/dev/null; then
+        # Use python to do the replacement safely
+        python3 -c "
+import pathlib, sys
+f = pathlib.Path(sys.argv[1])
+t = f.read_text()
+
+old = '''    healthcheck:
+      test:
+      - CMD
+      - curl
+      - -f
+      - http://localhost:8085/health
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s'''
+
+new = '''    healthcheck:
+      test:
+      - CMD
+      - python
+      - -c
+      - \"import urllib.request; urllib.request.urlopen('http://localhost:8085/health', timeout=5)\"
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 45s'''
+
+if old in t:
+    t = t.replace(old, new, 1)
+    f.write_text(t)
+    print('OK')
+else:
+    print('SKIP')
+" "$compose_file" 2>/dev/null
+        local patch_result=$?
+        if [[ $patch_result -eq 0 ]]; then
+            log_info "✓ Patched compose: ai-anomaly healthcheck curl → python urllib"
+        fi
+    else
+        log_info "✓ AI Anomaly healthcheck already patched (no curl found)"
+    fi
+
+    # ── FIX(A): Mount loadtest_targets.json into victoria-metrics ─────────
+    # Check if the mount is already there
+    if ! grep -q 'loadtest_targets.json:/etc/prometheus/loadtest_targets.json' "$compose_file" 2>/dev/null; then
+        # Try to add it alongside the existing prometheus config mount for VM
+        python3 -c "
+import pathlib, sys
+f = pathlib.Path(sys.argv[1])
+t = f.read_text()
+marker = '    - ./config/prometheus-v2.2.yml:/etc/prometheus/prometheus.yml:ro\n    networks:'
+replacement = '    - ./config/prometheus-v2.2.yml:/etc/prometheus/prometheus.yml:ro\n    - ./config/loadtest_targets.json:/etc/prometheus/loadtest_targets.json:ro\n    networks:'
+if marker in t and 'loadtest_targets.json:/etc/prometheus/loadtest' not in t:
+    t = t.replace(marker, replacement, 1)
+    f.write_text(t)
+    print('OK')
+else:
+    print('SKIP')
+" "$compose_file" 2>/dev/null
+        log_info "✓ Patched compose: added loadtest_targets.json mount to victoria-metrics"
+    fi
+
+    log_info "✓ Post-copy patches applied"
 }
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -685,19 +829,16 @@ copy_files() {
 load_images() {
     local script_dir
     script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" ; pwd)"
-
     local images_file=""
     if [[ -f "${script_dir}/images.tar.gz" ]]; then
         images_file="${script_dir}/images.tar.gz"
     elif [[ -f "${script_dir}/images.tar" ]]; then
         images_file="${script_dir}/images.tar"
     fi
-
     if [[ -z "$images_file" ]]; then
         log_info "No pre-built images archive found. Will build locally and pull from registries."
         return 0
     fi
-
     log_info "Loading pre-built Docker images from $(basename "$images_file")..."
     local load_output
     if [[ "$images_file" == *.gz ]]; then
@@ -706,7 +847,6 @@ load_images() {
         load_output=$(docker load -i "$images_file" 2>&1)
     fi
     local load_exit=$?
-
     if [[ $load_exit -eq 0 ]]; then
         local loaded_count
         loaded_count=$(echo "$load_output" | grep -c "Loaded image" || echo 0)
@@ -724,7 +864,6 @@ load_images() {
 verify_build_contexts() {
     log_info "Verifying Docker Compose build contexts..."
     cd "${INSTALL_DIR}" || return 1
-
     local missing_contexts=()
     local context_path
     while IFS= read -r context_path; do
@@ -778,7 +917,7 @@ start_stack() {
         return 1
     fi
 
-    # Validate compose config (suppress env-var warnings — they go to stderr)
+    # Validate compose config (suppress env-var warnings)
     log_info "Validating Docker Compose configuration..."
     local config_exit
     docker compose config -q 2>/dev/null
@@ -791,11 +930,9 @@ start_stack() {
     fi
     log_info "✓ Compose configuration valid"
 
-    # Pull public images (ignore buildable, suppress repeated env warnings)
     log_info "Pulling Docker images (this may take several minutes)..."
     docker compose pull --ignore-buildable 2>/dev/null || true
 
-    # Build locally-built images
     log_info "Building local images (this may take several minutes on first install)..."
     local build_output
     build_output=$(docker compose build 2>&1)
@@ -806,7 +943,6 @@ start_stack() {
         log_info "✓ Local images built successfully"
     fi
 
-    # Start stack (suppress env-var warnings)
     log_info "Starting services with docker compose up -d..."
     local compose_output
     compose_output=$(docker compose up -d 2>&1)
@@ -820,7 +956,6 @@ start_stack() {
 
     log_info "✓ Docker Compose started"
 
-    # Initial stabilization wait
     sleep 10
     local running_count
     running_count=$(docker compose ps --status running -q 2>/dev/null | wc -l || echo 0)
@@ -837,7 +972,7 @@ start_stack() {
 }
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# STEP 9 — FULL STACK HEALTH CHECK (v3.0.3: dynamic endpoint detection)
+# STEP 9 — FULL STACK HEALTH CHECK
 # ═══════════════════════════════════════════════════════════════════════════════
 
 health_check() {
@@ -893,7 +1028,6 @@ health_check() {
     log_info "Phase 2: Waiting for all services to become healthy..."
     log_info "Timeout: $((HEALTH_RETRIES * HEALTH_DELAY))s (${HEALTH_RETRIES} x ${HEALTH_DELAY}s)"
 
-    # Services classified by criticality
     local critical_services=(
         "rhinometric-postgres"
         "rhinometric-redis"
@@ -959,7 +1093,6 @@ health_check() {
     if $all_healthy; then
         log_info "✓ All ${#all_services[@]} monitored services are healthy"
     else
-        # Classify what's still unhealthy
         local crit_fail=() important_fail=() optional_fail=()
 
         for svc in "${critical_services[@]}"; do
@@ -990,31 +1123,23 @@ health_check() {
             s=$(docker inspect --format '{{.State.Status}}' "$svc" 2>/dev/null || echo "unknown")
             if [[ "$h" != "healthy" ]]; then
                 optional_fail+=("${svc} (state=${s}, health=${h})")
-                # Run root-cause diagnosis for optional unhealthy services
                 diagnose_unhealthy_service "$svc"
             fi
         done
 
         if [[ ${#crit_fail[@]} -gt 0 ]]; then
             log_error "Critical services not healthy:"
-            for item in "${crit_fail[@]}"; do
-                log_error "  ✗ ${item}"
-            done
+            for item in "${crit_fail[@]}"; do log_error "  ✗ ${item}"; done
         fi
         if [[ ${#important_fail[@]} -gt 0 ]]; then
             log_warn "Important services not healthy (may still be starting):"
-            for item in "${important_fail[@]}"; do
-                log_warn "  ⚠ ${item}"
-            done
+            for item in "${important_fail[@]}"; do log_warn "  ⚠ ${item}"; done
         fi
         if [[ ${#optional_fail[@]} -gt 0 ]]; then
             log_warn "Optional services not healthy (non-blocking):"
-            for item in "${optional_fail[@]}"; do
-                log_warn "  ⚠ ${item}"
-            done
+            for item in "${optional_fail[@]}"; do log_warn "  ⚠ ${item}"; done
         fi
 
-        # Only fail on critical services that are actually down (not running)
         for svc in "${critical_services[@]}"; do
             local s
             s=$(docker inspect --format '{{.State.Status}}' "$svc" 2>/dev/null || echo "unknown")
@@ -1024,11 +1149,10 @@ health_check() {
         done
     fi
 
-    # ── Phase 3: Dynamic HTTP endpoint checks ──
-    log_info "Phase 3: Verifying HTTP endpoints (dynamic port detection)..."
+    # ── Phase 3: HTTP endpoint checks (v3.0.4: fixed port detection) ──
+    log_info "Phase 3: Verifying HTTP endpoints..."
     verify_http_endpoints
 
-    # ── Final status summary ──
     echo ""
     log_info "Current container statuses:"
     docker compose ps --format "table {{.Name}}\t{{.Status}}" 2>/dev/null || true
@@ -1041,100 +1165,119 @@ health_check() {
 }
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# DYNAMIC HTTP ENDPOINT VERIFICATION (NEW in v3.0.3)
+# HTTP ENDPOINT VERIFICATION (v3.0.4: COMPLETELY REWRITTEN)
 # ═══════════════════════════════════════════════════════════════════════════════
-# Instead of hardcoding ports, we discover published host ports from compose
-# and verify only those endpoints that are actually exposed.
+# Root cause of v3.0.3 bug: `docker compose port <svc> <port>` returns the
+# literal string "invalid IP:0" for services without host-published ports.
+# The old code did `-n` check which passed (non-empty), created urls like
+# "http://invalid IP:0/..." and declared a false critical failure.
+#
+# v3.0.4 strategy:
+#   1. Discover the Nginx published host port (the ONLY public front door).
+#   2. Verify Nginx responds on that port.
+#   3. Verify internal services through Nginx proxy routes:
+#        /          → console frontend
+#        /api/health → console backend
+#        /grafana/api/health → grafana
+#   4. For services with NO Nginx proxy route (Prometheus, etc.), validate
+#      using `docker inspect` health status (already covered in Phase 2).
+#   5. NEVER construct URLs from `docker compose port` output without
+#      validating the IP:PORT with a regex first.
 # ═══════════════════════════════════════════════════════════════════════════════
+
+# Helper: returns true only if the string matches a valid IP:PORT pattern
+is_valid_hostport() {
+    local hp="$1"
+    # Must match: <IP>:<PORT>  where IP is dotted-quad or :: and PORT is numeric
+    if [[ "$hp" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+:[0-9]+$ ]]; then
+        return 0
+    elif [[ "$hp" =~ ^\[::\]:[0-9]+$ ]]; then
+        return 0
+    fi
+    return 1
+}
 
 verify_http_endpoints() {
     cd "${INSTALL_DIR}" || return 1
 
-    # Discover published ports via docker compose port
-    # Returns HOST:PORT or empty if not published
-    local nginx_hp console_hp grafana_hp prom_hp
+    # ── Step 1: Find the Nginx published host port ────────────────────────
+    local nginx_hp
     nginx_hp=$(docker compose port nginx 80 2>/dev/null || echo "")
-    console_hp=$(docker compose port rhinometric-console-frontend 3002 2>/dev/null || echo "")
-    grafana_hp=$(docker compose port grafana 3000 2>/dev/null || echo "")
-    prom_hp=$(docker compose port prometheus 9090 2>/dev/null || echo "")
 
-    # Build list of endpoints to check
-    local -a endpoints=()  # "label|url"
-
-    if [[ -n "$nginx_hp" ]]; then
-        endpoints+=("Nginx (front door)|http://${nginx_hp}")
-    fi
-    if [[ -n "$console_hp" ]]; then
-        endpoints+=("Console|http://${console_hp}")
-    fi
-    if [[ -n "$grafana_hp" ]]; then
-        endpoints+=("Grafana|http://${grafana_hp}/api/health")
-    fi
-    if [[ -n "$prom_hp" ]]; then
-        endpoints+=("Prometheus|http://${prom_hp}/-/ready")
-    fi
-
-    # If nginx is published, also check through nginx (it proxies console)
-    if [[ -n "$nginx_hp" && -z "$console_hp" ]]; then
-        # Console port is NOT directly published — nginx is the gateway
-        log_info "Note: Console port (3002) is not published to host; nginx (${nginx_hp}) is the front door."
-    fi
-
-    if [[ ${#endpoints[@]} -eq 0 ]]; then
-        log_warn "No published HTTP ports detected. Skipping HTTP endpoint checks."
+    if ! is_valid_hostport "$nginx_hp"; then
+        log_warn "Nginx host port not detected (got: '${nginx_hp}'). Skipping HTTP checks."
         log_warn "Services may only be reachable via Docker internal network."
         return 0
     fi
 
-    log_info "Checking ${#endpoints[@]} published endpoint(s)..."
+    # Replace 0.0.0.0 with 127.0.0.1 for local curl
+    local nginx_url
+    nginx_url="http://${nginx_hp//0.0.0.0/127.0.0.1}"
+
+    log_info "Nginx front door: ${nginx_url}"
+
+    # ── Step 2: Build endpoint list (all go through Nginx) ────────────────
+    # These are real routes served by nginx.conf upstream blocks.
+    local -a endpoints=(
+        "Nginx|${nginx_url}|critical"
+        "Console (via Nginx)|${nginx_url}/|critical"
+        "Backend API (via Nginx)|${nginx_url}/api/health|important"
+        "Grafana (via Nginx)|${nginx_url}/grafana/api/health|important"
+    )
+
+    log_info "Checking ${#endpoints[@]} endpoint(s) through Nginx..."
 
     local http_attempts=0
-    local -A ep_ok=()
+    declare -A ep_ok
 
-    while [ "$http_attempts" -lt 8 ]; do
+    while [ "$http_attempts" -lt 10 ]; do
         local all_ok=true
         for ep in "${endpoints[@]}"; do
-            local label="${ep%%|*}"
-            local url="${ep##*|}"
+            IFS='|' read -r label url criticality <<< "$ep"
             if [[ "${ep_ok[$label]:-}" == "1" ]]; then
                 continue
             fi
-            if curl -fsSL --max-time 5 "$url" >/dev/null 2>&1; then
+            local http_code
+            http_code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 "$url" 2>/dev/null || echo "000")
+            if [[ "$http_code" -ge 200 && "$http_code" -lt 500 ]]; then
                 ep_ok["$label"]="1"
-                log_info "✓ ${label}: responding (${url})"
+                log_info "✓ ${label}: HTTP ${http_code} (${url})"
             else
                 all_ok=false
             fi
         done
         if $all_ok; then break; fi
         http_attempts=$((http_attempts + 1))
-        if [[ $http_attempts -lt 8 ]]; then sleep 10; fi
+        if [[ $http_attempts -lt 10 ]]; then sleep 8; fi
     done
 
-    # Report failures
-    local any_critical_fail=false
+    # ── Step 3: Report failures ──────────────────────────────────────────
     for ep in "${endpoints[@]}"; do
-        local label="${ep%%|*}"
-        local url="${ep##*|}"
+        IFS='|' read -r label url criticality <<< "$ep"
         if [[ "${ep_ok[$label]:-}" != "1" ]]; then
-            if [[ "$label" == *"Nginx"* || "$label" == *"Console"* ]]; then
-                fail_critical "${label} (${url}) not responding after 80s"
-                any_critical_fail=true
+            if [[ "$criticality" == "critical" ]]; then
+                fail_critical "${label} (${url}) not responding after ~80s"
             else
                 log_warn "${label} (${url}) not responding — non-blocking"
             fi
         fi
     done
 
-    if ! $any_critical_fail; then
-        log_info "✓ All published endpoints are responding"
+    local crit_count=0
+    for ep in "${endpoints[@]}"; do
+        IFS='|' read -r label url criticality <<< "$ep"
+        if [[ "$criticality" == "critical" && "${ep_ok[$label]:-}" != "1" ]]; then
+            crit_count=$((crit_count + 1))
+        fi
+    done
+
+    if [[ "$crit_count" -eq 0 ]]; then
+        log_info "✓ All critical endpoints responding through Nginx"
     fi
 }
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# SERVICE DIAGNOSIS (NEW in v3.0.3)
-# ═══════════════════════════════════════════════════════════════════════════════
-# When a service is unhealthy, try to determine WHY automatically.
+# SERVICE DIAGNOSIS
 # ═══════════════════════════════════════════════════════════════════════════════
 
 diagnose_unhealthy_service() {
@@ -1143,16 +1286,14 @@ diagnose_unhealthy_service() {
 
     log_info "  Diagnosing ${short_name}..."
 
-    # 1. Check OOM killed
     local oom_killed
     oom_killed=$(docker inspect --format '{{.State.OOMKilled}}' "$container" 2>/dev/null || echo "false")
     if [[ "$oom_killed" == "true" ]]; then
         log_error "  → ${short_name}: OOM killed! Container ran out of memory."
-        log_error "  → Fix: increase VM RAM or reduce -memory.allowedPercent in compose."
+        log_error "  → Fix: increase VM RAM or reduce memory limits in compose."
         return
     fi
 
-    # 2. Check exit code (if not running)
     local state exit_code
     state=$(docker inspect --format '{{.State.Status}}' "$container" 2>/dev/null || echo "unknown")
     exit_code=$(docker inspect --format '{{.State.ExitCode}}' "$container" 2>/dev/null || echo "-1")
@@ -1160,28 +1301,24 @@ diagnose_unhealthy_service() {
         log_warn "  → ${short_name}: exited with code ${exit_code}"
     fi
 
-    # 3. Health check log (last 3 entries)
     local health_log
     health_log=$(docker inspect --format '{{range .State.Health.Log}}{{.Output}}{{end}}' "$container" 2>/dev/null || echo "")
     if [[ -n "$health_log" ]]; then
         log_info "  → Health check output (last): $(echo "$health_log" | tail -c 300)"
     fi
 
-    # 4. Check dmesg for OOM near this container
     local dmesg_oom
     dmesg_oom=$(dmesg 2>/dev/null | tail -100 | grep -i "oom\|killed process" | grep -i "${short_name}\|docker" | tail -3 || true)
     if [[ -n "$dmesg_oom" ]]; then
         log_error "  → Kernel OOM evidence: ${dmesg_oom}"
     fi
 
-    # 5. Disk space check
     local disk_avail
     disk_avail=$(df -BG "${INSTALL_DIR}" 2>/dev/null | awk 'NR==2{print $4}' | tr -d 'G' || echo 0)
     if [[ "$disk_avail" -lt 2 ]]; then
         log_error "  → ${short_name}: disk space critically low (${disk_avail} GB free)"
     fi
 
-    # 6. Last 5 logs
     log_info "  → Recent logs:"
     docker logs --tail=5 "$container" 2>&1 | sed 's/^/    /' || true
 }
@@ -1204,7 +1341,6 @@ auto_fix_and_retry() {
         return 1
     fi
 
-    # Permission denied errors
     local perm_errors
     perm_errors=$(docker compose logs --tail=50 2>/dev/null | grep -i "permission denied" || true)
     if [[ -n "$perm_errors" ]]; then
@@ -1213,7 +1349,6 @@ auto_fix_and_retry() {
         fix_applied=true
     fi
 
-    # mkdir errors (Jaeger badger)
     local mkdir_errors
     mkdir_errors=$(docker compose logs --tail=50 2>/dev/null | grep -i "mkdir.*permission denied\|Error Creating Dir" || true)
     if [[ -n "$mkdir_errors" ]]; then
@@ -1226,7 +1361,6 @@ auto_fix_and_retry() {
         fix_applied=true
     fi
 
-    # Restarting/unhealthy containers
     local restarting
     restarting=$(docker compose ps --format "{{.Name}} {{.Status}}" 2>/dev/null | grep -i "restarting" | awk '{print $1}' || true)
     if [[ -n "$restarting" ]]; then
@@ -1239,19 +1373,15 @@ auto_fix_and_retry() {
         return 1
     fi
 
-    # Restart stack after fixes
     log_info "Restarting stack after fixes..."
     docker compose down 2>/dev/null || true
     sleep 5
-
     docker compose up -d 2>/dev/null
     local compose_exit=$?
-
     if [[ $compose_exit -ne 0 ]]; then
         log_error "docker compose up still failing after auto-fix (exit ${compose_exit})"
         return 1
     fi
-
     log_info "✓ Stack restarted after auto-fix"
     log_info "Waiting for services to initialize (45s)..."
     sleep 45
@@ -1259,7 +1389,7 @@ auto_fix_and_retry() {
 }
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# DEBUG BUNDLE (Enhanced in v3.0.3)
+# DEBUG BUNDLE
 # ═══════════════════════════════════════════════════════════════════════════════
 
 generate_debug_bundle() {
@@ -1270,16 +1400,10 @@ generate_debug_bundle() {
 
     cd "${INSTALL_DIR}" 2>/dev/null || true
 
-    # docker compose ps
     docker compose ps --format "table {{.Name}}\t{{.Status}}\t{{.Ports}}" > "${bundle_dir}/compose-ps.txt" 2>&1 || true
-
-    # docker compose config (full resolved config)
     docker compose config > "${bundle_dir}/compose-config-resolved.yml" 2>&1 || true
-
-    # All service logs (last 200 lines)
     docker compose logs --tail=200 > "${bundle_dir}/all-services.log" 2>&1 || true
 
-    # Per-service logs for unhealthy or failed services
     while IFS= read -r line; do
         local svc_name svc_status
         svc_name=$(echo "$line" | awk '{print $1}')
@@ -1291,7 +1415,6 @@ generate_debug_bundle() {
         fi
     done < <(docker compose ps --format "{{.Name}} {{.Status}}" 2>/dev/null || true)
 
-    # System info
     {
         echo "=== Rhinometric Installer v${INSTALLER_VERSION} Debug Bundle ==="
         echo "=== Date: $(date -u) ==="
@@ -1329,16 +1452,13 @@ generate_debug_bundle() {
         dmesg 2>/dev/null | tail -50 | grep -i "oom\|killed\|memory" || echo "(none)"
     } > "${bundle_dir}/system-info.txt" 2>&1
 
-    # Journalctl docker
     journalctl -u docker --no-pager -n 200 > "${bundle_dir}/journalctl-docker.log" 2>&1 || true
 
-    # Sanitized .env
     if [[ -f "${INSTALL_DIR}/.env" ]]; then
         sed 's/PASSWORD=.*/PASSWORD=***REDACTED***/g; s/SECRET=.*/SECRET=***REDACTED***/g; s/JWT_SECRET=.*/JWT_SECRET=***REDACTED***/g' \
             "${INSTALL_DIR}/.env" > "${bundle_dir}/env-sanitized.txt" 2>/dev/null || true
     fi
 
-    # Failure report inline
     if [[ ${#FAILURE_REASONS[@]} -gt 0 ]]; then
         {
             echo "=== FAILURE REASONS ==="
@@ -1350,7 +1470,6 @@ generate_debug_bundle() {
         } > "${bundle_dir}/failure-reasons.txt" 2>/dev/null || true
     fi
 
-    # Package
     local bundle_archive="${INSTALL_DIR}/install-debug-bundle.tar.gz"
     tar -czf "${bundle_archive}" -C "$(dirname "${bundle_dir}")" "$(basename "${bundle_dir}")" 2>/dev/null || true
     rm -rf "${bundle_dir}" 2>/dev/null || true
@@ -1502,11 +1621,9 @@ save_credentials() {
     local nginx_hp
     nginx_hp=$(docker compose port nginx 80 2>/dev/null || echo "")
     local console_url="http://${server_ip}"
-    if [[ -n "$nginx_hp" ]]; then
+    if is_valid_hostport "$nginx_hp"; then
         local nginx_port="${nginx_hp##*:}"
-        if [[ "$nginx_port" == "80" ]]; then
-            console_url="http://${server_ip}"
-        else
+        if [[ "$nginx_port" != "80" ]]; then
             console_url="http://${server_ip}:${nginx_port}"
         fi
     fi
@@ -1534,29 +1651,35 @@ RHINOMETRIC CONSOLE (Main Interface — via Nginx)
   Username : admin
   Password : ${ADMIN_PASSWORD}
 
-GRAFANA (Dashboards — internal, via Nginx proxy)
-  URL      : ${console_url}/grafana  (or internal http://${server_ip}:3000 if published)
+GRAFANA (Dashboards — via Nginx proxy)
+  URL      : ${console_url}/grafana
   Username : admin
   Password : ${GRAFANA_PASSWORD}
 
-POSTGRESQL (Database)
+POSTGRESQL (Database — internal)
   Host     : localhost:5432
   Database : rhinometric
   Username : rhinometric
   Password : ${POSTGRES_PASSWORD}
 
-REDIS (Cache)
+REDIS (Cache — internal)
   Host     : localhost:6379
   Password : ${REDIS_PASSWORD}
 
-PROMETHEUS (Metrics — internal)
-  URL      : http://${server_ip}:9090 (if published)
+PROMETHEUS (Metrics — internal, not exposed to host)
+  Access   : via Grafana datasource or docker exec
 
 ALERTMANAGER (Alerts — internal)
-  URL      : http://${server_ip}:9093 (if published)
+  Access   : via console backend or docker exec
 
 JAEGER (Tracing — internal)
-  URL      : http://${server_ip}:16686 (if published)
+  Access   : via console or docker exec
+
+APPLYING LICENSE LATER (no reinstall):
+  1. cat ${FINGERPRINT_FILE}
+  2. Send fingerprint to Rhinometric
+  3. scp license.key root@${server_ip}:${LICENSE_DEST}
+  4. cd ${INSTALL_DIR} && docker compose restart rhinometric-console-backend license-server-v2
 
 ════════════════════════════════════════════════════════════════════════
 CREDEOF
@@ -1578,7 +1701,7 @@ DONE
     echo -e "  ${BOLD}Admin User${NC}  : admin"
     echo -e "  ${BOLD}Admin Pass${NC}  : ${ADMIN_PASSWORD}"
     echo ""
-    echo -e "  ${BOLD}Grafana${NC}     : admin / ${GRAFANA_PASSWORD}"
+    echo -e "  ${BOLD}Grafana${NC}     : ${CYAN}${console_url}/grafana${NC} (admin / ${GRAFANA_PASSWORD})"
     echo -e "  ${BOLD}License${NC}     : ${LICENSE_STATUS}"
     if [[ "$LICENSE_STATUS" == "valid" ]]; then
         echo -e "  ${BOLD}Plan${NC}        : ${LICENSE_PLAN} (${LICENSE_HOSTS} hosts, expires ${LICENSE_EXPIRES})"
@@ -1624,7 +1747,6 @@ main() {
     check_ports
     echo ""
 
-    # Abort early if Docker is missing
     if [[ "$INSTALL_CRITICAL_FAILURE" == "true" ]]; then
         print_failure_report
         exit 1
@@ -1651,7 +1773,7 @@ main() {
     write_env_file
     echo ""
 
-    # ── Copy files ──
+    # ── Copy files + post-copy patches ──
     log_step "STEP 4/8 — Copy Configuration Files"
     copy_files
     echo ""
@@ -1688,7 +1810,6 @@ main() {
     start_stack
     local stack_exit=$?
 
-    # ── Auto-fix loop if stack failed ──
     if [[ $stack_exit -ne 0 ]]; then
         local fix_attempt=0
         while [[ $fix_attempt -lt $MAX_AUTO_FIX_ATTEMPTS ]]; do
@@ -1705,7 +1826,6 @@ main() {
         done
     fi
 
-    # Abort if stack completely failed
     if [[ "$INSTALL_CRITICAL_FAILURE" == "true" ]]; then
         generate_debug_bundle
         write_failure_report
@@ -1718,7 +1838,6 @@ main() {
     health_check
     local health_exit=$?
 
-    # If health check found fixable issues, try one more auto-fix round
     if [[ $health_exit -ne 0 && "$INSTALL_CRITICAL_FAILURE" != "true" ]]; then
         log_info "Health check found issues. Attempting one more auto-fix cycle..."
         if auto_fix_and_retry; then

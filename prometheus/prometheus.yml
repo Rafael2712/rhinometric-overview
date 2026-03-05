@@ -5,7 +5,7 @@ scrape_configs:
   # === CORE PLATFORM SERVICES ===
   - job_name: 'prometheus'
     static_configs:
-      - targets: ['localhost:9090']
+      - targets: ['rhinometric-prometheus:9090']
 
   - job_name: 'grafana'
     static_configs:
