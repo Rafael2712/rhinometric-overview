@@ -14,7 +14,7 @@
 
 set -euo pipefail
 
-readonly VERSION="${VERSION:-3.0.1}"
+readonly VERSION="${VERSION:-3.0.2}"
 readonly EXPORT_IMAGES="${EXPORT_IMAGES:-false}"
 readonly STAGING="/tmp/rhinometric-staging"
 readonly OUTPUT="/tmp/rhinometric-v${VERSION}.tar.gz"
@@ -67,7 +67,7 @@ fi
 
 # ── 5. Copy configuration directories ────────────────────────────────────────
 info "Copying configuration directories..."
-config_dirs=("config" "alertmanager" "grafana" "nginx" "blackbox" "init-db" "prometheus")
+config_dirs=("config" "alertmanager" "grafana" "nginx" "blackbox" "init-db" "prometheus" "loki")
 for dir in "${config_dirs[@]}"; do
     if [[ -d "${dir}" ]]; then
         cp -a "${dir}" "${STAGING}/${dir}"
