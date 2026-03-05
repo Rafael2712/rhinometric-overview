@@ -7,6 +7,28 @@ All notable changes to the Bash-based installer are documented in this file.
 
 ---
 
+## Ansible Installer
+
+### [1.0.0] - 2026-03-05
+
+**Status**: Initial release - replaces Bash installer.
+
+#### Added
+- Full Ansible-based installer for Rhinometric on-prem deployment.
+- Roles: docker, rhinometric_deploy, rhinometric_license, rhinometric_validate, rhinometric_debugbundle.
+- Playbooks: deploy.yml, validate.yml, uninstall.yml.
+- Idempotent .env generation (never overwrites existing).
+- Config patches for known Bash-era issues (Prometheus target, AI healthcheck, loadtest mount, Compose version).
+- Volume preparation with correct UID/GID per service.
+- Online and offline license activation flows.
+- Three-phase health validation (Docker inspect, HTTP endpoints, summary report).
+- Automatic debug bundle on failure (system info, logs, configs - secrets redacted).
+- Release checklist: docs/RELEASE_CHECKLIST_ANSIBLE_v1.0.0.md.
+
+#### Notes
+- Bash installer v3.0.4 is **frozen/deprecated**. No further changes planned.
+- All future installer work happens under ansible/.
+
 ## [3.0.4] — 2026-03-05 (FROZEN)
 
 **Status**: Frozen / deprecated in favor of Ansible installer.

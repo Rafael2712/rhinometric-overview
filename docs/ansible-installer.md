@@ -398,6 +398,14 @@ ansible-playbook -i inventories/staging.ini playbooks/deploy.yml
 
 ---
 
+## Release Checklist
+
+Before releasing a new version, follow the official release checklist:
+
+- **v1.0.0**: [RELEASE_CHECKLIST_ANSIBLE_v1.0.0.md](RELEASE_CHECKLIST_ANSIBLE_v1.0.0.md)
+
+This checklist covers pre-flight, deploy, validation, licensing, debug bundle, uninstall, and sign-off steps.
+
 ## Version History
 
 | Version | Date | Notes |
