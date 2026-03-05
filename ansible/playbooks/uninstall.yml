@@ -1,0 +1,141 @@
+---
+# ═══════════════════════════════════════════════════════════════════════════════
+# Playbook: uninstall.yml — Complete Rhinometric removal
+# ═══════════════════════════════════════════════════════════════════════════════
+# Usage:
+#   ansible-playbook -i inventories/staging.ini playbooks/uninstall.yml
+#
+# Extra vars:
+#   -e remove_data=true      Also remove persistent data (volumes, DB, etc.)
+#   -e remove_docker=true    Also uninstall Docker (dangerous!)
+#   -e remove_images=true    Prune all Docker images
+# ═══════════════════════════════════════════════════════════════════════════════
+
+- name: "Rhinometric — Uninstall"
+  hosts: rhinometric
+  become: true
+  gather_facts: true
+
+  vars:
+    remove_data: false
+    remove_docker: false
+    remove_images: false
+
+  tasks:
+    - name: Display uninstall banner
+      ansible.builtin.debug:
+        msg: |
+          ╔══════════════════════════════════════════════════════════════╗
+          ║  RHINOMETRIC — UNINSTALL                                    ║
+          ║  Target:       {{ inventory_hostname }}
+          ║  Install dir:  {{ rhinometric_install_dir }}
+          ║  Remove data:  {{ remove_data }}
+          ║  Remove Docker:{{ remove_docker }}
+          ╚══════════════════════════════════════════════════════════════╝
+
+    # ── Step 1: Stop and remove containers ───────────────────────────────────
+
+    - name: Check if docker-compose.yml exists
+      ansible.builtin.stat:
+        path: "{{ rhinometric_install_dir }}/docker-compose.yml"
+      register: compose_file
+
+    - name: Stop and remove all containers
+      ansible.builtin.command:
+        cmd: docker compose down --remove-orphans --timeout 30
+        chdir: "{{ rhinometric_install_dir }}"
+      when: compose_file.stat.exists
+      changed_when: true
+      failed_when: false
+
+    - name: Remove named volumes (if remove_data)
+      ansible.builtin.command:
+        cmd: docker compose down -v --remove-orphans
+        chdir: "{{ rhinometric_install_dir }}"
+      when:
+        - compose_file.stat.exists
+        - remove_data | bool
+      changed_when: true
+      failed_when: false
+
+    # ── Step 2: Remove installation directory ────────────────────────────────
+
+    - name: Remove install directory
+      ansible.builtin.file:
+        path: "{{ rhinometric_install_dir }}"
+        state: absent
+      when: remove_data | bool
+
+    - name: Remove only non-persistent files (keep .env, license, data)
+      ansible.builtin.shell: |
+        cd "{{ rhinometric_install_dir }}" 2>/dev/null || exit 0
+        find . -maxdepth 1 \
+          ! -name '.' \
+          ! -name '.env' \
+          ! -name 'install-info.txt' \
+          ! -name 'fingerprint.txt' \
+          ! -name 'license.key' \
+          ! -name 'license-request.json' \
+          ! -name 'data' \
+          -exec rm -rf {} +
+      when: not (remove_data | bool)
+      changed_when: true
+      failed_when: false
+
+    # ── Step 3: Remove persistent data directory ─────────────────────────────
+
+    - name: Remove data directory
+      ansible.builtin.file:
+        path: "{{ rhinometric_data_dir }}"
+        state: absent
+      when: remove_data | bool
+
+    # ── Step 4: Prune Docker images ──────────────────────────────────────────
+
+    - name: Prune Docker images
+      ansible.builtin.command:
+        cmd: docker image prune -af
+      when: remove_images | bool
+      changed_when: true
+      failed_when: false
+
+    # ── Step 5: Remove Docker (if requested) ─────────────────────────────────
+
+    - name: Remove Docker packages
+      ansible.builtin.apt:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-buildx-plugin
+          - docker-compose-plugin
+        state: absent
+        purge: true
+      when: remove_docker | bool
+      failed_when: false
+
+    # ── Step 6: Remove debug bundles ─────────────────────────────────────────
+
+    - name: Find and remove debug bundles
+      ansible.builtin.shell: |
+        rm -f /tmp/rhinometric-debug-*.tar.gz
+      changed_when: true
+      failed_when: false
+
+    # ── Summary ──────────────────────────────────────────────────────────────
+
+    - name: Display uninstall summary
+      ansible.builtin.debug:
+        msg: |
+          ╔══════════════════════════════════════════════════════════════╗
+          ║  ✓ UNINSTALL COMPLETE                                       ║
+          ╠══════════════════════════════════════════════════════════════╣
+          ║                                                              ║
+          ║  Containers:  Removed                                        ║
+          ║  Volumes:     {{ 'Removed' if (remove_data | bool) else 'Preserved' }}
+          ║  Install dir: {{ 'Removed' if (remove_data | bool) else 'Cleaned (state preserved)' }}
+          ║  Data dir:    {{ 'Removed' if (remove_data | bool) else 'Preserved' }}
+          ║  Images:      {{ 'Pruned' if (remove_images | bool) else 'Preserved' }}
+          ║  Docker:      {{ 'Removed' if (remove_docker | bool) else 'Preserved' }}
+          ║                                                              ║
+          ╚══════════════════════════════════════════════════════════════╝

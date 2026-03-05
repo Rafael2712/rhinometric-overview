@@ -1,0 +1,90 @@
+---
+# ═══════════════════════════════════════════════════════════════════════════════
+# Rhinometric Ansible Installer — Global Variables
+# ═══════════════════════════════════════════════════════════════════════════════
+# Override any of these in inventory, extra-vars, or Ansible Vault.
+
+# ── Release ───────────────────────────────────────────────────────────────────
+rhinometric_version: "3.0.4"
+rhinometric_tarball_path_local: ""          # Path on controller, e.g. ./dist/rhinometric-v3.0.4.tar.gz
+rhinometric_tarball_remote_tmp: "/tmp/rhinometric-v{{ rhinometric_version }}"
+
+# ── Paths ─────────────────────────────────────────────────────────────────────
+rhinometric_install_dir: "/opt/rhinometric"
+rhinometric_data_dir: "/root/rhinometric_data_v2.5"
+rhinometric_debugbundle_path: "/opt/rhinometric/debug"
+rhinometric_fingerprint_file: "{{ rhinometric_install_dir }}/fingerprint.txt"
+rhinometric_license_file: "{{ rhinometric_install_dir }}/license.key"
+rhinometric_credentials_file: "{{ rhinometric_install_dir }}/install-info.txt"
+
+# ── System requirements (warnings, not blockers) ─────────────────────────────
+rhinometric_min_cpu_cores: 4
+rhinometric_min_ram_gb: 8
+rhinometric_min_disk_gb: 20
+
+# ── Docker ────────────────────────────────────────────────────────────────────
+rhinometric_docker_install_url: "https://get.docker.com"
+rhinometric_compose_project_name: "rhinometric"
+
+# ── Services to skip (optional) ──────────────────────────────────────────────
+# e.g.: [victoria-metrics, rhinometric-ai-anomaly]
+rhinometric_skip_optional_services: []
+
+# ── Health check tuning ──────────────────────────────────────────────────────
+rhinometric_health_retries: 40
+rhinometric_health_delay: 10            # seconds between retries
+rhinometric_compose_up_wait: 30         # seconds after compose up before first check
+rhinometric_infra_wait_retries: 12
+rhinometric_infra_wait_delay: 10
+
+# ── HTTP endpoints validated through Nginx (port 80) ────────────────────────
+# Each entry: { name, path, criticality: critical|important|optional }
+rhinometric_http_endpoints:
+  - { name: "Nginx front door",             path: "/",                   criticality: "critical"  }
+  - { name: "Console (via Nginx)",           path: "/",                   criticality: "critical"  }
+  - { name: "Backend API (via Nginx)",       path: "/api/health",         criticality: "important" }
+  - { name: "Grafana (via Nginx)",           path: "/grafana/api/health", criticality: "important" }
+
+rhinometric_http_check_retries: 10
+rhinometric_http_check_delay: 8
+
+# ── Critical / important / optional service classification ───────────────────
+rhinometric_critical_services:
+  - rhinometric-postgres
+  - rhinometric-redis
+  - rhinometric-console-backend
+  - rhinometric-console-frontend
+  - rhinometric-nginx
+  - rhinometric-grafana
+
+rhinometric_important_services:
+  - rhinometric-license-server-v2
+  - rhinometric-prometheus
+  - rhinometric-loki
+  - rhinometric-otel-collector
+  - rhinometric-alertmanager
+  - rhinometric-cadvisor
+  - rhinometric-jaeger
+
+rhinometric_optional_services:
+  - rhinometric-victoria-metrics
+  - rhinometric-ai-anomaly
+
+# ── License ──────────────────────────────────────────────────────────────────
+rhinometric_enable_online_activation: false
+rhinometric_activation_url: "https://license.rhinometric.io/api/v1/activate"    # placeholder
+rhinometric_activation_code: ""         # Provide via --extra-vars or Vault
+rhinometric_rhino_lic_bin: "/usr/local/bin/rhino-lic"
+
+# ── Config patching (post-copy) ─────────────────────────────────────────────
+# These are the known Bash-era bugs that need fixing in config files.
+rhinometric_patch_prometheus_target: true    # localhost:9090 → rhinometric-prometheus:9090
+rhinometric_patch_ai_anomaly_hc: true       # curl → python urllib healthcheck
+rhinometric_patch_loadtest_mount: true       # add loadtest_targets.json volume
+
+# ── SMTP (placeholders — override per environment) ───────────────────────────
+rhinometric_smtp_host: "smtp.example.com"
+rhinometric_smtp_port: 587
+rhinometric_smtp_user: "noreply@example.com"
+rhinometric_smtp_password: "changeme"       # Use Vault in production!
+rhinometric_mail_from: "noreply@example.com"

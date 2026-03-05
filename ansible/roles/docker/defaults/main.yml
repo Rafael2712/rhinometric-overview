@@ -1,0 +1,3 @@
+---
+# Role: docker — defaults
+rhinometric_docker_install_url: "https://get.docker.com"

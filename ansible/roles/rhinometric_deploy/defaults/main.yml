@@ -1,0 +1,23 @@
+---
+# Role: rhinometric_deploy — defaults
+rhinometric_version: "3.0.4"
+rhinometric_install_dir: "/opt/rhinometric"
+rhinometric_data_dir: "/root/rhinometric_data_v2.5"
+rhinometric_tarball_path_local: ""
+rhinometric_tarball_remote_tmp: "/tmp/rhinometric-v{{ rhinometric_version }}"
+rhinometric_compose_project_name: "rhinometric"
+rhinometric_compose_up_wait: 30
+
+rhinometric_min_cpu_cores: 4
+rhinometric_min_ram_gb: 8
+rhinometric_min_disk_gb: 20
+
+rhinometric_patch_prometheus_target: true
+rhinometric_patch_ai_anomaly_hc: true
+rhinometric_patch_loadtest_mount: true
+
+rhinometric_smtp_host: "smtp.example.com"
+rhinometric_smtp_port: 587
+rhinometric_smtp_user: "noreply@example.com"
+rhinometric_smtp_password: "changeme"
+rhinometric_mail_from: "noreply@example.com"

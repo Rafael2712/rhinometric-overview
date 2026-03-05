@@ -1,0 +1,63 @@
+---
+# ═══════════════════════════════════════════════════════════════════════════════
+# Role: docker — Ensure Docker CE + Compose v2 are installed
+# ═══════════════════════════════════════════════════════════════════════════════
+
+- name: Check if Docker is already installed
+  ansible.builtin.command: docker --version
+  register: docker_check
+  changed_when: false
+  failed_when: false
+
+- name: Install Docker via get.docker.com
+  when: docker_check.rc != 0
+  block:
+    - name: Download Docker install script
+      ansible.builtin.get_url:
+        url: "{{ rhinometric_docker_install_url }}"
+        dest: /tmp/get-docker.sh
+        mode: "0755"
+        timeout: 60
+
+    - name: Run Docker install script
+      ansible.builtin.command: bash /tmp/get-docker.sh
+      register: docker_install
+      changed_when: "'is already the newest version' not in docker_install.stdout"
+
+    - name: Remove install script
+      ansible.builtin.file:
+        path: /tmp/get-docker.sh
+        state: absent
+
+- name: Ensure Docker service is started and enabled
+  ansible.builtin.systemd:
+    name: docker
+    state: started
+    enabled: true
+
+- name: Verify Docker version
+  ansible.builtin.command: docker --version
+  register: docker_version
+  changed_when: false
+
+- name: Show Docker version
+  ansible.builtin.debug:
+    msg: "Docker: {{ docker_version.stdout }}"
+
+- name: Check Docker Compose v2
+  ansible.builtin.command: docker compose version --short
+  register: compose_version
+  changed_when: false
+  failed_when: false
+
+- name: Fail if Docker Compose v2 is not available
+  ansible.builtin.fail:
+    msg: >
+      Docker Compose v2 is not available. The Rhinometric stack requires
+      Docker Compose v2 (docker compose, not docker-compose).
+      Please install it: https://docs.docker.com/compose/install/
+  when: compose_version.rc != 0
+
+- name: Show Docker Compose version
+  ansible.builtin.debug:
+    msg: "Docker Compose: {{ compose_version.stdout }}"

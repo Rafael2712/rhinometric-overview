@@ -1,0 +1,107 @@
+---
+# ═══════════════════════════════════════════════════════════════════════════════
+# Playbook: deploy.yml — Full Rhinometric deployment
+# ═══════════════════════════════════════════════════════════════════════════════
+# Usage:
+#   ansible-playbook -i inventories/staging.ini playbooks/deploy.yml
+#   ansible-playbook -i inventories/prod.ini playbooks/deploy.yml \
+#     -e rhinometric_activation_code=XXXX-XXXX-XXXX
+#
+# Skip tags:
+#   --skip-tags license       Skip license activation
+#   --skip-tags validate      Skip health checks
+#   --skip-tags optional      Skip optional services validation
+# ═══════════════════════════════════════════════════════════════════════════════
+
+- name: "Rhinometric v{{ rhinometric_version }} — Full Deployment"
+  hosts: rhinometric
+  become: true
+  gather_facts: true
+
+  vars:
+    _deploy_start: "{{ ansible_date_time.iso8601 }}"
+
+  pre_tasks:
+    - name: Display deployment banner
+      ansible.builtin.debug:
+        msg: |
+          ╔══════════════════════════════════════════════════════════════╗
+          ║  RHINOMETRIC INSTALLER — Ansible Edition                    ║
+          ║  Version: {{ rhinometric_version }}
+          ║  Target:  {{ inventory_hostname }} ({{ ansible_distribution }} {{ ansible_distribution_version }})
+          ║  Date:    {{ ansible_date_time.iso8601 }}
+          ╚══════════════════════════════════════════════════════════════╝
+
+    - name: Gather package facts (needed for license request)
+      ansible.builtin.package_facts:
+        manager: auto
+      failed_when: false
+
+  roles:
+    # Phase 1: Ensure Docker + Compose are installed
+    - role: docker
+      tags: [docker]
+
+    # Phase 2: Deploy tarball, .env, config patches, volumes, compose up
+    - role: rhinometric_deploy
+      tags: [deploy]
+
+  tasks:
+    # Phase 3: License activation (with rescue for non-blocking failure)
+    - name: License activation block
+      tags: [license]
+      block:
+        - name: Run license activation
+          ansible.builtin.include_role:
+            name: rhinometric_license
+      rescue:
+        - name: License activation warning
+          ansible.builtin.debug:
+            msg: >-
+              ⚠ License activation encountered an error but deployment
+              continues. You can activate later manually.
+              Error: {{ ansible_failed_result.msg | default('unknown') }}
+
+    # Phase 4: Health validation (with rescue → debug bundle)
+    - name: Health validation block
+      tags: [validate]
+      block:
+        - name: Run health validation
+          ansible.builtin.include_role:
+            name: rhinometric_validate
+      rescue:
+        - name: Validation failed — collecting debug bundle
+          ansible.builtin.include_role:
+            name: rhinometric_debugbundle
+
+        - name: Report validation failure
+          ansible.builtin.fail:
+            msg: >-
+              Deployment completed but health validation FAILED.
+              A debug bundle has been generated. See output above for download path.
+
+  post_tasks:
+    - name: Display success banner
+      ansible.builtin.debug:
+        msg: |
+          ╔══════════════════════════════════════════════════════════════╗
+          ║  ✓ DEPLOYMENT COMPLETE                                      ║
+          ╠══════════════════════════════════════════════════════════════╣
+          ║                                                              ║
+          ║  Version:  {{ rhinometric_version }}
+          ║  Status:   {{ rhinometric_overall_status | default('UNKNOWN') }}
+          ║  URL:      http://{{ ansible_default_ipv4.address | default(inventory_hostname) }}
+          ║  Grafana:  http://{{ ansible_default_ipv4.address | default(inventory_hostname) }}/grafana
+          ║                                                              ║
+          ║  Credentials saved to:                                       ║
+          ║    {{ rhinometric_install_dir }}/install-info.txt
+          ║                                                              ║
+          ║  License:  {{ 'ACTIVATED' if (rhinometric_license_file is defined and rhinometric_license_file) else 'See instructions above' }}
+          ║                                                              ║
+          ║  Next steps:                                                 ║
+          ║    1. Open http://{{ ansible_default_ipv4.address | default(inventory_hostname) }}
+          ║    2. Login with the credentials from install-info.txt       ║
+          ║    3. Activate license if not done automatically             ║
+          ║                                                              ║
+          ╚══════════════════════════════════════════════════════════════╝
+      when: rhinometric_overall_status | default('UNKNOWN') != 'CRITICAL_FAILURE'

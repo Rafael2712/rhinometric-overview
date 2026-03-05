@@ -1,0 +1,231 @@
+---
+# ═══════════════════════════════════════════════════════════════════════════════
+# Role: rhinometric_validate — Container health + HTTP endpoint validation
+# ═══════════════════════════════════════════════════════════════════════════════
+# Phase 1: Docker container health via `docker inspect` (NOT curl inside containers)
+# Phase 2: HTTP endpoints ONLY through Nginx front-door (port 80)
+# Phase 3: Summary report — healthy / degraded / critical failure
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# ── Phase 0: Initial settle time ─────────────────────────────────────────────
+
+- name: Wait for containers to settle after compose up
+  ansible.builtin.pause:
+    seconds: "{{ rhinometric_validate_compose_up_wait }}"
+
+# ── Phase 1: Container Health Checks via docker inspect ──────────────────────
+
+- name: Get list of running containers
+  ansible.builtin.command:
+    cmd: docker compose ps --format json
+    chdir: "{{ rhinometric_install_dir }}"
+  register: compose_ps_raw
+  changed_when: false
+
+- name: Parse compose ps output
+  ansible.builtin.set_fact:
+    _running_containers: >-
+      {{ compose_ps_raw.stdout_lines
+         | select('match', '^{')
+         | map('from_json')
+         | list }}
+
+- name: "Health check: Inspect each critical service"
+  ansible.builtin.command:
+    cmd: >-
+      docker inspect --format
+      '{{ '{{' }}.State.Status{{ '}}' }}|{{ '{{' }}if .State.Health{{ '}}' }}{{ '{{' }}.State.Health.Status{{ '}}' }}{{ '{{' }}else{{ '}}' }}no-healthcheck{{ '{{' }}end{{ '}}' }}'
+      {{ item }}
+  loop: "{{ rhinometric_critical_services }}"
+  register: critical_inspect
+  changed_when: false
+  failed_when: false
+
+- name: "Health check: Inspect each important service"
+  ansible.builtin.command:
+    cmd: >-
+      docker inspect --format
+      '{{ '{{' }}.State.Status{{ '}}' }}|{{ '{{' }}if .State.Health{{ '}}' }}{{ '{{' }}.State.Health.Status{{ '}}' }}{{ '{{' }}else{{ '}}' }}no-healthcheck{{ '{{' }}end{{ '}}' }}'
+      {{ item }}
+  loop: "{{ rhinometric_important_services }}"
+  register: important_inspect
+  changed_when: false
+  failed_when: false
+
+- name: "Health check: Inspect each optional service"
+  ansible.builtin.command:
+    cmd: >-
+      docker inspect --format
+      '{{ '{{' }}.State.Status{{ '}}' }}|{{ '{{' }}if .State.Health{{ '}}' }}{{ '{{' }}.State.Health.Status{{ '}}' }}{{ '{{' }}else{{ '}}' }}no-healthcheck{{ '{{' }}end{{ '}}' }}'
+      {{ item }}
+  loop: "{{ rhinometric_optional_services }}"
+  register: optional_inspect
+  changed_when: false
+  failed_when: false
+
+# ── Parse health check results ───────────────────────────────────────────────
+
+- name: Build critical services status
+  ansible.builtin.set_fact:
+    _critical_status: >-
+      {{ _critical_status | default([]) + [{
+        'name': item.item,
+        'state': item.stdout.split('|')[0] | default('not-found'),
+        'health': item.stdout.split('|')[1] | default('unknown'),
+        'ok': (item.stdout.split('|')[0] | default('')) == 'running'
+              and (item.stdout.split('|')[1] | default('')) in ['healthy', 'no-healthcheck']
+      }] }}
+  loop: "{{ critical_inspect.results }}"
+  when: critical_inspect.results is defined
+
+- name: Build important services status
+  ansible.builtin.set_fact:
+    _important_status: >-
+      {{ _important_status | default([]) + [{
+        'name': item.item,
+        'state': item.stdout.split('|')[0] | default('not-found'),
+        'health': item.stdout.split('|')[1] | default('unknown'),
+        'ok': (item.stdout.split('|')[0] | default('')) == 'running'
+              and (item.stdout.split('|')[1] | default('')) in ['healthy', 'no-healthcheck']
+      }] }}
+  loop: "{{ important_inspect.results }}"
+  when: important_inspect.results is defined
+
+- name: Build optional services status
+  ansible.builtin.set_fact:
+    _optional_status: >-
+      {{ _optional_status | default([]) + [{
+        'name': item.item,
+        'state': item.stdout.split('|')[0] | default('not-found'),
+        'health': item.stdout.split('|')[1] | default('unknown'),
+        'ok': (item.stdout.split('|')[0] | default('')) == 'running'
+              and (item.stdout.split('|')[1] | default('')) in ['healthy', 'no-healthcheck']
+      }] }}
+  loop: "{{ optional_inspect.results }}"
+  when: optional_inspect.results is defined
+
+# ── Wait-and-retry loop for infrastructure services ──────────────────────────
+
+- name: Count failed critical services
+  ansible.builtin.set_fact:
+    _critical_failed: "{{ _critical_status | default([]) | rejectattr('ok') | list | length }}"
+
+- name: "Wait for unhealthy critical services (retries: {{ rhinometric_validate_infra_wait_retries }})"
+  ansible.builtin.command:
+    cmd: >-
+      docker inspect --format
+      '{{ '{{' }}.State.Status{{ '}}' }}|{{ '{{' }}if .State.Health{{ '}}' }}{{ '{{' }}.State.Health.Status{{ '}}' }}{{ '{{' }}else{{ '}}' }}no-healthcheck{{ '{{' }}end{{ '}}' }}'
+      {{ item.name }}
+  loop: "{{ _critical_status | default([]) | rejectattr('ok') | list }}"
+  register: critical_retry
+  until: >-
+    critical_retry.stdout is defined
+    and critical_retry.stdout.split('|')[0] == 'running'
+    and critical_retry.stdout.split('|')[1] in ['healthy', 'no-healthcheck']
+  retries: "{{ rhinometric_validate_infra_wait_retries }}"
+  delay: "{{ rhinometric_validate_delay }}"
+  changed_when: false
+  failed_when: false
+
+# ── Phase 2: HTTP Endpoint Validation through Nginx (port 80 only) ───────────
+
+- name: "HTTP check: Validate endpoints through Nginx front-door"
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ rhinometric_validate_nginx_port }}{{ item.path }}"
+    method: GET
+    status_code: "{{ item.expected_status | default([200]) }}"
+    timeout: 15
+    validate_certs: false
+  loop: "{{ rhinometric_http_endpoints }}"
+  register: http_checks
+  failed_when: false
+  retries: 3
+  delay: 5
+  until: http_checks is not failed
+
+- name: Build HTTP endpoint results
+  ansible.builtin.set_fact:
+    _http_results: >-
+      {{ _http_results | default([]) + [{
+        'path': item.item.path,
+        'name': item.item.name,
+        'critical': item.item.critical | default(true),
+        'status': item.status | default(-1),
+        'ok': item.status is defined and item.status in (item.item.expected_status | default([200]))
+      }] }}
+  loop: "{{ http_checks.results }}"
+
+# ── Phase 3: Summary Report ─────────────────────────────────────────────────
+
+- name: Calculate health summary
+  ansible.builtin.set_fact:
+    _total_critical: "{{ _critical_status | default([]) | length }}"
+    _healthy_critical: "{{ _critical_status | default([]) | selectattr('ok') | list | length }}"
+    _total_important: "{{ _important_status | default([]) | length }}"
+    _healthy_important: "{{ _important_status | default([]) | selectattr('ok') | list | length }}"
+    _total_optional: "{{ _optional_status | default([]) | length }}"
+    _healthy_optional: "{{ _optional_status | default([]) | selectattr('ok') | list | length }}"
+    _total_http: "{{ _http_results | default([]) | length }}"
+    _healthy_http: "{{ _http_results | default([]) | selectattr('ok') | list | length }}"
+
+- name: Determine overall status
+  ansible.builtin.set_fact:
+    _overall_status: >-
+      {% set crit_ok = (_critical_status | default([]) | rejectattr('ok') | list | length) == 0 %}
+      {% set http_crit_ok = (_http_results | default([]) | selectattr('critical') | rejectattr('ok') | list | length) == 0 %}
+      {% set imp_ok = (_important_status | default([]) | rejectattr('ok') | list | length) == 0 %}
+      {% if crit_ok and http_crit_ok and imp_ok %}HEALTHY
+      {% elif crit_ok and http_crit_ok %}DEGRADED
+      {% else %}CRITICAL_FAILURE{% endif %}
+
+- name: "═══ HEALTH CHECK REPORT ═══"
+  ansible.builtin.debug:
+    msg: |
+      ╔══════════════════════════════════════════════════════════════════╗
+      ║  RHINOMETRIC HEALTH CHECK REPORT                                ║
+      ╠══════════════════════════════════════════════════════════════════╣
+      ║                                                                  ║
+      ║  Overall Status: {{ _overall_status | trim }}
+      ║                                                                  ║
+      ║  ─── Docker Containers ───                                       ║
+      ║  Critical:  {{ _healthy_critical }}/{{ _total_critical }} healthy   {{ '✓' if _healthy_critical == _total_critical else '✗ ATTENTION' }}
+      ║  Important: {{ _healthy_important }}/{{ _total_important }} healthy   {{ '✓' if _healthy_important == _total_important else '⚠ degraded' }}
+      ║  Optional:  {{ _healthy_optional }}/{{ _total_optional }} healthy   {{ '✓' if _healthy_optional == _total_optional else 'ℹ info' }}
+      ║                                                                  ║
+      ║  ─── HTTP Endpoints (Nginx :80) ───                              ║
+      ║  Passed: {{ _healthy_http }}/{{ _total_http }}
+      ║                                                                  ║
+      {% for svc in _critical_status | default([]) %}
+      ║  [CRIT] {{ "%-35s" | format(svc.name) }} {{ svc.state }}/{{ svc.health }}  {{ '✓' if svc.ok else '✗' }}
+      {% endfor %}
+      {% for svc in _important_status | default([]) %}
+      ║  [IMP ] {{ "%-35s" | format(svc.name) }} {{ svc.state }}/{{ svc.health }}  {{ '✓' if svc.ok else '⚠' }}
+      {% endfor %}
+      {% for svc in _optional_status | default([]) %}
+      ║  [OPT ] {{ "%-35s" | format(svc.name) }} {{ svc.state }}/{{ svc.health }}  {{ '✓' if svc.ok else 'ℹ' }}
+      {% endfor %}
+      ║                                                                  ║
+      {% for ep in _http_results | default([]) %}
+      ║  [HTTP] {{ "%-25s" | format(ep.name) }} {{ ep.path }}  → {{ ep.status }}  {{ '✓' if ep.ok else '✗' }}
+      {% endfor %}
+      ║                                                                  ║
+      ╚══════════════════════════════════════════════════════════════════╝
+
+# ── Set validation result fact for playbook-level decisions ──────────────────
+
+- name: Set validation result fact
+  ansible.builtin.set_fact:
+    rhinometric_validation_passed: "{{ _overall_status | trim != 'CRITICAL_FAILURE' }}"
+    rhinometric_overall_status: "{{ _overall_status | trim }}"
+
+- name: Fail if critical services are down
+  ansible.builtin.fail:
+    msg: >-
+      CRITICAL FAILURE — {{ (_critical_status | default([]) | rejectattr('ok') | list | length) }}
+      critical service(s) down and/or
+      {{ (_http_results | default([]) | selectattr('critical') | rejectattr('ok') | list | length) }}
+      critical HTTP endpoint(s) unreachable.
+      Run debug bundle for details.
+  when:
+    - _overall_status | trim == 'CRITICAL_FAILURE'
+    - rhinometric_validate_fail_on_critical | default(true) | bool

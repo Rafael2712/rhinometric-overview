@@ -1,0 +1,324 @@
+---
+# ═══════════════════════════════════════════════════════════════════════════════
+# Role: rhinometric_deploy — Deploy the Rhinometric stack
+# ═══════════════════════════════════════════════════════════════════════════════
+# Phases:
+#   1. System validation (warnings, non-blocking except disk=0)
+#   2. Copy & extract tarball
+#   3. Generate .env with secure random credentials
+#   4. Patch known config issues (Bash-era bugs)
+#   5. Prepare runtime volume directories with correct permissions
+#   6. Remove obsolete compose 'version:' field
+#   7. docker compose up -d
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# ── Phase 1: System Validation ───────────────────────────────────────────────
+
+- name: Gather system facts
+  ansible.builtin.setup:
+    gather_subset:
+      - hardware
+      - distribution
+
+- name: "Check: OS distribution"
+  ansible.builtin.debug:
+    msg: "OS: {{ ansible_distribution }} {{ ansible_distribution_version }} ({{ ansible_architecture }})"
+
+- name: "Warn: OS is not Ubuntu"
+  ansible.builtin.debug:
+    msg: "WARNING — OS is {{ ansible_distribution }}. Ubuntu 22.04+ is recommended."
+  when: ansible_distribution != "Ubuntu"
+
+- name: "Check: CPU cores ({{ ansible_processor_vcpus }} available, {{ rhinometric_min_cpu_cores }} recommended)"
+  ansible.builtin.debug:
+    msg: >-
+      {{ 'OK' if ansible_processor_vcpus >= rhinometric_min_cpu_cores
+         else 'WARNING — Only ' ~ ansible_processor_vcpus ~ ' cores detected (recommended: ' ~ rhinometric_min_cpu_cores ~ '+)' }}
+
+- name: "Check: RAM ({{ (ansible_memtotal_mb / 1024) | round(1) }} GB available, {{ rhinometric_min_ram_gb }} GB recommended)"
+  ansible.builtin.debug:
+    msg: >-
+      {{ 'OK' if (ansible_memtotal_mb / 1024) | round(0) | int >= rhinometric_min_ram_gb
+         else 'WARNING — Only ' ~ ((ansible_memtotal_mb / 1024) | round(1)) ~ ' GB RAM (recommended: ' ~ rhinometric_min_ram_gb ~ ' GB+)' }}
+
+- name: Get disk space for install dir
+  ansible.builtin.command: "df -BG {{ rhinometric_install_dir | dirname }} --output=avail"
+  register: disk_check
+  changed_when: false
+  failed_when: false
+
+- name: Parse available disk space
+  ansible.builtin.set_fact:
+    _disk_avail_gb: "{{ disk_check.stdout_lines[-1] | default('0G') | regex_replace('[^0-9]', '') | int }}"
+  when: disk_check.rc == 0
+
+- name: "Check: Disk space ({{ _disk_avail_gb | default(0) }} GB available, {{ rhinometric_min_disk_gb }} GB recommended)"
+  ansible.builtin.debug:
+    msg: >-
+      {{ 'OK' if (_disk_avail_gb | default(0) | int) >= rhinometric_min_disk_gb
+         else 'WARNING — Only ' ~ (_disk_avail_gb | default('?')) ~ ' GB free (recommended: ' ~ rhinometric_min_disk_gb ~ ' GB)' }}
+
+# ── Phase 2: Copy & Extract Tarball ─────────────────────────────────────────
+
+- name: Create install directory
+  ansible.builtin.file:
+    path: "{{ rhinometric_install_dir }}"
+    state: directory
+    mode: "0755"
+
+- name: Check if tarball is provided
+  ansible.builtin.set_fact:
+    _tarball_provided: "{{ rhinometric_tarball_path_local | length > 0 }}"
+
+- name: Copy tarball to remote host
+  ansible.builtin.copy:
+    src: "{{ rhinometric_tarball_path_local }}"
+    dest: "/tmp/rhinometric-v{{ rhinometric_version }}.tar.gz"
+    mode: "0644"
+  when: _tarball_provided
+
+- name: Create extraction directory
+  ansible.builtin.file:
+    path: "{{ rhinometric_tarball_remote_tmp }}"
+    state: directory
+    mode: "0755"
+  when: _tarball_provided
+
+- name: Extract tarball
+  ansible.builtin.unarchive:
+    src: "/tmp/rhinometric-v{{ rhinometric_version }}.tar.gz"
+    dest: "{{ rhinometric_tarball_remote_tmp }}"
+    remote_src: true
+    extra_opts:
+      - "--strip-components=1"
+  when: _tarball_provided
+
+- name: Synchronize extracted files to install directory
+  ansible.builtin.shell: |
+    rsync -a --exclude='.env' --exclude='install-info.txt' --exclude='fingerprint.txt' --exclude='license.key' \
+      {{ rhinometric_tarball_remote_tmp }}/ {{ rhinometric_install_dir }}/
+  when: _tarball_provided
+  changed_when: true
+
+- name: Clean up tarball and extraction dir
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - "/tmp/rhinometric-v{{ rhinometric_version }}.tar.gz"
+    - "{{ rhinometric_tarball_remote_tmp }}"
+  when: _tarball_provided
+
+- name: Verify docker-compose.yml exists
+  ansible.builtin.stat:
+    path: "{{ rhinometric_install_dir }}/docker-compose.yml"
+  register: compose_file_stat
+
+- name: Fail if docker-compose.yml is missing
+  ansible.builtin.fail:
+    msg: >
+      docker-compose.yml not found in {{ rhinometric_install_dir }}.
+      Provide rhinometric_tarball_path_local or pre-populate the directory.
+  when: not compose_file_stat.stat.exists
+
+# ── Phase 3: Generate .env ──────────────────────────────────────────────────
+
+- name: Check if .env already exists
+  ansible.builtin.stat:
+    path: "{{ rhinometric_install_dir }}/.env"
+  register: env_file_stat
+
+- name: Generate random credentials (only on first deploy)
+  ansible.builtin.set_fact:
+    _postgres_password: "{{ lookup('password', '/dev/null length=20 chars=ascii_letters,digits') }}"
+    _redis_password: "{{ lookup('password', '/dev/null length=20 chars=ascii_letters,digits') }}"
+    _grafana_password: "{{ lookup('password', '/dev/null length=20 chars=ascii_letters,digits') }}"
+    _admin_password: "{{ lookup('password', '/dev/null length=20 chars=ascii_letters,digits') }}"
+    _secret_key: "{{ lookup('password', '/dev/null length=64 chars=hexdigits') | lower }}"
+    _jwt_secret: "{{ lookup('password', '/dev/null length=96 chars=hexdigits') | lower }}"
+  when: not env_file_stat.stat.exists
+  no_log: true
+
+- name: Write .env file
+  ansible.builtin.template:
+    src: env.j2
+    dest: "{{ rhinometric_install_dir }}/.env"
+    mode: "0600"
+    force: false    # Never overwrite existing .env (idempotent / preserve passwords)
+  no_log: true
+
+# ── Phase 4: Patch Known Config Issues (from Bash era) ──────────────────────
+
+- name: "Patch: prometheus configs — localhost:9090 → rhinometric-prometheus:9090"
+  ansible.builtin.replace:
+    path: "{{ item }}"
+    regexp: "'localhost:9090'"
+    replace: "'rhinometric-prometheus:9090'"
+  loop:
+    - "{{ rhinometric_install_dir }}/config/prometheus-v2.2.yml"
+    - "{{ rhinometric_install_dir }}/prometheus/prometheus.yml"
+  failed_when: false
+  when: rhinometric_patch_prometheus_target
+
+- name: "Patch: create empty loadtest_targets.json"
+  ansible.builtin.copy:
+    content: "[]"
+    dest: "{{ item }}"
+    mode: "0644"
+    force: false
+  loop:
+    - "{{ rhinometric_install_dir }}/config/loadtest_targets.json"
+    - "{{ rhinometric_install_dir }}/prometheus/loadtest_targets.json"
+
+- name: "Patch: AI anomaly healthcheck — curl → python urllib"
+  ansible.builtin.script:
+    cmd: /dev/stdin
+    executable: /usr/bin/python3
+  args:
+    stdin: |
+      import pathlib, sys
+      f = pathlib.Path("{{ rhinometric_install_dir }}/docker-compose.yml")
+      if not f.exists():
+          sys.exit(0)
+      t = f.read_text()
+      old = """    healthcheck:
+        test:
+        - CMD
+        - curl
+        - -f
+        - http://localhost:8085/health
+        interval: 30s
+        timeout: 5s
+        retries: 3
+        start_period: 30s"""
+      new = """    healthcheck:
+        test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://localhost:8085/health', timeout=5)"
+        interval: 30s
+        timeout: 10s
+        retries: 5
+        start_period: 45s"""
+      if old in t:
+          t = t.replace(old, new, 1)
+          f.write_text(t)
+          print("PATCHED ai-anomaly healthcheck")
+      else:
+          print("SKIP — already patched or pattern not found")
+  register: hc_patch
+  changed_when: "'PATCHED' in hc_patch.stdout"
+  when: rhinometric_patch_ai_anomaly_hc
+
+- name: "Patch: loadtest_targets.json volume mount in victoria-metrics"
+  ansible.builtin.script:
+    cmd: /dev/stdin
+    executable: /usr/bin/python3
+  args:
+    stdin: |
+      import pathlib, sys
+      f = pathlib.Path("{{ rhinometric_install_dir }}/docker-compose.yml")
+      if not f.exists():
+          sys.exit(0)
+      t = f.read_text()
+      marker = "    - ./config/prometheus-v2.2.yml:/etc/prometheus/prometheus.yml:ro\n    networks:"
+      new_mount = "    - ./config/prometheus-v2.2.yml:/etc/prometheus/prometheus.yml:ro\n    - ./config/loadtest_targets.json:/etc/prometheus/loadtest_targets.json:ro\n    networks:"
+      if marker in t and "loadtest_targets.json:/etc/prometheus/loadtest" not in t:
+          t = t.replace(marker, new_mount, 1)
+          f.write_text(t)
+          print("PATCHED loadtest mount")
+      else:
+          print("SKIP — already patched or marker not found")
+  register: mount_patch
+  changed_when: "'PATCHED' in mount_patch.stdout"
+  when: rhinometric_patch_loadtest_mount
+
+- name: "Patch: remove obsolete 'version:' field from compose"
+  ansible.builtin.lineinfile:
+    path: "{{ rhinometric_install_dir }}/docker-compose.yml"
+    regexp: '^version:'
+    state: absent
+
+# ── Phase 5: Prepare Runtime Volume Directories ─────────────────────────────
+
+- name: Create runtime volume directories
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    owner: "{{ item.owner | default(omit) }}"
+    group: "{{ item.group | default(omit) }}"
+    mode: "{{ item.mode | default('0755') }}"
+  loop:
+    # Jaeger (UID 10001, GID 0)
+    - { path: "{{ rhinometric_data_dir }}/jaeger",        owner: "10001", group: "0" }
+    - { path: "{{ rhinometric_data_dir }}/jaeger/key",    owner: "10001", group: "0" }
+    - { path: "{{ rhinometric_data_dir }}/jaeger/data",   owner: "10001", group: "0" }
+    # Alertmanager (UID 65534 = nobody)
+    - { path: "{{ rhinometric_data_dir }}/alertmanager",  owner: "65534", group: "65534" }
+    # PostgreSQL (UID 999)
+    - { path: "{{ rhinometric_data_dir }}/postgres",      owner: "999", group: "999", mode: "0700" }
+    # Redis (UID 999)
+    - { path: "{{ rhinometric_data_dir }}/redis",         owner: "999", group: "999" }
+    # Loki (root)
+    - { path: "{{ rhinometric_data_dir }}/loki" }
+    # AI Anomaly
+    - { path: "{{ rhinometric_data_dir }}/ai-anomaly/models", mode: "0777" }
+    - { path: "{{ rhinometric_data_dir }}/ai-anomaly/data",   mode: "0777" }
+    # Console backend
+    - { path: "{{ rhinometric_data_dir }}/console-backend/data", mode: "0777" }
+    - { path: "{{ rhinometric_data_dir }}/console-backend/logs", mode: "0777" }
+    # License server
+    - { path: "{{ rhinometric_data_dir }}/license-server/logs",  mode: "0777" }
+  loop_control:
+    label: "{{ item.path }}"
+
+# ── Phase 6: Docker Compose Up ───────────────────────────────────────────────
+
+- name: Pull Docker images
+  ansible.builtin.command:
+    cmd: docker compose pull --ignore-buildable
+    chdir: "{{ rhinometric_install_dir }}"
+  register: compose_pull
+  changed_when: false
+  failed_when: false
+
+- name: Build local images
+  ansible.builtin.command:
+    cmd: docker compose build
+    chdir: "{{ rhinometric_install_dir }}"
+  register: compose_build
+  changed_when: "'Successfully built' in compose_build.stdout or 'exporting to image' in compose_build.stderr"
+  failed_when: false
+
+- name: Show build warnings
+  ansible.builtin.debug:
+    msg: "Build had issues: {{ compose_build.stderr | default('') | regex_search('error.*', ignorecase=True) }}"
+  when: compose_build.rc != 0
+
+- name: Start stack with docker compose up -d
+  ansible.builtin.command:
+    cmd: docker compose up -d
+    chdir: "{{ rhinometric_install_dir }}"
+  register: compose_up
+  changed_when: true
+
+- name: Fail if docker compose up failed
+  ansible.builtin.fail:
+    msg: "docker compose up -d failed (exit {{ compose_up.rc }}): {{ compose_up.stderr | default('') }}"
+  when: compose_up.rc != 0
+
+- name: "Wait {{ rhinometric_compose_up_wait }}s for services to initialize"
+  ansible.builtin.pause:
+    seconds: "{{ rhinometric_compose_up_wait }}"
+
+- name: Count running containers
+  ansible.builtin.command:
+    cmd: docker compose ps --status running -q
+    chdir: "{{ rhinometric_install_dir }}"
+  register: running_containers
+  changed_when: false
+
+- name: Report running container count
+  ansible.builtin.debug:
+    msg: "Running containers: {{ running_containers.stdout_lines | length }}"

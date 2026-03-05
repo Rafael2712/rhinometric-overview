@@ -1,0 +1,9 @@
+---
+# rhinometric_validate defaults
+rhinometric_validate_retries: 40
+rhinometric_validate_delay: 10
+rhinometric_validate_compose_up_wait: 30
+rhinometric_validate_infra_wait_retries: 12
+
+# Only check HTTP through Nginx front-door (port 80)
+rhinometric_validate_nginx_port: 80

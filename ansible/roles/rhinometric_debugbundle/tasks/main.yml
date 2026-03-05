@@ -1,0 +1,248 @@
+---
+# ═══════════════════════════════════════════════════════════════════════════════
+# Role: rhinometric_debugbundle — Collect diagnostic info on failure
+# ═══════════════════════════════════════════════════════════════════════════════
+# Collects: container status, logs, system info, disk/memory, dmesg OOM,
+#           per-service inspect for unhealthy containers → tar.gz bundle
+# ═══════════════════════════════════════════════════════════════════════════════
+
+- name: Create debug bundle directory
+  ansible.builtin.file:
+    path: "{{ rhinometric_debug_bundle_path }}"
+    state: directory
+    mode: "0755"
+
+- name: Set timestamp for bundle
+  ansible.builtin.set_fact:
+    _debug_ts: "{{ ansible_date_time.iso8601_basic_short }}"
+
+# ── System Info ──────────────────────────────────────────────────────────────
+
+- name: Collect system info
+  ansible.builtin.shell: |
+    echo "=== DATE ===" && date
+    echo "=== HOSTNAME ===" && hostname -f
+    echo "=== UPTIME ===" && uptime
+    echo "=== OS ===" && cat /etc/os-release 2>/dev/null || echo "N/A"
+    echo "=== KERNEL ===" && uname -a
+    echo "=== CPU ===" && nproc
+    echo "=== MEMORY ===" && free -h
+    echo "=== DISK ===" && df -h
+    echo "=== DOCKER VERSION ===" && docker version 2>/dev/null || echo "Docker not available"
+    echo "=== DOCKER INFO ===" && docker info 2>/dev/null | head -40 || echo "N/A"
+  register: sys_info
+  changed_when: false
+  failed_when: false
+
+- name: Save system info
+  ansible.builtin.copy:
+    content: "{{ sys_info.stdout }}"
+    dest: "{{ rhinometric_debug_bundle_path }}/system-info.txt"
+    mode: "0644"
+
+# ── Docker Compose Status ───────────────────────────────────────────────────
+
+- name: Collect docker compose ps
+  ansible.builtin.command:
+    cmd: docker compose ps -a
+    chdir: "{{ rhinometric_install_dir }}"
+  register: compose_ps
+  changed_when: false
+  failed_when: false
+
+- name: Save compose ps
+  ansible.builtin.copy:
+    content: "{{ compose_ps.stdout | default('compose ps failed') }}"
+    dest: "{{ rhinometric_debug_bundle_path }}/compose-ps.txt"
+    mode: "0644"
+
+# ── Container Logs ───────────────────────────────────────────────────────────
+
+- name: Get list of all service names
+  ansible.builtin.command:
+    cmd: docker compose config --services
+    chdir: "{{ rhinometric_install_dir }}"
+  register: all_services
+  changed_when: false
+  failed_when: false
+
+- name: Collect logs for each service
+  ansible.builtin.shell: |
+    docker compose logs --no-color --tail={{ rhinometric_debug_max_log_lines }} {{ item }} 2>&1
+  args:
+    chdir: "{{ rhinometric_install_dir }}"
+  loop: "{{ all_services.stdout_lines | default([]) }}"
+  register: service_logs
+  changed_when: false
+  failed_when: false
+
+- name: Save individual service logs
+  ansible.builtin.copy:
+    content: "{{ item.stdout | default('no output') }}"
+    dest: "{{ rhinometric_debug_bundle_path }}/log-{{ item.item }}.txt"
+    mode: "0644"
+  loop: "{{ service_logs.results | default([]) }}"
+
+# ── Detailed Inspect for Unhealthy / Exited Containers ──────────────────────
+
+- name: Find unhealthy or exited containers
+  ansible.builtin.shell: |
+    docker compose ps -a --format json 2>/dev/null | \
+    python3 -c "
+    import sys, json
+    bad = []
+    for line in sys.stdin:
+      line = line.strip()
+      if not line or not line.startswith('{'):
+        continue
+      c = json.loads(line)
+      state = c.get('State', '')
+      health = c.get('Health', '')
+      if state != 'running' or health == 'unhealthy':
+        bad.append(c.get('Name', c.get('Service', 'unknown')))
+    print('\n'.join(bad))
+    " 2>/dev/null || echo ""
+  args:
+    chdir: "{{ rhinometric_install_dir }}"
+  register: bad_containers
+  changed_when: false
+  failed_when: false
+
+- name: Detailed docker inspect for problematic containers
+  ansible.builtin.command:
+    cmd: "docker inspect {{ item }}"
+  loop: "{{ bad_containers.stdout_lines | default([]) | select() | list }}"
+  register: bad_inspect
+  changed_when: false
+  failed_when: false
+
+- name: Save detailed inspect
+  ansible.builtin.copy:
+    content: "{{ item.stdout | default('inspect failed') }}"
+    dest: "{{ rhinometric_debug_bundle_path }}/inspect-{{ item.item }}.json"
+    mode: "0644"
+  loop: "{{ bad_inspect.results | default([]) }}"
+
+# ── OOM / dmesg ─────────────────────────────────────────────────────────────
+
+- name: Check dmesg for OOM kills
+  ansible.builtin.shell: |
+    dmesg 2>/dev/null | grep -i "oom\|out of memory\|killed process" | tail -50 || echo "No OOM events found"
+  register: oom_check
+  changed_when: false
+  failed_when: false
+  when: rhinometric_debug_collect_dmesg | bool
+
+- name: Save OOM info
+  ansible.builtin.copy:
+    content: "{{ oom_check.stdout | default('dmesg check skipped') }}"
+    dest: "{{ rhinometric_debug_bundle_path }}/dmesg-oom.txt"
+    mode: "0644"
+  when: rhinometric_debug_collect_dmesg | bool
+
+# ── Docker Network + Volumes ────────────────────────────────────────────────
+
+- name: Collect docker network info
+  ansible.builtin.shell: |
+    echo "=== NETWORKS ===" && docker network ls
+    echo ""
+    echo "=== COMPOSE NETWORK INSPECT ===" && docker network inspect $(docker network ls --filter "name=rhinometric" -q) 2>/dev/null || echo "No rhinometric network found"
+  register: network_info
+  changed_when: false
+  failed_when: false
+
+- name: Save network info
+  ansible.builtin.copy:
+    content: "{{ network_info.stdout | default('N/A') }}"
+    dest: "{{ rhinometric_debug_bundle_path }}/docker-networks.txt"
+    mode: "0644"
+
+- name: Collect volume usage
+  ansible.builtin.shell: |
+    docker system df -v 2>/dev/null | head -100 || echo "docker system df failed"
+  register: volume_info
+  changed_when: false
+  failed_when: false
+
+- name: Save volume info
+  ansible.builtin.copy:
+    content: "{{ volume_info.stdout | default('N/A') }}"
+    dest: "{{ rhinometric_debug_bundle_path }}/docker-volumes.txt"
+    mode: "0644"
+
+# ── .env (sanitized — no secrets) ───────────────────────────────────────────
+
+- name: Create sanitized .env copy
+  ansible.builtin.shell: |
+    if [ -f "{{ rhinometric_install_dir }}/.env" ]; then
+      sed -E 's/(PASSWORD|SECRET|KEY|TOKEN|ACTIVATION)=.*/\1=***REDACTED***/i' \
+        "{{ rhinometric_install_dir }}/.env"
+    else
+      echo ".env file not found"
+    fi
+  register: sanitized_env
+  changed_when: false
+  failed_when: false
+
+- name: Save sanitized .env
+  ansible.builtin.copy:
+    content: "{{ sanitized_env.stdout | default('N/A') }}"
+    dest: "{{ rhinometric_debug_bundle_path }}/env-sanitized.txt"
+    mode: "0644"
+
+# ── Copy compose file ───────────────────────────────────────────────────────
+
+- name: Copy docker-compose.yml to bundle
+  ansible.builtin.copy:
+    src: "{{ rhinometric_install_dir }}/docker-compose.yml"
+    dest: "{{ rhinometric_debug_bundle_path }}/docker-compose.yml"
+    remote_src: true
+    mode: "0644"
+  failed_when: false
+
+# ── Create tar.gz Bundle ────────────────────────────────────────────────────
+
+- name: Create tar.gz debug bundle
+  ansible.builtin.archive:
+    path: "{{ rhinometric_debug_bundle_path }}/"
+    dest: "/tmp/rhinometric-debug-{{ _debug_ts }}.tar.gz"
+    format: gz
+    mode: "0644"
+
+- name: Get bundle size
+  ansible.builtin.stat:
+    path: "/tmp/rhinometric-debug-{{ _debug_ts }}.tar.gz"
+  register: bundle_stat
+
+- name: Display debug bundle info
+  ansible.builtin.debug:
+    msg: |
+      ╔══════════════════════════════════════════════════════════════════╗
+      ║  DEBUG BUNDLE GENERATED                                         ║
+      ╠══════════════════════════════════════════════════════════════════╣
+      ║                                                                  ║
+      ║  Path: /tmp/rhinometric-debug-{{ _debug_ts }}.tar.gz
+      ║  Size: {{ (bundle_stat.stat.size | default(0) / 1024) | round(1) }} KB
+      ║                                                                  ║
+      ║  To download:                                                    ║
+      ║  scp {{ ansible_user }}@{{ ansible_host }}:/tmp/rhinometric-debug-{{ _debug_ts }}.tar.gz .
+      ║                                                                  ║
+      ║  Contents:                                                       ║
+      ║    - system-info.txt          System / Docker overview           ║
+      ║    - compose-ps.txt           Container status                   ║
+      ║    - log-*.txt                Per-service logs (last {{ rhinometric_debug_max_log_lines }} lines)
+      ║    - inspect-*.json           Detailed inspect of failed svc     ║
+      ║    - dmesg-oom.txt            OOM kill events                    ║
+      ║    - docker-networks.txt      Network configuration              ║
+      ║    - docker-volumes.txt       Volume / disk usage                ║
+      ║    - env-sanitized.txt        .env with secrets redacted         ║
+      ║    - docker-compose.yml       Compose definition                 ║
+      ║                                                                  ║
+      ╚══════════════════════════════════════════════════════════════════╝
+
+# ── Cleanup temp directory ───────────────────────────────────────────────────
+
+- name: Remove temp debug directory
+  ansible.builtin.file:
+    path: "{{ rhinometric_debug_bundle_path }}"
+    state: absent

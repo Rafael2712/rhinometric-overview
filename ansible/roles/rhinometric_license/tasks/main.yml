@@ -1,0 +1,207 @@
+---
+# ═══════════════════════════════════════════════════════════════════════════════
+# Role: rhinometric_license — Fingerprint detection + License activation
+# ═══════════════════════════════════════════════════════════════════════════════
+# Supports two modes:
+#   A) Online activation — POST fingerprint + activation_code → receive license.key
+#   B) Offline bundle    — Generate license-request.json for manual exchange
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# ── Step 1: Install rhino-lic binary ─────────────────────────────────────────
+
+- name: Check if rhino-lic is installed
+  ansible.builtin.command: "{{ rhinometric_rhino_lic_bin }} --version"
+  register: rhinolic_check
+  changed_when: false
+  failed_when: false
+
+- name: Install rhino-lic from package (if available)
+  ansible.builtin.copy:
+    src: "{{ rhinometric_install_dir }}/rhino-lic"
+    dest: "{{ rhinometric_rhino_lic_bin }}"
+    mode: "0755"
+    remote_src: true
+  when:
+    - rhinolic_check.rc != 0
+  failed_when: false
+  register: rhinolic_install
+
+- name: Verify rhino-lic is now available
+  ansible.builtin.command: "{{ rhinometric_rhino_lic_bin }} --version"
+  register: rhinolic_verify
+  changed_when: false
+  failed_when: false
+
+# ── Step 2: Detect Machine Fingerprint ───────────────────────────────────────
+
+- name: Detect machine fingerprint
+  ansible.builtin.command: "{{ rhinometric_rhino_lic_bin }} fingerprint"
+  register: fingerprint_result
+  changed_when: false
+  failed_when: false
+  when: rhinolic_verify.rc == 0
+
+- name: Set fingerprint fact
+  ansible.builtin.set_fact:
+    _machine_fingerprint: "{{ fingerprint_result.stdout | trim }}"
+  when:
+    - rhinolic_verify.rc == 0
+    - fingerprint_result.rc == 0
+    - fingerprint_result.stdout | trim | length > 0
+
+- name: Set empty fingerprint if detection failed
+  ansible.builtin.set_fact:
+    _machine_fingerprint: "DETECTION_FAILED"
+  when: _machine_fingerprint is not defined
+
+- name: Save fingerprint to file
+  ansible.builtin.copy:
+    content: "{{ _machine_fingerprint }}\n"
+    dest: "{{ rhinometric_fingerprint_file }}"
+    mode: "0644"
+
+- name: Display fingerprint
+  ansible.builtin.debug:
+    msg: |
+      ┌──────────────────────────────────────────────────────┐
+      │  Machine Fingerprint: {{ _machine_fingerprint }}
+      │  Saved to: {{ rhinometric_fingerprint_file }}
+      └──────────────────────────────────────────────────────┘
+
+# ── Step 3A: Online Activation ───────────────────────────────────────────────
+
+- name: "Online activation: POST to activation endpoint"
+  ansible.builtin.uri:
+    url: "{{ rhinometric_activation_url }}"
+    method: POST
+    body_format: json
+    body:
+      fingerprint: "{{ _machine_fingerprint }}"
+      activation_code: "{{ rhinometric_activation_code }}"
+      hostname: "{{ ansible_hostname }}"
+      ip: "{{ ansible_default_ipv4.address | default('unknown') }}"
+      os: "{{ ansible_distribution }} {{ ansible_distribution_version }}"
+      installer_version: "{{ rhinometric_version }}"
+    return_content: true
+    status_code: [200, 201]
+    timeout: 30
+  register: activation_response
+  when:
+    - rhinometric_enable_online_activation | bool
+    - rhinometric_activation_code | length > 0
+    - _machine_fingerprint != "DETECTION_FAILED"
+  failed_when: false
+  no_log: true    # Don't log activation code
+
+- name: Save license.key from online activation
+  ansible.builtin.copy:
+    content: "{{ activation_response.json.license_key | default(activation_response.content) }}"
+    dest: "{{ rhinometric_license_file }}"
+    mode: "0600"
+  when:
+    - activation_response is defined
+    - activation_response.status is defined
+    - activation_response.status in [200, 201]
+  no_log: true
+
+- name: Online activation result
+  ansible.builtin.debug:
+    msg: >-
+      {{ 'License activated successfully and saved to ' ~ rhinometric_license_file
+         if (activation_response is defined and activation_response.status is defined and activation_response.status in [200, 201])
+         else 'Online activation failed or skipped. Status: ' ~ (activation_response.status | default('N/A')) ~ '. Use offline flow.' }}
+  when: rhinometric_enable_online_activation | bool
+
+- name: Restart backend services after license activation
+  ansible.builtin.command:
+    cmd: docker compose restart rhinometric-console-backend license-server-v2
+    chdir: "{{ rhinometric_install_dir }}"
+  when:
+    - activation_response is defined
+    - activation_response.status is defined
+    - activation_response.status in [200, 201]
+  changed_when: true
+
+# ── Step 3B: Offline License Request Bundle ──────────────────────────────────
+
+- name: Check if license.key already exists
+  ansible.builtin.stat:
+    path: "{{ rhinometric_license_file }}"
+  register: license_file_stat
+
+- name: Set license status
+  ansible.builtin.set_fact:
+    _license_status: >-
+      {{ 'activated' if (license_file_stat.stat.exists | default(false))
+         else 'unlicensed' }}
+
+- name: Generate offline license request bundle
+  ansible.builtin.template:
+    src: license-request.json.j2
+    dest: "{{ rhinometric_install_dir }}/license-request.json"
+    mode: "0644"
+  when:
+    - not (license_file_stat.stat.exists | default(false))
+    - _machine_fingerprint != "DETECTION_FAILED"
+
+- name: Generate license request checksum
+  ansible.builtin.shell: |
+    sha256sum {{ rhinometric_install_dir }}/license-request.json | awk '{print $1}'
+  register: license_request_checksum
+  changed_when: false
+  when:
+    - not (license_file_stat.stat.exists | default(false))
+    - _machine_fingerprint != "DETECTION_FAILED"
+
+- name: Append checksum to license request
+  ansible.builtin.lineinfile:
+    path: "{{ rhinometric_install_dir }}/license-request.json"
+    insertafter: EOF
+    line: ""
+  when: false    # JSON doesn't support appending; checksum shown in output instead
+
+- name: Display offline license instructions
+  ansible.builtin.debug:
+    msg: |
+      ╔══════════════════════════════════════════════════════════════╗
+      ║  LICENSE NOT YET ACTIVATED                                   ║
+      ╠══════════════════════════════════════════════════════════════╣
+      ║                                                              ║
+      ║  To activate your license:                                   ║
+      ║                                                              ║
+      ║  1. Send the file to Rhinometric:                            ║
+      ║     {{ rhinometric_install_dir }}/license-request.json
+      ║     Checksum: {{ license_request_checksum.stdout | default('N/A') }}
+      ║                                                              ║
+      ║  2. You will receive a license.key file.                     ║
+      ║                                                              ║
+      ║  3. Copy it to the server:                                   ║
+      ║     scp license.key root@{{ ansible_default_ipv4.address | default('<IP>') }}:{{ rhinometric_license_file }}
+      ║                                                              ║
+      ║  4. Restart backend:                                         ║
+      ║     cd {{ rhinometric_install_dir }} && docker compose restart rhinometric-console-backend license-server-v2
+      ║                                                              ║
+      ╚══════════════════════════════════════════════════════════════╝
+  when:
+    - not (license_file_stat.stat.exists | default(false))
+    - _machine_fingerprint != "DETECTION_FAILED"
+
+# ── Step 4: Validate existing license (if present) ──────────────────────────
+
+- name: Validate existing license with rhino-lic
+  ansible.builtin.command: "{{ rhinometric_rhino_lic_bin }} validate {{ rhinometric_license_file }}"
+  register: license_validation
+  changed_when: false
+  failed_when: false
+  when:
+    - rhinolic_verify.rc == 0
+    - license_file_stat.stat.exists | default(false)
+
+- name: Display license validation result
+  ansible.builtin.debug:
+    msg: >-
+      License validation: {{ 'VALID' if license_validation.rc == 0
+                             else 'INVALID (code ' ~ license_validation.rc ~ '): ' ~ license_validation.stdout | default('') }}
+  when:
+    - license_validation is defined
+    - license_validation.rc is defined

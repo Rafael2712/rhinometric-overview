@@ -1,0 +1,56 @@
+---
+# ═══════════════════════════════════════════════════════════════════════════════
+# Playbook: validate.yml — Standalone health check
+# ═══════════════════════════════════════════════════════════════════════════════
+# Usage:
+#   ansible-playbook -i inventories/staging.ini playbooks/validate.yml
+#
+# Use this to verify an existing deployment without re-deploying.
+# On failure, automatically generates a debug bundle.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+- name: "Rhinometric — Health Validation"
+  hosts: rhinometric
+  become: true
+  gather_facts: true
+
+  pre_tasks:
+    - name: Display validation banner
+      ansible.builtin.debug:
+        msg: |
+          ╔══════════════════════════════════════════════════════════════╗
+          ║  RHINOMETRIC — Standalone Health Validation                  ║
+          ║  Target:  {{ inventory_hostname }}
+          ║  Date:    {{ ansible_date_time.iso8601 }}
+          ╚══════════════════════════════════════════════════════════════╝
+
+    - name: Verify install directory exists
+      ansible.builtin.stat:
+        path: "{{ rhinometric_install_dir }}/docker-compose.yml"
+      register: compose_stat
+
+    - name: Fail if not deployed
+      ansible.builtin.fail:
+        msg: >-
+          No Rhinometric deployment found at {{ rhinometric_install_dir }}.
+          Run deploy.yml first.
+      when: not compose_stat.stat.exists
+
+  tasks:
+    - name: Health validation block
+      block:
+        - name: Run health validation
+          ansible.builtin.include_role:
+            name: rhinometric_validate
+          vars:
+            rhinometric_validate_compose_up_wait: 5   # Skip long wait for existing deployments
+
+      rescue:
+        - name: Validation failed — collecting debug bundle
+          ansible.builtin.include_role:
+            name: rhinometric_debugbundle
+
+        - name: Report validation failure
+          ansible.builtin.fail:
+            msg: >-
+              Health validation FAILED. Debug bundle generated — see output above.

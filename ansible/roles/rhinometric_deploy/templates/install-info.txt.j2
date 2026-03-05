@@ -1,0 +1,41 @@
+════════════════════════════════════════════════════════════════════════
+ RHINOMETRIC v{{ rhinometric_version }} — INSTALLATION CREDENTIALS
+ Installed: {{ ansible_date_time.iso8601 }}
+ Server:    {{ ansible_hostname }}
+ IP:        {{ ansible_default_ipv4.address | default('127.0.0.1') }}
+ Method:    Ansible installer
+════════════════════════════════════════════════════════════════════════
+
+⚠️  IMPORTANT: Save in a password manager and delete this file.
+
+LICENSE STATUS
+  Status      : {{ _license_status | default('unlicensed') }}
+  Fingerprint : {{ _machine_fingerprint | default('N/A') }}
+
+RHINOMETRIC CONSOLE (via Nginx)
+  URL      : http://{{ ansible_default_ipv4.address | default('127.0.0.1') }}
+  Username : admin
+  Password : {{ _admin_password }}
+
+GRAFANA (via Nginx proxy)
+  URL      : http://{{ ansible_default_ipv4.address | default('127.0.0.1') }}/grafana
+  Username : admin
+  Password : {{ _grafana_password }}
+
+POSTGRESQL (internal)
+  Host     : localhost:5432
+  Database : rhinometric
+  Username : rhinometric
+  Password : {{ _postgres_password }}
+
+REDIS (internal)
+  Host     : localhost:6379
+  Password : {{ _redis_password }}
+
+APPLYING LICENSE LATER (no reinstall):
+  1. cat {{ rhinometric_fingerprint_file }}
+  2. Send fingerprint to Rhinometric to receive license.key
+  3. scp license.key root@{{ ansible_default_ipv4.address | default('<IP>') }}:{{ rhinometric_license_file }}
+  4. cd {{ rhinometric_install_dir }} && docker compose restart rhinometric-console-backend license-server-v2
+
+════════════════════════════════════════════════════════════════════════

@@ -1,0 +1,9 @@
+---
+# Role: rhinometric_license — defaults
+rhinometric_enable_online_activation: false
+rhinometric_activation_url: "https://license.rhinometric.io/api/v1/activate"
+rhinometric_activation_code: ""
+rhinometric_rhino_lic_bin: "/usr/local/bin/rhino-lic"
+rhinometric_install_dir: "/opt/rhinometric"
+rhinometric_fingerprint_file: "{{ rhinometric_install_dir }}/fingerprint.txt"
+rhinometric_license_file: "{{ rhinometric_install_dir }}/license.key"

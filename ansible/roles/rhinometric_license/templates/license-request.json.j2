@@ -1,0 +1,20 @@
+{
+  "request_type": "license_activation",
+  "installer_version": "{{ rhinometric_version }}",
+  "generated_at": "{{ ansible_date_time.iso8601 }}",
+  "machine": {
+    "fingerprint": "{{ _machine_fingerprint }}",
+    "hostname": "{{ ansible_hostname }}",
+    "fqdn": "{{ ansible_fqdn }}",
+    "ip_address": "{{ ansible_default_ipv4.address | default('unknown') }}",
+    "os": "{{ ansible_distribution }} {{ ansible_distribution_version }}",
+    "kernel": "{{ ansible_kernel }}",
+    "architecture": "{{ ansible_architecture }}",
+    "cpu_count": {{ ansible_processor_vcpus }},
+    "memory_mb": {{ ansible_memtotal_mb }}
+  },
+  "docker": {
+    "version": "{{ ansible_facts.packages['docker-ce'][0].version | default('unknown') }}"
+  },
+  "notes": "Send this file to licensing@rhinometric.com to receive your license.key"
+}

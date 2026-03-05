@@ -1,0 +1,5 @@
+---
+# rhinometric_debugbundle defaults
+rhinometric_debug_bundle_path: "/tmp/rhinometric-debug"
+rhinometric_debug_max_log_lines: 500
+rhinometric_debug_collect_dmesg: true
