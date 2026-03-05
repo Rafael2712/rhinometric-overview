@@ -1,4 +1,3 @@
-version: '3.8'
 services:
   license-server-v2:
     build:

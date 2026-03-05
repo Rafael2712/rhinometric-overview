@@ -14,7 +14,7 @@
 
 set -euo pipefail
 
-readonly VERSION="${VERSION:-3.0.2}"
+readonly VERSION="${VERSION:-3.0.3}"
 readonly EXPORT_IMAGES="${EXPORT_IMAGES:-false}"
 readonly STAGING="/tmp/rhinometric-staging"
 readonly OUTPUT="/tmp/rhinometric-v${VERSION}.tar.gz"
