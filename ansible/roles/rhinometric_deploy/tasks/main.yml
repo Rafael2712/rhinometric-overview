@@ -214,24 +214,21 @@
 
 - name: "Patch: loadtest_targets.json volume mount in victoria-metrics"
   ansible.builtin.shell: |
-    python3 << 'PATCHEOF'
+    python3 -c "
     import pathlib, sys
-    f = pathlib.Path("{{ rhinometric_install_dir }}/docker-compose.yml")
+    f = pathlib.Path('{{ rhinometric_install_dir }}/docker-compose.yml')
     if not f.exists():
         sys.exit(0)
     t = f.read_text()
-    marker = "    - ./config/prometheus-v2.2.yml:/etc/prometheus/prometheus.yml:ro
-    networks:"
-    new_mount = "    - ./config/prometheus-v2.2.yml:/etc/prometheus/prometheus.yml:ro
-    - ./config/loadtest_targets.json:/etc/prometheus/loadtest_targets.json:ro
-    networks:"
-    if marker in t and "loadtest_targets.json:/etc/prometheus/loadtest" not in t:
+    marker = '    - ./config/prometheus-v2.2.yml:/etc/prometheus/prometheus.yml:ro' + chr(10) + '    networks:'
+    new_mount = '    - ./config/prometheus-v2.2.yml:/etc/prometheus/prometheus.yml:ro' + chr(10) + '    - ./config/loadtest_targets.json:/etc/prometheus/loadtest_targets.json:ro' + chr(10) + '    networks:'
+    if marker in t and 'loadtest_targets.json:/etc/prometheus/loadtest' not in t:
         t = t.replace(marker, new_mount, 1)
         f.write_text(t)
-        print("PATCHED loadtest mount")
+        print('PATCHED loadtest mount')
     else:
-        print("SKIP — already patched or marker not found")
-    PATCHEOF
+        print('SKIP - already patched or marker not found')
+    "
   args:
     executable: /bin/bash
   register: mount_patch
