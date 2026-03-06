@@ -1,28 +1,33 @@
 ---
-# ═══════════════════════════════════════════════════════════════════════════════
-# Playbook: validate.yml — Standalone health check
-# ═══════════════════════════════════════════════════════════════════════════════
+# ================================================================
+# Playbook: validate.yml -- Standalone health check
+# ================================================================
 # Usage:
 #   ansible-playbook -i inventories/staging.ini playbooks/validate.yml
 #
 # Use this to verify an existing deployment without re-deploying.
 # On failure, automatically generates a debug bundle.
-# ═══════════════════════════════════════════════════════════════════════════════
+# ================================================================
 
-- name: "Rhinometric — Health Validation"
+- name: "Rhinometric -- Health Validation"
   hosts: rhinometric
   become: true
   gather_facts: true
+
+  vars:
+    rhinometric_install_dir: "/opt/rhinometric"
+    rhinometric_compose_project_name: "rhinometric"
+    rhinometric_data_dir: "/root/rhinometric_data_v2.5"
 
   pre_tasks:
     - name: Display validation banner
       ansible.builtin.debug:
         msg: |
-          ╔══════════════════════════════════════════════════════════════╗
-          ║  RHINOMETRIC — Standalone Health Validation                  ║
-          ║  Target:  {{ inventory_hostname }}
-          ║  Date:    {{ ansible_date_time.iso8601 }}
-          ╚══════════════════════════════════════════════════════════════╝
+          ================================================================
+          RHINOMETRIC -- Standalone Health Validation
+          Target:  {{ inventory_hostname }}
+          Date:    {{ ansible_date_time.iso8601 }}
+          ================================================================
 
     - name: Verify install directory exists
       ansible.builtin.stat:
@@ -43,14 +48,14 @@
           ansible.builtin.include_role:
             name: rhinometric_validate
           vars:
-            rhinometric_validate_compose_up_wait: 5   # Skip long wait for existing deployments
+            rhinometric_validate_compose_up_wait: 5
 
       rescue:
-        - name: Validation failed — collecting debug bundle
+        - name: Validation failed -- collecting debug bundle
           ansible.builtin.include_role:
             name: rhinometric_debugbundle
 
         - name: Report validation failure
           ansible.builtin.fail:
             msg: >-
-              Health validation FAILED. Debug bundle generated — see output above.
+              Health validation FAILED. Debug bundle generated -- see output above.

@@ -149,7 +149,7 @@
       {{ _http_results | default([]) + [{
         'path': item.item.path,
         'name': item.item.name,
-        'critical': item.item.critical | default(true),
+        'critical': (item.item.criticality | default('critical')) == 'critical',
         'status': item.status | default(-1),
         'ok': item.status is defined and item.status in (item.item.expected_status | default([200]))
       }] }}
