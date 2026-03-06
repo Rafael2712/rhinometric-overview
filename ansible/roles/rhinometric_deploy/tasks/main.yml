@@ -171,17 +171,14 @@
     - "{{ rhinometric_install_dir }}/prometheus/loadtest_targets.json"
 
 - name: "Patch: AI anomaly healthcheck — curl → python urllib"
-  ansible.builtin.script:
-    cmd: /dev/stdin
-    executable: /usr/bin/python3
-  args:
-    stdin: |
-      import pathlib, sys
-      f = pathlib.Path("{{ rhinometric_install_dir }}/docker-compose.yml")
-      if not f.exists():
-          sys.exit(0)
-      t = f.read_text()
-      old = """    healthcheck:
+  ansible.builtin.shell: |
+    python3 << 'PATCHEOF'
+    import pathlib, sys
+    f = pathlib.Path("{{ rhinometric_install_dir }}/docker-compose.yml")
+    if not f.exists():
+        sys.exit(0)
+    t = f.read_text()
+    old = """    healthcheck:
         test:
         - CMD
         - curl
@@ -191,7 +188,7 @@
         timeout: 5s
         retries: 3
         start_period: 30s"""
-      new = """    healthcheck:
+    new = """    healthcheck:
         test:
         - CMD
         - python
@@ -201,35 +198,41 @@
         timeout: 10s
         retries: 5
         start_period: 45s"""
-      if old in t:
-          t = t.replace(old, new, 1)
-          f.write_text(t)
-          print("PATCHED ai-anomaly healthcheck")
-      else:
-          print("SKIP — already patched or pattern not found")
+    if old in t:
+        t = t.replace(old, new, 1)
+        f.write_text(t)
+        print("PATCHED ai-anomaly healthcheck")
+    else:
+        print("SKIP — already patched or pattern not found")
+    PATCHEOF
+  args:
+    executable: /bin/bash
   register: hc_patch
   changed_when: "'PATCHED' in hc_patch.stdout"
   when: rhinometric_patch_ai_anomaly_hc
 
 - name: "Patch: loadtest_targets.json volume mount in victoria-metrics"
-  ansible.builtin.script:
-    cmd: /dev/stdin
-    executable: /usr/bin/python3
+  ansible.builtin.shell: |
+    python3 << 'PATCHEOF'
+    import pathlib, sys
+    f = pathlib.Path("{{ rhinometric_install_dir }}/docker-compose.yml")
+    if not f.exists():
+        sys.exit(0)
+    t = f.read_text()
+    marker = "    - ./config/prometheus-v2.2.yml:/etc/prometheus/prometheus.yml:ro
+    networks:"
+    new_mount = "    - ./config/prometheus-v2.2.yml:/etc/prometheus/prometheus.yml:ro
+    - ./config/loadtest_targets.json:/etc/prometheus/loadtest_targets.json:ro
+    networks:"
+    if marker in t and "loadtest_targets.json:/etc/prometheus/loadtest" not in t:
+        t = t.replace(marker, new_mount, 1)
+        f.write_text(t)
+        print("PATCHED loadtest mount")
+    else:
+        print("SKIP — already patched or marker not found")
+    PATCHEOF
   args:
-    stdin: |
-      import pathlib, sys
-      f = pathlib.Path("{{ rhinometric_install_dir }}/docker-compose.yml")
-      if not f.exists():
-          sys.exit(0)
-      t = f.read_text()
-      marker = "    - ./config/prometheus-v2.2.yml:/etc/prometheus/prometheus.yml:ro\n    networks:"
-      new_mount = "    - ./config/prometheus-v2.2.yml:/etc/prometheus/prometheus.yml:ro\n    - ./config/loadtest_targets.json:/etc/prometheus/loadtest_targets.json:ro\n    networks:"
-      if marker in t and "loadtest_targets.json:/etc/prometheus/loadtest" not in t:
-          t = t.replace(marker, new_mount, 1)
-          f.write_text(t)
-          print("PATCHED loadtest mount")
-      else:
-          print("SKIP — already patched or marker not found")
+    executable: /bin/bash
   register: mount_patch
   changed_when: "'PATCHED' in mount_patch.stdout"
   when: rhinometric_patch_loadtest_mount
