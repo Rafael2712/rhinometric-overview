@@ -166,7 +166,7 @@
     content: "[]"
     dest: "{{ item }}"
     mode: "0644"
-    force: false
+    force: true
   loop:
     - "{{ rhinometric_install_dir }}/config/loadtest_targets.json"
     - "{{ rhinometric_install_dir }}/prometheus/loadtest_targets.json"

@@ -156,11 +156,29 @@
   register: env_patch
   changed_when: "'PATCHED' in env_patch.stdout"
 
+
+- name: "DB Migrate: Patch dashboard URLs to use target host IP"
+  ansible.builtin.shell: |
+    cd /opt/rhinometric
+    sed -i -E 's|GF_SERVER_ROOT_URL: https?://[^/]+/grafana|GF_SERVER_ROOT_URL: http://{{ ansible_host }}/grafana|g' docker-compose.yml
+    sed -i -E 's|FRONTEND_URL: https?://[^ ]+|FRONTEND_URL: http://{{ ansible_host }}|g' docker-compose.yml
+    sed -i -E 's|RHINO_PUBLIC_CONSOLE_URL: https?://[^ ]+|RHINO_PUBLIC_CONSOLE_URL: http://{{ ansible_host }}|g' docker-compose.yml
+    grep -c '{{ ansible_host }}' docker-compose.yml
+  register: url_patch
+  changed_when: url_patch.stdout | int > 0
+
+- name: "DB Migrate: Force-recreate Grafana after URL patch"
+  ansible.builtin.shell: |
+    cd /opt/rhinometric
+    docker compose up -d --force-recreate grafana
+  when: url_patch.changed | default(false)
+  register: grafana_recreate
+
 - name: "DB Migrate: Restart backend to trigger bootstrap with correct credentials"
   ansible.builtin.command:
     cmd: docker compose restart rhinometric-console-backend
     chdir: "{{ rhinometric_install_dir }}"
-  when: env_patch.changed | default(false) or sql_migration_result.changed | default(false)
+  when: env_patch.changed | default(false) or sql_migration_result.changed | default(false) or url_patch.changed | default(false)
   changed_when: true
 
 - name: "DB Migrate: Wait for backend to be healthy after restart"
@@ -171,7 +189,7 @@
   retries: 20
   delay: 5
   changed_when: false
-  when: env_patch.changed | default(false) or sql_migration_result.changed | default(false)
+  when: env_patch.changed | default(false) or sql_migration_result.changed | default(false) or url_patch.changed | default(false)
 
 - name: "DB Migrate: Verify admin user exists in database"
   ansible.builtin.command:
