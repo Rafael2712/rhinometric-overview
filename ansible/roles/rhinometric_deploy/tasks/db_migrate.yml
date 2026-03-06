@@ -157,6 +157,38 @@
   changed_when: "'PATCHED' in env_patch.stdout"
 
 
+
+- name: "DB Migrate: Patch frontend JS bundle - replace hardcoded Grafana URL"
+  ansible.builtin.shell: |
+    JS_FILE=$(docker exec rhinometric-console-frontend find /usr/share/nginx/html -name "*.js" -exec grep -l "grafana" {} \; 2>/dev/null | head -1)
+    if [ -z "$JS_FILE" ]; then
+      echo "SKIP - no JS file with grafana reference found"
+      exit 0
+    fi
+    docker cp "rhinometric-console-frontend:$JS_FILE" /tmp/frontend_patch.js
+    BEFORE=$(grep -c '{{ ansible_host }}/grafana' /tmp/frontend_patch.js || true)
+    sed -i -E 's|https?://[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+/grafana|http://{{ ansible_host }}/grafana|g' /tmp/frontend_patch.js
+    sed -i -E 's|https?://[a-zA-Z0-9._-]+\.rhinometric\.com/grafana|http://{{ ansible_host }}/grafana|g' /tmp/frontend_patch.js
+    AFTER=$(grep -c '{{ ansible_host }}/grafana' /tmp/frontend_patch.js || true)
+    docker cp /tmp/frontend_patch.js "rhinometric-console-frontend:$JS_FILE"
+    if [ "$AFTER" -gt "$BEFORE" ] || [ "$AFTER" -gt 0 ]; then
+      docker commit rhinometric-console-frontend $(docker inspect --format '{{ '{{' }}.Config.Image{{ '}}' }}' rhinometric-console-frontend)
+      echo "PATCHED frontend JS + committed image ($AFTER references)"
+    else
+      echo "SKIP - no grafana URL changes needed"
+    fi
+  register: frontend_js_patch
+  changed_when: "'PATCHED' in frontend_js_patch.stdout"
+
+- name: "DB Migrate: Patch ai-anomaly GRAFANA_URL in docker-compose"
+  ansible.builtin.shell: |
+    cd {{ rhinometric_install_dir }}
+    sed -i -E 's|GRAFANA_URL: https?://[a-zA-Z0-9._-]+\.rhinometric\.com|GRAFANA_URL: http://{{ ansible_host }}/grafana|g' docker-compose.yml
+    sed -i -E 's|GRAFANA_URL: https?://[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+/grafana|GRAFANA_URL: http://{{ ansible_host }}/grafana|g' docker-compose.yml
+    grep -c '{{ ansible_host }}/grafana' docker-compose.yml
+  register: ai_grafana_patch
+  changed_when: ai_grafana_patch.stdout | int > 0
+
 - name: "DB Migrate: Patch dashboard URLs to use target host IP"
   ansible.builtin.shell: |
     cd /opt/rhinometric
