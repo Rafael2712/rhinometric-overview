@@ -241,6 +241,12 @@
     regexp: '^version:'
     state: absent
 
+- name: "Patch: victoria-metrics healthcheck -- localhost to 127.0.0.1"
+  ansible.builtin.replace:
+    path: "{{ rhinometric_install_dir }}/docker-compose.yml"
+    regexp: 'http://localhost:8428'
+    replace: 'http://127.0.0.1:8428'
+
 # ── Phase 5: Prepare Runtime Volume Directories ─────────────────────────────
 
 - name: Create runtime volume directories
