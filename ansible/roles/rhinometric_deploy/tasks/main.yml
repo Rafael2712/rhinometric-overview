@@ -146,6 +146,7 @@
     mode: "0600"
     force: false    # Never overwrite existing .env (idempotent / preserve passwords)
   no_log: true
+  when: not env_file_stat.stat.exists
 
 # ── Phase 4: Patch Known Config Issues (from Bash era) ──────────────────────
 
