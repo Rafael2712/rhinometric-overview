@@ -1,0 +1,195 @@
+---
+# ════════════════════════════════════════════════════════════════════════════
+# Post-deploy: Database Migrations & Bootstrap
+# ════════════════════════════════════════════════════════════════════════════
+# Ensures the database schema is always up-to-date after every deploy.
+# Solves the recurring bug where tables don't exist on fresh installs.
+#
+# Strategy:
+#   1. Wait for postgres to be ready (healthcheck)
+#   2. Run the SQL base migration (001_rbac_tables.sql) — idempotent
+#   3. Run alembic migrations — idempotent (stamp if multiple heads)
+#   4. Patch docker-compose.yml so backend reads ADMIN_PASSWORD correctly
+#   5. Restart backend to trigger bootstrap (admin user creation)
+# ════════════════════════════════════════════════════════════════════════════
+
+- name: "DB Migrate: Wait for PostgreSQL to be healthy"
+  ansible.builtin.command:
+    cmd: docker inspect --format '{{ '{{' }}.State.Health.Status{{ '}}' }}' rhinometric-postgres
+  register: pg_health
+  until: pg_health.stdout == 'healthy'
+  retries: 30
+  delay: 5
+  changed_when: false
+
+- name: "DB Migrate: Check if base SQL migration exists in backend container"
+  ansible.builtin.command:
+    cmd: docker exec rhinometric-console-backend test -f /app/migrations/001_rbac_tables.sql
+  register: sql_migration_exists
+  changed_when: false
+  failed_when: false
+
+- name: "DB Migrate: Check if users table already exists"
+  ansible.builtin.command:
+    cmd: >-
+      docker exec rhinometric-postgres
+      psql -U rhinometric -d rhinometric -tAc
+      "SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'users');"
+  register: users_table_check
+  changed_when: false
+
+- name: "DB Migrate: Run base SQL migration (001_rbac_tables.sql)"
+  ansible.builtin.shell: |
+    docker cp rhinometric-console-backend:/app/migrations/001_rbac_tables.sql /tmp/_rbac_migration.sql
+    docker cp /tmp/_rbac_migration.sql rhinometric-postgres:/tmp/_rbac_migration.sql
+    docker exec rhinometric-postgres psql -U rhinometric -d rhinometric -f /tmp/_rbac_migration.sql
+    rm -f /tmp/_rbac_migration.sql
+  args:
+    chdir: "{{ rhinometric_install_dir }}"
+  register: sql_migration_result
+  when:
+    - sql_migration_exists.rc == 0
+    - users_table_check.stdout | trim != 't'
+  changed_when: "'CREATE TABLE' in sql_migration_result.stdout | default('')"
+
+- name: "DB Migrate: Show SQL migration result"
+  ansible.builtin.debug:
+    msg: "{{ sql_migration_result.stdout_lines | default(['Skipped — tables already exist']) }}"
+
+- name: "DB Migrate: Check if alembic is available in backend"
+  ansible.builtin.command:
+    cmd: docker exec rhinometric-console-backend which alembic
+  register: alembic_available
+  changed_when: false
+  failed_when: false
+
+- name: "DB Migrate: Check alembic heads count"
+  ansible.builtin.shell: |
+    docker exec rhinometric-console-backend alembic heads 2>&1 | grep -c "(head)"
+  register: alembic_heads_count
+  changed_when: false
+  failed_when: false
+  when: alembic_available.rc == 0
+
+- name: "DB Migrate: Merge alembic heads if multiple exist"
+  ansible.builtin.shell: |
+    docker exec rhinometric-console-backend alembic merge --message "auto_merge_heads" heads 2>&1 || true
+  register: alembic_merge
+  when:
+    - alembic_available.rc == 0
+    - (alembic_heads_count.stdout | default('1') | trim | int) > 1
+  changed_when: "'Generating' in alembic_merge.stdout | default('')"
+
+- name: "DB Migrate: Run alembic upgrade heads"
+  ansible.builtin.shell: |
+    docker exec rhinometric-console-backend alembic upgrade heads 2>&1 || \
+    docker exec rhinometric-console-backend alembic stamp heads 2>&1
+  register: alembic_result
+  when: alembic_available.rc == 0
+  changed_when: "'Running upgrade' in alembic_result.stdout | default('')"
+
+- name: "DB Migrate: Ensure all alembic columns exist (idempotent safety net)"
+  ansible.builtin.command:
+    cmd: >-
+      docker exec rhinometric-postgres psql -U rhinometric -d rhinometric -c "
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS sso_provider VARCHAR(50);
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS sso_external_id VARCHAR(255);
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN DEFAULT false;
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP WITH TIME ZONE;
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS deleted_by INTEGER;
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN DEFAULT FALSE;
+        CREATE TABLE IF NOT EXISTS password_reset_tokens (
+          id SERIAL PRIMARY KEY,
+          user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          token VARCHAR(255) NOT NULL UNIQUE,
+          expires_at TIMESTAMP NOT NULL,
+          used BOOLEAN NOT NULL DEFAULT FALSE,
+          created_at TIMESTAMP DEFAULT NOW()
+        );
+        CREATE TABLE IF NOT EXISTS license_limits (
+          id SERIAL PRIMARY KEY,
+          role_name VARCHAR(50) NOT NULL UNIQUE,
+          max_users INTEGER,
+          tier_required VARCHAR(50) NOT NULL,
+          description TEXT,
+          created_at TIMESTAMP DEFAULT NOW(),
+          updated_at TIMESTAMP DEFAULT NOW()
+        );
+      "
+  register: safety_net_result
+  changed_when: false
+  when: users_table_check.stdout | trim == 't' or sql_migration_exists.rc == 0
+
+- name: "DB Migrate: Patch docker-compose ADMIN env vars for bootstrap compatibility"
+  ansible.builtin.shell: |
+    python3 << 'PYEOF'
+    import pathlib
+    f = pathlib.Path("{{ rhinometric_install_dir }}/docker-compose.yml")
+    if not f.exists():
+        print("SKIP - no docker-compose.yml")
+        exit(0)
+    t = f.read_text()
+    changed = False
+    # The bootstrap.py reads RHINO_ADMIN_USER / RHINO_ADMIN_PASSWORD
+    # but docker-compose.yml only sets ADMIN_USERNAME / ADMIN_PASSWORD.
+    # Add the RHINO_ prefixed vars so bootstrap picks up the .env values.
+    if 'RHINO_ADMIN_USER' not in t:
+        t = t.replace(
+            '      ADMIN_USERNAME: admin',
+            '      ADMIN_USERNAME: admin\n      RHINO_ADMIN_USER: ${ADMIN_USERNAME:-admin}'
+        )
+        changed = True
+    if 'RHINO_ADMIN_PASSWORD' not in t:
+        t = t.replace(
+            '      ADMIN_PASSWORD: admin',
+            '      ADMIN_PASSWORD: admin\n      RHINO_ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin}'
+        )
+        changed = True
+    if changed:
+        f.write_text(t)
+        print("PATCHED - added RHINO_ADMIN_USER/RHINO_ADMIN_PASSWORD env vars")
+    else:
+        print("SKIP - RHINO_ env vars already present")
+    PYEOF
+  args:
+    executable: /bin/bash
+  register: env_patch
+  changed_when: "'PATCHED' in env_patch.stdout"
+
+- name: "DB Migrate: Restart backend to trigger bootstrap with correct credentials"
+  ansible.builtin.command:
+    cmd: docker compose restart rhinometric-console-backend
+    chdir: "{{ rhinometric_install_dir }}"
+  when: env_patch.changed | default(false) or sql_migration_result.changed | default(false)
+  changed_when: true
+
+- name: "DB Migrate: Wait for backend to be healthy after restart"
+  ansible.builtin.command:
+    cmd: docker inspect --format '{{ '{{' }}.State.Health.Status{{ '}}' }}' rhinometric-console-backend
+  register: backend_health
+  until: backend_health.stdout == 'healthy'
+  retries: 20
+  delay: 5
+  changed_when: false
+  when: env_patch.changed | default(false) or sql_migration_result.changed | default(false)
+
+- name: "DB Migrate: Verify admin user exists in database"
+  ansible.builtin.command:
+    cmd: >-
+      docker exec rhinometric-postgres
+      psql -U rhinometric -d rhinometric -tAc
+      "SELECT count(*) FROM users WHERE username = 'admin' AND is_active = true;"
+  register: admin_user_check
+  changed_when: false
+
+- name: "DB Migrate: Report migration status"
+  ansible.builtin.debug:
+    msg: |
+      ╔════════════════════════════════════════════════════════╗
+      ║  DATABASE MIGRATION REPORT                             ║
+      ╠════════════════════════════════════════════════════════╣
+      ║  SQL Migration: {{ 'EXECUTED' if sql_migration_result is changed else 'SKIPPED (tables exist)' }}
+      ║  Alembic:       {{ 'EXECUTED' if alembic_result is changed else 'UP TO DATE' }}
+      ║  Admin User:    {{ 'OK (' ~ (admin_user_check.stdout | trim) ~ ' found)' if (admin_user_check.stdout | trim | int) > 0 else 'MISSING — check backend logs' }}
+      ║  Env Patch:     {{ 'APPLIED' if env_patch is changed else 'ALREADY OK' }}
+      ╚════════════════════════════════════════════════════════╝

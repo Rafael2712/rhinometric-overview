@@ -329,3 +329,8 @@
 - name: Report running container count
   ansible.builtin.debug:
     msg: "Running containers: {{ running_containers.stdout_lines | length }}"
+
+# -- Phase 7: Database Migrations and Bootstrap ------------------------------------------
+
+- name: Include database migration tasks
+  ansible.builtin.include_tasks: db_migrate.yml
