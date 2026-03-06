@@ -133,16 +133,34 @@
     # The bootstrap.py reads RHINO_ADMIN_USER / RHINO_ADMIN_PASSWORD
     # but docker-compose.yml only sets ADMIN_USERNAME / ADMIN_PASSWORD.
     # Add the RHINO_ prefixed vars so bootstrap picks up the .env values.
+    # Fix 1: ADMIN_PASSWORD is hardcoded as 'admin' in docker-compose.yml
+    # Change it to reference the .env variable so the generated password is used
+    if '      ADMIN_PASSWORD: admin\n' in t:
+        t = t.replace(
+            '      ADMIN_PASSWORD: admin\n',
+            '      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin}\n'
+        )
+        changed = True
+        print("FIX: ADMIN_PASSWORD now reads from .env")
+    # Fix 2: Same for ADMIN_USERNAME
+    if '      ADMIN_USERNAME: admin\n' in t:
+        t = t.replace(
+            '      ADMIN_USERNAME: admin\n',
+            '      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}\n'
+        )
+        changed = True
+        print("FIX: ADMIN_USERNAME now reads from .env")
+    # Fix 3: Ensure RHINO_ prefixed vars exist for bootstrap.py
     if 'RHINO_ADMIN_USER' not in t:
         t = t.replace(
-            '      ADMIN_USERNAME: admin',
-            '      ADMIN_USERNAME: admin\n      RHINO_ADMIN_USER: ${ADMIN_USERNAME:-admin}'
+            '      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}\n',
+            '      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}\n      RHINO_ADMIN_USER: ${ADMIN_USERNAME:-admin}\n'
         )
         changed = True
     if 'RHINO_ADMIN_PASSWORD' not in t:
         t = t.replace(
-            '      ADMIN_PASSWORD: admin',
-            '      ADMIN_PASSWORD: admin\n      RHINO_ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin}'
+            '      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin}\n',
+            '      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin}\n      RHINO_ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin}\n'
         )
         changed = True
     if changed:
