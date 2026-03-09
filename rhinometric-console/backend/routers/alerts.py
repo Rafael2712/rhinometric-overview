@@ -408,3 +408,139 @@ async def resolve_alert(
     db.flush()
 
     return {"status": "resolved", "fingerprint": fingerprint, "resolved_by": current_user.username}
+
+
+# ==================================================================
+# POST /api/alerts/webhook — Grafana webhook contact point receiver
+# ==================================================================
+
+from models.alert_history import AlertHistory
+from datetime import datetime as dt_parser
+import hashlib
+import logging
+
+logger = logging.getLogger(__name__)
+
+
+@router.post("/webhook")
+async def grafana_webhook(
+    request_body: dict,
+    db: Session = Depends(get_db)
+):
+    """
+    Receives alert notifications from Grafana webhook contact point.
+    Stores each alert in alert_history table for in-console display.
+    No authentication required (internal Docker network only).
+    """
+    alerts = request_body.get("alerts", [])
+    stored = 0
+
+    for alert in alerts:
+        labels = alert.get("labels", {})
+        annotations = alert.get("annotations", {})
+
+        # Generate fingerprint from labels if not provided
+        fingerprint = alert.get("fingerprint", "")
+        if not fingerprint:
+            fp_str = str(sorted(labels.items()))
+            fingerprint = hashlib.md5(fp_str.encode()).hexdigest()[:16]
+
+        # Parse timestamps
+        starts_at = None
+        ends_at = None
+        try:
+            if alert.get("startsAt"):
+                starts_at = datetime.fromisoformat(alert["startsAt"])
+            if alert.get("endsAt") and alert["endsAt"] != "0001-01-01T00:00:00Z":
+                ends_at = datetime.fromisoformat(alert["endsAt"])
+        except Exception:
+            pass
+
+        # Extract value if present
+        value = None
+        try:
+            value_str = alert.get("valueString", "")
+            if value_str:
+                # Try to extract numeric value from Grafana value string
+                import re
+                nums = re.findall(r'[-+]?\d*\.?\d+', value_str)
+                if nums:
+                    value = float(nums[0])
+        except Exception:
+            pass
+
+        record = AlertHistory(
+            fingerprint=fingerprint,
+            alertname=labels.get("alertname", "unknown"),
+            status=alert.get("status", "unknown"),
+            severity=labels.get("severity", "unknown"),
+            category=labels.get("category", ""),
+            service_name=labels.get("service_name", ""),
+            summary=annotations.get("summary", ""),
+            description=annotations.get("description", ""),
+            labels=labels,
+            annotations=annotations,
+            value=value,
+            starts_at=starts_at,
+            ends_at=ends_at,
+            generator_url=alert.get("generatorURL", ""),
+        )
+        db.add(record)
+        stored += 1
+
+    db.commit()
+    logger.info(f"Webhook received {len(alerts)} alerts, stored {stored}")
+    return {"status": "ok", "received": len(alerts), "stored": stored}
+
+
+# ==================================================================
+# GET /api/alerts/history — Query alert history from database
+# ==================================================================
+
+@router.get("/history")
+async def get_alert_history(
+    current_user: UserModel = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    category: Optional[str] = Query(None, description="Filter by category (e.g. external-services)"),
+    severity: Optional[str] = Query(None, description="Filter by severity"),
+    service_name: Optional[str] = Query(None, description="Filter by service name"),
+    status: Optional[str] = Query(None, description="Filter by status (firing/resolved)"),
+    limit: int = Query(100, ge=1, le=1000),
+    offset: int = Query(0, ge=0),
+):
+    """Get alert history from the database, newest first."""
+    query = db.query(AlertHistory)
+
+    if category:
+        query = query.filter(AlertHistory.category == category)
+    if severity:
+        query = query.filter(AlertHistory.severity == severity)
+    if service_name:
+        query = query.filter(AlertHistory.service_name == service_name)
+    if status:
+        query = query.filter(AlertHistory.status == status)
+
+    total = query.count()
+    records = query.order_by(AlertHistory.created_at.desc()).offset(offset).limit(limit).all()
+
+    return {
+        "total": total,
+        "alerts": [
+            {
+                "id": r.id,
+                "fingerprint": r.fingerprint,
+                "alertname": r.alertname,
+                "status": r.status,
+                "severity": r.severity,
+                "category": r.category,
+                "service_name": r.service_name,
+                "summary": r.summary,
+                "description": r.description,
+                "value": r.value,
+                "starts_at": r.starts_at.isoformat() if r.starts_at else None,
+                "ends_at": r.ends_at.isoformat() if r.ends_at else None,
+                "created_at": r.created_at.isoformat() if r.created_at else None,
+            }
+            for r in records
+        ],
+    }

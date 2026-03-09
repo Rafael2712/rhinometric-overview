@@ -6,6 +6,7 @@ from models.user import Base as UserBase
 from models.role import Base as RoleBase
 from models.alert_acknowledgement import AlertAcknowledgement
 
+from models.alert_history import AlertHistory
 # Observability imports
 from telemetry import setup_telemetry
 from metrics import PrometheusMiddleware, metrics_endpoint, update_db_pool_metrics
@@ -71,6 +72,12 @@ async def startup_event():
         logger.info("Alert acknowledgements table ready")
     except Exception as e:
         logger.warning(f"Could not create alert_acknowledgements table: {e}")
+    # Auto-create alert_history table
+    try:
+        AlertHistory.__table__.create(bind=engine, checkfirst=True)
+        logger.info("Alert history table ready")
+    except Exception as e:
+        logger.warning(f"Could not create alert_history table: {e}")
 
     # NOTE: Tables should already exist from migration script
 
