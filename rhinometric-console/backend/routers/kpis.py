@@ -6,6 +6,8 @@ from datetime import datetime, timedelta
 from config import settings
 from routers.auth import get_current_user
 from models.user import User as UserModel
+from database import SessionLocal
+from models.external_service import ExternalService
 
 router = APIRouter()
 
@@ -133,6 +135,17 @@ async def get_kpis(current_user: UserModel = Depends(get_current_user)):
             platform_results = platform_data.get("data", {}).get("result", [])
             platform_count = int(platform_results[0].get("value", [0, "0"])[1]) if platform_results else 0
             
+            # Count external services (enabled + up)
+            ext_total = 0
+            ext_up = 0
+            try:
+                db = SessionLocal()
+                ext_total = db.query(ExternalService).filter(ExternalService.enabled == True).count()
+                ext_up = db.query(ExternalService).filter(ExternalService.enabled == True, ExternalService.status == 'up').count()
+                db.close()
+            except Exception as e:
+                print(f"Error counting external services: {e}")
+
             # Get ACTIVE anomalies count from AI service (no auth required)
             # Use active_count instead of total to match Anomalies page
             anomalies_count = 0
@@ -187,9 +200,9 @@ async def get_kpis(current_user: UserModel = Depends(get_current_user)):
                     "total_count": total_count
                 },
                 monitored_hosts={
-                    "value": str(service_count),
+                    "value": str(service_count + ext_up),
                     "status": "success",
-                    "change": f"Client services (Total: {service_count + platform_count} incl. platform)"
+                    "change": f"Client services (Total: {service_count + ext_total + platform_count} incl. platform)"
                 },
                 active_anomalies={
                     "value": str(anomalies_count),

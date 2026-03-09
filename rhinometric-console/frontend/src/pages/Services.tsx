@@ -1,129 +1,309 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import {
-  Server, AlertCircle, CheckCircle, Activity, Layers,
-  Globe, Database, Webhook, Cpu, Radio, Wifi, Shield,
-  FileText, BarChart3, Network, MonitorSmartphone, Box
+  Server, AlertCircle, CheckCircle, Activity, Globe, Database, 
+  Network, Plus, Trash2, Play, Power, PowerOff, Edit, ArrowLeft,
+  RefreshCw, Clock
 } from 'lucide-react'
 import { useAuthStore } from '../lib/auth/store'
 
-/* ------------------------------------------------------------------ */
-/*  Types                                                              */
-/* ------------------------------------------------------------------ */
+/* ─── Types ──────────────────────────────────────────────────── */
 
-interface Service {
+interface ExternalServiceData {
+  id: number
   name: string
-  instance: string
-  status: 'up' | 'down'
-  tier: string
-  service_type: string
-  version: string
-  is_platform: boolean
-  service_category: string
+  service_type: 'http' | 'postgresql'
+  environment: string | null
+  description: string | null
+  enabled: boolean
+  config: Record<string, any>
+  timeout_seconds: number
+  check_interval_seconds: number
+  status: 'unknown' | 'up' | 'down' | 'degraded' | 'error'
+  status_message: string | null
+  last_check_at: string | null
+  last_response_time_ms: number | null
+  last_status_code: number | null
+  created_by: number | null
+  created_at: string | null
+  updated_at: string | null
+}
+
+interface PlatformService {
+  name: string; instance: string; status: 'up' | 'down'
+  tier: string; service_type: string; version: string
+  is_platform: boolean; service_category: string
   labels: Record<string, string>
 }
-
-interface ServiceGroup {
-  services: Service[]
-  total: number
-  up: number
-  down: number
+interface PlatformGroup { services: PlatformService[]; total: number; up: number; down: number }
+interface PlatformData {
+  services: PlatformService[]; total: number; up: number; down: number
+  platform: PlatformGroup; external: PlatformGroup; timestamp: string
 }
 
-interface ServicesData {
-  services: Service[]
-  total: number
-  up: number
-  down: number
-  platform: ServiceGroup
-  external: ServiceGroup
-  timestamp: string
+interface ExtSummary { total: number; enabled: number; up: number; down: number; degraded: number; unknown: number }
+
+type Tab = 'external' | 'platform'
+type View = 'list' | 'create' | 'edit'
+
+/* ─── Helpers ────────────────────────────────────────────────── */
+
+const STATUS_BADGE: Record<string, { bg: string; text: string; Icon: any }> = {
+  up:       { bg: 'bg-green-400/10', text: 'text-green-400', Icon: CheckCircle },
+  down:     { bg: 'bg-red-400/10',   text: 'text-red-400',   Icon: AlertCircle },
+  degraded: { bg: 'bg-yellow-400/10',text: 'text-yellow-400', Icon: AlertCircle },
+  error:    { bg: 'bg-red-400/10',   text: 'text-red-400',   Icon: AlertCircle },
+  unknown:  { bg: 'bg-gray-400/10',  text: 'text-gray-400',  Icon: Clock },
 }
 
-type Tab = 'platform' | 'external'
-
-/* ------------------------------------------------------------------ */
-/*  Helpers                                                            */
-/* ------------------------------------------------------------------ */
-
-const STATUS_COLORS: Record<string, string> = {
-  up: 'text-green-400',
-  down: 'text-red-400',
-}
-const STATUS_BG: Record<string, string> = {
-  up: 'bg-green-400/10',
-  down: 'bg-red-400/10',
+const TYPE_META: Record<string, { label: string; color: string; Icon: any }> = {
+  http:       { label: 'HTTP / HTTPS', color: 'bg-violet-400/10 text-violet-400', Icon: Network },
+  postgresql: { label: 'PostgreSQL',   color: 'bg-orange-400/10 text-orange-400', Icon: Database },
 }
 
-const TIER_COLORS: Record<string, string> = {
-  application: 'bg-blue-400/10 text-blue-400',
-  telemetry: 'bg-purple-400/10 text-purple-400',
-  health: 'bg-cyan-400/10 text-cyan-400',
-  monitoring: 'bg-yellow-400/10 text-yellow-400',
-  infrastructure: 'bg-gray-400/10 text-gray-400',
-}
-
-/** Visual badge per external-service category */
-const CATEGORY_META: Record<string, { label: string; color: string; Icon: React.ElementType }> = {
-  'website':        { label: 'Website',        color: 'bg-sky-400/10 text-sky-400',    Icon: Globe },
-  'database':       { label: 'Database',       color: 'bg-orange-400/10 text-orange-400', Icon: Database },
-  'api-rest':       { label: 'API / REST',     color: 'bg-violet-400/10 text-violet-400', Icon: Network },
-  'webhook':        { label: 'Webhook',        color: 'bg-pink-400/10 text-pink-400',  Icon: Webhook },
-  'host-metrics':   { label: 'Host Metrics',   color: 'bg-emerald-400/10 text-emerald-400', Icon: Cpu },
-  'message-broker': { label: 'Message Broker', color: 'bg-amber-400/10 text-amber-400', Icon: Radio },
-  'logging':        { label: 'Logging',        color: 'bg-teal-400/10 text-teal-400',  Icon: FileText },
-  'tracing':        { label: 'Tracing',        color: 'bg-indigo-400/10 text-indigo-400', Icon: BarChart3 },
-  'dns':            { label: 'DNS',            color: 'bg-lime-400/10 text-lime-400',  Icon: Wifi },
-  'ssl-certificate':{ label: 'SSL / TLS',      color: 'bg-green-400/10 text-green-400', Icon: Shield },
-  'snmp':           { label: 'SNMP',           color: 'bg-yellow-400/10 text-yellow-400', Icon: MonitorSmartphone },
-  'custom':         { label: 'Custom',         color: 'bg-gray-400/10 text-gray-400',  Icon: Box },
-}
-
-function categoryBadge(cat: string) {
-  const meta = CATEGORY_META[cat] || CATEGORY_META['custom']
-  const { label, color, Icon } = meta
+function StatusBadge({ status }: { status: string }) {
+  const s = STATUS_BADGE[status] || STATUS_BADGE.unknown
   return (
-    <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ${color}`}>
-      <Icon className="w-3 h-3" />
-      {label}
+    <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ${s.bg} ${s.text}`}>
+      <s.Icon className="w-3 h-3" /> {status.toUpperCase()}
     </span>
   )
 }
 
-/* ------------------------------------------------------------------ */
-/*  Component                                                          */
-/* ------------------------------------------------------------------ */
+function TypeBadge({ type }: { type: string }) {
+  const t = TYPE_META[type] || TYPE_META.http
+  return (
+    <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ${t.color}`}>
+      <t.Icon className="w-3 h-3" /> {t.label}
+    </span>
+  )
+}
+
+function targetDisplay(svc: ExternalServiceData): string {
+  if (svc.service_type === 'http') return svc.config?.url || '-'
+  if (svc.service_type === 'postgresql') {
+    const h = svc.config?.host || 'localhost'
+    const p = svc.config?.port || 5432
+    const d = svc.config?.database_name || ''
+    return `${h}:${p}/${d}`
+  }
+  return '-'
+}
+
+/* ─── HTTP Form ──────────────────────────────────────────────── */
+
+function HttpForm({ config, onChange }: { config: Record<string,any>; onChange: (c: Record<string,any>) => void }) {
+  const set = (k: string, v: any) => onChange({ ...config, [k]: v })
+  return (
+    <div className="space-y-4">
+      <div>
+        <label className="block text-sm font-medium text-gray-300 mb-1">Endpoint URL *</label>
+        <input type="url" value={config.url || ''} onChange={e => set('url', e.target.value)}
+          placeholder="https://api.example.com" className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-3 py-2 text-white placeholder-gray-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-300 mb-1">Health Path</label>
+          <input type="text" value={config.health_path || ''} onChange={e => set('health_path', e.target.value)}
+            placeholder="/health" className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-3 py-2 text-white placeholder-gray-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-300 mb-1">Method</label>
+          <select value={config.method || 'GET'} onChange={e => set('method', e.target.value)}
+            className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-3 py-2 text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
+            <option value="GET">GET</option><option value="POST">POST</option><option value="HEAD">HEAD</option>
+          </select>
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-300 mb-1">Auth Type</label>
+          <select value={config.auth_type || ''} onChange={e => set('auth_type', e.target.value)}
+            className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-3 py-2 text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
+            <option value="">None</option><option value="bearer">Bearer Token</option><option value="api_key">API Key</option><option value="basic">Basic Auth</option>
+          </select>
+        </div>
+        {config.auth_type && (
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1">Auth Value</label>
+            <input type="password" value={config.auth_value || ''} onChange={e => set('auth_value', e.target.value)}
+              placeholder="Token or key" className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-3 py-2 text-white placeholder-gray-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+/* ─── PostgreSQL Form ────────────────────────────────────────── */
+
+function PgForm({ config, onChange }: { config: Record<string,any>; onChange: (c: Record<string,any>) => void }) {
+  const set = (k: string, v: any) => onChange({ ...config, [k]: v })
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-3 gap-4">
+        <div className="col-span-2">
+          <label className="block text-sm font-medium text-gray-300 mb-1">Host *</label>
+          <input type="text" value={config.host || ''} onChange={e => set('host', e.target.value)}
+            placeholder="db.example.com" className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-3 py-2 text-white placeholder-gray-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-300 mb-1">Port</label>
+          <input type="number" value={config.port || 5432} onChange={e => set('port', parseInt(e.target.value) || 5432)}
+            className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-3 py-2 text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
+        </div>
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-300 mb-1">Database Name *</label>
+        <input type="text" value={config.database_name || ''} onChange={e => set('database_name', e.target.value)}
+          placeholder="mydb" className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-3 py-2 text-white placeholder-gray-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-300 mb-1">Username *</label>
+          <input type="text" value={config.username || ''} onChange={e => set('username', e.target.value)}
+            placeholder="postgres" className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-3 py-2 text-white placeholder-gray-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-300 mb-1">Password *</label>
+          <input type="password" value={config.password || ''} onChange={e => set('password', e.target.value)}
+            placeholder="password" className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-3 py-2 text-white placeholder-gray-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
+        </div>
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-300 mb-1">SSL Mode</label>
+        <select value={config.ssl_mode || 'prefer'} onChange={e => set('ssl_mode', e.target.value)}
+          className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-3 py-2 text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
+          <option value="disable">Disable</option><option value="prefer">Prefer</option><option value="require">Require</option>
+        </select>
+      </div>
+    </div>
+  )
+}
+/* ─── Main Component ─────────────────────────────────────────── */
 
 export default function Services() {
-  const [servicesData, setServicesData] = useState<ServicesData | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<Tab>('platform')
   const { token } = useAuthStore()
+  const [activeTab, setActiveTab] = useState<Tab>('external')
+  const [view, setView] = useState<View>('list')
+  const [extServices, setExtServices] = useState<ExternalServiceData[]>([])
+  const [extSummary, setExtSummary] = useState<ExtSummary>({ total:0, enabled:0, up:0, down:0, degraded:0, unknown:0 })
+  const [platformData, setPlatformData] = useState<PlatformData | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
 
-  useEffect(() => {
-    const fetchServices = async () => {
-      try {
-        const response = await fetch('/api/kpis/services', {
-          headers: { 'Authorization': `Bearer ${token}` },
-        })
-        if (!response.ok) throw new Error(`HTTP ${response.status}`)
-        const data = await response.json()
-        setServicesData(data)
-        setError(null)
-      } catch (err) {
-        console.error('Failed to fetch services:', err)
-        setError(err instanceof Error ? err.message : 'Failed to load services')
-      } finally {
-        setIsLoading(false)
-      }
-    }
-    fetchServices()
-    const interval = setInterval(fetchServices, 30000)
-    return () => clearInterval(interval)
+  // Form state
+  const [formType, setFormType] = useState<'http' | 'postgresql'>('http')
+  const [formName, setFormName] = useState('')
+  const [formEnv, setFormEnv] = useState('')
+  const [formDesc, setFormDesc] = useState('')
+  const [formConfig, setFormConfig] = useState<Record<string,any>>({})
+  const [formTimeout, setFormTimeout] = useState(10)
+  const [formInterval, setFormInterval] = useState(60)
+  const [editId, setEditId] = useState<number | null>(null)
+
+  // Test connection state
+  const [testing, setTesting] = useState(false)
+  const [testResult, setTestResult] = useState<any>(null)
+  const [actionLoading, setActionLoading] = useState<number | null>(null)
+
+  const apiHeaders = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
+
+  const fetchExternal = useCallback(async () => {
+    try {
+      const [listRes, sumRes] = await Promise.all([
+        fetch('/api/external-services', { headers: apiHeaders }),
+        fetch('/api/external-services/summary', { headers: apiHeaders }),
+      ])
+      if (listRes.ok) setExtServices(await listRes.json())
+      if (sumRes.ok) setExtSummary(await sumRes.json())
+    } catch (e) { console.error('ext fetch error', e) }
   }, [token])
 
-  /* ---------- Loading / Error states ---------- */
+  const fetchPlatform = useCallback(async () => {
+    try {
+      const res = await fetch('/api/kpis/services', { headers: apiHeaders })
+      if (res.ok) setPlatformData(await res.json())
+    } catch (e) { console.error('platform fetch error', e) }
+  }, [token])
 
+  useEffect(() => {
+    const load = async () => {
+      setIsLoading(true)
+      await Promise.all([fetchExternal(), fetchPlatform()])
+      setIsLoading(false)
+    }
+    load()
+    const iv = setInterval(() => { fetchExternal(); fetchPlatform() }, 30000)
+    return () => clearInterval(iv)
+  }, [fetchExternal, fetchPlatform])
+
+  // ── Form actions ───────────────────────────────────────────────
+  const resetForm = () => {
+    setFormType('http'); setFormName(''); setFormEnv(''); setFormDesc('')
+    setFormConfig({}); setFormTimeout(10); setFormInterval(60)
+    setEditId(null); setTestResult(null)
+  }
+
+  const openCreate = () => { resetForm(); setView('create') }
+
+  const openEdit = (svc: ExternalServiceData) => {
+    setEditId(svc.id); setFormType(svc.service_type); setFormName(svc.name)
+    setFormEnv(svc.environment || ''); setFormDesc(svc.description || '')
+    setFormConfig(svc.config || {}); setFormTimeout(svc.timeout_seconds)
+    setFormInterval(svc.check_interval_seconds); setTestResult(null)
+    setView('edit')
+  }
+
+  const handleTestConnection = async () => {
+    setTesting(true); setTestResult(null)
+    try {
+      const res = await fetch('/api/external-services/test-connection', {
+        method: 'POST', headers: apiHeaders,
+        body: JSON.stringify({ service_type: formType, config: formConfig, timeout_seconds: formTimeout }),
+      })
+      setTestResult(await res.json())
+    } catch (e: any) { setTestResult({ success: false, status: 'error', message: e.message }) }
+    setTesting(false)
+  }
+
+  const handleSave = async () => {
+    const body = {
+      name: formName, service_type: formType, environment: formEnv || null,
+      description: formDesc || null, config: formConfig,
+      timeout_seconds: formTimeout, check_interval_seconds: formInterval, enabled: true,
+    }
+    try {
+      const url = editId ? `/api/external-services/${editId}` : '/api/external-services'
+      const method = editId ? 'PUT' : 'POST'
+      const res = await fetch(url, { method, headers: apiHeaders, body: JSON.stringify(body) })
+      if (!res.ok) { const d = await res.json(); alert(d.detail || 'Save failed'); return }
+      await fetchExternal()
+      setView('list'); resetForm()
+    } catch (e: any) { alert(e.message) }
+  }
+
+  const handleDelete = async (id: number) => {
+    if (!confirm('Delete this service?')) return
+    setActionLoading(id)
+    await fetch(`/api/external-services/${id}`, { method: 'DELETE', headers: apiHeaders })
+    await fetchExternal()
+    setActionLoading(null)
+  }
+
+  const handleToggle = async (id: number) => {
+    setActionLoading(id)
+    await fetch(`/api/external-services/${id}/toggle`, { method: 'POST', headers: apiHeaders })
+    await fetchExternal()
+    setActionLoading(null)
+  }
+
+  const handleTestSaved = async (id: number) => {
+    setActionLoading(id)
+    await fetch(`/api/external-services/${id}/test`, { method: 'POST', headers: apiHeaders })
+    await fetchExternal()
+    setActionLoading(null)
+  }
+
+  // ── Loading ────────────────────────────────────────────────────
   if (isLoading) {
     return (
       <div className="space-y-6">
@@ -135,231 +315,341 @@ export default function Services() {
     )
   }
 
-  if (error) {
+  const platform = platformData?.platform ?? { services: [], total: 0, up: 0, down: 0 }
+
+  // ── Create/Edit Form View ──────────────────────────────────────
+  if (view === 'create' || view === 'edit') {
+    const isValid = formName.trim() && (
+      formType === 'http' ? !!formConfig.url :
+      formType === 'postgresql' ? !!(formConfig.host && formConfig.database_name && formConfig.username) : false
+    )
     return (
-      <div className="space-y-6">
-        <h1 className="text-3xl font-bold text-white">Services</h1>
-        <div className="bg-red-500/10 border border-red-500/50 rounded-lg p-6">
-          <div className="flex items-center gap-3">
-            <AlertCircle className="w-6 h-6 text-red-400" />
+      <div className="space-y-6 max-w-3xl">
+        <div className="flex items-center gap-3">
+          <button onClick={() => { setView('list'); resetForm() }} className="p-2 rounded-lg hover:bg-gray-700/50 text-gray-400 hover:text-white">
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          <h1 className="text-2xl font-bold text-white">
+            {view === 'edit' ? 'Edit Service' : 'Connect External Service'}
+          </h1>
+        </div>
+
+        {/* Type selector (only on create) */}
+        {view === 'create' && (
+          <div className="grid grid-cols-2 gap-4">
+            {(['http', 'postgresql'] as const).map(t => (
+              <button key={t} onClick={() => { setFormType(t); setFormConfig({}) }}
+                className={`p-4 rounded-lg border-2 transition-all ${formType === t ? 'border-blue-500 bg-blue-500/10' : 'border-gray-700 hover:border-gray-600 bg-gray-800/50'}`}>
+                <div className="flex items-center gap-3">
+                  {t === 'http' ? <Network className="w-8 h-8 text-violet-400" /> : <Database className="w-8 h-8 text-orange-400" />}
+                  <div className="text-left">
+                    <p className="text-white font-semibold">{t === 'http' ? 'HTTP / HTTPS API' : 'PostgreSQL'}</p>
+                    <p className="text-gray-400 text-sm">{t === 'http' ? 'Monitor REST APIs, websites, webhooks' : 'Monitor PostgreSQL databases'}</p>
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Common fields */}
+        <div className="bg-gray-800/50 rounded-lg border border-gray-700/50 p-6 space-y-4">
+          <h2 className="text-lg font-semibold text-white mb-2">General</h2>
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1">Service Name *</label>
+            <input type="text" value={formName} onChange={e => setFormName(e.target.value)}
+              placeholder="My API Service" className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-3 py-2 text-white placeholder-gray-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
             <div>
-              <p className="text-red-400 font-medium">Failed to load services</p>
-              <p className="text-gray-400 text-sm mt-1">{error}</p>
+              <label className="block text-sm font-medium text-gray-300 mb-1">Environment</label>
+              <input type="text" value={formEnv} onChange={e => setFormEnv(e.target.value)}
+                placeholder="production" className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-3 py-2 text-white placeholder-gray-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">Timeout (s)</label>
+              <input type="number" value={formTimeout} onChange={e => setFormTimeout(parseInt(e.target.value) || 10)}
+                min={1} max={120} className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-3 py-2 text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
             </div>
           </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1">Description</label>
+            <textarea value={formDesc} onChange={e => setFormDesc(e.target.value)} rows={2}
+              placeholder="Optional description" className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-3 py-2 text-white placeholder-gray-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
+          </div>
+        </div>
+
+        {/* Type-specific fields */}
+        <div className="bg-gray-800/50 rounded-lg border border-gray-700/50 p-6">
+          <h2 className="text-lg font-semibold text-white mb-4">
+            {formType === 'http' ? 'HTTP Connection' : 'PostgreSQL Connection'}
+          </h2>
+          {formType === 'http' ? <HttpForm config={formConfig} onChange={setFormConfig} /> : <PgForm config={formConfig} onChange={setFormConfig} />}
+        </div>
+
+        {/* Test Connection Result */}
+        {testResult && (
+          <div className={`rounded-lg border p-4 ${testResult.success ? 'border-green-500/50 bg-green-500/10' : 'border-red-500/50 bg-red-500/10'}`}>
+            <div className="flex items-center gap-2">
+              {testResult.success ? <CheckCircle className="w-5 h-5 text-green-400" /> : <AlertCircle className="w-5 h-5 text-red-400" />}
+              <span className={testResult.success ? 'text-green-400 font-medium' : 'text-red-400 font-medium'}>
+                {testResult.success ? 'Connection successful' : 'Connection failed'}
+              </span>
+              {testResult.response_time_ms && <span className="text-gray-400 text-sm ml-2">{testResult.response_time_ms.toFixed(0)}ms</span>}
+            </div>
+            <p className="text-gray-400 text-sm mt-1">{testResult.message}</p>
+          </div>
+        )}
+
+        {/* Actions */}
+        <div className="flex items-center gap-3">
+          <button onClick={handleTestConnection} disabled={!isValid || testing}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-600 text-gray-300 hover:text-white hover:border-gray-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+            {testing ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
+            Test Connection
+          </button>
+          <button onClick={handleSave} disabled={!isValid}
+            className="flex items-center gap-2 px-6 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors">
+            {view === 'edit' ? 'Save Changes' : 'Create Service'}
+          </button>
+          <button onClick={() => { setView('list'); resetForm() }}
+            className="px-4 py-2 rounded-lg text-gray-400 hover:text-white transition-colors">
+            Cancel
+          </button>
         </div>
       </div>
     )
   }
-
-  const platform = servicesData?.platform ?? { services: [], total: 0, up: 0, down: 0 }
-  const external = servicesData?.external ?? { services: [], total: 0, up: 0, down: 0 }
-  const current = activeTab === 'platform' ? platform : external
-
-  /* ---------- Render ---------- */
-
+  // ── List View (main render) ────────────────────────────────────
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-white">Services</h1>
-        <p className="text-gray-400 mt-1">Real-time service health monitoring</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-white">Services</h1>
+          <p className="text-gray-400 mt-1">Manage and monitor your connected services</p>
+        </div>
+        {activeTab === 'external' && (
+          <button onClick={openCreate}
+            className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-blue-600 text-white hover:bg-blue-500 font-medium transition-colors shadow-lg shadow-blue-600/20">
+            <Plus className="w-4 h-4" /> Connect Service
+          </button>
+        )}
       </div>
 
-      {/* ── Tabs ── */}
+      {/* Tabs */}
       <div className="flex gap-1 bg-gray-800/60 rounded-lg p-1 w-fit">
-        <button
-          onClick={() => setActiveTab('platform')}
+        <button onClick={() => setActiveTab('external')}
           className={`flex items-center gap-2 px-5 py-2.5 rounded-md text-sm font-medium transition-colors ${
-            activeTab === 'platform'
-              ? 'bg-blue-500/20 text-blue-400 shadow-sm'
-              : 'text-gray-400 hover:text-gray-200 hover:bg-gray-700/40'
-          }`}
-        >
-          <Server className="w-4 h-4" />
-          Platform Services
-          <span className={`ml-1 px-2 py-0.5 rounded-full text-xs ${
-            activeTab === 'platform' ? 'bg-blue-400/20 text-blue-300' : 'bg-gray-700 text-gray-400'
+            activeTab === 'external' ? 'bg-emerald-500/20 text-emerald-400 shadow-sm' : 'text-gray-400 hover:text-gray-200 hover:bg-gray-700/40'
           }`}>
+          <Globe className="w-4 h-4" /> External Services
+          <span className={`ml-1 px-2 py-0.5 rounded-full text-xs ${activeTab === 'external' ? 'bg-emerald-400/20 text-emerald-300' : 'bg-gray-700 text-gray-400'}`}>
+            {extSummary.total}
+          </span>
+        </button>
+        <button onClick={() => setActiveTab('platform')}
+          className={`flex items-center gap-2 px-5 py-2.5 rounded-md text-sm font-medium transition-colors ${
+            activeTab === 'platform' ? 'bg-blue-500/20 text-blue-400 shadow-sm' : 'text-gray-400 hover:text-gray-200 hover:bg-gray-700/40'
+          }`}>
+          <Server className="w-4 h-4" /> Platform Services
+          <span className={`ml-1 px-2 py-0.5 rounded-full text-xs ${activeTab === 'platform' ? 'bg-blue-400/20 text-blue-300' : 'bg-gray-700 text-gray-400'}`}>
             {platform.total}
           </span>
         </button>
-        <button
-          onClick={() => setActiveTab('external')}
-          className={`flex items-center gap-2 px-5 py-2.5 rounded-md text-sm font-medium transition-colors ${
-            activeTab === 'external'
-              ? 'bg-emerald-500/20 text-emerald-400 shadow-sm'
-              : 'text-gray-400 hover:text-gray-200 hover:bg-gray-700/40'
-          }`}
-        >
-          <Globe className="w-4 h-4" />
-          External Services
-          <span className={`ml-1 px-2 py-0.5 rounded-full text-xs ${
-            activeTab === 'external' ? 'bg-emerald-400/20 text-emerald-300' : 'bg-gray-700 text-gray-400'
-          }`}>
-            {external.total}
-          </span>
-        </button>
       </div>
 
-      {/* ── Stats Cards ── */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-gray-800/50 rounded-lg p-6 border border-gray-700/50">
-          <div className="flex items-center gap-4">
-            <div className={`p-3 rounded-lg ${activeTab === 'platform' ? 'bg-blue-400/10' : 'bg-emerald-400/10'}`}>
-              <Server className={`w-6 h-6 ${activeTab === 'platform' ? 'text-blue-400' : 'text-emerald-400'}`} />
-            </div>
-            <div>
-              <p className="text-gray-400 text-sm">
-                {activeTab === 'platform' ? 'Platform Services' : 'External Services'}
-              </p>
-              <p className="text-2xl font-bold text-white">{current.total}</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-gray-800/50 rounded-lg p-6 border border-gray-700/50">
-          <div className="flex items-center gap-4">
-            <div className="p-3 bg-green-400/10 rounded-lg">
-              <CheckCircle className="w-6 h-6 text-green-400" />
-            </div>
-            <div>
-              <p className="text-gray-400 text-sm">Healthy</p>
-              <p className="text-2xl font-bold text-green-400">{current.up}</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-gray-800/50 rounded-lg p-6 border border-gray-700/50">
-          <div className="flex items-center gap-4">
-            <div className="p-3 bg-red-400/10 rounded-lg">
-              <AlertCircle className="w-6 h-6 text-red-400" />
-            </div>
-            <div>
-              <p className="text-gray-400 text-sm">Down</p>
-              <p className="text-2xl font-bold text-red-400">{current.down}</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ── Table or Empty State ── */}
-      {current.total === 0 ? (
-        <div className="bg-gray-800/50 rounded-lg border border-gray-700/50 p-12 text-center">
-          {activeTab === 'external' ? (
-            <>
-              <Globe className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold text-gray-300 mb-2">
-                No external services configured
-              </h3>
-              <p className="text-gray-500 max-w-md mx-auto mb-6">
-                Connect up to <span className="text-emerald-400 font-semibold">100 hosts</span> — websites,
-                databases, APIs, webhooks, MQTT brokers, and more.
-              </p>
-              <div className="flex flex-wrap justify-center gap-2">
-                {Object.entries(CATEGORY_META).filter(([k]) => k !== 'custom').map(([key]) => (
-                  <span key={key}>{categoryBadge(key)}</span>
-                ))}
-              </div>
-            </>
-          ) : (
-            <>
-              <Server className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold text-gray-300">
-                No platform services detected
-              </h3>
-              <p className="text-gray-500 mt-2">Platform services will appear here once Prometheus is scraping them.</p>
-            </>
-          )}
-        </div>
-      ) : (
-        <div className="bg-gray-800/50 rounded-lg border border-gray-700/50 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-gray-700/50">
-                  <th className="text-left p-4 text-gray-400 font-medium">Service</th>
-                  <th className="text-left p-4 text-gray-400 font-medium">Instance</th>
-                  <th className="text-left p-4 text-gray-400 font-medium">Status</th>
-                  <th className="text-left p-4 text-gray-400 font-medium">
-                    {activeTab === 'external' ? 'Category' : 'Tier'}
-                  </th>
-                  <th className="text-left p-4 text-gray-400 font-medium">Version</th>
-                </tr>
-              </thead>
-              <tbody>
-                {current.services.map((service, index) => (
-                  <tr
-                    key={`${service.name}-${service.instance}-${index}`}
-                    className="border-b border-gray-700/30 hover:bg-gray-700/30 transition-colors"
-                  >
-                    <td className="p-4">
-                      <div className="flex items-center gap-3">
-                        <div className={`p-2 rounded ${STATUS_BG[service.status] || ''}`}>
-                          <Layers className={`w-4 h-4 ${STATUS_COLORS[service.status] || ''}`} />
-                        </div>
-                        <div>
-                          <p className="text-white font-medium">{service.name}</p>
-                          <p className="text-gray-400 text-sm">{service.service_type}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="p-4">
-                      <code className="text-sm text-gray-300 bg-gray-900/50 px-2 py-1 rounded">
-                        {service.instance}
-                      </code>
-                    </td>
-                    <td className="p-4">
-                      <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium ${
-                        STATUS_BG[service.status] || ''
-                      }`}>
-                        {service.status === 'up' ? (
-                          <CheckCircle className="w-4 h-4 text-green-400" />
-                        ) : (
-                          <AlertCircle className="w-4 h-4 text-red-400" />
-                        )}
-                        <span className={STATUS_COLORS[service.status] || ''}>
-                          {service.status.toUpperCase()}
-                        </span>
-                      </span>
-                    </td>
-                    <td className="p-4">
-                      {activeTab === 'external' ? (
-                        categoryBadge(service.service_category)
-                      ) : (
-                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                          TIER_COLORS[service.tier] || TIER_COLORS['infrastructure']
-                        }`}>
-                          {service.tier}
-                        </span>
-                      )}
-                    </td>
-                    <td className="p-4 text-gray-300">
-                      {service.version}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* Footer */}
+      {/* ── EXTERNAL SERVICES TAB ──────────────────────────────── */}
       {activeTab === 'external' && (
-        <div className="flex items-center justify-between text-sm text-gray-500">
-          <span>
-            {external.total} / 100 external hosts connected
-          </span>
-          <span>
-            Last updated: {servicesData ? new Date(servicesData.timestamp).toLocaleString() : 'N/A'}
-          </span>
-        </div>
+        <>
+          {/* Stats */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            {[
+              { label: 'Total', value: extSummary.total, Icon: Globe, color: 'text-emerald-400', bg: 'bg-emerald-400/10' },
+              { label: 'Healthy', value: extSummary.up, Icon: CheckCircle, color: 'text-green-400', bg: 'bg-green-400/10' },
+              { label: 'Down', value: extSummary.down, Icon: AlertCircle, color: 'text-red-400', bg: 'bg-red-400/10' },
+              { label: 'Unknown', value: extSummary.unknown + extSummary.degraded, Icon: Clock, color: 'text-yellow-400', bg: 'bg-yellow-400/10' },
+            ].map(c => (
+              <div key={c.label} className="bg-gray-800/50 rounded-lg p-4 border border-gray-700/50">
+                <div className="flex items-center gap-3">
+                  <div className={`p-2.5 rounded-lg ${c.bg}`}><c.Icon className={`w-5 h-5 ${c.color}`} /></div>
+                  <div>
+                    <p className="text-gray-400 text-sm">{c.label}</p>
+                    <p className="text-xl font-bold text-white">{c.value}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Empty state */}
+          {extServices.length === 0 ? (
+            <div className="bg-gray-800/50 rounded-lg border border-gray-700/50 p-16 text-center">
+              <Globe className="w-16 h-16 text-gray-600 mx-auto mb-4" />
+              <h3 className="text-xl font-semibold text-gray-300 mb-2">No external services connected</h3>
+              <p className="text-gray-500 max-w-md mx-auto mb-6">
+                Connect your APIs and databases to start monitoring them with Rhinometric.
+              </p>
+              <div className="flex flex-wrap justify-center gap-3 mb-8">
+                <TypeBadge type="http" />
+                <TypeBadge type="postgresql" />
+              </div>
+              <button onClick={openCreate}
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-blue-600 text-white hover:bg-blue-500 font-medium transition-colors shadow-lg shadow-blue-600/20">
+                <Plus className="w-5 h-5" /> Connect Your First Service
+              </button>
+            </div>
+          ) : (
+            /* Service table */
+            <div className="bg-gray-800/50 rounded-lg border border-gray-700/50 overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-gray-700/50">
+                      <th className="text-left p-4 text-gray-400 font-medium">Service</th>
+                      <th className="text-left p-4 text-gray-400 font-medium">Type</th>
+                      <th className="text-left p-4 text-gray-400 font-medium">Target</th>
+                      <th className="text-left p-4 text-gray-400 font-medium">Status</th>
+                      <th className="text-left p-4 text-gray-400 font-medium">Latency</th>
+                      <th className="text-left p-4 text-gray-400 font-medium">Last Check</th>
+                      <th className="text-right p-4 text-gray-400 font-medium">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {extServices.map(svc => (
+                      <tr key={svc.id} className={`border-b border-gray-700/30 hover:bg-gray-700/30 transition-colors ${!svc.enabled ? 'opacity-50' : ''}`}>
+                        <td className="p-4">
+                          <div className="flex items-center gap-3">
+                            <div className={`p-2 rounded ${svc.enabled ? 'bg-emerald-400/10' : 'bg-gray-700/50'}`}>
+                              {svc.service_type === 'http' ? <Network className="w-4 h-4 text-violet-400" /> : <Database className="w-4 h-4 text-orange-400" />}
+                            </div>
+                            <div>
+                              <p className="text-white font-medium">{svc.name}</p>
+                              {svc.environment && <p className="text-gray-500 text-xs">{svc.environment}</p>}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="p-4"><TypeBadge type={svc.service_type} /></td>
+                        <td className="p-4">
+                          <code className="text-sm text-gray-300 bg-gray-900/50 px-2 py-1 rounded truncate max-w-[200px] inline-block">
+                            {targetDisplay(svc)}
+                          </code>
+                        </td>
+                        <td className="p-4"><StatusBadge status={svc.enabled ? svc.status : 'unknown'} /></td>
+                        <td className="p-4 text-gray-300 text-sm">
+                          {svc.last_response_time_ms != null ? `${svc.last_response_time_ms.toFixed(0)}ms` : '-'}
+                        </td>
+                        <td className="p-4 text-gray-400 text-sm">
+                          {svc.last_check_at ? new Date(svc.last_check_at).toLocaleString() : 'Never'}
+                        </td>
+                        <td className="p-4">
+                          <div className="flex items-center justify-end gap-1">
+                            <button onClick={() => handleTestSaved(svc.id)} disabled={actionLoading === svc.id}
+                              title="Test connection" className="p-1.5 rounded hover:bg-gray-700/50 text-gray-400 hover:text-green-400 transition-colors disabled:opacity-50">
+                              {actionLoading === svc.id ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
+                            </button>
+                            <button onClick={() => openEdit(svc)} title="Edit"
+                              className="p-1.5 rounded hover:bg-gray-700/50 text-gray-400 hover:text-blue-400 transition-colors">
+                              <Edit className="w-4 h-4" />
+                            </button>
+                            <button onClick={() => handleToggle(svc.id)} title={svc.enabled ? 'Disable' : 'Enable'}
+                              className="p-1.5 rounded hover:bg-gray-700/50 text-gray-400 hover:text-yellow-400 transition-colors">
+                              {svc.enabled ? <Power className="w-4 h-4" /> : <PowerOff className="w-4 h-4" />}
+                            </button>
+                            <button onClick={() => handleDelete(svc.id)} title="Delete"
+                              className="p-1.5 rounded hover:bg-gray-700/50 text-gray-400 hover:text-red-400 transition-colors">
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </>
       )}
+
+      {/* ── PLATFORM SERVICES TAB ───────────────────────────────── */}
       {activeTab === 'platform' && (
-        <div className="text-center text-gray-500 text-sm">
-          Last updated: {servicesData ? new Date(servicesData.timestamp).toLocaleString() : 'N/A'}
-        </div>
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="bg-gray-800/50 rounded-lg p-6 border border-gray-700/50">
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-blue-400/10 rounded-lg"><Server className="w-6 h-6 text-blue-400" /></div>
+                <div><p className="text-gray-400 text-sm">Platform Services</p><p className="text-2xl font-bold text-white">{platform.total}</p></div>
+              </div>
+            </div>
+            <div className="bg-gray-800/50 rounded-lg p-6 border border-gray-700/50">
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-green-400/10 rounded-lg"><CheckCircle className="w-6 h-6 text-green-400" /></div>
+                <div><p className="text-gray-400 text-sm">Healthy</p><p className="text-2xl font-bold text-green-400">{platform.up}</p></div>
+              </div>
+            </div>
+            <div className="bg-gray-800/50 rounded-lg p-6 border border-gray-700/50">
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-red-400/10 rounded-lg"><AlertCircle className="w-6 h-6 text-red-400" /></div>
+                <div><p className="text-gray-400 text-sm">Down</p><p className="text-2xl font-bold text-red-400">{platform.down}</p></div>
+              </div>
+            </div>
+          </div>
+
+          {platform.total === 0 ? (
+            <div className="bg-gray-800/50 rounded-lg border border-gray-700/50 p-12 text-center">
+              <Server className="w-16 h-16 text-gray-600 mx-auto mb-4" />
+              <h3 className="text-xl font-semibold text-gray-300">No platform services detected</h3>
+              <p className="text-gray-500 mt-2">Platform services will appear here once Prometheus is scraping them.</p>
+            </div>
+          ) : (
+            <div className="bg-gray-800/50 rounded-lg border border-gray-700/50 overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-gray-700/50">
+                      <th className="text-left p-4 text-gray-400 font-medium">Service</th>
+                      <th className="text-left p-4 text-gray-400 font-medium">Instance</th>
+                      <th className="text-left p-4 text-gray-400 font-medium">Status</th>
+                      <th className="text-left p-4 text-gray-400 font-medium">Tier</th>
+                      <th className="text-left p-4 text-gray-400 font-medium">Version</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {platform.services.map((svc, i) => (
+                      <tr key={`${svc.name}-${svc.instance}-${i}`} className="border-b border-gray-700/30 hover:bg-gray-700/30 transition-colors">
+                        <td className="p-4">
+                          <div className="flex items-center gap-3">
+                            <div className={`p-2 rounded ${svc.status === 'up' ? 'bg-green-400/10' : 'bg-red-400/10'}`}>
+                              <Server className={`w-4 h-4 ${svc.status === 'up' ? 'text-green-400' : 'text-red-400'}`} />
+                            </div>
+                            <div>
+                              <p className="text-white font-medium">{svc.name}</p>
+                              <p className="text-gray-400 text-sm">{svc.service_type}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="p-4"><code className="text-sm text-gray-300 bg-gray-900/50 px-2 py-1 rounded">{svc.instance}</code></td>
+                        <td className="p-4">
+                          <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium ${svc.status === 'up' ? 'bg-green-400/10 text-green-400' : 'bg-red-400/10 text-red-400'}`}>
+                            {svc.status === 'up' ? <CheckCircle className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
+                            {svc.status.toUpperCase()}
+                          </span>
+                        </td>
+                        <td className="p-4"><span className="px-3 py-1 rounded-full text-xs font-medium bg-blue-400/10 text-blue-400">{svc.tier}</span></td>
+                        <td className="p-4 text-gray-300">{svc.version}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          <div className="text-center text-gray-500 text-sm">
+            Last updated: {platformData ? new Date(platformData.timestamp).toLocaleString() : 'N/A'}
+          </div>
+        </>
       )}
     </div>
   )

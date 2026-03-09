@@ -14,6 +14,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 from database import Base, DATABASE_URL
 from models.user import User as UserModel
 from models.role import Role, Permission, UserRole, RolePermission
+from models.external_service import ExternalService
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

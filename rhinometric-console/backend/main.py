@@ -16,7 +16,7 @@ setup_json_logging(service_name="console-backend", log_level=settings.LOG_LEVEL 
 logger = get_logger(__name__)
 
 # Import routers
-from routers import auth, kpis, license, anomalies, alerts, logs, traces, dashboards, settings as settings_router, users, grafana_proxy, correlation
+from routers import auth, kpis, license, anomalies, alerts, logs, traces, dashboards, settings as settings_router, users, grafana_proxy, correlation, external_services
 
 app = FastAPI(
     title=settings.API_TITLE,
@@ -73,6 +73,14 @@ async def startup_event():
         logger.warning(f"Could not create alert_acknowledgements table: {e}")
 
     # NOTE: Tables should already exist from migration script
+
+    # Auto-create external_services table if it doesn't exist
+    try:
+        from models.external_service import ExternalService
+        ExternalService.__table__.create(bind=engine, checkfirst=True)
+        logger.info("External services table ready")
+    except Exception as e:
+        logger.warning(f"Could not create external_services table: {e}")
 
     # RUST LICENSE VALIDATOR - Startup Check
     try:
@@ -228,6 +236,7 @@ app.include_router(traces.router, prefix=f"{settings.API_PREFIX}/traces", tags=[
 app.include_router(dashboards.router, prefix=f"{settings.API_PREFIX}/dashboards", tags=["Dashboards"])
 app.include_router(settings_router.router, prefix=f"{settings.API_PREFIX}/settings", tags=["Settings"])
 app.include_router(correlation.router, prefix=f"{settings.API_PREFIX}/correlation", tags=["Correlation"])  # Rhino Core - Correlation Engine
+app.include_router(external_services.router, prefix=f"{settings.API_PREFIX}/external-services", tags=["External Services"])  # External Services Connector MVP
 
 if __name__ == "__main__":
     import uvicorn
