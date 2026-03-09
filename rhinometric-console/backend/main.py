@@ -82,6 +82,14 @@ async def startup_event():
     except Exception as e:
         logger.warning(f"Could not create external_services table: {e}")
 
+    # Start background health checker for external services
+    try:
+        from services.health_checker import start_scheduler
+        await start_scheduler()
+        logger.info("External services health checker started")
+    except Exception as e:
+        logger.warning(f"Could not start health checker: {e}")
+
     # RUST LICENSE VALIDATOR - Startup Check
     try:
         from utils.rust_license_validator import is_binary_available, validate_license
@@ -223,6 +231,17 @@ async def metrics(request: Request):
     return await metrics_endpoint(request)
 
 # Include routers
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    try:
+        from services.health_checker import stop_scheduler
+        await stop_scheduler()
+        logger.info("External services health checker stopped")
+    except Exception as e:
+        logger.warning(f"Could not stop health checker: {e}")
+
+
 app.include_router(auth.router, prefix=f"{settings.API_PREFIX}/auth", tags=["Authentication"])
 app.include_router(users.router, prefix=f"{settings.API_PREFIX}/users", tags=["Users"])  # RBAC User Management
 app.include_router(grafana_proxy.router, prefix=f"{settings.API_PREFIX}/grafana", tags=["Grafana"])  # Grafana RBAC Proxy
