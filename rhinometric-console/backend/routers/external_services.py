@@ -320,6 +320,151 @@ def get_service_check_history(
     }
 
 
+
+
+# -- Analytics / SLA / MTTR / MTTF -----------------------------------------
+
+@router.get("/{service_id}/analytics")
+def get_service_analytics(
+    service_id: int,
+    hours: int = Query(default=24, ge=1, le=720, description="Hours of history to analyze"),
+    db: Session = Depends(get_db),
+    current_user: UserModel = Depends(get_current_user),
+):
+    """
+    Compute SLA, MTTR, MTTF, incident count, and availability for a service.
+    Uses check history to derive all operational intelligence metrics.
+    """
+    svc = db.query(ExternalService).filter(ExternalService.id == service_id).first()
+    if not svc:
+        raise HTTPException(status_code=404, detail="External service not found")
+
+    since = datetime.now(timezone.utc) - timedelta(hours=hours)
+    checks = (
+        db.query(ExternalServiceCheck)
+        .filter(
+            ExternalServiceCheck.service_id == service_id,
+            ExternalServiceCheck.checked_at >= since,
+        )
+        .order_by(ExternalServiceCheck.checked_at.asc())
+        .all()
+    )
+
+    if not checks:
+        return {
+            "service_id": service_id,
+            "service_name": svc.name,
+            "period_hours": hours,
+            "total_checks": 0,
+            "sla_percent": None,
+            "uptime_percent": None,
+            "mttr_minutes": None,
+            "mttf_hours": None,
+            "incidents": 0,
+            "longest_outage_minutes": None,
+            "avg_latency_ms": None,
+            "p50_latency_ms": None,
+            "p95_latency_ms": None,
+            "p99_latency_ms": None,
+            "current_streak": 0,
+            "current_streak_type": None,
+        }
+
+    # ── Basic stats ──
+    total = len(checks)
+    successes = sum(1 for c in checks if c.status == "up")
+    uptime_pct = round((successes / total) * 100, 3) if total else 0
+
+    # ── Latency percentiles ──
+    latencies = sorted([c.response_time_ms for c in checks if c.response_time_ms and c.response_time_ms > 0])
+    if latencies:
+        avg_lat = round(sum(latencies) / len(latencies), 2)
+        p50 = round(latencies[int(len(latencies) * 0.50)], 2)
+        p95 = round(latencies[min(int(len(latencies) * 0.95), len(latencies) - 1)], 2)
+        p99 = round(latencies[min(int(len(latencies) * 0.99), len(latencies) - 1)], 2)
+    else:
+        avg_lat = p50 = p95 = p99 = None
+
+    # ── Incident detection, MTTR, MTTF ──
+    incidents = []
+    outage_start = None
+    recovery_times = []     # durations of each outage (minutes)
+    uptime_durations = []   # durations between incidents (hours)
+    last_recovery = None
+
+    for i, c in enumerate(checks):
+        is_up = c.status in ("up", "degraded")
+
+        if not is_up and outage_start is None:
+            # Start of an outage
+            outage_start = c.checked_at
+            if last_recovery:
+                uptime_durations.append((c.checked_at - last_recovery).total_seconds() / 3600)
+            incidents.append({"start": c.checked_at.isoformat()})
+
+        elif is_up and outage_start is not None:
+            # Recovery from outage
+            outage_mins = (c.checked_at - outage_start).total_seconds() / 60
+            recovery_times.append(outage_mins)
+            if incidents:
+                incidents[-1]["end"] = c.checked_at.isoformat()
+                incidents[-1]["duration_minutes"] = round(outage_mins, 1)
+            outage_start = None
+            last_recovery = c.checked_at
+
+        elif is_up and outage_start is None and last_recovery is None:
+            last_recovery = c.checked_at
+
+    # If still in outage at end of window
+    if outage_start is not None:
+        now = datetime.now(timezone.utc)
+        outage_mins = (now - outage_start).total_seconds() / 60
+        recovery_times.append(outage_mins)
+        if incidents:
+            incidents[-1]["end"] = None
+            incidents[-1]["duration_minutes"] = round(outage_mins, 1)
+            incidents[-1]["ongoing"] = True
+
+    incident_count = len(incidents)
+    mttr = round(sum(recovery_times) / len(recovery_times), 1) if recovery_times else None
+    mttf = round(sum(uptime_durations) / len(uptime_durations), 2) if uptime_durations else None
+    longest_outage = round(max(recovery_times), 1) if recovery_times else None
+
+    # ── Current streak ──
+    streak = 0
+    streak_type = None
+    for c in reversed(checks):
+        c_up = c.status in ("up", "degraded")
+        if streak_type is None:
+            streak_type = "up" if c_up else "down"
+        if (c_up and streak_type == "up") or (not c_up and streak_type == "down"):
+            streak += 1
+        else:
+            break
+
+    return {
+        "service_id": service_id,
+        "service_name": svc.name,
+        "period_hours": hours,
+        "total_checks": total,
+        "sla_percent": uptime_pct,
+        "uptime_percent": uptime_pct,
+        "mttr_minutes": mttr,
+        "mttf_hours": mttf,
+        "incidents": incident_count,
+        "incident_details": incidents[:20],  # Last 20 incidents max
+        "longest_outage_minutes": longest_outage,
+        "avg_latency_ms": avg_lat,
+        "p50_latency_ms": p50,
+        "p95_latency_ms": p95,
+        "p99_latency_ms": p99,
+        "current_streak": streak,
+        "current_streak_type": streak_type,
+    }
+
+
+
+
 # ── Toggle Enable/Disable ──────────────────────────────────────
 
 @router.post("/{service_id}/toggle")

@@ -1,5 +1,5 @@
 """
-Background Health Checker for External Services.
+Background Health Checker for External Services - Intelligence Edition.
 
 Runs as an asyncio background task inside the FastAPI process.
 Every POLL_INTERVAL seconds it:
@@ -7,22 +7,38 @@ Every POLL_INTERVAL seconds it:
   2. Runs the appropriate test (HTTP or PostgreSQL) in a thread pool.
   3. Updates status, latency, message in the DB.
   4. Inserts a row into external_service_checks (Phase 3 - History).
-  5. Updates Prometheus gauges (Phase 4 - Metrics).
+  5. Updates Prometheus gauges/counters/histograms (Phase 4+6 - Metrics).
+  6. Detects incidents (UP->DOWN transitions) and tracks consecutive failures.
+  7. Checks SSL certificate expiry for HTTPS endpoints.
+  8. Computes composite health score per service.
 
 No extra dependencies (APScheduler, Celery) required.
 """
 
 import asyncio
 import logging
+import ssl
+import socket
 from datetime import datetime, timezone, timedelta
 from concurrent.futures import ThreadPoolExecutor
-from typing import Optional
+from typing import Optional, Dict, Tuple
 
 from database import SessionLocal
 from models.external_service import ExternalService, ServiceType, ServiceStatus
 from models.external_service_check import ExternalServiceCheck
 from services.connector_service import test_http_connection, test_postgresql_connection
-from metrics import external_service_up, external_service_latency_ms, external_service_checks_total
+from metrics import (
+    external_service_up,
+    external_service_latency_ms,
+    external_service_checks_total,
+    external_service_latency_histogram,
+    external_service_incidents_total,
+    external_service_consecutive_failures,
+    external_service_last_success_timestamp,
+    external_service_last_check_timestamp,
+    external_service_ssl_expiry_days,
+    external_service_health_score,
+)
 
 logger = logging.getLogger("rhinometric.health_checker")
 
@@ -36,6 +52,159 @@ _executor = ThreadPoolExecutor(max_workers=4, thread_name_prefix="health-check")
 _running = False
 _task: Optional[asyncio.Task] = None
 
+# ── In-memory state tracking ────────────────────────────────────
+
+# Previous status per service_id  (used to detect UP->DOWN transitions)
+_previous_status: Dict[int, str] = {}
+
+# Consecutive failure count per service_id
+_consecutive_failures: Dict[int, int] = {}
+
+# Rolling window of recent checks for health score calculation
+# Key: service_id, Value: list of (timestamp, success_bool, latency_ms)
+_recent_checks: Dict[int, list] = {}
+HEALTH_WINDOW_SIZE = 60  # keep last 60 checks (~15min at 15s interval)
+
+# SSL cert cache: {url: (expiry_days, last_checked_epoch)}
+_ssl_cache: Dict[str, Tuple[float, float]] = {}
+SSL_CHECK_INTERVAL = 3600  # Re-check SSL every hour
+
+
+# ── SSL Certificate Checker ─────────────────────────────────────
+
+def _check_ssl_expiry(url: str) -> Optional[float]:
+    """Check days until SSL certificate expires for an HTTPS URL."""
+    try:
+        if not url.startswith("https://"):
+            return None
+
+        # Parse hostname from URL
+        hostname = url.split("://")[1].split("/")[0].split(":")[0]
+        port = 443
+
+        # Check if port is specified
+        host_parts = url.split("://")[1].split("/")[0]
+        if ":" in host_parts:
+            parts = host_parts.rsplit(":", 1)
+            hostname = parts[0]
+            try:
+                port = int(parts[1])
+            except ValueError:
+                port = 443
+
+        context = ssl.create_default_context()
+        context.check_hostname = False
+        context.verify_mode = ssl.CERT_NONE
+
+        # Also try with verification for expiry
+        verify_ctx = ssl.create_default_context()
+
+        with socket.create_connection((hostname, port), timeout=5) as sock:
+            with verify_ctx.wrap_socket(sock, server_hostname=hostname) as ssock:
+                cert = ssock.getpeercert()
+                if cert and "notAfter" in cert:
+                    expiry_str = cert["notAfter"]
+                    # Format: 'Mar  9 12:00:00 2027 GMT'
+                    expiry_dt = datetime.strptime(expiry_str, "%b %d %H:%M:%S %Y %Z")
+                    expiry_dt = expiry_dt.replace(tzinfo=timezone.utc)
+                    now = datetime.now(timezone.utc)
+                    days_left = (expiry_dt - now).total_seconds() / 86400
+                    return round(days_left, 1)
+        return None
+    except Exception as e:
+        logger.debug(f"[SSL] Could not check cert for {url}: {e}")
+        # Try without verification - just get expiry
+        try:
+            hostname = url.split("://")[1].split("/")[0].split(":")[0]
+            context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+            context.check_hostname = False
+            context.verify_mode = ssl.CERT_NONE
+            with socket.create_connection((hostname, 443), timeout=5) as sock:
+                with context.wrap_socket(sock, server_hostname=hostname) as ssock:
+                    # Binary DER cert
+                    der_cert = ssock.getpeercert(binary_form=True)
+                    if der_cert:
+                        # Decode using ssl
+                        pem_cert = ssl.DER_cert_to_PEM_cert(der_cert)
+                        # Can't easily parse without cryptography lib
+                        # Return None gracefully
+                        pass
+            return None
+        except Exception:
+            return None
+
+
+def _get_ssl_expiry_cached(url: str, service_name: str) -> Optional[float]:
+    """Get SSL expiry days with caching (re-check every SSL_CHECK_INTERVAL)."""
+    now_epoch = datetime.now(timezone.utc).timestamp()
+
+    if url in _ssl_cache:
+        cached_days, last_checked = _ssl_cache[url]
+        if now_epoch - last_checked < SSL_CHECK_INTERVAL:
+            return cached_days
+
+    days = _check_ssl_expiry(url)
+    if days is not None:
+        _ssl_cache[url] = (days, now_epoch)
+        try:
+            external_service_ssl_expiry_days.labels(service_name=service_name).set(days)
+        except Exception:
+            pass
+        logger.info(f"[SSL] {service_name}: certificate expires in {days:.0f} days")
+    return days
+
+
+# ── Health Score Calculator ──────────────────────────────────────
+
+def _compute_health_score(service_id: int, service_name: str, service_type: str) -> float:
+    """
+    Compute a 0-100 health score based on:
+      - Uptime ratio (50% weight): % of recent checks that succeeded
+      - Latency score (30% weight): lower avg latency = higher score
+      - Stability score (20% weight): fewer consecutive failures = higher score
+    """
+    checks = _recent_checks.get(service_id, [])
+    if not checks:
+        return 50.0  # Unknown = neutral
+
+    # Uptime ratio (0-1)
+    successes = sum(1 for _, ok, _ in checks if ok)
+    uptime_ratio = successes / len(checks)
+
+    # Avg latency score (0-1): 0ms=1.0, 1000ms=0.5, 5000ms+=0.0
+    latencies = [lat for _, _, lat in checks if lat and lat > 0]
+    if latencies:
+        avg_lat = sum(latencies) / len(latencies)
+        if avg_lat <= 100:
+            latency_score = 1.0
+        elif avg_lat <= 500:
+            latency_score = 1.0 - (avg_lat - 100) / 800  # 100->1.0, 500->0.5
+        elif avg_lat <= 2000:
+            latency_score = 0.5 - (avg_lat - 500) / 3000  # 500->0.5, 2000->0.0
+        else:
+            latency_score = 0.0
+    else:
+        latency_score = 0.5
+
+    # Stability score (0-1): 0 consecutive failures=1.0, 5+=0.0
+    consec = _consecutive_failures.get(service_id, 0)
+    stability_score = max(0.0, 1.0 - (consec / 5.0))
+
+    # Weighted combination
+    score = (uptime_ratio * 50) + (latency_score * 30) + (stability_score * 20)
+    score = round(min(100.0, max(0.0, score)), 1)
+
+    try:
+        external_service_health_score.labels(
+            service_name=service_name, service_type=service_type
+        ).set(score)
+    except Exception:
+        pass
+
+    return score
+
+
+# ── Core Check Logic ─────────────────────────────────────────────
 
 def _check_service(svc_id: int, svc_type: str, config: dict, timeout: int) -> dict:
     """Run a single service check (blocking - runs in thread pool)."""
@@ -69,14 +238,50 @@ def _check_service(svc_id: int, svc_type: str, config: dict, timeout: int) -> di
 
 
 async def _check_one(svc_id: int, svc_name: str, svc_type: str, config: dict, timeout: int):
-    """Run a check in the thread pool, update DB, insert history, update Prometheus."""
+    """Run a check in the thread pool, update DB, insert history, update all metrics."""
     loop = asyncio.get_event_loop()
     result = await loop.run_in_executor(_executor, _check_service, svc_id, svc_type, config, timeout)
 
     now = datetime.now(timezone.utc)
+    now_epoch = now.timestamp()
     check_status = result.get("status", "error")
+    is_success = result.get("success", False)
+    latency = result.get("response_time_ms", 0) or 0
 
-    # Update DB
+    # ── Incident Detection (UP->DOWN transition) ──
+    prev = _previous_status.get(svc_id)
+    if prev in ("up", "degraded") and check_status == "down":
+        try:
+            external_service_incidents_total.labels(
+                service_name=svc_name, service_type=svc_type
+            ).inc()
+        except Exception:
+            pass
+        logger.warning(f"[INCIDENT] {svc_name} ({svc_type}): {prev} -> DOWN")
+    _previous_status[svc_id] = check_status
+
+    # ── Consecutive Failures ──
+    if not is_success:
+        _consecutive_failures[svc_id] = _consecutive_failures.get(svc_id, 0) + 1
+    else:
+        _consecutive_failures[svc_id] = 0
+
+    consec = _consecutive_failures[svc_id]
+    try:
+        external_service_consecutive_failures.labels(
+            service_name=svc_name, service_type=svc_type
+        ).set(consec)
+    except Exception:
+        pass
+
+    # ── Rolling window for health score ──
+    if svc_id not in _recent_checks:
+        _recent_checks[svc_id] = []
+    _recent_checks[svc_id].append((now_epoch, is_success, latency))
+    if len(_recent_checks[svc_id]) > HEALTH_WINDOW_SIZE:
+        _recent_checks[svc_id] = _recent_checks[svc_id][-HEALTH_WINDOW_SIZE:]
+
+    # ── Update DB ──
     db = SessionLocal()
     try:
         svc = db.query(ExternalService).filter(ExternalService.id == svc_id).first()
@@ -99,26 +304,51 @@ async def _check_one(svc_id: int, svc_name: str, svc_type: str, config: dict, ti
             db.add(check_record)
 
             db.commit()
-            logger.info(f"[HealthCheck] {svc_name} ({svc_type}) -> {check_status} ({result.get('response_time_ms',0):.0f}ms)")
+            logger.info(f"[HealthCheck] {svc_name} ({svc_type}) -> {check_status} ({latency:.0f}ms) [score={_compute_health_score(svc_id, svc_name, svc_type):.0f}]")
     except Exception as e:
         db.rollback()
         logger.error(f"[HealthCheck] DB update failed for svc_id={svc_id}: {e}")
     finally:
         db.close()
 
-    # Phase 4: Update Prometheus metrics (outside DB session)
+    # ── Phase 4+6: Update all Prometheus metrics (outside DB session) ──
     try:
         is_up = 1 if check_status == "up" else 0
         external_service_up.labels(service_name=svc_name, service_type=svc_type).set(is_up)
-        external_service_latency_ms.labels(service_name=svc_name, service_type=svc_type).set(
-            result.get("response_time_ms", 0)
-        )
-        check_result = "success" if result.get("success") else "failure"
+        external_service_latency_ms.labels(service_name=svc_name, service_type=svc_type).set(latency)
+
+        # Histogram for percentiles (in seconds)
+        external_service_latency_histogram.labels(
+            service_name=svc_name, service_type=svc_type
+        ).observe(latency / 1000.0)
+
+        check_result = "success" if is_success else "failure"
         external_service_checks_total.labels(
             service_name=svc_name, service_type=svc_type, result=check_result
         ).inc()
+
+        # Last check timestamp
+        external_service_last_check_timestamp.labels(
+            service_name=svc_name, service_type=svc_type
+        ).set(now_epoch)
+
+        # Last success timestamp
+        if is_success:
+            external_service_last_success_timestamp.labels(
+                service_name=svc_name, service_type=svc_type
+            ).set(now_epoch)
+
     except Exception as e:
         logger.warning(f"[HealthCheck] Prometheus metric update error: {e}")
+
+    # ── SSL Certificate check (HTTPS only, cached) ──
+    if svc_type == "http":
+        url = config.get("url", "")
+        if url.startswith("https://"):
+            try:
+                await loop.run_in_executor(_executor, _get_ssl_expiry_cached, url, svc_name)
+            except Exception as e:
+                logger.debug(f"[SSL] Error checking {svc_name}: {e}")
 
 
 async def _scheduler_loop():

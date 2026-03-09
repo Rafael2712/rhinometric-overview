@@ -1,0 +1,527 @@
+{
+  "dashboard": {
+    "id": null,
+    "uid": "ext-svc-intelligence",
+    "title": "External Services Intelligence",
+    "description": "Complete monitoring dashboard for external services: SLA, latency percentiles, incidents, SSL, health scores",
+    "tags": ["rhinometric", "external-services", "intelligence"],
+    "timezone": "browser",
+    "refresh": "15s",
+    "time": { "from": "now-6h", "to": "now" },
+    "templating": {
+      "list": [
+        {
+          "name": "service_name",
+          "type": "query",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "query": "label_values(external_service_up, service_name)",
+          "refresh": 2,
+          "includeAll": true,
+          "multi": true,
+          "current": { "selected": true, "text": "All", "value": "$__all" }
+        },
+        {
+          "name": "service_type",
+          "type": "query",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "query": "label_values(external_service_up, service_type)",
+          "refresh": 2,
+          "includeAll": true,
+          "multi": true,
+          "current": { "selected": true, "text": "All", "value": "$__all" }
+        }
+      ]
+    },
+    "panels": [
+      {
+        "id": 1,
+        "title": "Service Status Overview",
+        "description": "Current UP/DOWN status of each external service",
+        "type": "stat",
+        "gridPos": { "h": 5, "w": 24, "x": 0, "y": 0 },
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "targets": [
+          {
+            "expr": "external_service_up{service_name=~\"$service_name\", service_type=~\"$service_type\"}",
+            "legendFormat": "{{service_name}}",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "red", "value": null },
+                { "color": "red", "value": 0 },
+                { "color": "green", "value": 1 }
+              ]
+            },
+            "mappings": [
+              { "type": "value", "options": { "0": { "text": "DOWN", "color": "red" }, "1": { "text": "UP", "color": "green" } } }
+            ],
+            "color": { "mode": "thresholds" }
+          }
+        },
+        "options": {
+          "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+          "orientation": "horizontal",
+          "textMode": "auto",
+          "colorMode": "background",
+          "graphMode": "none"
+        }
+      },
+      {
+        "id": 2,
+        "title": "Health Score (0-100)",
+        "description": "Composite health score: uptime 50% + latency 30% + stability 20%",
+        "type": "gauge",
+        "gridPos": { "h": 7, "w": 8, "x": 0, "y": 5 },
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "targets": [
+          {
+            "expr": "external_service_health_score{service_name=~\"$service_name\", service_type=~\"$service_type\"}",
+            "legendFormat": "{{service_name}}",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "min": 0, "max": 100, "unit": "none",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "red", "value": null },
+                { "color": "red", "value": 0 },
+                { "color": "orange", "value": 50 },
+                { "color": "yellow", "value": 75 },
+                { "color": "green", "value": 90 }
+              ]
+            }
+          }
+        },
+        "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "showThresholdLabels": false, "showThresholdMarkers": true }
+      },
+      {
+        "id": 3,
+        "title": "Uptime / SLA %",
+        "description": "Availability percentage over selected time range",
+        "type": "stat",
+        "gridPos": { "h": 7, "w": 8, "x": 8, "y": 5 },
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "targets": [
+          {
+            "expr": "avg_over_time(external_service_up{service_name=~\"$service_name\", service_type=~\"$service_type\"}[$__range]) * 100",
+            "legendFormat": "{{service_name}}",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent", "decimals": 2,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "red", "value": null },
+                { "color": "red", "value": 0 },
+                { "color": "orange", "value": 95 },
+                { "color": "yellow", "value": 99 },
+                { "color": "green", "value": 99.9 }
+              ]
+            },
+            "color": { "mode": "thresholds" }
+          }
+        },
+        "options": {
+          "reduceOptions": { "calcs": ["lastNotNull"] },
+          "colorMode": "background", "graphMode": "none", "textMode": "auto"
+        }
+      },
+      {
+        "id": 4,
+        "title": "Consecutive Failures",
+        "description": "Number of consecutive failed checks per service (0 = healthy)",
+        "type": "stat",
+        "gridPos": { "h": 7, "w": 8, "x": 16, "y": 5 },
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "targets": [
+          {
+            "expr": "external_service_consecutive_failures{service_name=~\"$service_name\", service_type=~\"$service_type\"}",
+            "legendFormat": "{{service_name}}",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "green", "value": null },
+                { "color": "green", "value": 0 },
+                { "color": "yellow", "value": 1 },
+                { "color": "orange", "value": 3 },
+                { "color": "red", "value": 5 }
+              ]
+            },
+            "color": { "mode": "thresholds" }
+          }
+        },
+        "options": {
+          "reduceOptions": { "calcs": ["lastNotNull"] },
+          "colorMode": "background", "graphMode": "none"
+        }
+      },
+      {
+        "id": 5,
+        "title": "Uptime Timeline",
+        "description": "Service availability over time (1=UP, 0=DOWN)",
+        "type": "timeseries",
+        "gridPos": { "h": 8, "w": 24, "x": 0, "y": 12 },
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "targets": [
+          {
+            "expr": "external_service_up{service_name=~\"$service_name\", service_type=~\"$service_type\"}",
+            "legendFormat": "{{service_name}}",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "min": 0, "max": 1,
+            "custom": {
+              "drawStyle": "line", "lineInterpolation": "stepAfter",
+              "fillOpacity": 30, "lineWidth": 2, "pointSize": 5,
+              "showPoints": "auto"
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "red", "value": null },
+                { "color": "red", "value": 0 },
+                { "color": "green", "value": 1 }
+              ]
+            },
+            "color": { "mode": "thresholds" },
+            "mappings": [
+              { "type": "value", "options": { "0": { "text": "DOWN" }, "1": { "text": "UP" } } }
+            ]
+          }
+        },
+        "options": { "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["lastNotNull", "mean"] }, "tooltip": { "mode": "multi" } }
+      },
+      {
+        "id": 6,
+        "title": "Latency Trend (ms)",
+        "description": "Response time over time per service",
+        "type": "timeseries",
+        "gridPos": { "h": 8, "w": 12, "x": 0, "y": 20 },
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "targets": [
+          {
+            "expr": "external_service_latency_ms{service_name=~\"$service_name\", service_type=~\"$service_type\"}",
+            "legendFormat": "{{service_name}}",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "ms",
+            "custom": { "drawStyle": "line", "lineInterpolation": "smooth", "fillOpacity": 10, "lineWidth": 2, "pointSize": 3, "showPoints": "auto" },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "green", "value": null },
+                { "color": "yellow", "value": 500 },
+                { "color": "red", "value": 2000 }
+              ]
+            },
+            "color": { "mode": "palette-classic" }
+          }
+        },
+        "options": { "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max", "lastNotNull"] }, "tooltip": { "mode": "multi" } }
+      },
+      {
+        "id": 7,
+        "title": "Latency Percentiles",
+        "description": "P50, P95, P99 response time percentiles",
+        "type": "timeseries",
+        "gridPos": { "h": 8, "w": 12, "x": 12, "y": 20 },
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.50, sum(rate(external_service_latency_seconds_bucket{service_name=~\"$service_name\", service_type=~\"$service_type\"}[5m])) by (le, service_name)) * 1000",
+            "legendFormat": "{{service_name}} P50",
+            "refId": "A"
+          },
+          {
+            "expr": "histogram_quantile(0.95, sum(rate(external_service_latency_seconds_bucket{service_name=~\"$service_name\", service_type=~\"$service_type\"}[5m])) by (le, service_name)) * 1000",
+            "legendFormat": "{{service_name}} P95",
+            "refId": "B"
+          },
+          {
+            "expr": "histogram_quantile(0.99, sum(rate(external_service_latency_seconds_bucket{service_name=~\"$service_name\", service_type=~\"$service_type\"}[5m])) by (le, service_name)) * 1000",
+            "legendFormat": "{{service_name}} P99",
+            "refId": "C"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "ms",
+            "custom": { "drawStyle": "line", "lineInterpolation": "smooth", "fillOpacity": 5, "lineWidth": 2 },
+            "color": { "mode": "palette-classic" }
+          }
+        },
+        "options": { "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"] }, "tooltip": { "mode": "multi" } }
+      },
+      {
+        "id": 8,
+        "title": "Total Checks by Result",
+        "description": "Cumulative checks performed per service (success vs failure)",
+        "type": "bargauge",
+        "gridPos": { "h": 7, "w": 12, "x": 0, "y": 28 },
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "targets": [
+          {
+            "expr": "external_service_checks_total{service_name=~\"$service_name\", service_type=~\"$service_type\"}",
+            "legendFormat": "{{service_name}} ({{result}})",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [ { "color": "green", "value": null } ]
+            },
+            "color": { "mode": "palette-classic" }
+          }
+        },
+        "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "orientation": "horizontal", "displayMode": "gradient", "showUnfilled": true }
+      },
+      {
+        "id": 9,
+        "title": "Incidents (UP\u2192DOWN)",
+        "description": "Cumulative incident count per service (transitions from UP to DOWN)",
+        "type": "stat",
+        "gridPos": { "h": 7, "w": 6, "x": 12, "y": 28 },
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "targets": [
+          {
+            "expr": "external_service_incidents_total{service_name=~\"$service_name\", service_type=~\"$service_type\"}",
+            "legendFormat": "{{service_name}}",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "green", "value": null },
+                { "color": "green", "value": 0 },
+                { "color": "yellow", "value": 1 },
+                { "color": "orange", "value": 3 },
+                { "color": "red", "value": 5 }
+              ]
+            },
+            "color": { "mode": "thresholds" }
+          }
+        },
+        "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "area" }
+      },
+      {
+        "id": 10,
+        "title": "SSL Certificate Expiry (Days)",
+        "description": "Days until SSL certificate expires (HTTPS endpoints only)",
+        "type": "stat",
+        "gridPos": { "h": 7, "w": 6, "x": 18, "y": 28 },
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "targets": [
+          {
+            "expr": "external_service_ssl_expiry_days{service_name=~\"$service_name\"}",
+            "legendFormat": "{{service_name}}",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "d", "decimals": 0,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "red", "value": null },
+                { "color": "red", "value": 0 },
+                { "color": "orange", "value": 14 },
+                { "color": "yellow", "value": 30 },
+                { "color": "green", "value": 60 }
+              ]
+            },
+            "color": { "mode": "thresholds" }
+          }
+        },
+        "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none" }
+      },
+      {
+        "id": 11,
+        "title": "Availability Heatmap (Hourly)",
+        "description": "Hourly availability pattern - identify recurring outage windows",
+        "type": "heatmap",
+        "gridPos": { "h": 8, "w": 24, "x": 0, "y": 35 },
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "targets": [
+          {
+            "expr": "avg_over_time(external_service_up{service_name=~\"$service_name\", service_type=~\"$service_type\"}[1h]) * 100",
+            "legendFormat": "{{service_name}}",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "calculate": false,
+          "yAxis": { "axisPlacement": "left" },
+          "color": {
+            "mode": "scheme",
+            "scheme": "RdYlGn",
+            "steps": 10
+          },
+          "tooltip": { "show": true },
+          "cellGap": 1
+        }
+      },
+      {
+        "id": 12,
+        "title": "Health Score Timeline",
+        "description": "Health score evolution over time (0-100)",
+        "type": "timeseries",
+        "gridPos": { "h": 8, "w": 12, "x": 0, "y": 43 },
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "targets": [
+          {
+            "expr": "external_service_health_score{service_name=~\"$service_name\", service_type=~\"$service_type\"}",
+            "legendFormat": "{{service_name}}",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "min": 0, "max": 100, "unit": "none",
+            "custom": { "drawStyle": "line", "lineInterpolation": "smooth", "fillOpacity": 15, "lineWidth": 2, "gradientMode": "scheme" },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "red", "value": null },
+                { "color": "red", "value": 0 },
+                { "color": "orange", "value": 50 },
+                { "color": "yellow", "value": 75 },
+                { "color": "green", "value": 90 }
+              ]
+            },
+            "color": { "mode": "thresholds" }
+          }
+        },
+        "options": { "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "min", "lastNotNull"] }, "tooltip": { "mode": "multi" } }
+      },
+      {
+        "id": 13,
+        "title": "Stale Check Detection",
+        "description": "Seconds since last check - alerts if scheduler is not running",
+        "type": "stat",
+        "gridPos": { "h": 8, "w": 6, "x": 12, "y": 43 },
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "targets": [
+          {
+            "expr": "time() - external_service_last_check_timestamp{service_name=~\"$service_name\", service_type=~\"$service_type\"}",
+            "legendFormat": "{{service_name}}",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "s", "decimals": 0,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "green", "value": null },
+                { "color": "green", "value": 0 },
+                { "color": "yellow", "value": 120 },
+                { "color": "orange", "value": 300 },
+                { "color": "red", "value": 600 }
+              ]
+            },
+            "color": { "mode": "thresholds" }
+          }
+        },
+        "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "area" }
+      },
+      {
+        "id": 14,
+        "title": "Service Comparison",
+        "description": "All services ranked by health: status, latency, checks, health score",
+        "type": "table",
+        "gridPos": { "h": 8, "w": 6, "x": 18, "y": 43 },
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "targets": [
+          {
+            "expr": "external_service_up{service_name=~\"$service_name\", service_type=~\"$service_type\"}",
+            "legendFormat": "{{service_name}}",
+            "refId": "status",
+            "instant": true,
+            "format": "table"
+          },
+          {
+            "expr": "external_service_latency_ms{service_name=~\"$service_name\", service_type=~\"$service_type\"}",
+            "legendFormat": "",
+            "refId": "latency",
+            "instant": true,
+            "format": "table"
+          },
+          {
+            "expr": "external_service_health_score{service_name=~\"$service_name\", service_type=~\"$service_type\"}",
+            "legendFormat": "",
+            "refId": "score",
+            "instant": true,
+            "format": "table"
+          }
+        ],
+        "transformations": [
+          { "id": "merge", "options": {} },
+          {
+            "id": "organize",
+            "options": {
+              "excludeByName": { "Time": true, "__name__": true, "instance": true, "job": true },
+              "renameByName": {
+                "service_name": "Service",
+                "service_type": "Type",
+                "Value #status": "Status",
+                "Value #latency": "Latency (ms)",
+                "Value #score": "Health Score"
+              }
+            }
+          }
+        ],
+        "fieldConfig": {
+          "overrides": [
+            {
+              "matcher": { "id": "byName", "options": "Status" },
+              "properties": [
+                { "id": "mappings", "value": [{ "type": "value", "options": { "0": { "text": "DOWN", "color": "red" }, "1": { "text": "UP", "color": "green" } } }] },
+                { "id": "custom.cellOptions", "value": { "type": "color-background" } }
+              ]
+            },
+            {
+              "matcher": { "id": "byName", "options": "Health Score" },
+              "properties": [
+                { "id": "thresholds", "value": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "orange", "value": 50 }, { "color": "yellow", "value": 75 }, { "color": "green", "value": 90 }] } },
+                { "id": "custom.cellOptions", "value": { "type": "color-background" } }
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "schemaVersion": 39,
+    "version": 1,
+    "editable": true
+  },
+  "folderId": 0,
+  "overwrite": true
+}
