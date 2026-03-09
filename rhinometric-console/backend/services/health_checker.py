@@ -6,6 +6,8 @@ Every POLL_INTERVAL seconds it:
   1. Queries all enabled services whose last_check_at + check_interval has passed.
   2. Runs the appropriate test (HTTP or PostgreSQL) in a thread pool.
   3. Updates status, latency, message in the DB.
+  4. Inserts a row into external_service_checks (Phase 3 - History).
+  5. Updates Prometheus gauges (Phase 4 - Metrics).
 
 No extra dependencies (APScheduler, Celery) required.
 """
@@ -18,7 +20,9 @@ from typing import Optional
 
 from database import SessionLocal
 from models.external_service import ExternalService, ServiceType, ServiceStatus
+from models.external_service_check import ExternalServiceCheck
 from services.connector_service import test_http_connection, test_postgresql_connection
+from metrics import external_service_up, external_service_latency_ms, external_service_checks_total
 
 logger = logging.getLogger("rhinometric.health_checker")
 
@@ -64,28 +68,57 @@ def _check_service(svc_id: int, svc_type: str, config: dict, timeout: int) -> di
                 "response_time_ms": 0, "status_code": None}
 
 
-async def _check_one(svc_id: int, svc_type: str, config: dict, timeout: int):
-    """Run a check in the thread pool and update the DB."""
+async def _check_one(svc_id: int, svc_name: str, svc_type: str, config: dict, timeout: int):
+    """Run a check in the thread pool, update DB, insert history, update Prometheus."""
     loop = asyncio.get_event_loop()
     result = await loop.run_in_executor(_executor, _check_service, svc_id, svc_type, config, timeout)
+
+    now = datetime.now(timezone.utc)
+    check_status = result.get("status", "error")
 
     # Update DB
     db = SessionLocal()
     try:
         svc = db.query(ExternalService).filter(ExternalService.id == svc_id).first()
         if svc:
-            svc.status = result.get("status", "error")
+            svc.status = check_status
             svc.status_message = result.get("message", "")[:500]
             svc.last_response_time_ms = result.get("response_time_ms")
             svc.last_status_code = result.get("status_code")
-            svc.last_check_at = datetime.now(timezone.utc)
+            svc.last_check_at = now
+
+            # Phase 3: Insert check history record
+            check_record = ExternalServiceCheck(
+                service_id=svc_id,
+                status=check_status,
+                response_time_ms=result.get("response_time_ms"),
+                status_code=result.get("status_code"),
+                message=result.get("message", "")[:500],
+                checked_at=now,
+            )
+            db.add(check_record)
+
             db.commit()
-            logger.info(f"[HealthCheck] {svc.name} ({svc_type}) -> {result['status']} ({result.get('response_time_ms',0):.0f}ms)")
+            logger.info(f"[HealthCheck] {svc_name} ({svc_type}) -> {check_status} ({result.get('response_time_ms',0):.0f}ms)")
     except Exception as e:
         db.rollback()
         logger.error(f"[HealthCheck] DB update failed for svc_id={svc_id}: {e}")
     finally:
         db.close()
+
+    # Phase 4: Update Prometheus metrics (outside DB session)
+    try:
+        is_up = 1 if check_status == "up" else 0
+        external_service_up.labels(service_name=svc_name, service_type=svc_type).set(is_up)
+        external_service_latency_ms.labels(service_name=svc_name, service_type=svc_type).set(
+            result.get("response_time_ms", 0)
+        )
+        check_result = "success" if result.get("success") else "failure"
+        external_service_checks_total.labels(
+            service_name=svc_name, service_type=svc_type, result=check_result
+        ).inc()
+    except Exception as e:
+        logger.warning(f"[HealthCheck] Prometheus metric update error: {e}")
 
 
 async def _scheduler_loop():
@@ -119,6 +152,7 @@ async def _scheduler_loop():
                 for svc in due:
                     tasks.append(_check_one(
                         svc.id,
+                        svc.name,
                         svc.service_type.value if hasattr(svc.service_type, 'value') else str(svc.service_type),
                         dict(svc.config) if svc.config else {},
                         svc.timeout_seconds or 10,

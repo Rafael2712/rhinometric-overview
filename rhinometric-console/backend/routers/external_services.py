@@ -2,16 +2,18 @@
 External Services router - CRUD + test connection for HTTP and PostgreSQL connectors.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Query
 from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta, timedelta
 from sqlalchemy.orm import Session
 
 from database import get_db
 from routers.auth import get_current_user
 from models.user import User as UserModel
 from models.external_service import ExternalService, ServiceType, ServiceStatus
+from models.external_service_check import ExternalServiceCheck
+from models.external_service_check import ExternalServiceCheck
 from services.connector_service import test_http_connection, test_postgresql_connection
 
 import logging
@@ -262,6 +264,52 @@ def test_connection_saved(
         **result,
         "service_id": svc.id,
         "name": svc.name,
+    }
+
+
+# ── Check History ────────────────────────────────────────────────
+
+@router.get("/{service_id}/history")
+def get_service_check_history(
+    service_id: int,
+    hours: int = Query(default=24, ge=1, le=720, description="Hours of history to return"),
+    limit: int = Query(default=200, ge=1, le=5000, description="Max records"),
+    db: Session = Depends(get_db),
+    current_user: UserModel = Depends(get_current_user),
+):
+    """Return check history for a specific service (newest first)."""
+    svc = db.query(ExternalService).filter(ExternalService.id == service_id).first()
+    if not svc:
+        raise HTTPException(status_code=404, detail="External service not found")
+
+    since = datetime.now(timezone.utc) - timedelta(hours=hours)
+    checks = (
+        db.query(ExternalServiceCheck)
+        .filter(
+            ExternalServiceCheck.service_id == service_id,
+            ExternalServiceCheck.checked_at >= since,
+        )
+        .order_by(ExternalServiceCheck.checked_at.desc())
+        .limit(limit)
+        .all()
+    )
+
+    return {
+        "service_id": service_id,
+        "service_name": svc.name,
+        "hours": hours,
+        "total": len(checks),
+        "checks": [
+            {
+                "id": c.id,
+                "status": c.status,
+                "response_time_ms": c.response_time_ms,
+                "status_code": c.status_code,
+                "message": c.message,
+                "checked_at": c.checked_at.isoformat() if c.checked_at else None,
+            }
+            for c in checks
+        ],
     }
 
 

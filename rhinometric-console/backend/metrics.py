@@ -107,6 +107,28 @@ db_query_duration_seconds = Histogram(
 )
 
 # ============================================================================
+# EXTERNAL SERVICES METRICS
+# ==============================================================================
+
+external_service_up = Gauge(
+    'external_service_up',
+    'External service reachability (1=up, 0=down)',
+    ['service_name', 'service_type']
+)
+
+external_service_latency_ms = Gauge(
+    'external_service_latency_ms',
+    'External service last response time in milliseconds',
+    ['service_name', 'service_type']
+)
+
+external_service_checks_total = Counter(
+    'external_service_checks_total',
+    'Total external service health checks performed',
+    ['service_name', 'service_type', 'result']
+)
+
+# ==============================================================================
 # PROMETHEUS MIDDLEWARE
 # ============================================================================
 

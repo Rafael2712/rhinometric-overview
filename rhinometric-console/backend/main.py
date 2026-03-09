@@ -82,6 +82,14 @@ async def startup_event():
     except Exception as e:
         logger.warning(f"Could not create external_services table: {e}")
 
+    # Auto-create external_service_checks table if it doesn't exist
+    try:
+        from models.external_service_check import ExternalServiceCheck
+        ExternalServiceCheck.__table__.create(bind=engine, checkfirst=True)
+        logger.info("External service checks table ready")
+    except Exception as e:
+        logger.warning(f"Could not create external_service_checks table: {e}")
+
     # Start background health checker for external services
     try:
         from services.health_checker import start_scheduler
