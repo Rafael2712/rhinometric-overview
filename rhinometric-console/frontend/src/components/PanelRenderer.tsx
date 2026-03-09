@@ -6,6 +6,8 @@ interface PanelRendererProps {
   title: string;
   from: string;
   to: string;
+  refresh?: string;    // e.g. "15s", "30s", "1m" - Grafana auto-refresh parameter
+  refreshKey?: number; // Increment to force iframe reload
 }
 
 export const PanelRenderer: React.FC<PanelRendererProps> = ({
@@ -14,10 +16,15 @@ export const PanelRenderer: React.FC<PanelRendererProps> = ({
   title,
   from,
   to,
+  refresh,
+  refreshKey = 0,
 }) => {
   // Auth Proxy: NGINX injects X-WEBAUTH-USER header, Grafana auto-signs in
   // orgId=1 is required for anonymous access to work
-  const iframeUrl = `/grafana/d-solo/${uid}?orgId=1&panelId=${panelId}&from=${from}&to=${to}&theme=dark&kiosk`;
+  let iframeUrl = `/grafana/d-solo/${uid}?orgId=1&panelId=${panelId}&from=${from}&to=${to}&theme=dark&kiosk`;
+  if (refresh) {
+    iframeUrl += `&refresh=${refresh}`;
+  }
 
   return (
     <div className="relative bg-surface rounded overflow-hidden shadow-lg">
@@ -28,6 +35,7 @@ export const PanelRenderer: React.FC<PanelRendererProps> = ({
 
       {/* Grafana Panel iframe - LIVE & INTERACTIVE */}
       <iframe
+        key={refreshKey}
         src={iframeUrl}
         className="w-full h-[400px] border-0"
         title={title}

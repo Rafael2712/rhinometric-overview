@@ -317,7 +317,7 @@
   "time": {"from": "now-1h", "to": "now"},
   "timepicker": {},
   "timezone": "",
-  "title": "06 - Rhinometric Console Backend",
+  "title": "Rhinometric Console Backend",
   "uid": "rhinometric-backend",
   "version": 0,
   "weekStart": ""

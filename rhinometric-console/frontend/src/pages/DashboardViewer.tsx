@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { PanelRenderer } from '../components/PanelRenderer';
 import { useAuthStore } from '../lib/auth/store';
+import { RefreshCw } from 'lucide-react';
 
 interface Panel {
   id: number;
@@ -29,6 +30,11 @@ type TimeRange = {
   to: string;
 };
 
+type RefreshInterval = {
+  label: string;
+  value: number; // milliseconds, 0 = off
+};
+
 const TIME_RANGES: TimeRange[] = [
   { label: 'Last 1 hour', from: 'now-1h', to: 'now' },
   { label: 'Last 6 hours', from: 'now-6h', to: 'now' },
@@ -37,12 +43,33 @@ const TIME_RANGES: TimeRange[] = [
   { label: 'Last 30 days', from: 'now-30d', to: 'now' },
 ];
 
+const REFRESH_INTERVALS: RefreshInterval[] = [
+  { label: 'Off', value: 0 },
+  { label: '5s', value: 5000 },
+  { label: '10s', value: 10000 },
+  { label: '15s', value: 15000 },
+  { label: '30s', value: 30000 },
+  { label: '1m', value: 60000 },
+  { label: '5m', value: 300000 },
+  { label: '10m', value: 600000 },
+  { label: '15m', value: 900000 },
+  { label: '30m', value: 1800000 },
+];
+
+// Default: 15s refresh
+const DEFAULT_REFRESH = REFRESH_INTERVALS[3];
+
+// Strip leading numbering like "01 - "
+const cleanTitle = (title: string) => title.replace(/^\d+\s*-\s*/, '');
+
 export const DashboardViewer: React.FC = () => {
   const { uid } = useParams<{ uid: string }>();
   const [dashboard, setDashboard] = useState<Dashboard | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedRange, setSelectedRange] = useState<TimeRange>(TIME_RANGES[1]); // Default: 6h
+  const [selectedRange, setSelectedRange] = useState<TimeRange>(TIME_RANGES[1]);
+  const [refreshInterval, setRefreshInterval] = useState<RefreshInterval>(DEFAULT_REFRESH);
+  const [refreshKey, setRefreshKey] = useState(0);
   const token = useAuthStore((state) => state.token);
 
   useEffect(() => {
@@ -56,17 +83,10 @@ export const DashboardViewer: React.FC = () => {
       setLoading(true);
       setError(null);
       const response = await fetch(`/api/dashboards/${uid}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
+        headers: { 'Authorization': `Bearer ${token}` },
       });
-      
-      if (!response.ok) {
-        throw new Error('Failed to load dashboard');
-      }
-      
+      if (!response.ok) throw new Error('Failed to load dashboard');
       const data = await response.json();
-      // Grafana API returns { dashboard: {...}, meta: {...} }
       const dashboardData = data.dashboard || data;
       setDashboard(dashboardData);
     } catch (err: any) {
@@ -76,12 +96,30 @@ export const DashboardViewer: React.FC = () => {
     }
   };
 
+  // Auto-refresh: increment refreshKey to force iframe reload
+  useEffect(() => {
+    if (refreshInterval.value === 0) return;
+    const timer = setInterval(() => {
+      setRefreshKey(prev => prev + 1);
+      
+    }, refreshInterval.value);
+    return () => clearInterval(timer);
+  }, [refreshInterval]);
+
   const handleTimeRangeChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
     const range = TIME_RANGES.find(r => r.label === event.target.value);
-    if (range) {
-      setSelectedRange(range);
-    }
+    if (range) setSelectedRange(range);
   };
+
+  const handleRefreshChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    const interval = REFRESH_INTERVALS.find(r => r.label === event.target.value);
+    if (interval) setRefreshInterval(interval);
+  };
+
+  const handleManualRefresh = useCallback(() => {
+    setRefreshKey(prev => prev + 1);
+    
+  }, []);
 
   if (loading) {
     return (
@@ -101,27 +139,53 @@ export const DashboardViewer: React.FC = () => {
     );
   }
 
-  if (!dashboard) {
-    return null;
-  }
+  if (!dashboard) return null;
 
   return (
     <div className="space-y-6 p-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold text-white">{dashboard.title}</h1>
-        
-        <select
-          value={selectedRange.label}
-          onChange={handleTimeRangeChange}
-          className="input w-auto min-w-[200px]"
-        >
-          {TIME_RANGES.map(range => (
-            <option key={range.label} value={range.label}>
-              {range.label}
-            </option>
-          ))}
-        </select>
+      <div className="flex items-center justify-between flex-wrap gap-4">
+        <h1 className="text-3xl font-bold text-white">{cleanTitle(dashboard.title)}</h1>
+
+        <div className="flex items-center gap-3">
+          {/* Manual refresh button */}
+          <button
+            onClick={handleManualRefresh}
+            className="btn-outline px-3 py-2 flex items-center gap-2 text-sm"
+            title="Refresh now"
+          >
+            <RefreshCw className={`w-4 h-4 ${refreshInterval.value > 0 ? 'animate-spin-slow' : ''}`} />
+          </button>
+
+          {/* Auto-refresh interval selector */}
+          <div className="flex items-center gap-2">
+            <select
+              value={refreshInterval.label}
+              onChange={handleRefreshChange}
+              className="input w-auto min-w-[100px] text-sm"
+              title="Auto-refresh interval"
+            >
+              {REFRESH_INTERVALS.map(interval => (
+                <option key={interval.label} value={interval.label}>
+                  {interval.label === 'Off' ? 'Auto: Off' : `Auto: ${interval.label}`}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Time range selector */}
+          <select
+            value={selectedRange.label}
+            onChange={handleTimeRangeChange}
+            className="input w-auto min-w-[180px] text-sm"
+          >
+            {TIME_RANGES.map(range => (
+              <option key={range.label} value={range.label}>
+                {range.label}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {/* Panels Grid */}
@@ -140,6 +204,8 @@ export const DashboardViewer: React.FC = () => {
               title={panel.title}
               from={selectedRange.from}
               to={selectedRange.to}
+              refresh={refreshInterval.value > 0 ? refreshInterval.label : undefined}
+              refreshKey={refreshKey}
             />
           </div>
         ))}

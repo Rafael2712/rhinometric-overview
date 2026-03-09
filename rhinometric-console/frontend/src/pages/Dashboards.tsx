@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ExternalLink, Folder, Tag, Eye } from 'lucide-react'
+import { ExternalLink, Folder, Tag, Eye, Globe, Server } from 'lucide-react'
 import { useAuthStore } from '../lib/auth/store'
 import { openGrafanaDashboard } from '../utils/grafana'
 
@@ -19,6 +19,9 @@ interface Dashboard {
   folderUrl?: string
 }
 
+// Strip leading numbering like "01 - ", "02 - ", etc.
+const cleanTitle = (title: string) => title.replace(/^\d+\s*-\s*/, '')
+
 export function DashboardsPage() {
   useEffect(() => {
     document.title = 'Dashboards - Rhinometric'
@@ -30,8 +33,6 @@ export function DashboardsPage() {
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const token = useAuthStore((state) => state.token)
-  
-  // Check if user can edit in Grafana (admin or owner only)
   const isAdmin = useAuthStore((state) => state.isAdmin)
 
   useEffect(() => {
@@ -42,13 +43,9 @@ export function DashboardsPage() {
     try {
       setLoading(true)
       const response = await fetch('/api/dashboards', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
+        headers: { 'Authorization': `Bearer ${token}` },
       })
-      if (!response.ok) {
-        throw new Error('Failed to fetch dashboards')
-      }
+      if (!response.ok) throw new Error('Failed to fetch dashboards')
       const data = await response.json()
       setDashboards(data.dashboards)
     } catch (err) {
@@ -61,7 +58,6 @@ export function DashboardsPage() {
 
   const openInGrafana = (dashboard: Dashboard, e: React.MouseEvent) => {
     e.stopPropagation()
-    // Open Grafana directly on port 3000 (v2.5.1 - direct links strategy)
     openGrafanaDashboard(dashboard.uid, { kiosk: 'tv' })
   }
 
@@ -70,10 +66,103 @@ export function DashboardsPage() {
   }
 
   const filteredDashboards = dashboards.filter(dashboard =>
-    dashboard.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    cleanTitle(dashboard.title).toLowerCase().includes(searchTerm.toLowerCase()) ||
     dashboard.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase())) ||
     (dashboard.folderTitle && dashboard.folderTitle.toLowerCase().includes(searchTerm.toLowerCase()))
   )
+
+  // Separate into platform (internal) and external services dashboards
+  const externalDashboards = filteredDashboards.filter(d =>
+    d.tags.includes('external-services')
+  )
+  const platformDashboards = filteredDashboards.filter(d =>
+    !d.tags.includes('external-services')
+  )
+
+  const renderDashboardCard = (dashboard: Dashboard) => (
+    <div
+      key={dashboard.uid}
+      className="card hover:border-primary/50 transition-all group"
+    >
+      <div className="flex items-start justify-between mb-4">
+        <div className="flex-1">
+          <h3 className="text-lg font-semibold text-white">
+            {cleanTitle(dashboard.title)}
+          </h3>
+          {dashboard.folderTitle && (
+            <div className="flex items-center gap-2 mt-2 text-text-muted text-sm">
+              <Folder className="w-4 h-4" />
+              <span>{dashboard.folderTitle}</span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {dashboard.tags.length > 0 && (
+        <div className="flex flex-wrap gap-2 mt-3">
+          {dashboard.tags.slice(0, 3).map((tag, index) => (
+            <span
+              key={index}
+              className="inline-flex items-center gap-1 px-2 py-1 bg-surface-light rounded text-xs text-text-secondary"
+            >
+              <Tag className="w-3 h-3" />
+              {tag}
+            </span>
+          ))}
+          {dashboard.tags.length > 3 && (
+            <span className="inline-flex items-center px-2 py-1 bg-surface-light rounded text-xs text-text-muted">
+              +{dashboard.tags.length - 3} more
+            </span>
+          )}
+        </div>
+      )}
+
+      <div className="mt-4 pt-4 border-t border-surface-light flex gap-2">
+        <button
+          onClick={() => viewInConsole(dashboard)}
+          className="flex-1 btn-secondary text-sm font-medium flex items-center justify-center gap-2"
+        >
+          <Eye className="w-4 h-4" />
+          View in Console
+        </button>
+        {isAdmin() && (
+          <button
+            onClick={(e) => openInGrafana(dashboard, e)}
+            className="btn-outline text-sm font-medium flex items-center justify-center gap-1 px-3"
+            title="Edit in Grafana"
+          >
+            <ExternalLink className="w-4 h-4" />
+            Grafana
+          </button>
+        )}
+      </div>
+    </div>
+  )
+
+  const renderSection = (
+    title: string,
+    icon: React.ReactNode,
+    description: string,
+    items: Dashboard[]
+  ) => {
+    if (items.length === 0) return null
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10 text-primary">
+            {icon}
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-white">{title}</h2>
+            <p className="text-text-muted text-sm">{description}</p>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {items.map(renderDashboardCard)}
+        </div>
+      </div>
+    )
+  }
 
   if (loading) {
     return (
@@ -108,7 +197,7 @@ export function DashboardsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -130,71 +219,21 @@ export function DashboardsPage() {
         />
       </div>
 
-      {/* Dashboards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredDashboards.map((dashboard) => (
-          <div
-            key={dashboard.uid}
-            className="card hover:border-primary/50 transition-all group"
-          >
-            <div className="flex items-start justify-between mb-4">
-              <div className="flex-1">
-                <h3 className="text-lg font-semibold text-white">
-                  {dashboard.title}
-                </h3>
-                {dashboard.folderTitle && (
-                  <div className="flex items-center gap-2 mt-2 text-text-muted text-sm">
-                    <Folder className="w-4 h-4" />
-                    <span>{dashboard.folderTitle}</span>
-                  </div>
-                )}
-              </div>
-            </div>
+      {/* Platform Dashboards Section */}
+      {renderSection(
+        'Platform',
+        <Server className="w-5 h-5" />,
+        'Infrastructure, backend and system monitoring',
+        platformDashboards
+      )}
 
-            {dashboard.tags.length > 0 && (
-              <div className="flex flex-wrap gap-2 mt-3">
-                {dashboard.tags.slice(0, 3).map((tag, index) => (
-                  <span
-                    key={index}
-                    className="inline-flex items-center gap-1 px-2 py-1 bg-surface-light rounded text-xs text-text-secondary"
-                  >
-                    <Tag className="w-3 h-3" />
-                    {tag}
-                  </span>
-                ))}
-                {dashboard.tags.length > 3 && (
-                  <span className="inline-flex items-center px-2 py-1 bg-surface-light rounded text-xs text-text-muted">
-                    +{dashboard.tags.length - 3} more
-                  </span>
-                )}
-              </div>
-            )}
-
-            <div className="mt-4 pt-4 border-t border-surface-light flex gap-2">
-              {/* View in Console - all roles */}
-              <button 
-                onClick={() => viewInConsole(dashboard)}
-                className="flex-1 btn-secondary text-sm font-medium flex items-center justify-center gap-2"
-              >
-                <Eye className="w-4 h-4" />
-                View in Console
-              </button>
-
-              {/* Open in Grafana - only admin/owner */}
-              {isAdmin() && (
-                <button 
-                  onClick={(e) => openInGrafana(dashboard, e)}
-                  className="btn-outline text-sm font-medium flex items-center justify-center gap-1 px-3"
-                  title="Edit in Grafana"
-                >
-                  <ExternalLink className="w-4 h-4" />
-                  Grafana
-                </button>
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
+      {/* External Services Section */}
+      {renderSection(
+        'External Services',
+        <Globe className="w-5 h-5" />,
+        'Health, performance and SLA tracking for external endpoints',
+        externalDashboards
+      )}
 
       {filteredDashboards.length === 0 && (
         <div className="card text-center py-12">

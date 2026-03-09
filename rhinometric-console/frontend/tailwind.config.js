@@ -32,6 +32,9 @@ export default {
           muted: '#94a3b8',
         },
       },
+      animation: {
+        'spin-slow': 'spin 3s linear infinite',
+      },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
       },
