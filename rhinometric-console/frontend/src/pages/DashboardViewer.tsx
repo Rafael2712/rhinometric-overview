@@ -57,7 +57,7 @@ const REFRESH_INTERVALS: RefreshInterval[] = [
 ];
 
 // Default: 15s refresh
-const DEFAULT_REFRESH = REFRESH_INTERVALS[3];
+const DEFAULT_REFRESH = REFRESH_INTERVALS[0]; // Off by default
 
 // Strip leading numbering like "01 - "
 const cleanTitle = (title: string) => title.replace(/^\d+\s*-\s*/, '');
