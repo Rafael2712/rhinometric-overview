@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import {
   Server, AlertCircle, CheckCircle, Activity, Globe, Database, 
   Network, Plus, Trash2, Play, Power, PowerOff, Edit, ArrowLeft,
-  RefreshCw, Clock
+  RefreshCw, Clock, Lock
 } from 'lucide-react'
 import { useAuthStore } from '../lib/auth/store'
 
@@ -182,7 +182,7 @@ function PgForm({ config, onChange }: { config: Record<string,any>; onChange: (c
 /* ─── Main Component ─────────────────────────────────────────── */
 
 export default function Services() {
-  const { token } = useAuthStore()
+  const { token, isAdmin } = useAuthStore()
   const [activeTab, setActiveTab] = useState<Tab>('external')
   const [view, setView] = useState<View>('list')
   const [extServices, setExtServices] = useState<ExternalServiceData[]>([])
@@ -206,6 +206,7 @@ export default function Services() {
   const [actionLoading, setActionLoading] = useState<number | null>(null)
 
   const apiHeaders = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
+  const canManage = isAdmin()  // Only ADMIN/OWNER can create/edit/delete/toggle
 
   const fetchExternal = useCallback(async () => {
     try {
@@ -334,6 +335,16 @@ export default function Services() {
           </h1>
         </div>
 
+        {/* Read-only banner for non-admin users */}
+        {!canManage && (
+          <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+            <Lock className="w-5 h-5 text-yellow-400 flex-shrink-0" />
+            <p className="text-yellow-300 text-sm">
+              <span className="font-medium">View-only mode.</span> You can explore the configuration but only administrators can create or modify services.
+            </p>
+          </div>
+        )}
+
         {/* Type selector (only on create) */}
         {view === 'create' && (
           <div className="grid grid-cols-2 gap-4">
@@ -403,12 +414,14 @@ export default function Services() {
 
         {/* Actions */}
         <div className="flex items-center gap-3">
-          <button onClick={handleTestConnection} disabled={!isValid || testing}
+          <button onClick={canManage ? handleTestConnection : undefined} disabled={!canManage || !isValid || testing}
+            title={!canManage ? 'Only administrators can test connections' : ''}
             className="flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-600 text-gray-300 hover:text-white hover:border-gray-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
             {testing ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
             Test Connection
           </button>
-          <button onClick={handleSave} disabled={!isValid}
+          <button onClick={canManage ? handleSave : undefined} disabled={!canManage || !isValid}
+            title={!canManage ? 'Only administrators can create or modify services' : ''}
             className="flex items-center gap-2 px-6 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors">
             {view === 'edit' ? 'Save Changes' : 'Create Service'}
           </button>
@@ -544,20 +557,20 @@ export default function Services() {
                         </td>
                         <td className="p-4">
                           <div className="flex items-center justify-end gap-1">
-                            <button onClick={() => handleTestSaved(svc.id)} disabled={actionLoading === svc.id}
-                              title="Test connection" className="p-1.5 rounded hover:bg-gray-700/50 text-gray-400 hover:text-green-400 transition-colors disabled:opacity-50">
+                            <button onClick={() => canManage && handleTestSaved(svc.id)} disabled={!canManage || actionLoading === svc.id}
+                              title={canManage ? "Test connection" : "Admin only"} className={`p-1.5 rounded transition-colors disabled:opacity-50 ${canManage ? 'hover:bg-gray-700/50 text-gray-400 hover:text-green-400' : 'text-gray-600 cursor-not-allowed'}`}>
                               {actionLoading === svc.id ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
                             </button>
-                            <button onClick={() => openEdit(svc)} title="Edit"
-                              className="p-1.5 rounded hover:bg-gray-700/50 text-gray-400 hover:text-blue-400 transition-colors">
+                            <button onClick={() => canManage && openEdit(svc)} disabled={!canManage}
+                              title={canManage ? "Edit" : "Admin only"} className={`p-1.5 rounded transition-colors ${canManage ? 'hover:bg-gray-700/50 text-gray-400 hover:text-blue-400' : 'text-gray-600 cursor-not-allowed opacity-50'}`}>
                               <Edit className="w-4 h-4" />
                             </button>
-                            <button onClick={() => handleToggle(svc.id)} title={svc.enabled ? 'Disable' : 'Enable'}
-                              className="p-1.5 rounded hover:bg-gray-700/50 text-gray-400 hover:text-yellow-400 transition-colors">
+                            <button onClick={() => canManage && handleToggle(svc.id)} disabled={!canManage}
+                              title={canManage ? (svc.enabled ? 'Disable' : 'Enable') : 'Admin only'} className={`p-1.5 rounded transition-colors ${canManage ? 'hover:bg-gray-700/50 text-gray-400 hover:text-yellow-400' : 'text-gray-600 cursor-not-allowed opacity-50'}`}>
                               {svc.enabled ? <Power className="w-4 h-4" /> : <PowerOff className="w-4 h-4" />}
                             </button>
-                            <button onClick={() => handleDelete(svc.id)} title="Delete"
-                              className="p-1.5 rounded hover:bg-gray-700/50 text-gray-400 hover:text-red-400 transition-colors">
+                            <button onClick={() => canManage && handleDelete(svc.id)} disabled={!canManage}
+                              title={canManage ? "Delete" : "Admin only"} className={`p-1.5 rounded transition-colors ${canManage ? 'hover:bg-gray-700/50 text-gray-400 hover:text-red-400' : 'text-gray-600 cursor-not-allowed opacity-50'}`}>
                               <Trash2 className="w-4 h-4" />
                             </button>
                           </div>

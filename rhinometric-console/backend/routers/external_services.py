@@ -9,7 +9,7 @@ from datetime import datetime, timezone, timedelta, timedelta
 from sqlalchemy.orm import Session
 
 from database import get_db
-from routers.auth import get_current_user
+from routers.auth import get_current_user, require_role
 from models.user import User as UserModel
 from models.external_service import ExternalService, ServiceType, ServiceStatus
 from models.external_service_check import ExternalServiceCheck
@@ -21,6 +21,13 @@ import logging
 logger = logging.getLogger("rhinometric.external_services")
 
 router = APIRouter()
+
+
+# Write operations require ADMIN or OWNER role
+admin_only = require_role(["OWNER", "ADMIN"])
+
+
+# Write operations require ADMIN or OWNER role
 
 
 # ── Pydantic schemas ────────────────────────────────────────────
@@ -165,7 +172,7 @@ def get_external_service(
 def create_external_service(
     payload: ExternalServiceCreate,
     db: Session = Depends(get_db),
-    current_user: UserModel = Depends(get_current_user),
+    current_user: UserModel = Depends(admin_only),
 ):
     """Create a new external service (HTTP or PostgreSQL)."""
     svc = ExternalService(
@@ -191,7 +198,7 @@ def update_external_service(
     service_id: int,
     payload: ExternalServiceUpdate,
     db: Session = Depends(get_db),
-    current_user: UserModel = Depends(get_current_user),
+    current_user: UserModel = Depends(admin_only),
 ):
     """Update an existing external service."""
     svc = db.query(ExternalService).filter(ExternalService.id == service_id).first()
@@ -222,9 +229,9 @@ def update_external_service(
 def delete_external_service(
     service_id: int,
     db: Session = Depends(get_db),
-    current_user: UserModel = Depends(get_current_user),
+    current_user: UserModel = Depends(admin_only),
 ):
-    """Delete an external service."""
+    """Delete an external service. Requires ADMIN or OWNER."""
     svc = db.query(ExternalService).filter(ExternalService.id == service_id).first()
     if not svc:
         raise HTTPException(status_code=404, detail="External service not found")
@@ -238,7 +245,7 @@ def delete_external_service(
 @router.post("/test-connection")
 def test_connection_adhoc(
     payload: TestConnectionRequest,
-    current_user: UserModel = Depends(get_current_user),
+    current_user: UserModel = Depends(admin_only),
 ):
     """Test a connection without saving (ad-hoc, from the form)."""
     result = _run_test(payload.service_type, payload.config, payload.timeout_seconds)
@@ -249,9 +256,9 @@ def test_connection_adhoc(
 def test_connection_saved(
     service_id: int,
     db: Session = Depends(get_db),
-    current_user: UserModel = Depends(get_current_user),
+    current_user: UserModel = Depends(admin_only),
 ):
-    """Test connection for an existing saved service and update its status."""
+    """Test connection for an existing saved service. Requires ADMIN or OWNER."""
     svc = db.query(ExternalService).filter(ExternalService.id == service_id).first()
     if not svc:
         raise HTTPException(status_code=404, detail="External service not found")
@@ -319,9 +326,9 @@ def get_service_check_history(
 def toggle_external_service(
     service_id: int,
     db: Session = Depends(get_db),
-    current_user: UserModel = Depends(get_current_user),
+    current_user: UserModel = Depends(admin_only),
 ):
-    """Toggle enabled/disabled for an external service."""
+    """Toggle enabled/disabled. Requires ADMIN or OWNER."""
     svc = db.query(ExternalService).filter(ExternalService.id == service_id).first()
     if not svc:
         raise HTTPException(status_code=404, detail="External service not found")
