@@ -19,6 +19,9 @@ class Anomaly(BaseModel):
     current: float
     confidence: float | None = None
     description: str | None = None
+    entity_type: str | None = None
+    entity_name: str | None = None
+    source: str | None = None
 
 class AnomaliesResponse(BaseModel):
     anomalies: list[Anomaly]

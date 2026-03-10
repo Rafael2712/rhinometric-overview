@@ -72,6 +72,9 @@ class MetricConfig(BaseModel):
     sensitivity: str = "medium"
     alert_on_any_anomaly: bool = False
     invert_threshold: bool = False
+    group_by: str = ""
+    entity_type: str = ""
+    source: str = ""
 
 
 class PersistenceConfig(BaseModel):

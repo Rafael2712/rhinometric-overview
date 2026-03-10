@@ -1,4 +1,4 @@
-import { AlertTriangle, TrendingUp, Filter, Download, X, GitMerge, CheckCircle2, BarChart3, FileText, Activity } from 'lucide-react'
+import { AlertTriangle, TrendingUp, Filter, Download, X, GitMerge, Globe, CheckCircle2, BarChart3, FileText, Activity } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
@@ -14,6 +14,9 @@ interface Anomaly {
   current_value: number
   status: string
   confidence: number
+  entity_type?: string
+  entity_name?: string
+  source?: string
 }
 
 export function AnomaliesPage() {
@@ -66,7 +69,7 @@ export function AnomaliesPage() {
               Experimental Beta
             </span>
           </div>
-          <p className="text-text-muted text-sm sm:text-base">Monitor and manage detected anomalies across your infrastructure</p>
+          <p className="text-text-muted text-sm sm:text-base">Monitor and manage detected anomalies across your infrastructure and external services</p>
         </div>
         <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
           <button className="btn flex items-center gap-2 text-sm">
@@ -170,10 +173,22 @@ export function AnomaliesPage() {
                       <td className="px-4 py-3 text-xs text-gray-300">
                         {new Date(anomaly.timestamp).toLocaleTimeString()}
                       </td>
-                      <td className="px-4 py-3 max-w-[180px]">
-                        <code className="text-xs text-primary bg-primary/10 px-2 py-1 rounded block truncate">
-                          {anomaly.metric_name}
-                        </code>
+                      <td className="px-4 py-3 max-w-[220px]">
+                        {anomaly.entity_type === 'service' && anomaly.entity_name ? (
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-1.5">
+                              <Globe size={12} className="text-cyan-400 flex-shrink-0" />
+                              <span className="text-xs font-medium text-cyan-400 truncate">{anomaly.entity_name}</span>
+                            </div>
+                            <code className="text-xs text-primary/70 bg-primary/5 px-1.5 py-0.5 rounded block truncate">
+                              {anomaly.metric_name.includes('::') ? anomaly.metric_name.split('::')[0] : anomaly.metric_name}
+                            </code>
+                          </div>
+                        ) : (
+                          <code className="text-xs text-primary bg-primary/10 px-2 py-1 rounded block truncate">
+                            {anomaly.metric_name}
+                          </code>
+                        )}
                       </td>
                       <td className="px-4 py-3">
                         <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
@@ -223,9 +238,16 @@ export function AnomaliesPage() {
                   onClick={() => setSelectedAnomaly(anomaly)}
                 >
                   <div className="flex items-start justify-between gap-2 mb-1.5">
-                    <code className="text-xs text-primary bg-primary/10 px-2 py-0.5 rounded truncate min-w-0">
-                      {anomaly.metric_name}
-                    </code>
+                    {anomaly.entity_type === 'service' && anomaly.entity_name ? (
+                      <div className="flex items-center gap-1 min-w-0">
+                        <Globe size={10} className="text-cyan-400 flex-shrink-0" />
+                        <span className="text-xs font-medium text-cyan-400 truncate">{anomaly.entity_name}</span>
+                      </div>
+                    ) : (
+                      <code className="text-xs text-primary bg-primary/10 px-2 py-0.5 rounded truncate min-w-0">
+                        {anomaly.metric_name}
+                      </code>
+                    )}
                     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium flex-shrink-0 ${
                       anomaly.severity === 'critical' || anomaly.severity === 'high' ? 'bg-error/20 text-error' :
                       anomaly.severity === 'medium' ? 'bg-warning/20 text-warning' :
@@ -287,7 +309,16 @@ export function AnomaliesPage() {
               <div className="grid grid-cols-2 gap-2 sm:gap-3">
                 <div className="card bg-surface-light p-2 sm:p-3">
                   <p className="text-xs text-gray-400 mb-1">Metric</p>
-                  <code className="text-sm sm:text-lg text-primary font-mono break-all">{selectedAnomaly.metric_name}</code>
+                  <code className="text-sm sm:text-lg text-primary font-mono break-all">
+                    {selectedAnomaly.metric_name.includes('::') ? selectedAnomaly.metric_name.split('::')[0] : selectedAnomaly.metric_name}
+                  </code>
+                  {selectedAnomaly.entity_type === 'service' && selectedAnomaly.entity_name && (
+                    <div className="flex items-center gap-1.5 mt-1.5">
+                      <Globe size={14} className="text-cyan-400" />
+                      <span className="text-sm text-cyan-400 font-medium">{selectedAnomaly.entity_name}</span>
+                      <span className="text-xs text-gray-500 ml-1">({selectedAnomaly.source || 'external service'})</span>
+                    </div>
+                  )}
                 </div>
                 <div className="card bg-surface-light p-2 sm:p-3">
                   <p className="text-xs text-gray-400 mb-1">Status</p>
@@ -372,7 +403,10 @@ export function AnomaliesPage() {
                         'http_request_rate': 'sum(rate(http_requests_total[5m]))',
                         'http_error_rate': 'sum(rate(http_requests_total{status=~"5.."}[5m]))',
                         'http_latency_p95': 'histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket[5m])))',
-                        'http_latency_p99': 'histogram_quantile(0.99, sum by (le) (rate(http_request_duration_seconds_bucket[5m])))'
+                        'http_latency_p99': 'histogram_quantile(0.99, sum by (le) (rate(http_request_duration_seconds_bucket[5m])))',
+                        'external_service_latency': 'external_service_latency_ms',
+                        'external_service_health': 'external_service_health_score',
+                        'external_service_availability': 'external_service_up'
                       }
                       const prometheusQuery = metricMap[selectedAnomaly.metric_name] || selectedAnomaly.metric_name
                       const exploreUrl = `?orgId=1&left=${encodeURIComponent(JSON.stringify({

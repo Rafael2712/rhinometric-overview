@@ -364,6 +364,64 @@ metrics:
     sensitivity: "high"
     alert_on_any_anomaly: true
 
+
+  # ── EXTERNAL SERVICE METRICS (Phase 1.1) ──────────────────────
+  # Grouped by service_name label - each service is detected independently
+  # Source metrics exported by console-backend health checker
+
+  - name: "external_service_latency"
+    display_name: "External Service Latency"
+    description: "Response latency of external services in milliseconds"
+    query: "external_service_latency_ms"
+    enabled: true
+    priority: "high"
+    models:
+      - statistical
+      - isolation_forest
+    thresholds:
+      warning: 500
+      critical: 2000
+    sensitivity: "medium"
+    group_by: "service_name"
+    entity_type: "service"
+    source: "external_services"
+
+  - name: "external_service_health"
+    display_name: "External Service Health Score"
+    description: "Health score of external services (0-100, lower is worse)"
+    query: "external_service_health_score"
+    enabled: true
+    priority: "high"
+    models:
+      - statistical
+      - isolation_forest
+    thresholds:
+      warning: 70
+      critical: 50
+    sensitivity: "medium"
+    invert_threshold: true
+    group_by: "service_name"
+    entity_type: "service"
+    source: "external_services"
+
+  - name: "external_service_availability"
+    display_name: "External Service Availability"
+    description: "External service up/down status (1=up, 0=down)"
+    query: "external_service_up"
+    enabled: true
+    priority: "critical"
+    models:
+      - statistical
+    thresholds:
+      warning: 0.5
+      critical: 0
+    sensitivity: "high"
+    invert_threshold: true
+    alert_on_any_anomaly: true
+    group_by: "service_name"
+    entity_type: "service"
+    source: "external_services"
+
 # Model Persistence
 persistence:
   enabled: true

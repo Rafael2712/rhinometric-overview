@@ -40,7 +40,10 @@ class AnomalyResult:
         deviation_percent: Optional[float] = None,
         baseline_explanation: Optional[str] = None,
         status: str = "active",
-        resolved_at: Optional[datetime] = None
+        resolved_at: Optional[datetime] = None,
+        entity_type: str = "",
+        entity_name: str = "",
+        source: str = ""
     ):
         self.metric_name = metric_name
         self.timestamp = timestamp
@@ -53,6 +56,9 @@ class AnomalyResult:
         self.models_used = models_used
         self.model_scores = model_scores
         self.metadata = metadata or {}
+        self.entity_type = entity_type
+        self.entity_name = entity_name
+        self.source = source
         self.deviation_percent = deviation_percent
         self.baseline_explanation = baseline_explanation
         self.status = status  # 'active' or 'resolved'
@@ -72,7 +78,10 @@ class AnomalyResult:
             "models_used": self.models_used,
             "model_scores": self.model_scores,
             "metadata": self.metadata,
-            "status": self.status
+            "status": self.status,
+            "entity_type": self.entity_type,
+            "entity_name": self.entity_name,
+            "source": self.source
         }
         
         # Add resolved_at if present
@@ -143,7 +152,10 @@ class AnomalyDetector:
     
     async def detect_metric_anomalies(
         self,
-        metric_config: MetricConfig
+        metric_config: MetricConfig,
+        entity_type: str = "",
+        entity_name: str = "",
+        source: str = ""
     ) -> Optional[AnomalyResult]:
         """
         Detect anomalies in a single metric
@@ -315,6 +327,9 @@ class AnomalyDetector:
                     confidence=confidence,
                     severity=severity,
                     models_used=list(model_scores.keys()),
+                    entity_type=entity_type or metric_config.entity_type,
+                    entity_name=entity_name,
+                    source=source or metric_config.source,
                     model_scores=score_values,
                     deviation_percent=deviation_percent,
                     baseline_explanation=baseline_explanation,
@@ -504,6 +519,22 @@ class AnomalyDetector:
             self.stats["checks_by_metric"][metric_config.name] = \
                 self.stats["checks_by_metric"].get(metric_config.name, 0) + 1
             
+            # Handle group_by metrics (e.g., external services grouped by service_name)
+            if metric_config.group_by:
+                await self._detect_grouped_metric(metric_config)
+                # Store in history for grouped metric
+                if metric_config.name not in self.detection_history:
+                    self.detection_history[metric_config.name] = []
+                self.detection_history[metric_config.name].append({
+                    "timestamp": datetime.now().isoformat(),
+                    "anomaly_detected": False,
+                    "value": None
+                })
+                if len(self.detection_history[metric_config.name]) > 100:
+                    self.detection_history[metric_config.name] = \
+                        self.detection_history[metric_config.name][-100:]
+                continue
+
             result = await self.detect_metric_anomalies(metric_config)
             
             # Store in history
@@ -631,6 +662,75 @@ class AnomalyDetector:
         
         return resolved_count
     
+
+    async def _detect_grouped_metric(self, metric_config: MetricConfig):
+        """
+        Detect anomalies for a metric grouped by a label.
+        Queries Prometheus for each unique label value and runs
+        detection independently per group.
+        """
+        label = metric_config.group_by
+        base_query = metric_config.query
+        logger.info(f"Expanding grouped metric {metric_config.name} by label '{label}'")
+
+        try:
+            # Query to get unique label values
+            label_query = f"group({base_query}) by ({label})"
+            data = await self.prometheus.query(label_query)
+
+            results = data.get("result", [])
+            if not results:
+                logger.debug(f"No series found for grouped metric {metric_config.name}")
+                return
+
+            # Extract unique label values (limit to 100 to prevent cardinality explosion)
+            label_values = []
+            for series in results[:100]:
+                lbl_val = series.get("metric", {}).get(label, "")
+                if lbl_val:
+                    label_values.append(lbl_val)
+
+            logger.info(f"Found {len(label_values)} groups for {metric_config.name}: {label_values}")
+
+            # Run detection for each group
+            for lbl_val in label_values:
+                # Create sub-config with filtered query
+                sub_query = base_query + '{' + label + '="' + lbl_val + '"}'
+                sub_config = MetricConfig(
+                    name=f"{metric_config.name}::{lbl_val}",
+                    display_name=f"{metric_config.display_name} - {lbl_val}",
+                    description=metric_config.description,
+                    query=sub_query,
+                    enabled=True,
+                    priority=metric_config.priority,
+                    models=metric_config.models,
+                    thresholds=metric_config.thresholds,
+                    sensitivity=metric_config.sensitivity,
+                    alert_on_any_anomaly=metric_config.alert_on_any_anomaly,
+                    invert_threshold=metric_config.invert_threshold,
+                    entity_type=metric_config.entity_type or "service",
+                    source=metric_config.source or "external_services"
+                )
+
+                result = await self.detect_metric_anomalies(
+                    sub_config,
+                    entity_type=metric_config.entity_type or "service",
+                    entity_name=lbl_val,
+                    source=metric_config.source or "external_services"
+                )
+
+                if result:
+                    logger.info(
+                        f"Service anomaly detected: {lbl_val} | "
+                        f"Metric: {metric_config.name} | "
+                        f"Severity: {result.severity}"
+                    )
+
+        except Exception as e:
+            import traceback
+            logger.error(f"Error in grouped metric detection for {metric_config.name}: {e}")
+            logger.error(f"Traceback: {traceback.format_exc()}")
+
     async def cleanup(self):
         """Cleanup resources"""
         await self.prometheus.close()
