@@ -92,6 +92,7 @@ def _run_test(service_type: str, config: dict, timeout_seconds: int) -> dict:
             auth_type=config.get("auth_type"),
             auth_value=config.get("auth_value"),
             timeout_seconds=timeout_seconds,
+            service_name=config.get("name", "unknown"),
         )
     elif service_type == "postgresql":
         return test_postgresql_connection(

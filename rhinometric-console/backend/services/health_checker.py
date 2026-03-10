@@ -218,6 +218,7 @@ def _check_service(svc_id: int, svc_type: str, config: dict, timeout: int) -> di
                 auth_type=config.get("auth_type"),
                 auth_value=config.get("auth_value"),
                 timeout_seconds=timeout,
+                service_name=config.get("name", f"svc-{svc_id}"),
             )
         elif svc_type == "postgresql":
             return test_postgresql_connection(

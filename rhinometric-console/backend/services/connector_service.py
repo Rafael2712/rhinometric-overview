@@ -4,10 +4,15 @@ Isolated from the router so it can be reused by future scheduled checks.
 """
 
 import time
+import logging
 import httpx
 import psycopg2
 from datetime import datetime, timezone
 from typing import Tuple
+
+from security.ssrf_protection import validate_url
+
+logger = logging.getLogger('rhinometric.connector_service')
 
 
 def test_http_connection(
@@ -18,14 +23,37 @@ def test_http_connection(
     auth_type: str = None,
     auth_value: str = None,
     timeout_seconds: int = 10,
+    skip_tls_verify: bool = False,
+    service_name: str = "",
 ) -> dict:
     """
     Test an HTTP/HTTPS endpoint.
     Returns dict with status, message, response_time_ms, status_code.
+
+    Security:
+    - SSRF validation blocks requests to private/internal networks
+    - TLS verification enabled by default (skip_tls_verify=False)
+    - Redirects are disabled to prevent redirect-based SSRF
     """
     full_url = url.rstrip("/")
     if health_path:
         full_url = f"{full_url}/{health_path.lstrip('/')}"
+
+    # ── SSRF Validation ────────────────────────────────────────
+    ssrf_result = validate_url(full_url, service_name=service_name)
+    if not ssrf_result.is_safe:
+        logger.warning(
+            f'[SSRF] Blocked HTTP connection test to "{full_url}": '
+            f'{ssrf_result.reason}'
+        )
+        return {
+            "success": False,
+            "status": "error",
+            "message": f"SSRF protection: {ssrf_result.reason}",
+            "response_time_ms": 0,
+            "status_code": None,
+            "checked_at": datetime.now(timezone.utc).isoformat(),
+        }
 
     req_headers = dict(headers) if headers else {}
     if auth_type == "bearer" and auth_value:
@@ -35,9 +63,16 @@ def test_http_connection(
     elif auth_type == "basic" and auth_value:
         req_headers["Authorization"] = f"Basic {auth_value}"
 
+    # TLS verification ON by default; only skip when explicitly requested
+    tls_verify = not skip_tls_verify
+
     start = time.monotonic()
     try:
-        with httpx.Client(timeout=timeout_seconds, verify=False, follow_redirects=True) as client:
+        with httpx.Client(
+            timeout=timeout_seconds,
+            verify=tls_verify,
+            follow_redirects=False,
+        ) as client:
             if method.upper() == "POST":
                 resp = client.post(full_url, headers=req_headers)
             elif method.upper() == "HEAD":
@@ -48,9 +83,14 @@ def test_http_connection(
         elapsed_ms = (time.monotonic() - start) * 1000
         status_code = resp.status_code
 
-        if 200 <= status_code < 400:
+        # Treat 3xx as informational (redirects are blocked, so report them)
+        if 200 <= status_code < 300:
             status = "up"
             message = f"HTTP {status_code} - {elapsed_ms:.0f}ms"
+        elif 300 <= status_code < 400:
+            status = "degraded"
+            location = resp.headers.get("location", "unknown")
+            message = f"HTTP {status_code} redirect to {location} (not followed) - {elapsed_ms:.0f}ms"
         elif 400 <= status_code < 500:
             status = "degraded"
             message = f"HTTP {status_code} client error - {elapsed_ms:.0f}ms"
