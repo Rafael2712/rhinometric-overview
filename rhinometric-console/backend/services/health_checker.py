@@ -41,6 +41,7 @@ from metrics import (
 )
 
 from services.retention_cleanup import run_cleanup as _run_retention_cleanup, get_retention_days
+from services.state_repository import ensure_schema as _ensure_state_schema, load_all_states as _load_all_states, persist_state as _persist_state
 
 logger = logging.getLogger("rhinometric.health_checker")
 
@@ -312,6 +313,18 @@ async def _check_one(svc_id: int, svc_name: str, svc_type: str, config: dict, ti
 
             db.commit()
             logger.info(f"[HealthCheck] {svc_name} ({svc_type}) -> {check_status} ({latency:.0f}ms) [score={_compute_health_score(svc_id, svc_name, svc_type):.0f}]")
+
+            # Persist health checker state to DB (survives restarts)
+            try:
+                _persist_state(
+                    svc_id,
+                    status=check_status,
+                    consecutive_failures=consec,
+                    is_success=is_success,
+                )
+            except Exception as pe:
+                logger.warning(f"[HealthCheck] State persist failed for svc_id={svc_id}: {pe}")
+
     except Exception as e:
         db.rollback()
         logger.error(f"[HealthCheck] DB update failed for svc_id={svc_id}: {e}")
@@ -419,11 +432,38 @@ async def _scheduler_loop():
     logger.info("[HealthCheck] Scheduler stopped")
 
 
+def _restore_state_from_db():
+    """
+    Restore in-memory health checker state from PostgreSQL.
+    Called once on startup before the scheduler loop begins.
+    Ensures consecutive_failures, previous_status survive restarts.
+    """
+    try:
+        _ensure_state_schema()
+    except Exception as e:
+        logger.error("[HealthCheck] State schema migration failed: %s", e)
+        return
+
+    states = _load_all_states()
+    restored = 0
+    for s in states:
+        svc_id = s["id"]
+        _previous_status[svc_id] = s["status"]
+        _consecutive_failures[svc_id] = s["consecutive_failures"]
+        restored += 1
+    logger.info("[HealthCheck] Restored persistent state for %d services", restored)
+
+
 async def start_scheduler():
     """Start the background health-check scheduler."""
     global _running, _task
     if _running:
         return
+
+    # Restore persisted state before starting the loop
+    loop = asyncio.get_event_loop()
+    await loop.run_in_executor(_executor, _restore_state_from_db)
+
     _running = True
     _task = asyncio.create_task(_scheduler_loop())
     logger.info("[HealthCheck] Background scheduler launched")

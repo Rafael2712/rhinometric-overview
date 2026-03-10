@@ -16,6 +16,7 @@ from models.external_service_check import ExternalServiceCheck
 from models.external_service_check import ExternalServiceCheck
 from services.connector_service import test_http_connection, test_postgresql_connection
 from services.config_validation import validate_service_config
+from services.state_repository import clear_in_memory_state
 
 import logging
 
