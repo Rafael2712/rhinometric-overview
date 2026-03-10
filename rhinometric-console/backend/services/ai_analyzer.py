@@ -1,30 +1,57 @@
 """
-AI Analyzer for External Services - Intelligence Engine.
+AI Analyzer for External Services — Intelligence Engine (Hardened v2).
 
 Provides statistical analysis, anomaly detection, trend prediction,
 and smart recommendations using check history data.
 No external AI service required — uses pure statistical methods.
+
+Hardening v2 changes:
+  - MAD-based anomaly detection (replaces Gaussian Z-score)
+  - Stricter trend confidence thresholds (R² >= 0.4)
+  - Honest prediction semantics (no overstated "probabilities")
+  - Minimum data requirements for all insight types
+  - Less noisy risk scoring (persistent degradation > isolated spikes)
+  - Reduced recommendation alarm level
+  - TTL cache for /ai/summary endpoint (60s)
 """
 
 import math
+import time
 import logging
 from datetime import datetime, timezone, timedelta
 from typing import List, Dict, Optional, Tuple
 from sqlalchemy.orm import Session
-from sqlalchemy import func as sqla_func, and_
 
 from models.external_service import ExternalService, ServiceStatus
 from models.external_service_check import ExternalServiceCheck
 
 logger = logging.getLogger("rhinometric.ai_analyzer")
 
-# ── Constants ─────────────────────────────────────────────────────
+# ── Constants ────────────────────────────────────────────────────
 TREND_WINDOW_HOURS = 24
-ANOMALY_Z_THRESHOLD = 2.5        # Z-score threshold for anomaly
-DEGRADATION_THRESHOLD_PCT = 20   # 20% latency increase = degradation warning
-PREDICTION_HOURS = 72            # Predict next 72 hours
-MIN_CHECKS_FOR_ANALYSIS = 10     # Minimum checks needed
+ANOMALY_MAD_THRESHOLD = 5.0       # Modified Z-score threshold (MAD-based)
+DEGRADATION_THRESHOLD_PCT = 20    # 20 % latency increase = degradation warning
+PREDICTION_HOURS = 72             # Projection horizon
 
+# ── Minimum-data gates ───────────────────────────────────────────
+MIN_CHECKS_FOR_ANALYSIS = 10      # global gate — below this we say "insufficient data"
+MIN_CHECKS_FOR_ANOMALY = 20       # anomaly detection needs ≥ 20 points
+MIN_CHECKS_FOR_TREND = 10         # trend regression needs ≥ 10 points
+MIN_TREND_TIME_SPAN_H = 2         # trend data must span ≥ 2 hours
+TREND_R2_THRESHOLD = 0.4          # R² must be ≥ 0.4 to call trend meaningful
+PREDICTION_R2_THRESHOLD = 0.3     # latency projection gate
+MIN_CHECKS_FOR_PREDICTION = 30    # projections need >= 30 points
+MIN_CHECKS_FOR_AVAIL_FORECAST = 50
+MIN_CHECKS_FOR_FAILURE_PATTERN = 5
+
+# ── Summary cache ────────────────────────────────────────────────
+SUMMARY_CACHE_TTL = 60            # seconds
+_summary_cache: Dict = {"data": None, "hours": None, "expires": 0.0}
+
+
+# ═══════════════════════════════════════════════════════════════════
+# Helper math functions
+# ═══════════════════════════════════════════════════════════════════
 
 def _mean(values: List[float]) -> float:
     return sum(values) / len(values) if values else 0.0
@@ -33,6 +60,20 @@ def _std(values: List[float], mean_val: float) -> float:
     if len(values) < 2:
         return 0.0
     return math.sqrt(sum((v - mean_val) ** 2 for v in values) / (len(values) - 1))
+
+def _median(sorted_values: List[float]) -> float:
+    """Median of an already-sorted list."""
+    n = len(sorted_values)
+    if n == 0:
+        return 0.0
+    if n % 2 == 1:
+        return sorted_values[n // 2]
+    return (sorted_values[n // 2 - 1] + sorted_values[n // 2]) / 2.0
+
+def _mad(values: List[float], median_val: float) -> float:
+    """Median Absolute Deviation."""
+    abs_devs = sorted(abs(v - median_val) for v in values)
+    return _median(abs_devs)
 
 def _percentile(sorted_values: List[float], pct: float) -> float:
     if not sorted_values:
@@ -57,6 +98,10 @@ def _linear_regression(x: List[float], y: List[float]) -> Tuple[float, float, fl
     r_squared = (ss_xy ** 2) / (ss_xx * ss_yy) if ss_yy > 0 else 0.0
     return slope, intercept, r_squared
 
+
+# ═══════════════════════════════════════════════════════════════════
+# Main entry point
+# ═══════════════════════════════════════════════════════════════════
 
 def analyze_service(db: Session, service_id: int, hours: int = 24) -> Dict:
     """Full AI analysis for a single external service."""
@@ -95,25 +140,25 @@ def analyze_service(db: Session, service_id: int, hours: int = 24) -> Dict:
     # ── Latency Analysis ──
     latency_analysis = _analyze_latency(latencies)
 
-    # ── Trend Detection ──
+    # ── Trend Detection (hardened) ──
     trend = _detect_trend(checks)
 
-    # ── Anomaly Detection ──
+    # ── Anomaly Detection (MAD-based) ──
     anomalies = _detect_anomalies(checks, latencies)
 
     # ── Failure Patterns ──
     failure_patterns = _analyze_failure_patterns(checks)
 
-    # ── Predictions ──
+    # ── Predictions (honest semantics) ──
     predictions = _generate_predictions(checks, latencies, svc)
 
-    # ── Recommendations ──
+    # ── Recommendations (less noisy) ──
     recommendations = _generate_recommendations(
         svc, availability_pct, latency_analysis, trend,
         anomalies, failure_patterns, predictions
     )
 
-    # ── Risk Score (0-100, lower is better) ──
+    # ── Risk Score (hardened) ──
     risk_score = _compute_risk_score(
         availability_pct, latency_analysis, trend,
         anomalies, failure_patterns
@@ -138,6 +183,10 @@ def analyze_service(db: Session, service_id: int, hours: int = 24) -> Dict:
     }
 
 
+# ═══════════════════════════════════════════════════════════════════
+# Latency stats (unchanged structure)
+# ═══════════════════════════════════════════════════════════════════
+
 def _analyze_latency(latencies: List[float]) -> Dict:
     if not latencies:
         return {"status": "no_data"}
@@ -157,15 +206,35 @@ def _analyze_latency(latencies: List[float]) -> Dict:
     }
 
 
+# ═══════════════════════════════════════════════════════════════════
+# Trend detection  (HARDENED — R² gate + time span check)
+# ═══════════════════════════════════════════════════════════════════
+
 def _detect_trend(checks: List) -> Dict:
-    """Detect latency and availability trends using linear regression."""
+    """Detect latency and availability trends using linear regression.
+
+    Hardened:
+      - requires >= MIN_CHECKS_FOR_TREND data points
+      - requires data spanning >= MIN_TREND_TIME_SPAN_H hours
+      - only reports non-stable direction when R² >= TREND_R2_THRESHOLD
+      - adds 'confidence' label
+    """
     latency_points = [
         (c.checked_at.timestamp(), c.response_time_ms)
         for c in checks
         if c.response_time_ms and c.response_time_ms > 0
     ]
-    if len(latency_points) < 5:
-        return {"latency_direction": "insufficient_data", "availability_direction": "insufficient_data"}
+
+    insufficient = {"latency_direction": "insufficient_data", "availability_direction": "insufficient_data",
+                     "confidence": "none"}
+
+    if len(latency_points) < MIN_CHECKS_FOR_TREND:
+        return insufficient
+
+    # Check time span
+    time_span_h = (latency_points[-1][0] - latency_points[0][0]) / 3600
+    if time_span_h < MIN_TREND_TIME_SPAN_H:
+        return insufficient
 
     x = [p[0] for p in latency_points]
     y = [p[1] for p in latency_points]
@@ -174,12 +243,13 @@ def _detect_trend(checks: List) -> Dict:
     # Normalize slope to ms per hour
     slope_per_hour = slope * 3600
 
-    if abs(slope_per_hour) < 0.5:
+    # ── Hardened: only report direction if R² is strong enough ──
+    if r_sq < TREND_R2_THRESHOLD or abs(slope_per_hour) < 0.5:
         lat_direction = "stable"
-    elif slope_per_hour > 0:
-        lat_direction = "increasing"
+        confidence = "low" if r_sq < 0.2 else "weak"
     else:
-        lat_direction = "decreasing"
+        lat_direction = "increasing" if slope_per_hour > 0 else "decreasing"
+        confidence = "moderate" if r_sq < 0.6 else "strong"
 
     # Availability trend: compare first half vs second half
     mid = len(checks) // 2
@@ -189,7 +259,8 @@ def _detect_trend(checks: List) -> Dict:
     avail_second = sum(1 for c in second_half if c.status == "up") / len(second_half) * 100 if second_half else 100
     avail_delta = avail_second - avail_first
 
-    if abs(avail_delta) < 1:
+    # Hardened: require > 3% delta (was 1%)
+    if abs(avail_delta) < 3:
         avail_direction = "stable"
     elif avail_delta > 0:
         avail_direction = "improving"
@@ -200,6 +271,7 @@ def _detect_trend(checks: List) -> Dict:
         "latency_direction": lat_direction,
         "latency_slope_ms_per_hour": round(slope_per_hour, 3),
         "latency_r_squared": round(r_sq, 3),
+        "confidence": confidence,
         "availability_direction": avail_direction,
         "availability_first_half_pct": round(avail_first, 1),
         "availability_second_half_pct": round(avail_second, 1),
@@ -207,42 +279,80 @@ def _detect_trend(checks: List) -> Dict:
     }
 
 
-def _detect_anomalies(checks: List, latencies: List[float]) -> Dict:
-    """Z-score based anomaly detection on latency values."""
-    if len(latencies) < MIN_CHECKS_FOR_ANALYSIS:
-        return {"count": 0, "details": [], "status": "insufficient_data"}
+# ═══════════════════════════════════════════════════════════════════
+# Anomaly detection  (REPLACED — MAD-based modified Z-score)
+# ═══════════════════════════════════════════════════════════════════
 
-    mean_val = _mean(latencies)
-    std_val = _std(latencies, mean_val)
-    if std_val == 0:
-        return {"count": 0, "details": [], "status": "no_variance"}
+def _detect_anomalies(checks: List, latencies: List[float]) -> Dict:
+    """MAD-based modified Z-score anomaly detection.
+
+    Much more robust than classical Z-score for right-skewed latency
+    distributions.  A single moderate spike no longer creates a
+    dramatic anomaly unless it is truly far from the robust center.
+
+    Modified Z-score = 0.6745 * (x_i - median) / MAD
+    Threshold: 3.5 (standard for MAD-based detection)
+
+    Additional guard: a data point must deviate by at least 30 % from
+    the median *and* exceed the MAD threshold.  This prevents tight
+    distributions from producing hundreds of low-impact anomalies.
+    """
+    if len(latencies) < MIN_CHECKS_FOR_ANOMALY:
+        return {
+            "count": 0,
+            "details": [],
+            "status": "insufficient_data",
+            "method": "mad",
+            "message": f"Need >= {MIN_CHECKS_FOR_ANOMALY} samples, have {len(latencies)}",
+        }
+
+    sorted_lat = sorted(latencies)
+    median_val = _median(sorted_lat)
+    mad_val = _mad(latencies, median_val)
+
+    if mad_val == 0:
+        # All values identical or nearly so — no variance to detect against
+        return {"count": 0, "details": [], "status": "no_variance", "method": "mad"}
+
+    # Minimum absolute deviation: at least 30 % of median
+    # This prevents tight distributions from flagging trivially small deviations.
+    min_abs_deviation = median_val * 0.30
 
     anomaly_details = []
     for c in checks:
         if c.response_time_ms and c.response_time_ms > 0:
-            z = abs((c.response_time_ms - mean_val) / std_val)
-            if z >= ANOMALY_Z_THRESHOLD:
+            deviation = c.response_time_ms - median_val
+            abs_deviation = abs(deviation)
+            modified_z = 0.6745 * deviation / mad_val
+            abs_z = abs(modified_z)
+            if abs_z >= ANOMALY_MAD_THRESHOLD and abs_deviation >= min_abs_deviation:
+                severity = "critical" if abs_z >= 7.0 else "warning" if abs_z >= 6.0 else "info"
                 anomaly_details.append({
                     "timestamp": c.checked_at.isoformat(),
                     "value_ms": round(c.response_time_ms, 2),
-                    "z_score": round(z, 2),
-                    "direction": "high" if c.response_time_ms > mean_val else "low",
-                    "severity": "critical" if z >= 4.0 else "warning" if z >= 3.0 else "info",
+                    "z_score": round(abs_z, 2),      # keep field name for frontend compat
+                    "direction": "high" if c.response_time_ms > median_val else "low",
+                    "severity": severity,
                 })
 
     return {
         "count": len(anomaly_details),
-        "threshold_z": ANOMALY_Z_THRESHOLD,
-        "mean_ms": round(mean_val, 2),
-        "std_ms": round(std_val, 2),
-        "details": anomaly_details[-10:],  # Last 10 anomalies
+        "threshold": ANOMALY_MAD_THRESHOLD,
+        "method": "mad",
+        "median_ms": round(median_val, 2),
+        "mad_ms": round(mad_val, 2),
+        "details": anomaly_details[-10:],   # last 10 anomalies
     }
 
 
+# ═══════════════════════════════════════════════════════════════════
+# Failure patterns (lightly adjusted min-data gate)
+# ═══════════════════════════════════════════════════════════════════
+
 def _analyze_failure_patterns(checks: List) -> Dict:
     """Analyze failure distribution and patterns."""
-    if not checks:
-        return {"total_failures": 0}
+    if len(checks) < MIN_CHECKS_FOR_FAILURE_PATTERN:
+        return {"total_failures": 0, "pattern": "insufficient_data"}
 
     failures = [c for c in checks if c.status in ("down", "error")]
     if not failures:
@@ -289,57 +399,91 @@ def _analyze_failure_patterns(checks: List) -> Dict:
     }
 
 
-def _generate_predictions(checks: List, latencies: List[float], svc) -> Dict:
-    """Generate forward-looking predictions."""
-    predictions = {}
+# ═══════════════════════════════════════════════════════════════════
+# Predictions  (HARDENED — honest semantics)
+# ═══════════════════════════════════════════════════════════════════
 
-    # Latency prediction using trend
-    if len(latencies) >= MIN_CHECKS_FOR_ANALYSIS:
+def _generate_predictions(checks: List, latencies: List[float], svc) -> Dict:
+    """Generate forward-looking projections with honest naming.
+
+    Hardened changes:
+      - "failure_probability" → "recent_failure_rate_pct" (observed rate, not a prediction)
+      - latency projection only when R² >= PREDICTION_R2_THRESHOLD
+      - availability estimate only when sample >= MIN_CHECKS_FOR_AVAIL_FORECAST
+      - old field names kept as aliases for backward compatibility
+    """
+    predictions: Dict = {}
+
+    # ── Latency projection (gated on R²) ──
+    if len(latencies) >= MIN_CHECKS_FOR_PREDICTION:
         lat_points = [
             (c.checked_at.timestamp(), c.response_time_ms)
             for c in checks
             if c.response_time_ms and c.response_time_ms > 0
         ]
-        if len(lat_points) >= 5:
+        if len(lat_points) >= MIN_CHECKS_FOR_TREND:
             x = [p[0] for p in lat_points]
             y = [p[1] for p in lat_points]
             slope, intercept, r_sq = _linear_regression(x, y)
             future_ts = datetime.now(timezone.utc).timestamp() + PREDICTION_HOURS * 3600
-            predicted_latency = slope * future_ts + intercept
-            if predicted_latency > 0 and r_sq > 0.1:
-                predictions["latency_72h_ms"] = round(predicted_latency, 2)
-                predictions["latency_trend_confidence"] = round(r_sq, 2)
+            projected = slope * future_ts + intercept
 
-    # SSL expiry prediction (for HTTP services)
+            if projected > 0 and r_sq >= PREDICTION_R2_THRESHOLD:
+                predictions["latency_projection_72h_ms"] = round(projected, 2)
+                predictions["latency_trend_confidence"] = round(r_sq, 2)
+                # backward compat alias
+                predictions["latency_72h_ms"] = predictions["latency_projection_72h_ms"]
+            else:
+                predictions["latency_projection_72h_ms"] = None
+                predictions["latency_trend_confidence"] = round(r_sq, 2)
+                predictions["latency_72h_ms"] = None
+
+    # ── SSL monitoring (unchanged) ──
     if svc.service_type and svc.service_type.value == "http":
         config = svc.config or {}
         url = config.get("url", "")
         if url.startswith("https://"):
             predictions["ssl_monitoring"] = True
 
-    # Failure probability based on recent failure rate
+    # ── Recent failure rate (honest naming) ──
     recent = checks[-20:] if len(checks) >= 20 else checks
     recent_failures = sum(1 for c in recent if c.status in ("down", "error"))
-    failure_prob = round((recent_failures / len(recent)) * 100, 1) if recent else 0
-    predictions["failure_probability_next_hour_pct"] = failure_prob
+    rate = round((recent_failures / len(recent)) * 100, 1) if recent else 0
+    predictions["recent_failure_rate_pct"] = rate
+    # backward compat alias — old frontend key
+    predictions["failure_probability_next_hour_pct"] = rate
 
-    # Availability forecast
-    if len(checks) >= 30:
+    # ── Availability estimate (honest naming, stricter gate) ──
+    if len(checks) >= MIN_CHECKS_FOR_AVAIL_FORECAST:
         avail = sum(1 for c in checks if c.status == "up") / len(checks) * 100
-        predictions["availability_forecast_24h_pct"] = round(avail, 2)
+        predictions["availability_estimate_24h_pct"] = round(avail, 2)
+        # backward compat alias
+        predictions["availability_forecast_24h_pct"] = predictions["availability_estimate_24h_pct"]
 
     return predictions
 
+
+# ═══════════════════════════════════════════════════════════════════
+# Recommendations  (HARDENED — less alarmist)
+# ═══════════════════════════════════════════════════════════════════
 
 def _generate_recommendations(
     svc, availability_pct, latency_analysis, trend,
     anomalies, failure_patterns, predictions
 ) -> List[Dict]:
-    """Generate actionable recommendations based on analysis."""
+    """Generate actionable recommendations with reduced noise.
+
+    Hardened:
+      - trend recommendations gated on R² > 0.5
+      - anomaly recommendations require ≥ 3 warning+ anomalies
+      - availability degradation requires ≥ 5 % delta
+      - latency variance recommendation down-graded to info
+      - severity language softened for weak signals
+    """
     recs = []
     priority = 0
 
-    # Availability issues
+    # ── Availability issues ──
     if availability_pct < 95:
         priority += 1
         recs.append({
@@ -351,7 +495,7 @@ def _generate_recommendations(
             "action": "Investigate root cause of failures. Check server logs, network connectivity, and resource utilization.",
         })
 
-    # High latency
+    # ── High latency ──
     if latency_analysis.get("p95_ms", 0) > 2000:
         priority += 1
         recs.append({
@@ -360,46 +504,54 @@ def _generate_recommendations(
             "severity": "warning",
             "title": "High P95 latency",
             "description": f"P95 latency is {latency_analysis['p95_ms']}ms, exceeding 2000ms threshold.",
-            "action": "Optimize response times. Consider caching, database query optimization, or scaling resources.",
+            "action": "Review response times. Consider caching, query optimization, or scaling resources.",
         })
 
-    # Increasing latency trend
-    if trend.get("latency_direction") == "increasing" and trend.get("latency_r_squared", 0) > 0.3:
+    # ── Increasing latency trend  (HARDENED: R² > 0.5 gate) ──
+    if (trend.get("latency_direction") == "increasing"
+            and trend.get("latency_r_squared", 0) > 0.5):
         priority += 1
+        conf_label = trend.get("confidence", "moderate")
         recs.append({
             "priority": priority,
             "category": "trend",
-            "severity": "warning",
+            "severity": "warning" if conf_label == "strong" else "info",
             "title": "Latency trending upward",
-            "description": f"Latency increasing at {trend['latency_slope_ms_per_hour']}ms/hour with {round(trend.get('latency_r_squared', 0) * 100)}% confidence.",
-            "action": "Proactive investigation recommended before latency reaches critical thresholds.",
+            "description": (
+                f"Latency increasing at {trend['latency_slope_ms_per_hour']}ms/hour "
+                f"(R²={trend.get('latency_r_squared', 0)}, confidence: {conf_label})."
+            ),
+            "action": "Monitor closely. Proactive investigation recommended if trend persists.",
         })
 
-    # Degrading availability
-    if trend.get("availability_direction") == "degrading":
+    # ── Degrading availability  (HARDENED: need ≥ 5 % delta) ──
+    avail_delta = abs(trend.get("availability_delta_pct", 0))
+    if trend.get("availability_direction") == "degrading" and avail_delta >= 5:
         priority += 1
         recs.append({
             "priority": priority,
             "category": "trend",
-            "severity": "critical" if abs(trend.get("availability_delta_pct", 0)) > 10 else "warning",
+            "severity": "critical" if avail_delta > 15 else "warning" if avail_delta > 10 else "info",
             "title": "Availability degrading",
-            "description": f"Availability dropped {abs(trend.get('availability_delta_pct', 0))}% between first and second half of the period.",
-            "action": "Immediate attention required. Service reliability is declining.",
+            "description": f"Availability dropped {avail_delta}% between first and second half of the period.",
+            "action": "Investigate service reliability decline.",
         })
 
-    # Anomalies detected
-    if anomalies.get("count", 0) > 5:
-        priority += 1
-        recs.append({
-            "priority": priority,
-            "category": "anomaly",
-            "severity": "warning",
-            "title": f"{anomalies['count']} latency anomalies detected",
-            "description": "Multiple latency spikes outside normal range detected.",
-            "action": "Review anomaly timestamps for correlation with deployments, traffic spikes, or infrastructure changes.",
-        })
+    # ── Anomalies  (HARDENED: need ≥ 3 warning+ anomalies) ──
+    if anomalies.get("count", 0) > 0:
+        warning_plus = [a for a in anomalies.get("details", []) if a.get("severity") in ("warning", "critical")]
+        if len(warning_plus) >= 3:
+            priority += 1
+            recs.append({
+                "priority": priority,
+                "category": "anomaly",
+                "severity": "warning",
+                "title": f"{anomalies['count']} latency anomalies detected",
+                "description": "Multiple latency spikes outside robust dispersion bounds detected.",
+                "action": "Review anomaly timestamps for correlation with deployments, traffic spikes, or infrastructure changes.",
+            })
 
-    # Flapping service
+    # ── Flapping service ──
     if failure_patterns.get("pattern") == "intermittent_flapping":
         priority += 1
         recs.append({
@@ -408,10 +560,10 @@ def _generate_recommendations(
             "severity": "warning",
             "title": "Service flapping detected",
             "description": "Service is alternating between up and down states frequently.",
-            "action": "Check for network instability, DNS issues, or resource contention. Consider increasing check interval.",
+            "action": "Check for network instability, DNS issues, or resource contention.",
         })
 
-    # Sustained outage
+    # ── Sustained outage ──
     if failure_patterns.get("pattern") == "sustained_outage":
         priority += 1
         recs.append({
@@ -420,10 +572,10 @@ def _generate_recommendations(
             "severity": "critical",
             "title": "Sustained outage pattern",
             "description": f"Longest consecutive failure burst: {failure_patterns.get('max_consecutive_failures', 0)} checks.",
-            "action": "Urgent: Service experienced prolonged downtime. Implement redundancy or failover mechanisms.",
+            "action": "Urgent: Implement redundancy or failover mechanisms.",
         })
 
-    # High latency variance
+    # ── High latency variance (info only) ──
     if latency_analysis.get("cv_pct", 0) > 50:
         priority += 1
         recs.append({
@@ -432,10 +584,10 @@ def _generate_recommendations(
             "severity": "info",
             "title": "High latency variance",
             "description": f"Coefficient of variation is {latency_analysis['cv_pct']}%, indicating inconsistent response times.",
-            "action": "Investigate causes of response time variability. May indicate resource contention or variable load.",
+            "action": "Investigate causes of response time variability.",
         })
 
-    # All good
+    # ── All good ──
     if not recs:
         recs.append({
             "priority": 0,
@@ -449,21 +601,32 @@ def _generate_recommendations(
     return recs
 
 
+# ═══════════════════════════════════════════════════════════════════
+# Risk score  (HARDENED — less sensitive to isolated spikes)
+# ═══════════════════════════════════════════════════════════════════
+
 def _compute_risk_score(
     availability_pct, latency_analysis, trend, anomalies, failure_patterns
 ) -> Dict:
-    """Compute a 0-100 risk score (0=excellent, 100=critical)."""
-    score = 0
+    """Compute a 0-100 risk score (0=excellent, 100=critical).
+
+    Hardened:
+      - Trend contribution gated on R²
+      - Anomaly contribution uses only warning+ anomalies and softer multiplier
+      - Single-spike scenarios produce lower scores
+      - Availability degradation requires ≥ 5 % delta
+    """
+    score = 0.0
     factors = []
 
-    # Availability (0-35 points)
+    # ── Availability (0-35 points) — unchanged ──
     if availability_pct < 100:
         avail_risk = min(35, (100 - availability_pct) * 3.5)
         score += avail_risk
         if avail_risk > 10:
             factors.append(f"Availability at {availability_pct}%")
 
-    # Latency P95 (0-20 points)
+    # ── Latency P95 (0-20 points) — unchanged ──
     p95 = latency_analysis.get("p95_ms", 0)
     if p95 > 500:
         lat_risk = min(20, (p95 - 500) / 100)
@@ -471,26 +634,28 @@ def _compute_risk_score(
         if lat_risk > 5:
             factors.append(f"P95 latency at {p95}ms")
 
-    # Trend (0-15 points)
-    if trend.get("latency_direction") == "increasing":
+    # ── Trend (0-15 points) — HARDENED: gated on R² ──
+    r_sq = trend.get("latency_r_squared", 0)
+    if trend.get("latency_direction") == "increasing" and r_sq >= TREND_R2_THRESHOLD:
         slope_risk = min(15, abs(trend.get("latency_slope_ms_per_hour", 0)) * 2)
         score += slope_risk
         if slope_risk > 3:
             factors.append("Latency trending up")
 
-    if trend.get("availability_direction") == "degrading":
-        score += 10
+    avail_delta = abs(trend.get("availability_delta_pct", 0))
+    if trend.get("availability_direction") == "degrading" and avail_delta >= 5:
+        score += min(10, avail_delta)
         factors.append("Availability degrading")
 
-    # Anomalies (0-15 points)
-    anom_count = anomalies.get("count", 0)
-    if anom_count > 0:
-        anom_risk = min(15, anom_count * 2)
+    # ── Anomalies (0-10 points) — HARDENED: warning+ only, softer multiplier ──
+    warning_plus = [a for a in anomalies.get("details", []) if a.get("severity") in ("warning", "critical")]
+    if warning_plus:
+        anom_risk = min(10, len(warning_plus) * 1.5)
         score += anom_risk
         if anom_risk > 3:
-            factors.append(f"{anom_count} anomalies detected")
+            factors.append(f"{len(warning_plus)} significant anomalies")
 
-    # Failure patterns (0-15 points)
+    # ── Failure patterns (0-15 points) — unchanged ──
     pattern = failure_patterns.get("pattern", "none")
     if pattern == "sustained_outage":
         score += 15
@@ -524,11 +689,30 @@ def _compute_risk_score(
     }
 
 
+# ═══════════════════════════════════════════════════════════════════
+# Global summary  (HARDENED — TTL cache)
+# ═══════════════════════════════════════════════════════════════════
+
 def analyze_all_services(db: Session, hours: int = 24) -> Dict:
-    """Global AI analysis summary across all external services."""
+    """Global AI analysis summary across all external services.
+
+    Includes a lightweight in-process TTL cache (60 s) to avoid
+    expensive re-computation on repeated requests.
+    """
+    global _summary_cache
+    now = time.time()
+    if (_summary_cache["data"] is not None
+            and _summary_cache["hours"] == hours
+            and now < _summary_cache["expires"]):
+        logger.debug("[AI] Returning cached summary (TTL %.0fs remaining)",
+                     _summary_cache["expires"] - now)
+        return _summary_cache["data"]
+
     services = db.query(ExternalService).filter(ExternalService.enabled == True).all()
     if not services:
-        return {"status": "no_services", "services": [], "summary": {}}
+        empty = {"status": "no_services", "services": [], "summary": {}}
+        _summary_cache.update({"data": empty, "hours": hours, "expires": now + SUMMARY_CACHE_TTL})
+        return empty
 
     results = []
     risk_scores = []
@@ -583,7 +767,7 @@ def analyze_all_services(db: Session, hours: int = 24) -> Dict:
 
     avg_risk = round(_mean(risk_scores), 1) if risk_scores else 0
 
-    return {
+    result = {
         "summary": {
             "total_services": len(services),
             "healthy": statuses["healthy"],
@@ -599,3 +783,8 @@ def analyze_all_services(db: Session, hours: int = 24) -> Dict:
         "services": results,
         "analyzed_at": datetime.now(timezone.utc).isoformat(),
     }
+
+    # ── Update TTL cache ──
+    _summary_cache = {"data": result, "hours": hours, "expires": now + SUMMARY_CACHE_TTL}
+    logger.debug("[AI] Summary computed and cached (TTL %ds)", SUMMARY_CACHE_TTL)
+    return result

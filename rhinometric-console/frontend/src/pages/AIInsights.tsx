@@ -17,6 +17,7 @@ interface Trend {
   latency_direction: string
   latency_slope_ms_per_hour?: number
   latency_r_squared?: number
+  confidence?: string
   availability_direction: string
   availability_delta_pct?: number
 }
@@ -82,9 +83,14 @@ interface FailurePatterns {
 }
 
 interface Prediction {
-  latency_72h_ms?: number
+  // Hardened naming (honest semantics)
+  recent_failure_rate_pct?: number
+  latency_projection_72h_ms?: number | null
   latency_trend_confidence?: number
-  failure_probability_next_hour_pct: number
+  availability_estimate_24h_pct?: number
+  // Backward-compat aliases
+  failure_probability_next_hour_pct?: number
+  latency_72h_ms?: number | null
   availability_forecast_24h_pct?: number
   ssl_monitoring?: boolean
 }
@@ -108,7 +114,7 @@ interface ServiceInsight {
   availability_pct: number
   latency: Latency
   trend: Trend
-  anomalies: { count: number; details: Anomaly[] }
+  anomalies: { count: number; method?: string; details: Anomaly[] }
   failure_patterns: FailurePatterns
   predictions: Prediction
   recommendations: Recommendation[]
@@ -239,7 +245,7 @@ export function AIInsightsPage() {
               <Brain size={12} className="mr-1.5" /> Powered by Statistical AI
             </span>
           </div>
-          <p className="text-text-muted text-sm">Intelligent analysis of external service health, trends, and predictions</p>
+          <p className="text-text-muted text-sm">Intelligent analysis of external service health, trends, and projections</p>
         </div>
         <div className="flex items-center gap-2">
           <select
@@ -363,6 +369,9 @@ export function AIInsightsPage() {
                       <span className="flex items-center gap-1">
                         Latency: <TrendIcon direction={svc.trend.latency_direction} />
                         <span className="text-white capitalize">{svc.trend.latency_direction}</span>
+                        {svc.trend.confidence && svc.trend.latency_direction !== 'stable' && svc.trend.latency_direction !== 'insufficient_data' && (
+                          <span className="text-gray-500">({svc.trend.confidence})</span>
+                        )}
                       </span>
                     )}
                     {(svc.anomaly_count ?? 0) > 0 && (
@@ -429,9 +438,14 @@ export function AIInsightsPage() {
                           Latency Trend <TrendIcon direction={detail.trend.latency_direction} />
                         </div>
                         <div className="text-xl font-bold text-white capitalize">{detail.trend.latency_direction}</div>
-                        {detail.trend.latency_slope_ms_per_hour !== undefined && (
-                          <div className="text-xs text-gray-500 mt-1">{detail.trend.latency_slope_ms_per_hour > 0 ? '+' : ''}{detail.trend.latency_slope_ms_per_hour.toFixed(2)} ms/h</div>
-                        )}
+                        <div className="text-xs text-gray-500 mt-1">
+                          {detail.trend.latency_slope_ms_per_hour !== undefined && (
+                            <span>{detail.trend.latency_slope_ms_per_hour > 0 ? '+' : ''}{detail.trend.latency_slope_ms_per_hour.toFixed(2)} ms/h</span>
+                          )}
+                          {detail.trend.confidence && detail.trend.latency_direction !== 'stable' && detail.trend.latency_direction !== 'insufficient_data' && (
+                            <span className="ml-1 text-gray-600">({detail.trend.confidence})</span>
+                          )}
+                        </div>
                       </div>
                       <div className="bg-surface-light rounded-lg p-3">
                         <div className="text-xs text-gray-400 mb-1">Failure Pattern</div>
@@ -440,35 +454,39 @@ export function AIInsightsPage() {
                       </div>
                     </div>
 
-                    {/* Predictions */}
+                    {/* Predictions (honest semantics) */}
                     {detail.predictions && (
                       <div className="bg-purple-500/5 border border-purple-500/20 rounded-lg p-4">
                         <h4 className="text-sm font-semibold text-purple-400 flex items-center gap-2 mb-3">
-                          <Zap size={14} /> AI Predictions
+                          <Zap size={14} /> AI Projections
                         </h4>
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
                           <div>
-                            <span className="text-gray-400">Failure probability (1h):</span>
+                            <span className="text-gray-400">Recent failure rate:</span>
                             <span className={`ml-2 font-semibold ${
-                              detail.predictions.failure_probability_next_hour_pct > 50 ? 'text-red-400' :
-                              detail.predictions.failure_probability_next_hour_pct > 20 ? 'text-yellow-400' : 'text-emerald-400'
+                              (detail.predictions.recent_failure_rate_pct ?? detail.predictions.failure_probability_next_hour_pct ?? 0) > 50 ? 'text-red-400' :
+                              (detail.predictions.recent_failure_rate_pct ?? detail.predictions.failure_probability_next_hour_pct ?? 0) > 20 ? 'text-yellow-400' : 'text-emerald-400'
                             }`}>
-                              {detail.predictions.failure_probability_next_hour_pct}%
+                              {detail.predictions.recent_failure_rate_pct ?? detail.predictions.failure_probability_next_hour_pct ?? 0}%
                             </span>
                           </div>
-                          {detail.predictions.latency_72h_ms !== undefined && (
+                          {(detail.predictions.latency_projection_72h_ms ?? detail.predictions.latency_72h_ms) != null && (
                             <div>
-                              <span className="text-gray-400">Latency in 72h:</span>
-                              <span className="ml-2 font-semibold text-white">{detail.predictions.latency_72h_ms.toFixed(0)}ms</span>
+                              <span className="text-gray-400">Latency projection (72h):</span>
+                              <span className="ml-2 font-semibold text-white">
+                                {((detail.predictions.latency_projection_72h_ms ?? detail.predictions.latency_72h_ms) as number).toFixed(0)}ms
+                              </span>
                               {detail.predictions.latency_trend_confidence !== undefined && (
-                                <span className="text-xs text-gray-500 ml-1">({(detail.predictions.latency_trend_confidence * 100).toFixed(0)}% conf)</span>
+                                <span className="text-xs text-gray-500 ml-1">(R\u00B2={detail.predictions.latency_trend_confidence.toFixed(2)})</span>
                               )}
                             </div>
                           )}
-                          {detail.predictions.availability_forecast_24h_pct !== undefined && (
+                          {(detail.predictions.availability_estimate_24h_pct ?? detail.predictions.availability_forecast_24h_pct) !== undefined && (
                             <div>
-                              <span className="text-gray-400">Availability forecast:</span>
-                              <span className="ml-2 font-semibold text-white">{detail.predictions.availability_forecast_24h_pct.toFixed(1)}%</span>
+                              <span className="text-gray-400">Availability estimate:</span>
+                              <span className="ml-2 font-semibold text-white">
+                                {(detail.predictions.availability_estimate_24h_pct ?? detail.predictions.availability_forecast_24h_pct)?.toFixed(1)}%
+                              </span>
                             </div>
                           )}
                         </div>
@@ -481,6 +499,9 @@ export function AIInsightsPage() {
                         <h4 className="text-sm font-semibold text-white flex items-center gap-2 mb-2">
                           <AlertTriangle size={14} className="text-yellow-400" />
                           Latency Anomalies ({detail.anomalies.count})
+                          {detail.anomalies.method && (
+                            <span className="text-xs text-gray-500 font-normal ml-1">method: {detail.anomalies.method.toUpperCase()}</span>
+                          )}
                         </h4>
                         <div className="overflow-x-auto">
                           <table className="w-full text-sm">
@@ -488,7 +509,7 @@ export function AIInsightsPage() {
                               <tr className="border-b border-gray-700">
                                 <th className="text-left px-3 py-2 text-xs text-gray-400">Time</th>
                                 <th className="text-right px-3 py-2 text-xs text-gray-400">Value</th>
-                                <th className="text-right px-3 py-2 text-xs text-gray-400">Z-Score</th>
+                                <th className="text-right px-3 py-2 text-xs text-gray-400">Score</th>
                                 <th className="text-center px-3 py-2 text-xs text-gray-400">Severity</th>
                               </tr>
                             </thead>
