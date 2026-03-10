@@ -528,7 +528,7 @@ services:
           memory: 256M
     restart: unless-stopped
   rhinometric-console-backend:
-    image: rhinometric-console-backend:v2.5.2-alerts
+    image: rhinometric-console-backend:v2.6.2-retention
     build:
       context: ./rhinometric-console/backend
       dockerfile: Dockerfile

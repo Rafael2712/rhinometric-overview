@@ -18,6 +18,7 @@ logger = get_logger(__name__)
 
 # Import routers
 from routers import auth, kpis, license, anomalies, alerts, logs, traces, dashboards, settings as settings_router, users, grafana_proxy, correlation, external_services
+from routers import system as system_router
 
 app = FastAPI(
     title=settings.API_TITLE,
@@ -104,6 +105,14 @@ async def startup_event():
         logger.info("External services health checker started")
     except Exception as e:
         logger.warning(f"Could not start health checker: {e}")
+
+    # Log retention configuration at startup
+    try:
+        from services.retention_cleanup import get_retention_days
+        _ret_days = get_retention_days()
+        logger.info("Data retention configured: %d days (EXTERNAL_SERVICE_CHECK_RETENTION_DAYS)", _ret_days)
+    except Exception as e:
+        logger.warning("Could not read retention config: %s", e)
 
     # RUST LICENSE VALIDATOR - Startup Check
     try:
@@ -270,7 +279,8 @@ app.include_router(traces.router, prefix=f"{settings.API_PREFIX}/traces", tags=[
 app.include_router(dashboards.router, prefix=f"{settings.API_PREFIX}/dashboards", tags=["Dashboards"])
 app.include_router(settings_router.router, prefix=f"{settings.API_PREFIX}/settings", tags=["Settings"])
 app.include_router(correlation.router, prefix=f"{settings.API_PREFIX}/correlation", tags=["Correlation"])  # Rhino Core - Correlation Engine
-app.include_router(external_services.router, prefix=f"{settings.API_PREFIX}/external-services", tags=["External Services"])  # External Services Connector MVP
+app.include_router(external_services.router, prefix=f"{settings.API_PREFIX}/external-services", tags=["External Services"])
+app.include_router(system_router.router, prefix=f"{settings.API_PREFIX}/system", tags=["System"])  # System admin endpoints  # External Services Connector MVP
 
 if __name__ == "__main__":
     import uvicorn

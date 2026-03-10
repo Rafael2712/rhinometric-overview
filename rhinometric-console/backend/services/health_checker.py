@@ -40,7 +40,13 @@ from metrics import (
     external_service_health_score,
 )
 
+from services.retention_cleanup import run_cleanup as _run_retention_cleanup, get_retention_days
+
 logger = logging.getLogger("rhinometric.health_checker")
+
+# Retention cleanup state - runs once per day
+_last_cleanup_epoch: float = 0.0
+_CLEANUP_INTERVAL = 86400  # 24 hours in seconds
 
 # How often the scheduler loop wakes up (seconds)
 POLL_INTERVAL = 15
@@ -392,6 +398,21 @@ async def _scheduler_loop():
 
         except Exception as e:
             logger.error(f"[HealthCheck] Scheduler loop error: {e}")
+
+        # -- Daily retention cleanup (non-blocking) --
+        try:
+            import time as _time_mod
+            global _last_cleanup_epoch
+            _now_epoch = _time_mod.time()
+            if _now_epoch - _last_cleanup_epoch >= _CLEANUP_INTERVAL:
+                _last_cleanup_epoch = _now_epoch
+                loop = asyncio.get_event_loop()
+                logger.info("[HealthCheck] Running daily retention cleanup...")
+                deleted, dur = await loop.run_in_executor(_executor, _run_retention_cleanup)
+                if deleted > 0:
+                    logger.info("[HealthCheck] Retention cleanup: removed %d old checks in %ss", deleted, dur)
+        except Exception as _cleanup_err:
+            logger.warning("[HealthCheck] Retention cleanup error: %s", _cleanup_err)
 
         await asyncio.sleep(POLL_INTERVAL)
 
