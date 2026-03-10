@@ -15,6 +15,7 @@ from models.external_service import ExternalService, ServiceType, ServiceStatus
 from models.external_service_check import ExternalServiceCheck
 from models.external_service_check import ExternalServiceCheck
 from services.connector_service import test_http_connection, test_postgresql_connection
+from services.config_validation import validate_service_config
 
 import logging
 
@@ -176,6 +177,16 @@ def create_external_service(
     current_user: UserModel = Depends(admin_only),
 ):
     """Create a new external service (HTTP or PostgreSQL)."""
+    # ── Strict config validation ──
+    _, val_errors = validate_service_config(
+        payload.service_type, payload.config, service_name=payload.name,
+    )
+    if val_errors:
+        raise HTTPException(
+            status_code=422,
+            detail={"error": "Invalid service configuration", "details": val_errors},
+        )
+
     svc = ExternalService(
         name=payload.name,
         service_type=ServiceType(payload.service_type),
@@ -207,6 +218,31 @@ def update_external_service(
         raise HTTPException(status_code=404, detail="External service not found")
 
     update_data = payload.dict(exclude_unset=True)
+
+    # ── Strict config validation (if config is being updated) ──
+    if "config" in update_data and update_data["config"] is not None:
+        # Determine effective service_type
+        effective_type = svc.service_type.value
+        # Merge secrets before validation: preserve masked passwords
+        merged_cfg = dict(update_data["config"])
+        existing_cfg = dict(svc.config) if svc.config else {}
+        if effective_type == "postgresql":
+            if "password" not in merged_cfg or merged_cfg.get("password") == "********":
+                merged_cfg["password"] = existing_cfg.get("password", "")
+        if effective_type == "http":
+            if "auth_value" not in merged_cfg or merged_cfg.get("auth_value") == "********":
+                merged_cfg["auth_value"] = existing_cfg.get("auth_value", "")
+        _, val_errors = validate_service_config(
+            effective_type, merged_cfg, service_name=svc.name,
+        )
+        if val_errors:
+            raise HTTPException(
+                status_code=422,
+                detail={"error": "Invalid service configuration", "details": val_errors},
+            )
+        # Use the merged config (with preserved secrets) going forward
+        update_data["config"] = merged_cfg
+
     for field, value in update_data.items():
         if field == "config" and value is not None:
             # Merge config: keep existing password if not provided
@@ -249,6 +285,16 @@ def test_connection_adhoc(
     current_user: UserModel = Depends(admin_only),
 ):
     """Test a connection without saving (ad-hoc, from the form)."""
+    # ── Strict config validation before testing ──
+    _, val_errors = validate_service_config(
+        payload.service_type, payload.config, service_name="adhoc-test",
+    )
+    if val_errors:
+        raise HTTPException(
+            status_code=422,
+            detail={"error": "Invalid service configuration", "details": val_errors},
+        )
+
     result = _run_test(payload.service_type, payload.config, payload.timeout_seconds)
     return result
 
