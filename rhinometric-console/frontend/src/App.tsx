@@ -19,6 +19,7 @@ import { UsersPage } from './pages/Users'
 import ServicesPage from './pages/Services'
 import { SystemHealthPage } from './pages/SystemHealth'
 import { RoadmapPage } from './pages/Roadmap'
+import { AIInsightsPage } from './pages/AIInsights'
 import { useAuthStore } from './lib/auth/store'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -45,6 +46,7 @@ function App() {
           <Route path="services" element={<ServicesPage />} />
           <Route path="system-health" element={<SystemHealthPage />} />
           <Route path="anomalies" element={<AnomaliesPage />} />
+          <Route path="ai-insights" element={<AIInsightsPage />} />
           <Route path="correlations/:id" element={<CorrelationView />} />
           <Route path="alerts" element={<AlertsPage />} />
           <Route path="logs" element={<LogsPage />} />

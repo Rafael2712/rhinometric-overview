@@ -480,3 +480,38 @@ def toggle_external_service(
     svc.enabled = not svc.enabled
     db.flush()
     return {"id": svc.id, "enabled": svc.enabled}
+
+# ── AI Insights ──────────────────────────────────────────────────
+
+from services.ai_analyzer import analyze_service, analyze_all_services
+
+
+@router.get("/ai/summary")
+def get_ai_summary(
+    hours: int = Query(default=24, ge=1, le=720, description="Hours of history to analyze"),
+    db: Session = Depends(get_db),
+    current_user: UserModel = Depends(get_current_user),
+):
+    """
+    AI-powered summary of all external services.
+    Returns risk scores, trends, anomalies, and recommendations.
+    """
+    return analyze_all_services(db, hours)
+
+
+@router.get("/{service_id}/ai-insights")
+def get_service_ai_insights(
+    service_id: int,
+    hours: int = Query(default=24, ge=1, le=720, description="Hours of history to analyze"),
+    db: Session = Depends(get_db),
+    current_user: UserModel = Depends(get_current_user),
+):
+    """
+    Full AI analysis for a single external service.
+    Includes latency analysis, trend detection, anomaly detection,
+    failure patterns, predictions, and recommendations.
+    """
+    result = analyze_service(db, service_id, hours)
+    if "error" in result:
+        raise HTTPException(status_code=404, detail=result["error"])
+    return result
