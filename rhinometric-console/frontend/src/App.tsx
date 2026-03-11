@@ -10,6 +10,7 @@ import { AnomaliesPage } from './pages/Anomalies'
 import { CorrelationView } from './pages/CorrelationView'
 import { AlertsPage } from './pages/Alerts'
 import { AlertHistoryPage } from './pages/AlertHistory'
+import { IncidentsPage } from './pages/Incidents'
 import { LogsPage } from './pages/Logs'
 import { TracesPage } from './pages/Traces'
 import { LicensePage } from './pages/License'
@@ -51,6 +52,7 @@ function App() {
           <Route path="correlations/:id" element={<CorrelationView />} />
           <Route path="alerts" element={<AlertsPage />} />
           <Route path="alert-history" element={<AlertHistoryPage />} />
+          <Route path="incidents" element={<IncidentsPage />} />
           <Route path="logs" element={<LogsPage />} />
           <Route path="traces" element={<TracesPage />} />
           <Route path="license" element={<LicensePage />} />

@@ -526,13 +526,12 @@ async def grafana_webhook(
             if existing:
                 existing.status = "resolved"
                 existing.ended_at = ends_at or datetime.utcnow()
-                db.flush()  # Flush status change so resolution query sees it
                 # Phase 2.3: Check incident resolution
                 if existing.incident_id:
                     try:
                         check_incident_resolution(db, existing.incident_id)
-                    except Exception as e:
-                        logger.error(f"Resolution check error: {e}")
+                    except Exception:
+                        pass
                 else:
                     # Event may have been created before Phase 2.3; try to find incident by entity
                     try:
@@ -546,8 +545,8 @@ async def grafana_webhook(
                         if inc:
                             existing.incident_id = inc.id
                             check_incident_resolution(db, inc.id)
-                    except Exception as e:
-                        logger.error(f"Fallback resolution check error: {e}")
+                    except Exception:
+                        pass
                 events_stored += 1
                 continue
 
@@ -582,8 +581,7 @@ async def grafana_webhook(
 
         events_stored += 1
 
-    # Phase 2.3: Flush all event changes, then check incident resolution
-    db.flush()
+    # Phase 2.3: Check incident resolution for resolved events
     for alert in alerts:
         if alert.get("status") == "resolved":
             labels_r = alert.get("labels", {})
@@ -598,8 +596,8 @@ async def grafana_webhook(
             if ev_r and ev_r.incident_id:
                 try:
                     check_incident_resolution(db, ev_r.incident_id)
-                except Exception as e:
-                    logger.error(f"Post-loop resolution check error: {e}")
+                except Exception:
+                    pass
 
     db.commit()
     logger.info(f"Webhook received {len(alerts)} alerts, stored {stored} history + {events_stored} events")

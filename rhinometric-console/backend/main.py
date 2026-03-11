@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from config import settings
 from database import engine, check_db_connection
 from models.alert_event import AlertEvent  # Phase 2.2
+from models.incident import Incident  # Phase 2.3
 from models.user import Base as UserBase
 from models.role import Base as RoleBase
 from models.alert_acknowledgement import AlertAcknowledgement
@@ -20,6 +21,7 @@ logger = get_logger(__name__)
 # Import routers
 from routers import auth, kpis, license, anomalies, alerts, logs, traces, dashboards, settings as settings_router, users, grafana_proxy, correlation, external_services
 from routers import alert_history
+from routers import incidents
 from routers import system as system_router
 
 app = FastAPI(
@@ -82,10 +84,33 @@ async def startup_event():
     except Exception as e:
         logger.warning(f"Could not create alert_history table: {e}")
 
+    # Auto-create incidents table (Phase 2.3 — Incident Management)
+    try:
+        Incident.__table__.create(bind=engine, checkfirst=True)
+        logger.info("Incidents table ready")
+    except Exception as e:
+        logger.warning(f"Could not create incidents table: {e}")
+
     # Auto-create alert_events table (Phase 2.2 — Alert Event Store)
     try:
         AlertEvent.__table__.create(bind=engine, checkfirst=True)
         logger.info("Alert events table ready")
+        # Phase 2.3: Add incident_id column if missing
+        try:
+            from sqlalchemy import text
+            with engine.connect() as conn:
+                conn.execute(text(
+                    "ALTER TABLE alert_events ADD COLUMN IF NOT EXISTS "
+                    "incident_id UUID REFERENCES incidents(id)"
+                ))
+                conn.execute(text(
+                    "CREATE INDEX IF NOT EXISTS ix_alert_events_incident_id "
+                    "ON alert_events (incident_id)"
+                ))
+                conn.commit()
+            logger.info("alert_events.incident_id column ready")
+        except Exception as col_err:
+            logger.warning(f"Could not add incident_id column: {col_err}")
     except Exception as e:
         logger.warning(f"Could not create alert_events table: {e}")
 
@@ -284,6 +309,7 @@ app.include_router(anomalies.router, prefix=f"{settings.API_PREFIX}/anomalies", 
 app.include_router(license.router, prefix=f"{settings.API_PREFIX}/license", tags=["License"])
 app.include_router(alerts.router, prefix=f"{settings.API_PREFIX}/alerts", tags=["Alerts"])
 app.include_router(alert_history.router, prefix=f"{settings.API_PREFIX}/alert-history", tags=["Alert History"])
+app.include_router(incidents.router, prefix=f"{settings.API_PREFIX}/incidents", tags=["Incidents"])
 app.include_router(logs.router, prefix=f"{settings.API_PREFIX}/logs", tags=["Logs"])
 app.include_router(traces.router, prefix=f"{settings.API_PREFIX}/traces", tags=["Traces"])
 app.include_router(dashboards.router, prefix=f"{settings.API_PREFIX}/dashboards", tags=["Dashboards"])
