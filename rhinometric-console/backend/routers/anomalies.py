@@ -4,6 +4,8 @@ from typing import Optional, List, Any, Dict
 import httpx
 import hashlib
 import logging
+import time
+from itertools import groupby as itertools_groupby
 from config import settings
 from routers.auth import get_current_user
 from models.user import User as UserModel
@@ -12,39 +14,66 @@ router = APIRouter()
 logger = logging.getLogger("anomalies")
 
 
-# ── Unified Anomaly Model (Phase 1.3 — Context Enrichment) ─────
-class UnifiedAnomaly(BaseModel):
-    """Unified anomaly schema with context enrichment.
-    All anomalies (service, infrastructure, website) share this structure.
-    Phase 1.2: Unified fields
-    Phase 1.3: Context enrichment metadata
-    """
-    id: str
+# -- Phase 2.1: Anomaly Occurrence (single detection event) ------
+class AnomalyOccurrence(BaseModel):
+    """A single detection event within an anomaly group."""
     timestamp: str
-    entity_type: str            # "service" | "infrastructure" | "website"
-    entity_name: str            # Human-readable name
-    source: str                 # "external_services" | "node_exporter" | "cadvisor" | etc.
-    metric_name: str            # Real metric being analyzed
-    severity: str               # "low" | "medium" | "high" | "critical"
     current_value: float
     expected_value: float
     deviation_percent: float
-    status: str                 # "active" | "resolved" | "false_positive" | "suppressed"
-    # Optional fields (Phase 1.2)
+    severity: str
     confidence: float | None = None
     analysis: str | None = None
+
+
+# -- Phase 2.1: Anomaly Group (deduplicated, lifecycle-managed) --
+class AnomalyGroup(BaseModel):
+    """Deduplicated anomaly group with lifecycle management.
+    Phase 2.1: Groups occurrences by fingerprint.
+    fingerprint = sha256(entity_type|entity_name|metric_name|source)[:16]
+    """
+    fingerprint: str
+    entity_type: str
+    entity_name: str
+    metric_name: str
+    source: str
+    first_seen: str
+    last_seen: str
+    occurrence_count: int
+    severity_current: str
+    status: str
+    occurrences: list[AnomalyOccurrence] = Field(default_factory=list)
+    environment: str = Field(default="unknown")
+    service_group: str = Field(default="default")
+    region: str | None = None
+    cluster: str | None = None
+    priority: int = Field(default=2)
     tags: list[str] | None = None
     metadata: dict | None = None
-    # Context enrichment fields (Phase 1.3)
-    environment: str = Field(default="unknown", description="Deployment environment")
-    service_group: str = Field(default="default", description="Logical service grouping")
-    region: str | None = Field(default=None, description="Geographic region")
-    cluster: str | None = Field(default=None, description="Cluster identifier")
-    # Priority field (Phase 1.4) — computed dynamically, not stored
-    priority: int = Field(default=2, description="Display priority: 1=service, 2=infrastructure, 3=website")
 
 
-# ── Priority + severity sort helpers ────────────────────────────
+class AnomalyGroupsResponse(BaseModel):
+    anomaly_groups: list[AnomalyGroup]
+    total: int
+    page: int
+    page_size: int
+
+
+class OccurrencesResponse(BaseModel):
+    fingerprint: str
+    entity_type: str
+    entity_name: str
+    metric_name: str
+    source: str
+    occurrences: list[AnomalyOccurrence]
+    total: int
+
+
+class StatusUpdateRequest(BaseModel):
+    status: str
+
+
+# -- Priority + severity sort helpers ----------------------------
 ENTITY_PRIORITY = {
     "service": 1,
     "website": 2,
@@ -59,14 +88,7 @@ SEVERITY_ORDER = {
 }
 
 
-class AnomaliesResponse(BaseModel):
-    anomalies: list[UnifiedAnomaly]
-    total: int
-    page: int
-    page_size: int
-
-
-# ── Entity type inference from metric name ──────────────────────
+# -- Entity type inference from metric name ----------------------
 METRIC_ENTITY_MAP = {
     "node_cpu_usage": ("infrastructure", "node_exporter"),
     "node_memory_usage": ("infrastructure", "node_exporter"),
@@ -87,7 +109,6 @@ METRIC_ENTITY_MAP = {
     "external_service_availability": ("service", "external_services"),
 }
 
-# Friendly display names for infrastructure metrics
 METRIC_DISPLAY_NAMES = {
     "node_cpu_usage": "Node CPU",
     "node_memory_usage": "Node Memory",
@@ -105,7 +126,6 @@ METRIC_DISPLAY_NAMES = {
     "license_expired_count": "Expired Licenses",
 }
 
-# Infrastructure service group mapping by metric category
 INFRA_SERVICE_GROUPS = {
     "node_cpu_usage": "compute",
     "node_memory_usage": "compute",
@@ -120,17 +140,15 @@ INFRA_SERVICE_GROUPS = {
 }
 
 
-# ── Service Registry Cache ──────────────────────────────────────
+# -- Service Registry Cache --------------------------------------
 _service_registry_cache: Dict[str, dict] = {}
 _service_registry_ttl: float = 0
 
 
 def _load_service_registry() -> Dict[str, dict]:
     """Load external services from DB for context enrichment.
-    Cached for 60 seconds to avoid DB pressure on every anomaly request.
-    Returns dict keyed by service name -> {environment, service_type, description, service_group, tags}.
+    Cached for 60 seconds to avoid DB pressure.
     """
-    import time
     global _service_registry_cache, _service_registry_ttl
 
     now = time.time()
@@ -146,8 +164,6 @@ def _load_service_registry() -> Dict[str, dict]:
         for svc in services:
             d = svc.to_dict()
             svc_name = d["name"]
-
-            # Derive service_group from service_type
             svc_type = d.get("service_type") or "unknown"
             if svc_type == "postgresql":
                 service_group = "databases"
@@ -155,14 +171,11 @@ def _load_service_registry() -> Dict[str, dict]:
                 service_group = "apis"
             else:
                 service_group = "default"
-
-            # Build tags from available metadata
             tags = []
             if svc_type:
                 tags.append(f"type:{svc_type}")
             if d.get("status"):
                 tags.append(f"status:{d['status']}")
-
             registry[svc_name] = {
                 "environment": d.get("environment") or "unknown",
                 "service_type": svc_type,
@@ -172,76 +185,57 @@ def _load_service_registry() -> Dict[str, dict]:
             }
         db.close()
         _service_registry_cache = registry
-        _service_registry_ttl = now + 60  # 60-second TTL
+        _service_registry_ttl = now + 60
         logger.debug(f"Service registry loaded: {len(registry)} services")
         return registry
     except Exception as e:
         logger.warning(f"Failed to load service registry: {e}")
-        return _service_registry_cache  # Return stale cache on error
+        return _service_registry_cache
 
 
 def _enrich_anomaly(normalized: dict) -> dict:
-    """Add Phase 1.3 context enrichment fields to a normalized anomaly.
-    - Service anomalies: enriched from the external services DB registry
-    - Infrastructure anomalies: enriched from metric category mapping
-    - Website anomalies: enriched with static metadata
-    """
+    """Add context enrichment + priority to a normalized anomaly."""
     entity_type = normalized.get("entity_type", "")
     entity_name = normalized.get("entity_name", "")
     base_metric = normalized.get("metric_name", "")
 
     if entity_type == "service":
-        # Enrich from service registry (DB)
         registry = _load_service_registry()
         svc_info = registry.get(entity_name, {})
         normalized["environment"] = svc_info.get("environment", "unknown")
         normalized["service_group"] = svc_info.get("service_group", "default")
-
-        # Merge registry tags with existing anomaly tags
         existing_tags = normalized.get("tags") or []
         registry_tags = svc_info.get("tags", [])
-        merged_tags = list(dict.fromkeys(existing_tags + registry_tags))  # dedupe preserving order
+        merged_tags = list(dict.fromkeys(existing_tags + registry_tags))
         normalized["tags"] = merged_tags if merged_tags else None
-
     elif entity_type == "infrastructure":
-        normalized["environment"] = "production"  # Infrastructure is always production
+        normalized["environment"] = "production"
         normalized["service_group"] = INFRA_SERVICE_GROUPS.get(base_metric, "system")
-
     elif entity_type == "website":
         normalized["environment"] = "production"
         normalized["service_group"] = "websites"
-
     else:
         normalized["environment"] = "unknown"
         normalized["service_group"] = "default"
 
-    # region and cluster stay None unless overridden in future
     normalized.setdefault("region", None)
     normalized.setdefault("cluster", None)
-
-    # ── Phase 1.4: Compute priority dynamically ──
     normalized["priority"] = ENTITY_PRIORITY.get(entity_type, 3)
 
     return normalized
 
 
 def normalize_anomaly(raw: dict, index: int) -> dict:
-    """Normalize any anomaly dict into the unified schema + context enrichment.
-    Handles both new (entity_type populated) and legacy (missing fields) anomalies.
-    """
+    """Normalize any anomaly dict into unified schema + enrichment."""
     metric_name = raw.get("metric_name", "unknown")
-
-    # Strip ::entity_name suffix for base metric lookup
     base_metric = metric_name.split("::")[0].strip()
     entity_suffix = metric_name.split("::")[-1].strip() if "::" in metric_name else ""
 
-    # ── Resolve entity_type and source ──
     entity_type = raw.get("entity_type", "").strip()
     source = raw.get("source", "").strip()
     entity_name = raw.get("entity_name", "").strip()
 
     if not entity_type or not source:
-        # Infer from metric name
         inferred = METRIC_ENTITY_MAP.get(base_metric)
         if inferred:
             if not entity_type:
@@ -249,13 +243,11 @@ def normalize_anomaly(raw: dict, index: int) -> dict:
             if not source:
                 source = inferred[1]
 
-    # Fallback defaults for legacy anomalies
     if not entity_type:
         entity_type = "infrastructure"
     if not source:
         source = "legacy"
 
-    # ── Resolve entity_name ──
     if not entity_name:
         if entity_suffix:
             entity_name = entity_suffix
@@ -264,39 +256,30 @@ def normalize_anomaly(raw: dict, index: int) -> dict:
         else:
             entity_name = base_metric.replace("_", " ").title()
 
-    # ── Generate stable ID ──
     raw_id = raw.get("id")
     if raw_id:
         anomaly_id = str(raw_id)
     else:
-        # Hash from metric + timestamp for stability
         id_seed = f"{metric_name}:{raw.get('timestamp', index)}"
         anomaly_id = hashlib.sha256(id_seed.encode()).hexdigest()[:12]
 
-    # ── Map severity ──
     severity = raw.get("severity", "low").lower()
     severity_map = {
-        "critical": "critical",
-        "high": "high",
-        "medium": "medium",
-        "warning": "medium",
-        "low": "low",
-        "info": "low",
+        "critical": "critical", "high": "high", "medium": "medium",
+        "warning": "medium", "low": "low", "info": "low",
     }
     severity = severity_map.get(severity, severity)
 
-    # ── Build tags ──
     tags = []
     if raw.get("is_anomaly"):
         tags.append("anomaly")
     models = raw.get("models_used", [])
     if models:
         tags.extend([f"model:{m}" for m in models])
-    priority = (raw.get("metadata") or {}).get("priority")
-    if priority:
-        tags.append(f"priority:{priority}")
+    priority_tag = (raw.get("metadata") or {}).get("priority")
+    if priority_tag:
+        tags.append(f"priority:{priority_tag}")
 
-    # ── Build analysis text ──
     analysis = raw.get("baseline_explanation")
 
     normalized = {
@@ -317,148 +300,239 @@ def normalize_anomaly(raw: dict, index: int) -> dict:
         "metadata": raw.get("metadata"),
     }
 
-    # ── Phase 1.3: Context enrichment ──
     normalized = _enrich_anomaly(normalized)
-
     return normalized
 
+
+# -- Phase 2.1: Fingerprint + Grouping Engine --------------------
+
+def _generate_fingerprint(entity_type: str, entity_name: str, metric_name: str, source: str) -> str:
+    """Generate deterministic fingerprint for anomaly grouping.
+    fingerprint = sha256(entity_type|entity_name|metric_name|source)[:16]
+    """
+    seed = f"{entity_type}|{entity_name}|{metric_name}|{source}"
+    return hashlib.sha256(seed.encode()).hexdigest()[:16]
+
+
+# In-memory lifecycle status store (Phase 2.1)
+_status_overrides: Dict[str, str] = {}
+VALID_STATUSES = {"active", "acknowledged", "false_positive", "suppressed", "resolved", "alert_created"}
+
+
+def _build_anomaly_groups(normalized_anomalies: list[dict]) -> list[dict]:
+    """Transform flat normalized anomalies into deduplicated groups.
+    Each unique (entity_type, entity_name, metric_name, source) combination
+    becomes one AnomalyGroup with multiple occurrences.
+    """
+    groups: Dict[str, dict] = {}
+
+    for a in normalized_anomalies:
+        fp = _generate_fingerprint(
+            a["entity_type"], a["entity_name"],
+            a["metric_name"], a["source"]
+        )
+
+        occurrence = {
+            "timestamp": a["timestamp"],
+            "current_value": a["current_value"],
+            "expected_value": a["expected_value"],
+            "deviation_percent": a["deviation_percent"],
+            "severity": a["severity"],
+            "confidence": a.get("confidence"),
+            "analysis": a.get("analysis"),
+        }
+
+        if fp in groups:
+            g = groups[fp]
+            g["occurrences"].append(occurrence)
+            g["occurrence_count"] += 1
+            if a["timestamp"] > g["last_seen"]:
+                g["last_seen"] = a["timestamp"]
+                g["severity_current"] = a["severity"]
+            if a["timestamp"] < g["first_seen"]:
+                g["first_seen"] = a["timestamp"]
+        else:
+            groups[fp] = {
+                "fingerprint": fp,
+                "entity_type": a["entity_type"],
+                "entity_name": a["entity_name"],
+                "metric_name": a["metric_name"],
+                "source": a["source"],
+                "first_seen": a["timestamp"],
+                "last_seen": a["timestamp"],
+                "occurrence_count": 1,
+                "severity_current": a["severity"],
+                "status": _status_overrides.get(fp, "active"),
+                "occurrences": [occurrence],
+                "environment": a.get("environment", "unknown"),
+                "service_group": a.get("service_group", "default"),
+                "region": a.get("region"),
+                "cluster": a.get("cluster"),
+                "priority": a.get("priority", 2),
+                "tags": a.get("tags"),
+                "metadata": a.get("metadata"),
+            }
+
+    # Sort occurrences DESC by timestamp within each group
+    for g in groups.values():
+        g["occurrences"].sort(key=lambda o: o["timestamp"], reverse=True)
+        g["status"] = _status_overrides.get(g["fingerprint"], "active")
+
+    return list(groups.values())
+
+
+async def _fetch_and_normalize(time_range: str = "24h", limit: int = 500) -> list[dict]:
+    """Fetch raw anomalies from AI service and normalize them."""
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        response = await client.get(
+            f"{settings.AI_ANOMALY_URL}/anomalies",
+            params={"time_range": time_range, "limit": limit}
+        )
+        if response.status_code != 200:
+            raise HTTPException(
+                status_code=response.status_code,
+                detail=f"AI Anomaly service error: {response.text}"
+            )
+        data = response.json()
+        raw_anomalies = data.get("anomalies", [])
+        return [normalize_anomaly(raw, i) for i, raw in enumerate(raw_anomalies)]
+
+
+# -- API Endpoints ------------------------------------------------
 
 @router.get("")
 async def get_anomalies(
     current_user: UserModel = Depends(get_current_user),
-    severity: Optional[str] = Query(None, description="Filter by severity: critical, high, medium, low"),
-    entity_type: Optional[str] = Query(None, description="Filter by entity_type: service, infrastructure, website"),
-    source: Optional[str] = Query(None, description="Filter by source"),
-    environment: Optional[str] = Query(None, description="Filter by environment"),
-    service_group: Optional[str] = Query(None, description="Filter by service_group"),
-    time_range: Optional[str] = Query("24h", description="Time range: 1h, 24h, 7d, 30d"),
+    severity: Optional[str] = Query(None),
+    entity_type: Optional[str] = Query(None),
+    source: Optional[str] = Query(None),
+    environment: Optional[str] = Query(None),
+    service_group: Optional[str] = Query(None),
+    status: Optional[str] = Query(None, description="Filter by lifecycle status"),
+    time_range: Optional[str] = Query("24h"),
     page: int = Query(1, ge=1),
-    page_size: int = Query(50, ge=1, le=100)
+    page_size: int = Query(50, ge=1, le=100),
 ):
-    """
-    Get anomalies from AI Anomaly Detection Engine (port 8085).
-    Returns anomalies normalized to the Unified Anomaly Model with context enrichment.
-
-    Filters:
-    - severity: critical, high, medium, low
-    - entity_type: service, infrastructure, website
-    - source: external_services, node_exporter, cadvisor, etc.
-    - environment: production, staging, unknown
-    - service_group: apis, databases, compute, network, etc.
-    - time_range: 1h, 24h, 7d, 30d
-    - pagination: page, page_size
-    """
+    """Get anomaly groups -- deduplicated with occurrence counts and lifecycle status."""
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            params = {
-                "time_range": time_range,
-                "limit": page_size
-            }
-            if severity:
-                params["severity"] = severity
+        normalized = await _fetch_and_normalize(time_range, page_size * 3)
+        groups = _build_anomaly_groups(normalized)
 
-            response = await client.get(
-                f"{settings.AI_ANOMALY_URL}/anomalies",
-                params=params
-            )
+        if entity_type:
+            groups = [g for g in groups if g["entity_type"] == entity_type]
+        if source:
+            groups = [g for g in groups if g["source"] == source]
+        if environment:
+            groups = [g for g in groups if g["environment"] == environment]
+        if service_group:
+            groups = [g for g in groups if g["service_group"] == service_group]
+        if severity:
+            groups = [g for g in groups if g["severity_current"] == severity]
+        if status:
+            groups = [g for g in groups if g["status"] == status]
 
-            if response.status_code == 200:
-                data = response.json()
-                raw_anomalies = data.get("anomalies", [])
+        # Sort: priority ASC -> severity DESC -> last_seen DESC
+        temp = sorted(groups, key=lambda g: (
+            g.get("priority", 3),
+            SEVERITY_ORDER.get(g.get("severity_current", "low"), 3),
+        ))
+        result = []
+        for _, grp in itertools_groupby(temp, key=lambda g: (
+            g.get("priority", 3),
+            SEVERITY_ORDER.get(g.get("severity_current", "low"), 3),
+        )):
+            bucket = sorted(grp, key=lambda x: x.get("last_seen", ""), reverse=True)
+            result.extend(bucket)
 
-                # Normalize all anomalies to unified schema + enrichment
-                normalized = []
-                for i, raw in enumerate(raw_anomalies):
-                    normalized.append(normalize_anomaly(raw, i))
-
-                # Apply post-normalization filters
-                if entity_type:
-                    normalized = [a for a in normalized if a["entity_type"] == entity_type]
-                if source:
-                    normalized = [a for a in normalized if a["source"] == source]
-                if environment:
-                    normalized = [a for a in normalized if a["environment"] == environment]
-                if service_group:
-                    normalized = [a for a in normalized if a["service_group"] == service_group]
-
-                # Phase 1.4: Service-first sorting
-                # Priority ASC (services first) → Severity DESC (critical first) → Timestamp DESC (newest first)
-                normalized.sort(
-                    key=lambda x: (
-                        x.get("priority", 3),
-                        SEVERITY_ORDER.get(x.get("severity", "low"), 3),
-                        # Negate timestamp for DESC within same priority+severity
-                    )
-                )
-                # Stable secondary sort: within same priority+severity, newest first
-                from itertools import groupby
-                result = []
-                normalized_temp = sorted(normalized, key=lambda x: (x.get("priority", 3), SEVERITY_ORDER.get(x.get("severity", "low"), 3)))
-                for _, group in groupby(normalized_temp, key=lambda x: (x.get("priority", 3), SEVERITY_ORDER.get(x.get("severity", "low"), 3))):
-                    g = sorted(group, key=lambda x: x.get("timestamp", ""), reverse=True)
-                    result.extend(g)
-                normalized = result
-
-                return {
-                    "anomalies": normalized,
-                    "total": len(normalized),
-                    "page": page,
-                    "page_size": page_size,
-                }
-            else:
-                raise HTTPException(
-                    status_code=response.status_code,
-                    detail=f"AI Anomaly service error: {response.text}"
-                )
+        return {
+            "anomaly_groups": result,
+            "total": len(result),
+            "page": page,
+            "page_size": page_size,
+        }
 
     except httpx.ConnectError as e:
-        print(f"Error connecting to AI Anomaly service: {e}")
-        raise HTTPException(
-            status_code=503,
-            detail=f"AI Anomaly Detection Engine connection failed: {str(e)}"
-        )
+        raise HTTPException(status_code=503, detail=f"AI Anomaly Detection Engine connection failed: {str(e)}")
     except HTTPException:
         raise
     except Exception as e:
-        print(f"Error fetching anomalies: {e}")
-        raise HTTPException(
-            status_code=503,
-            detail=f"AI Anomaly service error: {str(e)}"
-        )
+        logger.error(f"Error fetching anomaly groups: {e}")
+        raise HTTPException(status_code=503, detail=f"AI Anomaly service error: {str(e)}")
 
 
-@router.get("/{anomaly_id}")
-async def get_anomaly_details(
-    anomaly_id: str,
-    current_user: UserModel = Depends(get_current_user)
+@router.get("/{fingerprint}/occurrences")
+async def get_occurrences(
+    fingerprint: str,
+    current_user: UserModel = Depends(get_current_user),
+    time_range: Optional[str] = Query("24h"),
 ):
-    """Get detailed information about a specific anomaly (unified model + enrichment)"""
+    """Get all occurrences for a specific anomaly group."""
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            # Fetch all anomalies and find by ID
-            response = await client.get(
-                f"{settings.AI_ANOMALY_URL}/anomalies",
-                params={"limit": 500}
-            )
+        normalized = await _fetch_and_normalize(time_range, 500)
+        groups = _build_anomaly_groups(normalized)
 
-            if response.status_code == 200:
-                data = response.json()
-                raw_anomalies = data.get("anomalies", [])
+        for g in groups:
+            if g["fingerprint"] == fingerprint:
+                return {
+                    "fingerprint": g["fingerprint"],
+                    "entity_type": g["entity_type"],
+                    "entity_name": g["entity_name"],
+                    "metric_name": g["metric_name"],
+                    "source": g["source"],
+                    "occurrences": g["occurrences"],
+                    "total": g["occurrence_count"],
+                }
 
-                for i, raw in enumerate(raw_anomalies):
-                    normalized = normalize_anomaly(raw, i)
-                    if normalized["id"] == anomaly_id:
-                        return normalized
-
-                raise HTTPException(status_code=404, detail="Anomaly not found")
-            else:
-                raise HTTPException(status_code=response.status_code, detail=response.text)
+        raise HTTPException(status_code=404, detail="Anomaly group not found")
 
     except httpx.ConnectError:
+        raise HTTPException(status_code=503, detail="AI Anomaly Detection Engine is not available")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.patch("/{fingerprint}/status")
+async def update_anomaly_status(
+    fingerprint: str,
+    body: StatusUpdateRequest,
+    current_user: UserModel = Depends(get_current_user),
+):
+    """Update lifecycle status for an anomaly group.
+    Valid statuses: active, acknowledged, false_positive, suppressed, resolved, alert_created
+    """
+    new_status = body.status.lower().strip()
+    if new_status not in VALID_STATUSES:
         raise HTTPException(
-            status_code=503,
-            detail="AI Anomaly Detection Engine is not available"
+            status_code=400,
+            detail=f"Invalid status. Valid: {', '.join(sorted(VALID_STATUSES))}"
         )
+
+    _status_overrides[fingerprint] = new_status
+    logger.info(f"Anomaly {fingerprint} status -> {new_status} by {current_user.username}")
+    return {"fingerprint": fingerprint, "status": new_status, "message": f"Status updated to {new_status}"}
+
+
+@router.get("/{fingerprint}")
+async def get_anomaly_group(
+    fingerprint: str,
+    current_user: UserModel = Depends(get_current_user),
+    time_range: Optional[str] = Query("24h"),
+):
+    """Get detailed anomaly group by fingerprint."""
+    try:
+        normalized = await _fetch_and_normalize(time_range, 500)
+        groups = _build_anomaly_groups(normalized)
+
+        for g in groups:
+            if g["fingerprint"] == fingerprint:
+                return g
+
+        raise HTTPException(status_code=404, detail="Anomaly group not found")
+
+    except httpx.ConnectError:
+        raise HTTPException(status_code=503, detail="AI Anomaly Detection Engine is not available")
     except HTTPException:
         raise
     except Exception as e:

@@ -1,37 +1,44 @@
-import { AlertTriangle, TrendingUp, Filter, Download, X, GitMerge, Globe, CheckCircle2, BarChart3, FileText, Server, Monitor, Layers, MapPin, Shield } from 'lucide-react'
+import { AlertTriangle, TrendingUp, Filter, Download, X, GitMerge,
+  Globe, CheckCircle2, BarChart3, FileText, Server, Monitor, Layers, MapPin, Shield,
+  Clock, Hash, Activity } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../lib/auth/store'
 import { openGrafanaExplore } from '../utils/grafana'
 import { buildDynamicPromQL, buildDynamicLogQL } from '../utils/externalLinks'
 
-interface Anomaly {
-  id: string
+interface AnomalyOccurrence {
   timestamp: string
-  entity_type: string
-  entity_name: string
-  source: string
-  metric_name: string
-  severity: string
   current_value: number
   expected_value: number
   deviation_percent: number
-  status: string
+  severity: string
   confidence: number | null
   analysis: string | null
-  tags: string[] | null
-  metadata: Record<string, any> | null
-  // Phase 1.3 context enrichment
+}
+
+interface AnomalyGroup {
+  fingerprint: string
+  entity_type: string
+  entity_name: string
+  metric_name: string
+  source: string
+  first_seen: string
+  last_seen: string
+  occurrence_count: number
+  severity_current: string
+  status: string
+  occurrences: AnomalyOccurrence[]
   environment: string
   service_group: string
   region: string | null
   cluster: string | null
-  // Phase 1.4 priority (computed, not stored)
   priority: number
+  tags: string[] | null
+  metadata: Record<string, any> | null
 }
 
-// Entity type badge component
 function EntityBadge({ entityType, entityName }: { entityType: string; entityName: string }) {
   const config: Record<string, { icon: typeof Globe; color: string; label: string }> = {
     service: { icon: Globe, color: 'text-cyan-400 bg-cyan-400/10 border-cyan-400/30', label: 'Service' },
@@ -53,7 +60,6 @@ function EntityBadge({ entityType, entityName }: { entityType: string; entityNam
   )
 }
 
-// Priority indicator badge (Phase 1.4)
 function PriorityBadge({ priority, entityType }: { priority: number; entityType: string }) {
   if (priority === 1 || entityType === 'service') {
     return (
@@ -70,37 +76,47 @@ function PriorityBadge({ priority, entityType }: { priority: number; entityType:
   )
 }
 
+function StatusBadge({ status }: { status: string }) {
+  const config: Record<string, { color: string; label: string }> = {
+    active: { color: 'bg-error/20 text-error border-error/30', label: 'ACTIVE' },
+    acknowledged: { color: 'bg-blue-500/20 text-blue-400 border-blue-500/30', label: 'ACKED' },
+    false_positive: { color: 'bg-gray-500/20 text-gray-400 border-gray-500/30', label: 'FALSE POS' },
+    suppressed: { color: 'bg-amber-500/20 text-amber-400 border-amber-500/30', label: 'SUPPRESSED' },
+    resolved: { color: 'bg-green-500/20 text-green-400 border-green-500/30', label: 'RESOLVED' },
+    alert_created: { color: 'bg-purple-500/20 text-purple-400 border-purple-500/30', label: 'ALERTED' },
+  }
+  const c = config[status] || config.active
+  return (
+    <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold border ${c.color}`}>
+      {c.label}
+    </span>
+  )
+}
+
 export function AnomaliesPage() {
-  const [selectedAnomaly, setSelectedAnomaly] = useState<Anomaly | null>(null)
+  const [selectedGroup, setSelectedGroup] = useState<AnomalyGroup | null>(null)
   const [entityTypeFilter, setEntityTypeFilter] = useState<string>('')
+  const [statusFilter, setStatusFilter] = useState<string>('')
   const token = useAuthStore((state) => state.token)
   const isAdmin = useAuthStore((state) => state.isAdmin)
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
 
   useEffect(() => {
     document.title = 'Rhinometric - AI Anomaly Detection'
   }, [])
 
-  // Fetch real anomalies from backend
-  const { data: anomaliesData, isLoading, error } = useQuery({
-    queryKey: ['anomalies', token, entityTypeFilter],
+  const { data: groupsData, isLoading, error } = useQuery({
+    queryKey: ['anomalies', token, entityTypeFilter, statusFilter],
     queryFn: async () => {
       if (!token) throw new Error('No token')
-
       const params = new URLSearchParams({ page_size: '50' })
       if (entityTypeFilter) params.set('entity_type', entityTypeFilter)
-
+      if (statusFilter) params.set('status', statusFilter)
       const response = await fetch(`/api/anomalies?${params.toString()}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+        headers: { 'Authorization': `Bearer ${token}` }
       })
-
-      // Handle 503 - AI service unavailable
-      if (response.status === 503) {
-        throw new Error('AI_SERVICE_UNAVAILABLE')
-      }
-
+      if (response.status === 503) throw new Error('AI_SERVICE_UNAVAILABLE')
       if (!response.ok) throw new Error('Failed to fetch anomalies')
       return response.json()
     },
@@ -109,7 +125,22 @@ export function AnomaliesPage() {
     retry: false,
   })
 
-  const anomalies = anomaliesData?.anomalies || []
+  const statusMutation = useMutation({
+    mutationFn: async ({ fingerprint, status }: { fingerprint: string; status: string }) => {
+      const response = await fetch(`/api/anomalies/${fingerprint}/status`, {
+        method: 'PATCH',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status })
+      })
+      if (!response.ok) throw new Error('Failed to update status')
+      return response.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['anomalies'] })
+    }
+  })
+
+  const groups: AnomalyGroup[] = groupsData?.anomaly_groups || []
   const isAIUnavailable = error && (error as Error).message === 'AI_SERVICE_UNAVAILABLE'
 
   return (
@@ -119,7 +150,7 @@ export function AnomaliesPage() {
         <div>
           <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 mb-1 sm:mb-2">
             <h1 className="text-2xl sm:text-3xl font-bold text-white">AI Anomaly Detection</h1>
-            <span className="inline-flex items-center self-start px-3 py-1 rounded-full text-xs font-medium bg-warning/10 text-warning border border-warning/30" title="This feature uses experimental AI algorithms. Alerting is disabled by default. Enable in Settings if needed.">
+            <span className="inline-flex items-center self-start px-3 py-1 rounded-full text-xs font-medium bg-warning/10 text-warning border border-warning/30" title="Experimental AI algorithms">
               <span className="mr-1.5">&#x26A0;&#xFE0F;</span>
               Experimental Beta
             </span>
@@ -152,13 +183,19 @@ export function AnomaliesPage() {
             </select>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-400 hidden sm:inline">Severity:</span>
-            <select className="bg-surface-light border border-gray-700 text-white rounded px-2 sm:px-3 py-1.5 text-sm">
-              <option>All Severities</option>
-              <option>Critical</option>
-              <option>High</option>
-              <option>Medium</option>
-              <option>Low</option>
+            <span className="text-sm text-gray-400 hidden sm:inline">Status:</span>
+            <select
+              className="bg-surface-light border border-gray-700 text-white rounded px-2 sm:px-3 py-1.5 text-sm"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+            >
+              <option value="">All Statuses</option>
+              <option value="active">Active</option>
+              <option value="acknowledged">Acknowledged</option>
+              <option value="resolved">Resolved</option>
+              <option value="false_positive">False Positive</option>
+              <option value="suppressed">Suppressed</option>
+              <option value="alert_created">Alert Created</option>
             </select>
           </div>
           <div className="flex items-center gap-2">
@@ -172,16 +209,14 @@ export function AnomaliesPage() {
         </div>
       </div>
 
-      {/* Status Notice - AI Service Unavailable */}
+      {/* AI Service Unavailable */}
       {isAIUnavailable && (
         <div className="card bg-warning/10 border-warning/30">
           <div className="flex items-start gap-3 sm:gap-4">
             <AlertTriangle className="text-warning mt-1 flex-shrink-0" size={24} />
             <div className="flex-1 min-w-0">
               <h3 className="text-warning font-semibold mb-2 text-sm sm:text-base">AI Anomaly Detection Engine Unavailable</h3>
-              <p className="text-warning/80 text-xs sm:text-sm mb-3">
-                The AI Detection Engine is temporarily unavailable. This could mean:
-              </p>
+              <p className="text-warning/80 text-xs sm:text-sm mb-3">The AI Detection Engine is temporarily unavailable.</p>
               <ul className="list-disc list-inside text-warning/80 text-xs sm:text-sm space-y-1 mb-3">
                 <li>Service is starting up (please wait 30 seconds)</li>
                 <li>Service crashed or stopped (check container logs)</li>
@@ -189,19 +224,18 @@ export function AnomaliesPage() {
               </ul>
               <p className="text-warning/80 text-xs sm:text-sm">
                 <strong>Note:</strong> Check that rhinometric-ai-anomaly container is running on port 8085.
-                No anomaly detection is currently being performed.
               </p>
             </div>
           </div>
         </div>
       )}
 
-      {/* Anomalies Table */}
+      {/* Anomaly Groups Table */}
       <div className="card p-0 sm:p-0">
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-16 px-4">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mb-4"></div>
-            <p className="text-gray-400 text-sm">Loading anomalies...</p>
+            <p className="text-gray-400 text-sm">Loading anomaly groups...</p>
           </div>
         ) : error && !isAIUnavailable ? (
           <div className="flex flex-col items-center justify-center py-16 px-4">
@@ -215,7 +249,7 @@ export function AnomaliesPage() {
             <p className="text-white text-lg font-semibold mb-1">AI Service Unavailable</p>
             <p className="text-sm text-gray-400">No anomaly detection is currently active</p>
           </div>
-        ) : anomalies.length === 0 ? (
+        ) : groups.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 px-4">
             <CheckCircle2 className="text-success mb-4" size={48} />
             <p className="text-white text-lg font-semibold mb-1">No Anomalies Detected</p>
@@ -223,94 +257,85 @@ export function AnomaliesPage() {
           </div>
         ) : (
           <>
-            {/* Desktop table view */}
+            {/* Desktop table */}
             <div className="hidden md:block overflow-x-auto">
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-gray-700">
-                    <th className="text-center px-4 py-3 text-sm font-semibold text-gray-400 whitespace-nowrap w-[70px]"></th>
-                    <th className="text-left px-4 py-3 text-sm font-semibold text-gray-400 whitespace-nowrap">Time</th>
-                    <th className="text-left px-4 py-3 text-sm font-semibold text-gray-400 whitespace-nowrap">Entity</th>
-                    <th className="text-left px-4 py-3 text-sm font-semibold text-gray-400 whitespace-nowrap">Metric</th>
-                    <th className="text-left px-4 py-3 text-sm font-semibold text-gray-400 whitespace-nowrap">Severity</th>
-                    <th className="text-right px-4 py-3 text-sm font-semibold text-gray-400 whitespace-nowrap">Deviation</th>
-                    <th className="text-right px-4 py-3 text-sm font-semibold text-gray-400 whitespace-nowrap">Current / Expected</th>
-                    <th className="text-left px-4 py-3 text-sm font-semibold text-gray-400 whitespace-nowrap">Source</th>
-                    <th className="text-left px-4 py-3 text-sm font-semibold text-gray-400 whitespace-nowrap">Context</th>
-                    <th className="text-center px-4 py-3 text-sm font-semibold text-gray-400 whitespace-nowrap">Actions</th>
+                    <th className="text-center px-3 py-3 text-sm font-semibold text-gray-400 w-[70px]"></th>
+                    <th className="text-left px-3 py-3 text-sm font-semibold text-gray-400">Entity</th>
+                    <th className="text-left px-3 py-3 text-sm font-semibold text-gray-400">Metric</th>
+                    <th className="text-center px-3 py-3 text-sm font-semibold text-gray-400">Hits</th>
+                    <th className="text-left px-3 py-3 text-sm font-semibold text-gray-400">Severity</th>
+                    <th className="text-left px-3 py-3 text-sm font-semibold text-gray-400">Last Seen</th>
+                    <th className="text-center px-3 py-3 text-sm font-semibold text-gray-400">Status</th>
+                    <th className="text-left px-3 py-3 text-sm font-semibold text-gray-400">Context</th>
+                    <th className="text-center px-3 py-3 text-sm font-semibold text-gray-400">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {anomalies.map((anomaly: Anomaly) => (
-                    <tr key={anomaly.id} className="border-b border-gray-700/50 hover:bg-surface-light cursor-pointer transition-colors" onClick={() => setSelectedAnomaly(anomaly)}>
-                      <td className="px-4 py-3 text-center">
-                        <PriorityBadge priority={anomaly.priority} entityType={anomaly.entity_type} />
+                  {groups.map((group) => (
+                    <tr key={group.fingerprint} className="border-b border-gray-700/50 hover:bg-surface-light cursor-pointer transition-colors" onClick={() => setSelectedGroup(group)}>
+                      <td className="px-3 py-3 text-center">
+                        <PriorityBadge priority={group.priority} entityType={group.entity_type} />
                       </td>
-                      <td className="px-4 py-3 text-xs text-gray-300 whitespace-nowrap">
-                        {new Date(anomaly.timestamp).toLocaleTimeString()}
+                      <td className="px-3 py-3">
+                        <EntityBadge entityType={group.entity_type} entityName={group.entity_name} />
                       </td>
-                      <td className="px-4 py-3">
-                        <EntityBadge entityType={anomaly.entity_type} entityName={anomaly.entity_name} />
-                      </td>
-                      <td className="px-4 py-3">
-                        <code className="text-xs text-primary bg-primary/10 px-2 py-1 rounded block truncate max-w-[180px]" title={anomaly.metric_name}>
-                          {anomaly.metric_name}
+                      <td className="px-3 py-3">
+                        <code className="text-xs text-primary bg-primary/10 px-2 py-1 rounded block truncate max-w-[180px]" title={group.metric_name}>
+                          {group.metric_name}
                         </code>
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-3 py-3 text-center">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-primary/15 text-primary border border-primary/25">
+                          <Hash size={10} />
+                          {group.occurrence_count}
+                        </span>
+                      </td>
+                      <td className="px-3 py-3">
                         <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                          anomaly.severity === 'critical' || anomaly.severity === 'high' ? 'bg-error/20 text-error' :
-                          anomaly.severity === 'medium' ? 'bg-warning/20 text-warning' :
+                          group.severity_current === 'critical' || group.severity_current === 'high' ? 'bg-error/20 text-error' :
+                          group.severity_current === 'medium' ? 'bg-warning/20 text-warning' :
                           'bg-blue-500/20 text-blue-400'
                         }`}>
-                          {anomaly.severity.toUpperCase()}
+                          {group.severity_current.toUpperCase()}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-right">
-                        <div className={`flex items-center justify-end gap-1 text-sm font-semibold ${
-                          anomaly.deviation_percent > 0 ? 'text-error' : 'text-green-400'
-                        }`}>
-                          <TrendingUp size={12} />
-                          {anomaly.deviation_percent > 0 ? '+' : ''}{anomaly.deviation_percent.toFixed(1)}%
-                        </div>
+                      <td className="px-3 py-3 text-xs text-gray-300 whitespace-nowrap">
+                        {new Date(group.last_seen).toLocaleTimeString()}
                       </td>
-                      <td className="px-4 py-3 text-right text-xs">
-                        <div className="text-white font-medium">{anomaly.current_value.toFixed(1)}</div>
-                        <div className="text-gray-500">/ {anomaly.expected_value.toFixed(1)}</div>
+                      <td className="px-3 py-3 text-center">
+                        <StatusBadge status={group.status} />
                       </td>
-                      <td className="px-4 py-3">
-                        <span className="text-xs text-gray-400 bg-gray-700/50 px-2 py-0.5 rounded">
-                          {anomaly.source}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
+                      <td className="px-3 py-3">
                         <div className="space-y-1">
-                          {anomaly.environment && anomaly.environment !== 'unknown' && (
+                          {group.environment && group.environment !== 'unknown' && (
                             <div className="flex items-center gap-1">
                               <MapPin size={10} className="text-emerald-400" />
                               <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${
-                                anomaly.environment === 'production' || anomaly.environment === 'produccion'
+                                group.environment === 'production' || group.environment === 'produccion'
                                   ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
-                                  : anomaly.environment === 'staging' || anomaly.environment === 'Staging'
+                                  : group.environment === 'staging' || group.environment === 'Staging'
                                   ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
                                   : 'bg-gray-500/15 text-gray-400 border border-gray-500/30'
-                              }`}>{anomaly.environment}</span>
+                              }`}>{group.environment}</span>
                             </div>
                           )}
-                          {anomaly.service_group && anomaly.service_group !== 'default' && (
+                          {group.service_group && group.service_group !== 'default' && (
                             <div className="flex items-center gap-1">
                               <Layers size={10} className="text-violet-400" />
-                              <span className="text-[10px] text-violet-300 bg-violet-500/10 px-1.5 py-0.5 rounded border border-violet-500/20">{anomaly.service_group}</span>
+                              <span className="text-[10px] text-violet-300 bg-violet-500/10 px-1.5 py-0.5 rounded border border-violet-500/20">{group.service_group}</span>
                             </div>
                           )}
                         </div>
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-3 py-3">
                         <div className="flex items-center justify-center gap-2">
                           <button
-                            onClick={(e) => { e.stopPropagation(); navigate(`/correlations/${anomaly.timestamp}?entity_type=${encodeURIComponent(anomaly.entity_type)}&entity_name=${encodeURIComponent(anomaly.entity_name)}&metric_name=${encodeURIComponent(anomaly.metric_name)}&source=${encodeURIComponent(anomaly.source)}`) }}
+                            onClick={(e) => { e.stopPropagation(); navigate(`/correlations/${group.last_seen}?entity_type=${encodeURIComponent(group.entity_type)}&entity_name=${encodeURIComponent(group.entity_name)}&metric_name=${encodeURIComponent(group.metric_name)}&source=${encodeURIComponent(group.source)}`) }}
                             className="text-purple-400 hover:bg-purple-500/10 text-xs font-medium px-3 py-1 rounded transition-colors flex items-center gap-1"
-                            title="Full correlation analysis with metrics and logs"
+                            title="Full correlation analysis"
                           >
                             <GitMerge size={14} />
                             Correlate
@@ -325,51 +350,44 @@ export function AnomaliesPage() {
 
             {/* Mobile card view */}
             <div className="md:hidden divide-y divide-gray-700/50">
-              {anomalies.map((anomaly: Anomaly) => (
-                <div
-                  key={anomaly.id}
-                  className="p-3 sm:p-4 hover:bg-surface-light cursor-pointer transition-colors active:bg-surface-light"
-                  onClick={() => setSelectedAnomaly(anomaly)}
-                >
+              {groups.map((group) => (
+                <div key={group.fingerprint} className="p-3 sm:p-4 hover:bg-surface-light cursor-pointer transition-colors active:bg-surface-light" onClick={() => setSelectedGroup(group)}>
                   <div className="flex items-start justify-between gap-2 mb-1.5">
                     <div className="flex items-center gap-2">
-                      <EntityBadge entityType={anomaly.entity_type} entityName={anomaly.entity_name} />
-                      <PriorityBadge priority={anomaly.priority} entityType={anomaly.entity_type} />
+                      <EntityBadge entityType={group.entity_type} entityName={group.entity_name} />
+                      <PriorityBadge priority={group.priority} entityType={group.entity_type} />
                     </div>
                     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium flex-shrink-0 ${
-                      anomaly.severity === 'critical' || anomaly.severity === 'high' ? 'bg-error/20 text-error' :
-                      anomaly.severity === 'medium' ? 'bg-warning/20 text-warning' :
+                      group.severity_current === 'critical' || group.severity_current === 'high' ? 'bg-error/20 text-error' :
+                      group.severity_current === 'medium' ? 'bg-warning/20 text-warning' :
                       'bg-blue-500/20 text-blue-400'
                     }`}>
-                      {anomaly.severity.toUpperCase()}
+                      {group.severity_current.toUpperCase()}
                     </span>
                   </div>
                   <div className="flex items-center gap-2 mb-1">
-                    <code className="text-xs text-primary bg-primary/10 px-2 py-0.5 rounded truncate">{anomaly.metric_name}</code>
-                    <span className="text-[10px] text-gray-500 bg-gray-700/50 px-1.5 py-0.5 rounded flex-shrink-0">{anomaly.source}</span>
-                    {anomaly.environment && anomaly.environment !== 'unknown' && (
+                    <code className="text-xs text-primary bg-primary/10 px-2 py-0.5 rounded truncate">{group.metric_name}</code>
+                    <span className="text-[10px] text-gray-500 bg-gray-700/50 px-1.5 py-0.5 rounded flex-shrink-0">{group.source}</span>
+                    <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded flex-shrink-0">
+                      <Hash size={8} />{group.occurrence_count}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs mb-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-gray-500">{new Date(group.last_seen).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                      <StatusBadge status={group.status} />
+                    </div>
+                    {group.environment && group.environment !== 'unknown' && (
                       <span className={`text-[10px] px-1.5 py-0.5 rounded flex-shrink-0 ${
-                        anomaly.environment === 'production' || anomaly.environment === 'produccion'
+                        group.environment === 'production' || group.environment === 'produccion'
                           ? 'bg-emerald-500/15 text-emerald-400'
                           : 'bg-amber-500/15 text-amber-400'
-                      }`}>{anomaly.environment}</span>
+                      }`}>{group.environment}</span>
                     )}
                   </div>
-                  <div className="flex items-center justify-between text-xs mb-2">
-                    <span className="text-gray-500">
-                      {new Date(anomaly.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </span>
-                    <span className={`font-semibold ${anomaly.deviation_percent > 0 ? 'text-error' : 'text-green-400'}`}>
-                      <TrendingUp size={10} className="inline mr-0.5" />
-                      {anomaly.deviation_percent > 0 ? '+' : ''}{anomaly.deviation_percent.toFixed(1)}%
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-gray-400">
-                      {anomaly.current_value.toFixed(1)} / {anomaly.expected_value.toFixed(1)}
-                    </span>
+                  <div className="flex items-center justify-end text-xs">
                     <button
-                      onClick={(e) => { e.stopPropagation(); navigate(`/correlations/${anomaly.timestamp}?entity_type=${encodeURIComponent(anomaly.entity_type)}&entity_name=${encodeURIComponent(anomaly.entity_name)}&metric_name=${encodeURIComponent(anomaly.metric_name)}&source=${encodeURIComponent(anomaly.source)}`) }}
+                      onClick={(e) => { e.stopPropagation(); navigate(`/correlations/${group.last_seen}?entity_type=${encodeURIComponent(group.entity_type)}&entity_name=${encodeURIComponent(group.entity_name)}&metric_name=${encodeURIComponent(group.metric_name)}&source=${encodeURIComponent(group.source)}`) }}
                       className="text-purple-400 text-xs font-medium flex items-center gap-1"
                     >
                       <GitMerge size={12} />
@@ -383,133 +401,150 @@ export function AnomaliesPage() {
         )}
       </div>
 
-      {/* Details Modal */}
-      {selectedAnomaly && (
+      {/* Detail Modal */}
+      {selectedGroup && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
           <div className="bg-surface border border-gray-700 rounded-t-xl sm:rounded-lg shadow-2xl w-full sm:max-w-3xl max-h-[90vh] sm:max-h-[85vh] overflow-y-auto">
             {/* Header */}
             <div className="sticky top-0 bg-surface z-10 flex items-center justify-between p-3 sm:p-4 border-b border-gray-700">
               <div className="min-w-0 flex-1 mr-3">
-                <h2 className="text-lg sm:text-xl font-bold text-white truncate">Anomaly Details</h2>
-                <p className="text-xs text-gray-400 truncate">{selectedAnomaly.id} &middot; {selectedAnomaly.timestamp}</p>
+                <h2 className="text-lg sm:text-xl font-bold text-white truncate">Anomaly Group Details</h2>
+                <p className="text-xs text-gray-400 truncate font-mono">{selectedGroup.fingerprint}</p>
               </div>
-              <button
-                onClick={() => setSelectedAnomaly(null)}
-                className="p-2 bg-error/20 hover:bg-error/30 rounded-lg transition-colors flex-shrink-0"
-                title="Close"
-              >
+              <button onClick={() => setSelectedGroup(null)} className="p-2 bg-error/20 hover:bg-error/30 rounded-lg transition-colors flex-shrink-0" title="Close">
                 <X className="text-white" size={20} />
               </button>
             </div>
 
             {/* Content */}
             <div className="p-3 sm:p-4 space-y-3 sm:space-y-4">
-              {/* Entity & Source badge row */}
+              {/* Entity & status badge row */}
               <div className="flex items-center gap-3 flex-wrap">
-                <EntityBadge entityType={selectedAnomaly.entity_type} entityName={selectedAnomaly.entity_name} />
-                <span className="text-xs text-gray-400 bg-gray-700/50 px-2 py-1 rounded">Source: {selectedAnomaly.source}</span>
-                {selectedAnomaly.environment && selectedAnomaly.environment !== 'unknown' && (
+                <EntityBadge entityType={selectedGroup.entity_type} entityName={selectedGroup.entity_name} />
+                <span className="text-xs text-gray-400 bg-gray-700/50 px-2 py-1 rounded">Source: {selectedGroup.source}</span>
+                {selectedGroup.environment && selectedGroup.environment !== 'unknown' && (
                   <span className={`text-xs px-2 py-1 rounded flex items-center gap-1 ${
-                    selectedAnomaly.environment === 'production' || selectedAnomaly.environment === 'produccion'
+                    selectedGroup.environment === 'production' || selectedGroup.environment === 'produccion'
                       ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
-                      : selectedAnomaly.environment === 'staging' || selectedAnomaly.environment === 'Staging'
+                      : selectedGroup.environment === 'staging' || selectedGroup.environment === 'Staging'
                       ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
                       : 'bg-gray-500/15 text-gray-400 border border-gray-500/30'
                   }`}>
                     <MapPin size={12} />
-                    {selectedAnomaly.environment}
+                    {selectedGroup.environment}
                   </span>
                 )}
-                {selectedAnomaly.service_group && selectedAnomaly.service_group !== 'default' && (
+                {selectedGroup.service_group && selectedGroup.service_group !== 'default' && (
                   <span className="text-xs text-violet-300 bg-violet-500/10 px-2 py-1 rounded border border-violet-500/20 flex items-center gap-1">
                     <Layers size={12} />
-                    {selectedAnomaly.service_group}
+                    {selectedGroup.service_group}
                   </span>
                 )}
-                <span className={`text-xs px-2 py-1 rounded ${selectedAnomaly.status === 'active' ? 'bg-error/20 text-error' : 'bg-green-500/20 text-green-400'}`}>
-                  {selectedAnomaly.status.toUpperCase()}
-                </span>
+                <StatusBadge status={selectedGroup.status} />
               </div>
 
               {/* Overview grid */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
                 <div className="card bg-surface-light p-2 sm:p-3">
                   <p className="text-xs text-gray-400 mb-1">Metric</p>
-                  <code className="text-sm text-primary font-mono break-all">{selectedAnomaly.metric_name}</code>
+                  <code className="text-sm text-primary font-mono break-all">{selectedGroup.metric_name}</code>
                 </div>
                 <div className="card bg-surface-light p-2 sm:p-3">
                   <p className="text-xs text-gray-400 mb-1">Severity</p>
-                  <span className={`inline-flex items-center gap-1 px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium ${
-                    selectedAnomaly.severity === 'critical' || selectedAnomaly.severity === 'high' ? 'bg-error/20 text-error' :
-                    selectedAnomaly.severity === 'medium' ? 'bg-warning/20 text-warning' :
+                  <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
+                    selectedGroup.severity_current === 'critical' || selectedGroup.severity_current === 'high' ? 'bg-error/20 text-error' :
+                    selectedGroup.severity_current === 'medium' ? 'bg-warning/20 text-warning' :
                     'bg-blue-500/20 text-blue-400'
                   }`}>
-                    {selectedAnomaly.severity.toUpperCase()}
+                    {selectedGroup.severity_current.toUpperCase()}
                   </span>
                 </div>
                 <div className="card bg-surface-light p-2 sm:p-3">
-                  <p className="text-xs text-gray-400 mb-1">Confidence</p>
-                  <div className="text-sm sm:text-lg font-bold text-white">
-                    {selectedAnomaly.confidence != null ? `${(selectedAnomaly.confidence * 100).toFixed(0)}%` : 'N/A'}
+                  <p className="text-xs text-gray-400 mb-1">Occurrences</p>
+                  <div className="text-lg font-bold text-primary flex items-center gap-1">
+                    <Hash size={14} />
+                    {selectedGroup.occurrence_count}
+                  </div>
+                </div>
+                <div className="card bg-surface-light p-2 sm:p-3">
+                  <p className="text-xs text-gray-400 mb-1">Time Range</p>
+                  <div className="text-xs text-white">
+                    <div className="flex items-center gap-1">
+                      <Clock size={10} className="text-gray-400" />
+                      {new Date(selectedGroup.first_seen).toLocaleTimeString()}
+                    </div>
+                    <div className="flex items-center gap-1 text-gray-400 mt-0.5">
+                      <Activity size={10} />
+                      {new Date(selectedGroup.last_seen).toLocaleTimeString()}
+                    </div>
                   </div>
                 </div>
               </div>
 
-              {/* Metrics Comparison */}
+              {/* Occurrence Timeline */}
               <div className="card p-3 sm:p-4">
-                <h3 className="text-sm sm:text-base font-semibold text-white mb-3">Metrics Comparison</h3>
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-400 text-sm">Expected Value</span>
-                    <span className="text-lg sm:text-xl font-mono text-gray-300">{selectedAnomaly.expected_value.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-400 text-sm">Current Value</span>
-                    <span className="text-lg sm:text-xl font-mono text-white font-bold">{selectedAnomaly.current_value.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between items-center pt-3 border-t border-gray-700">
-                    <span className="text-gray-400 text-sm">Deviation</span>
-                    <span className={`text-lg sm:text-xl font-mono ${selectedAnomaly.deviation_percent > 0 ? 'text-error' : 'text-green-400'}`}>
-                      {selectedAnomaly.deviation_percent > 0 ? '+' : ''}{selectedAnomaly.deviation_percent.toFixed(1)}%
-                    </span>
-                  </div>
+                <h3 className="text-sm sm:text-base font-semibold text-white mb-3 flex items-center gap-2">
+                  <Activity size={16} className="text-primary" />
+                  Occurrence Timeline ({selectedGroup.occurrence_count})
+                </h3>
+                <div className="space-y-2 max-h-[240px] overflow-y-auto">
+                  {selectedGroup.occurrences.map((occ, i) => (
+                    <div key={i} className="flex items-center justify-between py-2 px-3 rounded bg-surface-light/50 border border-gray-700/30">
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs text-gray-400 font-mono whitespace-nowrap">
+                          {new Date(occ.timestamp).toLocaleTimeString()}
+                        </span>
+                        <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                          occ.severity === 'critical' || occ.severity === 'high' ? 'bg-error/20 text-error' :
+                          occ.severity === 'medium' ? 'bg-warning/20 text-warning' :
+                          'bg-blue-500/20 text-blue-400'
+                        }`}>
+                          {occ.severity.toUpperCase()}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-4 text-xs">
+                        <span className="text-white font-medium">{occ.current_value.toFixed(1)}</span>
+                        <span className="text-gray-500">/ {occ.expected_value.toFixed(1)}</span>
+                        <span className={`font-semibold ${occ.deviation_percent > 0 ? 'text-error' : 'text-green-400'}`}>
+                          <TrendingUp size={10} className="inline mr-0.5" />
+                          {occ.deviation_percent > 0 ? '+' : ''}{occ.deviation_percent.toFixed(1)}%
+                        </span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
 
-              {/* AI Analysis */}
-              <div className="card bg-primary/5 border-primary/20 p-3 sm:p-4">
-                <h3 className="text-sm sm:text-base font-semibold text-primary mb-2">AI Analysis</h3>
-                {selectedAnomaly.analysis ? (
-                  <p className="text-xs sm:text-sm text-gray-300 mb-3">{selectedAnomaly.analysis}</p>
-                ) : (
-                  <p className="text-xs sm:text-sm text-gray-300 mb-3">
-                    The anomaly detection algorithm identified this deviation based on historical patterns
-                    and statistical analysis over the last 24 hours.
-                  </p>
-                )}
-                {selectedAnomaly.tags && selectedAnomaly.tags.length > 0 && (
-                  <div className="flex flex-wrap gap-1 mt-2">
-                    {selectedAnomaly.tags.map((tag, i) => (
-                      <span key={i} className="text-[10px] px-2 py-0.5 rounded bg-gray-700/50 text-gray-400">{tag}</span>
-                    ))}
-                  </div>
-                )}
-              </div>
+              {/* AI Analysis from latest occurrence */}
+              {selectedGroup.occurrences[0]?.analysis && (
+                <div className="card bg-primary/5 border-primary/20 p-3 sm:p-4">
+                  <h3 className="text-sm sm:text-base font-semibold text-primary mb-2">AI Analysis</h3>
+                  <p className="text-xs sm:text-sm text-gray-300">{selectedGroup.occurrences[0].analysis}</p>
+                </div>
+              )}
+
+              {/* Tags */}
+              {selectedGroup.tags && selectedGroup.tags.length > 0 && (
+                <div className="flex flex-wrap gap-1">
+                  {selectedGroup.tags.map((tag, i) => (
+                    <span key={i} className="text-[10px] px-2 py-0.5 rounded bg-gray-700/50 text-gray-400">{tag}</span>
+                  ))}
+                </div>
+              )}
 
               {/* Grafana Actions */}
               {isAdmin() && <div>
                 <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold mb-2">Grafana</p>
                 <div className="flex flex-col sm:flex-row gap-2">
                   <button
-                    className={`btn flex-1 min-h-[44px] text-sm flex items-center justify-center gap-2${!selectedAnomaly.metric_name || selectedAnomaly.metric_name.includes('unknown') ? ' opacity-50 cursor-not-allowed' : ''}`}
-                    disabled={!selectedAnomaly.metric_name || selectedAnomaly.metric_name.includes('unknown')}
-                    title={selectedAnomaly.metric_name && !selectedAnomaly.metric_name.includes('unknown') ? 'Open metrics in Grafana' : 'No metrics available for this anomaly'}
+                    className={`btn flex-1 min-h-[44px] text-sm flex items-center justify-center gap-2${!selectedGroup.metric_name || selectedGroup.metric_name.includes('unknown') ? ' opacity-50 cursor-not-allowed' : ''}`}
+                    disabled={!selectedGroup.metric_name || selectedGroup.metric_name.includes('unknown')}
                     onClick={() => {
                       const prometheusQuery = buildDynamicPromQL({
-                        metric_name: selectedAnomaly.metric_name,
-                        entity_type: selectedAnomaly.entity_type,
-                        entity_name: selectedAnomaly.entity_name,
-                        source: selectedAnomaly.source
+                        metric_name: selectedGroup.metric_name,
+                        entity_type: selectedGroup.entity_type,
+                        entity_name: selectedGroup.entity_name,
+                        source: selectedGroup.source
                       })
                       const exploreUrl = `?orgId=1&left=${encodeURIComponent(JSON.stringify({
                         datasource: 'victoriametrics',
@@ -523,15 +558,14 @@ export function AnomaliesPage() {
                     Metrics
                   </button>
                   <button
-                    className={`btn flex-1 min-h-[44px] text-sm flex items-center justify-center gap-2${!selectedAnomaly.metric_name || selectedAnomaly.metric_name.includes('unknown') ? ' opacity-50 cursor-not-allowed' : ''}`}
-                    disabled={!selectedAnomaly.metric_name || selectedAnomaly.metric_name.includes('unknown')}
-                    title={selectedAnomaly.metric_name && !selectedAnomaly.metric_name.includes('unknown') ? 'Open logs in Grafana (Loki)' : 'No logs available for this anomaly'}
+                    className={`btn flex-1 min-h-[44px] text-sm flex items-center justify-center gap-2${!selectedGroup.metric_name || selectedGroup.metric_name.includes('unknown') ? ' opacity-50 cursor-not-allowed' : ''}`}
+                    disabled={!selectedGroup.metric_name || selectedGroup.metric_name.includes('unknown')}
                     onClick={() => {
                       const logQuery = buildDynamicLogQL({
-                        metric_name: selectedAnomaly.metric_name,
-                        entity_type: selectedAnomaly.entity_type,
-                        entity_name: selectedAnomaly.entity_name,
-                        source: selectedAnomaly.source
+                        metric_name: selectedGroup.metric_name,
+                        entity_type: selectedGroup.entity_type,
+                        entity_name: selectedGroup.entity_name,
+                        source: selectedGroup.source
                       })
                       const exploreUrl = `?orgId=1&left=${encodeURIComponent(JSON.stringify({
                         datasource: 'loki',
@@ -547,60 +581,65 @@ export function AnomaliesPage() {
                 </div>
               </div>}
 
-              {/* AI Actions */}
+              {/* Lifecycle Actions */}
               <div>
-                <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold mb-2">AI Actions</p>
-                <div className="flex flex-col sm:flex-row gap-2">
-                  <button
-                    className="btn btn-secondary flex-1 min-h-[44px] text-sm flex items-center justify-center gap-2"
-                    onClick={() => {
-                      console.log('Creating alert for:', selectedAnomaly.metric_name)
-                      alert(
-                        `CREATE ALERT FROM ANOMALY\n\n` +
-                        `Entity: ${selectedAnomaly.entity_name} (${selectedAnomaly.entity_type})\n` +
-                        `Metric: ${selectedAnomaly.metric_name}\n` +
-                        `Source: ${selectedAnomaly.source}\n\n` +
-                        `Backend: POST /api/alerts/create-from-anomaly\n` +
-                        `Frontend: Confirmation modal with YAML rule preview\n\n` +
-                        `EXAMPLE RULE:\n` +
-                        `- alert: AnomalyDetected_${selectedAnomaly.metric_name}\n` +
-                        `  expr: ${selectedAnomaly.metric_name} > ${selectedAnomaly.expected_value.toFixed(2)}\n` +
-                        `  for: 5m\n` +
-                        `  labels:\n` +
-                        `    severity: ${selectedAnomaly.severity}\n` +
-                        `    entity_type: ${selectedAnomaly.entity_type}\n` +
-                        `    source: ai_anomaly_detection`
-                      )
-                    }}
-                  >
-                    Create Alert
-                  </button>
-                  <button
-                    className="btn btn-secondary flex-1 min-h-[44px] text-sm flex items-center justify-center gap-2"
-                    onClick={() => {
-                      console.log('Marking as false positive:', selectedAnomaly.id)
-                      alert(
-                        `MARK AS FALSE POSITIVE\n\n` +
-                        `Anomaly ID: ${selectedAnomaly.id}\n` +
-                        `Entity: ${selectedAnomaly.entity_name} (${selectedAnomaly.entity_type})\n` +
-                        `Metric: ${selectedAnomaly.metric_name}\n\n` +
-                        `Backend: POST /api/anomalies/${selectedAnomaly.id}/mark-false-positive\n` +
-                        `AI Engine: PUT /ml/feedback (update model)\n\n` +
-                        `AI IMPACT:\n` +
-                        `- Reduces confidence threshold for "${selectedAnomaly.metric_name}"\n` +
-                        `- Learns normal patterns vs real outliers\n` +
-                        `- Status changes from "active" to "false_positive"`
-                      )
-                    }}
-                  >
-                    False Positive
-                  </button>
+                <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold mb-2">Lifecycle</p>
+                <div className="flex flex-wrap gap-2">
+                  {selectedGroup.status === 'active' && (
+                    <>
+                      <button
+                        className="btn btn-secondary flex-1 min-h-[40px] text-sm flex items-center justify-center gap-2"
+                        onClick={() => { statusMutation.mutate({ fingerprint: selectedGroup.fingerprint, status: 'acknowledged' }); setSelectedGroup({ ...selectedGroup, status: 'acknowledged' }) }}
+                      >
+                        Acknowledge
+                      </button>
+                      <button
+                        className="btn btn-secondary flex-1 min-h-[40px] text-sm flex items-center justify-center gap-2"
+                        onClick={() => { statusMutation.mutate({ fingerprint: selectedGroup.fingerprint, status: 'false_positive' }); setSelectedGroup({ ...selectedGroup, status: 'false_positive' }) }}
+                      >
+                        False Positive
+                      </button>
+                      <button
+                        className="btn btn-secondary flex-1 min-h-[40px] text-sm flex items-center justify-center gap-2"
+                        onClick={() => { statusMutation.mutate({ fingerprint: selectedGroup.fingerprint, status: 'suppressed' }); setSelectedGroup({ ...selectedGroup, status: 'suppressed' }) }}
+                      >
+                        Suppress
+                      </button>
+                    </>
+                  )}
+                  {selectedGroup.status !== 'active' && selectedGroup.status !== 'resolved' && (
+                    <button
+                      className="btn btn-secondary flex-1 min-h-[40px] text-sm flex items-center justify-center gap-2"
+                      onClick={() => { statusMutation.mutate({ fingerprint: selectedGroup.fingerprint, status: 'active' }); setSelectedGroup({ ...selectedGroup, status: 'active' }) }}
+                    >
+                      Reactivate
+                    </button>
+                  )}
+                  {selectedGroup.status !== 'resolved' && (
+                    <button
+                      className="btn btn-secondary flex-1 min-h-[40px] text-sm flex items-center justify-center gap-2 text-green-400"
+                      onClick={() => { statusMutation.mutate({ fingerprint: selectedGroup.fingerprint, status: 'resolved' }); setSelectedGroup({ ...selectedGroup, status: 'resolved' }) }}
+                    >
+                      Resolve
+                    </button>
+                  )}
                 </div>
               </div>
 
-              {/* Note */}
+              {/* Correlate */}
+              <div>
+                <button
+                  onClick={() => { setSelectedGroup(null); navigate(`/correlations/${selectedGroup.last_seen}?entity_type=${encodeURIComponent(selectedGroup.entity_type)}&entity_name=${encodeURIComponent(selectedGroup.entity_name)}&metric_name=${encodeURIComponent(selectedGroup.metric_name)}&source=${encodeURIComponent(selectedGroup.source)}`) }}
+                  className="btn w-full min-h-[44px] text-sm flex items-center justify-center gap-2 bg-purple-500/15 text-purple-400 border border-purple-500/25 hover:bg-purple-500/25"
+                >
+                  <GitMerge size={16} />
+                  Full Correlation Analysis
+                </button>
+              </div>
+
+              {/* Footer */}
               <div className="text-xs text-gray-500 text-center">
-                Unified Anomaly Model v1.4 &mdash; Service-first prioritization with context enrichment
+                Anomaly Lifecycle Engine v2.1 &mdash; Deduplication with occurrence tracking
               </div>
             </div>
           </div>
