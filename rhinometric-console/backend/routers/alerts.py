@@ -415,6 +415,7 @@ async def resolve_alert(
 # ==================================================================
 
 from models.alert_history import AlertHistory
+from models.alert_event import AlertEvent
 from datetime import datetime as dt_parser
 import hashlib
 import logging
@@ -488,9 +489,70 @@ async def grafana_webhook(
         db.add(record)
         stored += 1
 
+    # ── Phase 2.2: Persist in alert_events for lifecycle history ──
+    events_stored = 0
+    for alert in alerts:
+        labels = alert.get("labels", {})
+        annotations = alert.get("annotations", {})
+        alert_name = labels.get("alertname", "unknown")
+        entity_name = labels.get("service_name", "") or labels.get("instance", "unknown")
+        entity_type = labels.get("category", "service")
+        metric_name = labels.get("metric_name", "") or labels.get("__name__", "")
+        severity = labels.get("severity", "warning")
+        a_status = alert.get("status", "firing")
+
+        # Build correlation fingerprint
+        import hashlib as _hl
+        fp_seed = f"{alert_name}|{entity_name}|{metric_name}"
+        event_fp = _hl.sha256(fp_seed.encode()).hexdigest()[:16]
+
+        starts_at = None
+        ends_at = None
+        try:
+            if alert.get("startsAt"):
+                starts_at = datetime.fromisoformat(alert["startsAt"])
+            if alert.get("endsAt") and alert["endsAt"] != "0001-01-01T00:00:00Z":
+                ends_at = datetime.fromisoformat(alert["endsAt"])
+        except Exception:
+            pass
+
+        if a_status == "resolved":
+            # Try to update existing firing event
+            existing = db.query(AlertEvent).filter(
+                AlertEvent.fingerprint == event_fp,
+                AlertEvent.status == "firing",
+            ).order_by(AlertEvent.started_at.desc()).first()
+            if existing:
+                existing.status = "resolved"
+                existing.ended_at = ends_at or datetime.utcnow()
+                events_stored += 1
+                continue
+
+        # Create new event row
+        import uuid
+        event = AlertEvent(
+            id=uuid.uuid4(),
+            alert_name=alert_name,
+            entity_type=entity_type,
+            entity_name=entity_name,
+            metric_name=metric_name,
+            severity=severity,
+            status=a_status,
+            started_at=starts_at or datetime.utcnow(),
+            ended_at=ends_at if a_status == "resolved" else None,
+            fingerprint=event_fp,
+            labels=labels,
+            annotations=annotations,
+            summary=annotations.get("summary", ""),
+            source="alertmanager",
+            generator_url=alert.get("generatorURL", ""),
+        )
+        db.add(event)
+        events_stored += 1
+
     db.commit()
-    logger.info(f"Webhook received {len(alerts)} alerts, stored {stored}")
-    return {"status": "ok", "received": len(alerts), "stored": stored}
+    logger.info(f"Webhook received {len(alerts)} alerts, stored {stored} history + {events_stored} events")
+    return {"status": "ok", "received": len(alerts), "stored": stored, "events": events_stored}
 
 
 # ==================================================================

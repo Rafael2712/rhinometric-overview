@@ -9,6 +9,7 @@ import { DashboardViewer } from './pages/DashboardViewer'
 import { AnomaliesPage } from './pages/Anomalies'
 import { CorrelationView } from './pages/CorrelationView'
 import { AlertsPage } from './pages/Alerts'
+import { AlertHistoryPage } from './pages/AlertHistory'
 import { LogsPage } from './pages/Logs'
 import { TracesPage } from './pages/Traces'
 import { LicensePage } from './pages/License'
@@ -49,6 +50,7 @@ function App() {
           <Route path="ai-insights" element={<AIInsightsPage />} />
           <Route path="correlations/:id" element={<CorrelationView />} />
           <Route path="alerts" element={<AlertsPage />} />
+          <Route path="alert-history" element={<AlertHistoryPage />} />
           <Route path="logs" element={<LogsPage />} />
           <Route path="traces" element={<TracesPage />} />
           <Route path="license" element={<LicensePage />} />
