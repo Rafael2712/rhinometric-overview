@@ -1,4 +1,4 @@
-import { AlertTriangle, TrendingUp, Filter, Download, X, GitMerge, Globe, CheckCircle2, BarChart3, FileText } from 'lucide-react'
+import { AlertTriangle, TrendingUp, Filter, Download, X, GitMerge, Globe, CheckCircle2, BarChart3, FileText, Server, Monitor } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
@@ -7,21 +7,48 @@ import { openGrafanaExplore } from '../utils/grafana'
 import { buildDynamicPromQL, buildDynamicLogQL } from '../utils/externalLinks'
 
 interface Anomaly {
-  metric_name: string
+  id: string
   timestamp: string
+  entity_type: string
+  entity_name: string
+  source: string
+  metric_name: string
   severity: string
-  deviation_percent: number
-  expected_value: number
   current_value: number
+  expected_value: number
+  deviation_percent: number
   status: string
-  confidence: number
-  entity_type?: string
-  entity_name?: string
-  source?: string
+  confidence: number | null
+  analysis: string | null
+  tags: string[] | null
+  metadata: Record<string, any> | null
+}
+
+// Entity type badge component
+function EntityBadge({ entityType, entityName }: { entityType: string; entityName: string }) {
+  const config: Record<string, { icon: typeof Globe; color: string; label: string }> = {
+    service: { icon: Globe, color: 'text-cyan-400 bg-cyan-400/10 border-cyan-400/30', label: 'Service' },
+    infrastructure: { icon: Server, color: 'text-orange-400 bg-orange-400/10 border-orange-400/30', label: 'Infra' },
+    website: { icon: Monitor, color: 'text-green-400 bg-green-400/10 border-green-400/30', label: 'Website' },
+  }
+  const c = config[entityType] || config.infrastructure
+  const Icon = c.icon
+  return (
+    <div className="space-y-0.5">
+      <div className="flex items-center gap-1.5">
+        <Icon size={12} className={c.color.split(' ')[0]} />
+        <span className={`text-xs font-medium ${c.color.split(' ')[0]} truncate max-w-[160px]`} title={entityName}>{entityName}</span>
+      </div>
+      <span className={`inline-flex items-center px-1.5 py-0 rounded text-[10px] font-medium border ${c.color}`}>
+        {c.label}
+      </span>
+    </div>
+  )
 }
 
 export function AnomaliesPage() {
   const [selectedAnomaly, setSelectedAnomaly] = useState<Anomaly | null>(null)
+  const [entityTypeFilter, setEntityTypeFilter] = useState<string>('')
   const token = useAuthStore((state) => state.token)
   const isAdmin = useAuthStore((state) => state.isAdmin)
   const navigate = useNavigate()
@@ -32,11 +59,14 @@ export function AnomaliesPage() {
 
   // Fetch real anomalies from backend
   const { data: anomaliesData, isLoading, error } = useQuery({
-    queryKey: ['anomalies', token],
+    queryKey: ['anomalies', token, entityTypeFilter],
     queryFn: async () => {
       if (!token) throw new Error('No token')
 
-      const response = await fetch('/api/anomalies?page_size=50', {
+      const params = new URLSearchParams({ page_size: '50' })
+      if (entityTypeFilter) params.set('entity_type', entityTypeFilter)
+
+      const response = await fetch(`/api/anomalies?${params.toString()}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -60,13 +90,13 @@ export function AnomaliesPage() {
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      {/* Header – stacks on mobile */}
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-2 sm:mb-6">
         <div>
           <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 mb-1 sm:mb-2">
             <h1 className="text-2xl sm:text-3xl font-bold text-white">AI Anomaly Detection</h1>
             <span className="inline-flex items-center self-start px-3 py-1 rounded-full text-xs font-medium bg-warning/10 text-warning border border-warning/30" title="This feature uses experimental AI algorithms. Alerting is disabled by default. Enable in Settings if needed.">
-              <span className="mr-1.5">⚠️</span>
+              <span className="mr-1.5">&#x26A0;&#xFE0F;</span>
               Experimental Beta
             </span>
           </div>
@@ -80,14 +110,28 @@ export function AnomaliesPage() {
         </div>
       </div>
 
-      {/* Filters – wraps on mobile */}
+      {/* Filters */}
       <div className="card">
         <div className="flex flex-wrap items-center gap-3 sm:gap-4">
           <Filter size={18} className="text-gray-400 flex-shrink-0" />
           <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-400 hidden sm:inline">Entity:</span>
+            <select
+              className="bg-surface-light border border-gray-700 text-white rounded px-2 sm:px-3 py-1.5 text-sm"
+              value={entityTypeFilter}
+              onChange={(e) => setEntityTypeFilter(e.target.value)}
+            >
+              <option value="">All Entities</option>
+              <option value="service">Services</option>
+              <option value="infrastructure">Infrastructure</option>
+              <option value="website">Website</option>
+            </select>
+          </div>
+          <div className="flex items-center gap-2">
             <span className="text-sm text-gray-400 hidden sm:inline">Severity:</span>
             <select className="bg-surface-light border border-gray-700 text-white rounded px-2 sm:px-3 py-1.5 text-sm">
               <option>All Severities</option>
+              <option>Critical</option>
               <option>High</option>
               <option>Medium</option>
               <option>Low</option>
@@ -151,7 +195,7 @@ export function AnomaliesPage() {
           <div className="flex flex-col items-center justify-center py-16 px-4">
             <CheckCircle2 className="text-success mb-4" size={48} />
             <p className="text-white text-lg font-semibold mb-1">No Anomalies Detected</p>
-            <p className="text-gray-400 text-sm">AI engine is monitoring — all metrics within expected ranges</p>
+            <p className="text-gray-400 text-sm">AI engine is monitoring &mdash; all metrics within expected ranges</p>
           </div>
         ) : (
           <>
@@ -161,35 +205,28 @@ export function AnomaliesPage() {
                 <thead>
                   <tr className="border-b border-gray-700">
                     <th className="text-left px-4 py-3 text-sm font-semibold text-gray-400 whitespace-nowrap">Time</th>
+                    <th className="text-left px-4 py-3 text-sm font-semibold text-gray-400 whitespace-nowrap">Entity</th>
                     <th className="text-left px-4 py-3 text-sm font-semibold text-gray-400 whitespace-nowrap">Metric</th>
                     <th className="text-left px-4 py-3 text-sm font-semibold text-gray-400 whitespace-nowrap">Severity</th>
                     <th className="text-right px-4 py-3 text-sm font-semibold text-gray-400 whitespace-nowrap">Deviation</th>
-                    <th className="text-right px-4 py-3 text-sm font-semibold text-gray-400 whitespace-nowrap">Values</th>
+                    <th className="text-right px-4 py-3 text-sm font-semibold text-gray-400 whitespace-nowrap">Current / Expected</th>
+                    <th className="text-left px-4 py-3 text-sm font-semibold text-gray-400 whitespace-nowrap">Source</th>
                     <th className="text-center px-4 py-3 text-sm font-semibold text-gray-400 whitespace-nowrap">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {anomalies.map((anomaly: Anomaly, index: number) => (
-                    <tr key={index} className="border-b border-gray-700/50 hover:bg-surface-light cursor-pointer transition-colors" onClick={() => setSelectedAnomaly(anomaly)}>
-                      <td className="px-4 py-3 text-xs text-gray-300">
+                  {anomalies.map((anomaly: Anomaly) => (
+                    <tr key={anomaly.id} className="border-b border-gray-700/50 hover:bg-surface-light cursor-pointer transition-colors" onClick={() => setSelectedAnomaly(anomaly)}>
+                      <td className="px-4 py-3 text-xs text-gray-300 whitespace-nowrap">
                         {new Date(anomaly.timestamp).toLocaleTimeString()}
                       </td>
-                      <td className="px-4 py-3 max-w-[220px]">
-                        {anomaly.entity_type === 'service' && anomaly.entity_name ? (
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-1.5">
-                              <Globe size={12} className="text-cyan-400 flex-shrink-0" />
-                              <span className="text-xs font-medium text-cyan-400 truncate">{anomaly.entity_name}</span>
-                            </div>
-                            <code className="text-xs text-primary/70 bg-primary/5 px-1.5 py-0.5 rounded block truncate">
-                              {anomaly.metric_name.includes('::') ? anomaly.metric_name.split('::')[0] : anomaly.metric_name}
-                            </code>
-                          </div>
-                        ) : (
-                          <code className="text-xs text-primary bg-primary/10 px-2 py-1 rounded block truncate">
-                            {anomaly.metric_name}
-                          </code>
-                        )}
+                      <td className="px-4 py-3">
+                        <EntityBadge entityType={anomaly.entity_type} entityName={anomaly.entity_name} />
+                      </td>
+                      <td className="px-4 py-3">
+                        <code className="text-xs text-primary bg-primary/10 px-2 py-1 rounded block truncate max-w-[180px]" title={anomaly.metric_name}>
+                          {anomaly.metric_name}
+                        </code>
                       </td>
                       <td className="px-4 py-3">
                         <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
@@ -213,14 +250,19 @@ export function AnomaliesPage() {
                         <div className="text-gray-500">/ {anomaly.expected_value.toFixed(1)}</div>
                       </td>
                       <td className="px-4 py-3">
+                        <span className="text-xs text-gray-400 bg-gray-700/50 px-2 py-0.5 rounded">
+                          {anomaly.source}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
                         <div className="flex items-center justify-center gap-2">
                           <button
-                            onClick={(e) => { e.stopPropagation(); navigate(`/correlations/${anomaly.timestamp}?entity_type=${encodeURIComponent(anomaly.entity_type || '')}&entity_name=${encodeURIComponent(anomaly.entity_name || '')}&metric_name=${encodeURIComponent(anomaly.metric_name)}&source=${encodeURIComponent(anomaly.source || '')}`) }}
+                            onClick={(e) => { e.stopPropagation(); navigate(`/correlations/${anomaly.timestamp}?entity_type=${encodeURIComponent(anomaly.entity_type)}&entity_name=${encodeURIComponent(anomaly.entity_name)}&metric_name=${encodeURIComponent(anomaly.metric_name)}&source=${encodeURIComponent(anomaly.source)}`) }}
                             className="text-purple-400 hover:bg-purple-500/10 text-xs font-medium px-3 py-1 rounded transition-colors flex items-center gap-1"
-                            title="Full correlation analysis with metrics, logs and traces"
+                            title="Full correlation analysis with metrics and logs"
                           >
                             <GitMerge size={14} />
-                            View Correlation
+                            Correlate
                           </button>
                         </div>
                       </td>
@@ -232,23 +274,14 @@ export function AnomaliesPage() {
 
             {/* Mobile card view */}
             <div className="md:hidden divide-y divide-gray-700/50">
-              {anomalies.map((anomaly: Anomaly, index: number) => (
+              {anomalies.map((anomaly: Anomaly) => (
                 <div
-                  key={index}
+                  key={anomaly.id}
                   className="p-3 sm:p-4 hover:bg-surface-light cursor-pointer transition-colors active:bg-surface-light"
                   onClick={() => setSelectedAnomaly(anomaly)}
                 >
                   <div className="flex items-start justify-between gap-2 mb-1.5">
-                    {anomaly.entity_type === 'service' && anomaly.entity_name ? (
-                      <div className="flex items-center gap-1 min-w-0">
-                        <Globe size={10} className="text-cyan-400 flex-shrink-0" />
-                        <span className="text-xs font-medium text-cyan-400 truncate">{anomaly.entity_name}</span>
-                      </div>
-                    ) : (
-                      <code className="text-xs text-primary bg-primary/10 px-2 py-0.5 rounded truncate min-w-0">
-                        {anomaly.metric_name}
-                      </code>
-                    )}
+                    <EntityBadge entityType={anomaly.entity_type} entityName={anomaly.entity_name} />
                     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium flex-shrink-0 ${
                       anomaly.severity === 'critical' || anomaly.severity === 'high' ? 'bg-error/20 text-error' :
                       anomaly.severity === 'medium' ? 'bg-warning/20 text-warning' :
@@ -256,6 +289,10 @@ export function AnomaliesPage() {
                     }`}>
                       {anomaly.severity.toUpperCase()}
                     </span>
+                  </div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <code className="text-xs text-primary bg-primary/10 px-2 py-0.5 rounded truncate">{anomaly.metric_name}</code>
+                    <span className="text-[10px] text-gray-500 bg-gray-700/50 px-1.5 py-0.5 rounded flex-shrink-0">{anomaly.source}</span>
                   </div>
                   <div className="flex items-center justify-between text-xs mb-2">
                     <span className="text-gray-500">
@@ -271,11 +308,11 @@ export function AnomaliesPage() {
                       {anomaly.current_value.toFixed(1)} / {anomaly.expected_value.toFixed(1)}
                     </span>
                     <button
-                      onClick={(e) => { e.stopPropagation(); navigate(`/correlations/${anomaly.timestamp}?entity_type=${encodeURIComponent(anomaly.entity_type || '')}&entity_name=${encodeURIComponent(anomaly.entity_name || '')}&metric_name=${encodeURIComponent(anomaly.metric_name)}&source=${encodeURIComponent(anomaly.source || '')}`) }}
+                      onClick={(e) => { e.stopPropagation(); navigate(`/correlations/${anomaly.timestamp}?entity_type=${encodeURIComponent(anomaly.entity_type)}&entity_name=${encodeURIComponent(anomaly.entity_name)}&metric_name=${encodeURIComponent(anomaly.metric_name)}&source=${encodeURIComponent(anomaly.source)}`) }}
                       className="text-purple-400 text-xs font-medium flex items-center gap-1"
                     >
                       <GitMerge size={12} />
-                      Correlation
+                      Correlate
                     </button>
                   </div>
                 </div>
@@ -289,11 +326,11 @@ export function AnomaliesPage() {
       {selectedAnomaly && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
           <div className="bg-surface border border-gray-700 rounded-t-xl sm:rounded-lg shadow-2xl w-full sm:max-w-3xl max-h-[90vh] sm:max-h-[85vh] overflow-y-auto">
-            {/* Header - Fixed at top */}
+            {/* Header */}
             <div className="sticky top-0 bg-surface z-10 flex items-center justify-between p-3 sm:p-4 border-b border-gray-700">
               <div className="min-w-0 flex-1 mr-3">
                 <h2 className="text-lg sm:text-xl font-bold text-white truncate">Anomaly Details</h2>
-                <p className="text-xs text-gray-400 truncate">{selectedAnomaly.timestamp}</p>
+                <p className="text-xs text-gray-400 truncate">{selectedAnomaly.id} &middot; {selectedAnomaly.timestamp}</p>
               </div>
               <button
                 onClick={() => setSelectedAnomaly(null)}
@@ -304,26 +341,22 @@ export function AnomaliesPage() {
               </button>
             </div>
 
-            {/* Content - Scrollable */}
+            {/* Content */}
             <div className="p-3 sm:p-4 space-y-3 sm:space-y-4">
-              {/* Overview – responsive grid */}
-              <div className="grid grid-cols-2 gap-2 sm:gap-3">
+              {/* Entity & Source badge row */}
+              <div className="flex items-center gap-3 flex-wrap">
+                <EntityBadge entityType={selectedAnomaly.entity_type} entityName={selectedAnomaly.entity_name} />
+                <span className="text-xs text-gray-400 bg-gray-700/50 px-2 py-1 rounded">Source: {selectedAnomaly.source}</span>
+                <span className={`text-xs px-2 py-1 rounded ${selectedAnomaly.status === 'active' ? 'bg-error/20 text-error' : 'bg-green-500/20 text-green-400'}`}>
+                  {selectedAnomaly.status.toUpperCase()}
+                </span>
+              </div>
+
+              {/* Overview grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
                 <div className="card bg-surface-light p-2 sm:p-3">
                   <p className="text-xs text-gray-400 mb-1">Metric</p>
-                  <code className="text-sm sm:text-lg text-primary font-mono break-all">
-                    {selectedAnomaly.metric_name.includes('::') ? selectedAnomaly.metric_name.split('::')[0] : selectedAnomaly.metric_name}
-                  </code>
-                  {selectedAnomaly.entity_type === 'service' && selectedAnomaly.entity_name && (
-                    <div className="flex items-center gap-1.5 mt-1.5">
-                      <Globe size={14} className="text-cyan-400" />
-                      <span className="text-sm text-cyan-400 font-medium">{selectedAnomaly.entity_name}</span>
-                      <span className="text-xs text-gray-500 ml-1">({selectedAnomaly.source || 'external service'})</span>
-                    </div>
-                  )}
-                </div>
-                <div className="card bg-surface-light p-2 sm:p-3">
-                  <p className="text-xs text-gray-400 mb-1">Status</p>
-                  <p className="text-sm sm:text-lg text-white font-semibold">{selectedAnomaly.status}</p>
+                  <code className="text-sm text-primary font-mono break-all">{selectedAnomaly.metric_name}</code>
                 </div>
                 <div className="card bg-surface-light p-2 sm:p-3">
                   <p className="text-xs text-gray-400 mb-1">Severity</p>
@@ -338,7 +371,7 @@ export function AnomaliesPage() {
                 <div className="card bg-surface-light p-2 sm:p-3">
                   <p className="text-xs text-gray-400 mb-1">Confidence</p>
                   <div className="text-sm sm:text-lg font-bold text-white">
-                    {(selectedAnomaly.confidence * 100).toFixed(0)}%
+                    {selectedAnomaly.confidence != null ? `${(selectedAnomaly.confidence * 100).toFixed(0)}%` : 'N/A'}
                   </div>
                 </div>
               </div>
@@ -367,18 +400,24 @@ export function AnomaliesPage() {
               {/* AI Analysis */}
               <div className="card bg-primary/5 border-primary/20 p-3 sm:p-4">
                 <h3 className="text-sm sm:text-base font-semibold text-primary mb-2">AI Analysis</h3>
-                <p className="text-xs sm:text-sm text-gray-300 mb-3">
-                  The anomaly detection algorithm identified this deviation based on historical patterns
-                  and statistical analysis over the last 30 days.
-                </p>
-                <ul className="space-y-2 text-xs sm:text-sm text-gray-400">
-                  <li>• Pattern recognition: Outlier detected outside 3σ confidence interval</li>
-                  <li>• Similar incidents: 2 occurrences in the last 90 days</li>
-                  <li>• Recommended action: Investigate service load and resource allocation</li>
-                </ul>
+                {selectedAnomaly.analysis ? (
+                  <p className="text-xs sm:text-sm text-gray-300 mb-3">{selectedAnomaly.analysis}</p>
+                ) : (
+                  <p className="text-xs sm:text-sm text-gray-300 mb-3">
+                    The anomaly detection algorithm identified this deviation based on historical patterns
+                    and statistical analysis over the last 24 hours.
+                  </p>
+                )}
+                {selectedAnomaly.tags && selectedAnomaly.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-2">
+                    {selectedAnomaly.tags.map((tag, i) => (
+                      <span key={i} className="text-[10px] px-2 py-0.5 rounded bg-gray-700/50 text-gray-400">{tag}</span>
+                    ))}
+                  </div>
+                )}
               </div>
 
-              {/* Grafana Actions – admin/owner only */}
+              {/* Grafana Actions */}
               {isAdmin() && <div>
                 <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold mb-2">Grafana</p>
                 <div className="flex flex-col sm:flex-row gap-2">
@@ -426,7 +465,6 @@ export function AnomaliesPage() {
                     <FileText size={16} />
                     Logs
                   </button>
-                  
                 </div>
               </div>}
 
@@ -439,23 +477,19 @@ export function AnomaliesPage() {
                     onClick={() => {
                       console.log('Creating alert for:', selectedAnomaly.metric_name)
                       alert(
-                        `📊 CREATE ALERT FROM ANOMALY\n\n` +
-                        `🎯 FUNCTIONALITY:\n` +
-                        `• Automatically create alerting rule in Prometheus/AlertManager\n` +
-                        `• Based on AI-detected pattern (threshold = expected value ± deviation)\n` +
-                        `• Send to config/rules/alerts/ai-generated.yml\n` +
-                        `• Reload rules in Prometheus via API (POST /-/reload)\n\n` +
-                        `⏱️ IMPLEMENTATION:\n` +
-                        `• Sprint 4: AI Anomalies UI Complete\n` +
-                        `• Estimated time: 2-3 hours\n` +
-                        `• Backend: POST /api/alerts/create-from-anomaly\n` +
-                        `• Frontend: Confirmation modal with YAML rule preview\n\n` +
-                        `📋 EXAMPLE RULE:\n` +
+                        `CREATE ALERT FROM ANOMALY\n\n` +
+                        `Entity: ${selectedAnomaly.entity_name} (${selectedAnomaly.entity_type})\n` +
+                        `Metric: ${selectedAnomaly.metric_name}\n` +
+                        `Source: ${selectedAnomaly.source}\n\n` +
+                        `Backend: POST /api/alerts/create-from-anomaly\n` +
+                        `Frontend: Confirmation modal with YAML rule preview\n\n` +
+                        `EXAMPLE RULE:\n` +
                         `- alert: AnomalyDetected_${selectedAnomaly.metric_name}\n` +
                         `  expr: ${selectedAnomaly.metric_name} > ${selectedAnomaly.expected_value.toFixed(2)}\n` +
                         `  for: 5m\n` +
                         `  labels:\n` +
                         `    severity: ${selectedAnomaly.severity}\n` +
+                        `    entity_type: ${selectedAnomaly.entity_type}\n` +
                         `    source: ai_anomaly_detection`
                       )
                     }}
@@ -465,26 +499,18 @@ export function AnomaliesPage() {
                   <button
                     className="btn btn-secondary flex-1 min-h-[44px] text-sm flex items-center justify-center gap-2"
                     onClick={() => {
-                      console.log('Marking as false positive:', selectedAnomaly.metric_name)
+                      console.log('Marking as false positive:', selectedAnomaly.id)
                       alert(
-                        `❌ MARK AS FALSE POSITIVE\n\n` +
-                        `🎯 FUNCTIONALITY:\n` +
-                        `• Send negative feedback to the AI engine (port 8085)\n` +
-                        `• Update ML model to reduce false positives\n` +
-                        `• Guardar en DB como 'false_positive' for retraining\n` +
-                        `• Remove from active anomalies list\n` +
-                        `• Adjust model sensitivity for that metric\n\n` +
-                        `⏱️ IMPLEMENTATION:\n` +
-                        `• Sprint 4: AI Anomalies UI Complete\n` +
-                        `• Estimated time: 1-2 hours\n` +
-                        `• Backend: POST /api/anomalies/{id}/mark-false-positive\n` +
-                        `• AI Engine: PUT /ml/feedback (update model)\n` +
-                        `• Frontend: Confirmation + list update\n\n` +
-                        `🤖 AI IMPACT:\n` +
-                        `• Reduces confidence threshold for "${selectedAnomaly.metric_name}"\n` +
-                        `• Learns normal patterns vs real outliers\n` +
-                        `• Improves model precision with each feedback\n` +
-                        `• Accumulated feedback: Will be used in next retraining`
+                        `MARK AS FALSE POSITIVE\n\n` +
+                        `Anomaly ID: ${selectedAnomaly.id}\n` +
+                        `Entity: ${selectedAnomaly.entity_name} (${selectedAnomaly.entity_type})\n` +
+                        `Metric: ${selectedAnomaly.metric_name}\n\n` +
+                        `Backend: POST /api/anomalies/${selectedAnomaly.id}/mark-false-positive\n` +
+                        `AI Engine: PUT /ml/feedback (update model)\n\n` +
+                        `AI IMPACT:\n` +
+                        `- Reduces confidence threshold for "${selectedAnomaly.metric_name}"\n` +
+                        `- Learns normal patterns vs real outliers\n` +
+                        `- Status changes from "active" to "false_positive"`
                       )
                     }}
                   >
@@ -495,7 +521,7 @@ export function AnomaliesPage() {
 
               {/* Note */}
               <div className="text-xs text-gray-500 text-center">
-                Full integration with AI Anomaly Detection Engine (Port 8085) coming in Phase 2
+                Unified Anomaly Model v1.2 &mdash; All anomalies follow a consistent schema
               </div>
             </div>
           </div>

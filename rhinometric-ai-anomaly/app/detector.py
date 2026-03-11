@@ -535,7 +535,16 @@ class AnomalyDetector:
                         self.detection_history[metric_config.name][-100:]
                 continue
 
-            result = await self.detect_metric_anomalies(metric_config)
+            # Unified anomaly model: pass entity info from config
+            _entity_type = metric_config.entity_type or ""
+            _entity_name = metric_config.display_name if _entity_type else ""
+            _source = metric_config.source or ""
+            result = await self.detect_metric_anomalies(
+                metric_config,
+                entity_type=_entity_type,
+                entity_name=_entity_name,
+                source=_source
+            )
             
             # Store in history
             if metric_config.name not in self.detection_history:

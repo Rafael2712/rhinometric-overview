@@ -104,7 +104,9 @@ metrics:
     thresholds:
       warning: 70
       critical: 90
-    sensitivity: "low"  # Changed from medium - CPU varies naturally
+    sensitivity: "low"
+    entity_type: "infrastructure"
+    source: "node_exporter"  # Changed from medium - CPU varies naturally
     
   - name: "container_cpu_usage"
     display_name: "Container CPU Usage"
@@ -119,6 +121,8 @@ metrics:
       warning: 80
       critical: 95
     sensitivity: "medium"
+    entity_type: "infrastructure"
+    source: "cadvisor"
 
   # Memory Metrics
   - name: "node_memory_usage"
@@ -135,6 +139,8 @@ metrics:
       warning: 75
       critical: 90
     sensitivity: "medium"
+    entity_type: "infrastructure"
+    source: "node_exporter"
     
   - name: "container_memory_usage"
     display_name: "Container Memory Usage"
@@ -149,6 +155,8 @@ metrics:
       warning: 1.5  # GB
       critical: 2.0
     sensitivity: "low"
+    entity_type: "infrastructure"
+    source: "cadvisor"
 
   # Disk Metrics
   - name: "node_disk_usage"
@@ -163,6 +171,8 @@ metrics:
       warning: 80
       critical: 95
     sensitivity: "low"
+    entity_type: "infrastructure"
+    source: "node_exporter"
     
   - name: "node_disk_io"
     display_name: "Node Disk I/O"
@@ -177,6 +187,8 @@ metrics:
       warning: 0.8
       critical: 0.95
     sensitivity: "medium"
+    entity_type: "infrastructure"
+    source: "node_exporter"
 
   # Network Metrics
   - name: "node_network_receive"
@@ -192,6 +204,8 @@ metrics:
       warning: 100000000  # 100 MB/s
       critical: 500000000  # 500 MB/s
     sensitivity: "low"
+    entity_type: "infrastructure"
+    source: "node_exporter"
     
   - name: "node_network_transmit"
     display_name: "Network Transmit Rate"
@@ -206,6 +220,8 @@ metrics:
       warning: 100000000
       critical: 500000000
     sensitivity: "low"
+    entity_type: "infrastructure"
+    source: "node_exporter"
 
   # ========================================================================
   # HTTP METRICS DISABLED - Console Backend no exporta http_requests_total en v2.5.0
@@ -292,6 +308,8 @@ metrics:
       warning: 0.5
       critical: 0
     sensitivity: "high"
+    entity_type: "website"
+    source: "blackbox_exporter"
     alert_on_any_anomaly: true
 
   - name: "rhinometric_website_response_time"
@@ -308,6 +326,8 @@ metrics:
       warning: 1.0
       critical: 3.0
     sensitivity: "medium"
+    entity_type: "website"
+    source: "blackbox_exporter"
 
   - name: "rhinometric_website_ssl_expiry"
     display_name: "Rhinometric Website SSL Expiry"
@@ -322,6 +342,8 @@ metrics:
       warning: 30
       critical: 7
     sensitivity: "high"
+    entity_type: "website"
+    source: "blackbox_exporter"
     alert_on_any_anomaly: true
 
   - name: "rhinometric_website_dns_time"
@@ -337,6 +359,8 @@ metrics:
       warning: 0.1
       critical: 0.5
     sensitivity: "medium"
+    entity_type: "website"
+    source: "blackbox_exporter"
 
   # Custom Application Metrics
   - name: "license_validation_rate"
@@ -349,6 +373,8 @@ metrics:
       - isolation_forest
       - statistical
     sensitivity: "low"
+    entity_type: "infrastructure"
+    source: "internal_monitoring"
     
   - name: "license_expired_count"
     display_name: "Expired Licenses"
@@ -362,6 +388,8 @@ metrics:
       warning: 1
       critical: 5
     sensitivity: "high"
+    entity_type: "infrastructure"
+    source: "internal_monitoring"
     alert_on_any_anomaly: true
 
 
