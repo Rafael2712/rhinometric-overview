@@ -1,3 +1,4 @@
+/* eslint-disable */ console.info("anomaly-ui-v2.1.1");
 import { AlertTriangle, TrendingUp, Filter, Download, X, GitMerge,
   Globe, CheckCircle2, BarChart3, FileText, Server, Monitor, Layers, MapPin, Shield,
   Clock, Hash, Activity } from 'lucide-react'

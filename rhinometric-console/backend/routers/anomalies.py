@@ -444,8 +444,37 @@ async def get_anomalies(
             bucket = sorted(grp, key=lambda x: x.get("last_seen", ""), reverse=True)
             result.extend(bucket)
 
+        # Build backward-compat flat list for cached old frontends
+        compat_list = []
+        for g in result:
+            latest = g["occurrences"][0] if g.get("occurrences") else {}
+            flat = {
+                "id": g["fingerprint"],
+                "timestamp": g["last_seen"],
+                "entity_type": g["entity_type"],
+                "entity_name": g["entity_name"],
+                "source": g["source"],
+                "metric_name": g["metric_name"],
+                "severity": g["severity_current"],
+                "current_value": latest.get("current_value", 0),
+                "expected_value": latest.get("expected_value", 0),
+                "deviation_percent": latest.get("deviation_percent", 0),
+                "status": g["status"],
+                "confidence": latest.get("confidence"),
+                "analysis": latest.get("analysis"),
+                "tags": g.get("tags"),
+                "metadata": g.get("metadata"),
+                "environment": g.get("environment", "unknown"),
+                "service_group": g.get("service_group", "default"),
+                "region": g.get("region"),
+                "cluster": g.get("cluster"),
+                "priority": g.get("priority", 2),
+            }
+            compat_list.append(flat)
+
         return {
             "anomaly_groups": result,
+            "anomalies": compat_list,  # backward compat: flat format for cached old frontends
             "total": len(result),
             "page": page,
             "page_size": page_size,
