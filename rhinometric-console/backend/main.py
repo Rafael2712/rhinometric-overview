@@ -22,6 +22,7 @@ logger = get_logger(__name__)
 from routers import auth, kpis, license, anomalies, alerts, logs, traces, dashboards, settings as settings_router, users, grafana_proxy, correlation, external_services
 from routers import alert_history
 from routers import incidents
+from routers import slo as slo_router
 from routers import system as system_router
 
 app = FastAPI(
@@ -310,6 +311,7 @@ app.include_router(license.router, prefix=f"{settings.API_PREFIX}/license", tags
 app.include_router(alerts.router, prefix=f"{settings.API_PREFIX}/alerts", tags=["Alerts"])
 app.include_router(alert_history.router, prefix=f"{settings.API_PREFIX}/alert-history", tags=["Alert History"])
 app.include_router(incidents.router, prefix=f"{settings.API_PREFIX}/incidents", tags=["Incidents"])
+app.include_router(slo_router.router, prefix=f"{settings.API_PREFIX}/slo", tags=["SLO"])
 app.include_router(logs.router, prefix=f"{settings.API_PREFIX}/logs", tags=["Logs"])
 app.include_router(traces.router, prefix=f"{settings.API_PREFIX}/traces", tags=["Traces"])
 app.include_router(dashboards.router, prefix=f"{settings.API_PREFIX}/dashboards", tags=["Dashboards"])
