@@ -17,6 +17,8 @@ from routers.auth import get_current_user
 from models.user import User as UserModel
 from models.incident import Incident
 from models.alert_event import AlertEvent
+from models.incident_event import IncidentEvent
+from models.incident_comment import IncidentComment
 from logging_config import get_logger
 
 logger = get_logger(__name__)
@@ -31,8 +33,33 @@ SEVERITY_RANK = {"critical": 4, "warning": 3, "info": 2}
 class IncidentStatusUpdate(BaseModel):
     status: str
 
+class CommentCreate(BaseModel):
+    comment: str
+
+class TagsUpdate(BaseModel):
+    tags: List[str]
+
+
 
 # ── Helpers ─────────────────────────────────────────────────────
+
+
+
+def create_timeline_event(db: Session, incident_id, event_type: str,
+                           description: str = None, created_by: str = None,
+                           metadata: dict = None) -> None:
+    """Insert a timeline event for an incident."""
+    import uuid as _uuid
+    evt = IncidentEvent(
+        id=_uuid.uuid4(),
+        incident_id=incident_id,
+        event_type=event_type,
+        description=description,
+        created_by=created_by,
+        metadata_=metadata,
+    )
+    db.add(evt)
+    db.flush()
 
 def _incident_key(entity_type: str, entity_name: str) -> str:
     """Deterministic grouping key for incidents."""
@@ -76,6 +103,9 @@ def find_or_create_incident(db: Session, entity_type: str, entity_name: str,
     )
     db.add(incident)
     db.flush()  # get the ID before commit
+    create_timeline_event(db, incident.id, "incident_created",
+                          description=f"Incident created automatically for {entity_name}",
+                          metadata={"entity_type": entity_type, "severity": severity})
     logger.info(f"Created incident {incident.id} for {key}")
     return incident
 
@@ -96,6 +126,9 @@ def check_incident_resolution(db: Session, incident_id) -> None:
             incident.status = "resolved"
             incident.resolved_at = datetime.now(timezone.utc)
             incident.updated_at = datetime.now(timezone.utc)
+            create_timeline_event(db, incident.id, "incident_resolved",
+                                  description="Incident auto-resolved — all alerts resolved",
+                                  created_by="system")
             logger.info(f"Auto-resolved incident {incident.id} — all alerts resolved")
 
 
@@ -163,6 +196,7 @@ async def list_incidents(
             "alert_count": alert_counts.get(inc.id, 0),
             "created_at": inc.created_at.isoformat() if inc.created_at else None,
             "updated_at": inc.updated_at.isoformat() if inc.updated_at else None,
+            "tags": inc.tags or [],
         })
 
     return {"incidents": results, "total": total}
@@ -257,6 +291,7 @@ async def get_incident(
             "duration_seconds": duration,
             "created_at": incident.created_at.isoformat() if incident.created_at else None,
             "updated_at": incident.updated_at.isoformat() if incident.updated_at else None,
+            "tags": incident.tags or [],
         },
         "alert_events": events_list,
         "alert_count": len(events_list),
@@ -284,10 +319,17 @@ async def update_incident_status(
     if not incident:
         raise HTTPException(status_code=404, detail="Incident not found")
 
+    old_status = incident.status
     incident.status = body.status
     incident.updated_at = datetime.now(timezone.utc)
     if body.status == "resolved" and not incident.resolved_at:
         incident.resolved_at = datetime.now(timezone.utc)
+
+    # Timeline event for status change
+    evt_type = "investigation_started" if body.status == "investigating" else "incident_resolved" if body.status == "resolved" else "status_changed"
+    create_timeline_event(db, inc_uuid, evt_type,
+                          description=f"Status changed from {old_status} to {body.status}",
+                          created_by=current_user.username)
 
     db.commit()
     logger.info(f"Incident {incident_id} status → {body.status} by {current_user.username}")
@@ -295,6 +337,170 @@ async def update_incident_status(
     return {
         "id": str(incident.id),
         "status": incident.status,
+        "updated_at": incident.updated_at.isoformat() if incident.updated_at else None,
+    }
+
+
+
+# ── Timeline endpoints ─────────────────────────────────────
+
+@router.get("/{incident_id}/timeline")
+async def get_incident_timeline(
+    incident_id: str,
+    current_user: UserModel = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Get chronological timeline for an incident."""
+    import uuid as _uuid
+    try:
+        inc_uuid = _uuid.UUID(incident_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid incident ID")
+
+    incident = db.query(Incident).filter(Incident.id == inc_uuid).first()
+    if not incident:
+        raise HTTPException(status_code=404, detail="Incident not found")
+
+    events = db.query(IncidentEvent).filter(
+        IncidentEvent.incident_id == inc_uuid,
+    ).order_by(IncidentEvent.created_at.asc()).all()
+
+    return {
+        "timeline": [
+            {
+                "id": str(e.id),
+                "event_type": e.event_type,
+                "description": e.description,
+                "created_by": e.created_by,
+                "created_at": e.created_at.isoformat() if e.created_at else None,
+                "metadata": e.metadata_,
+            }
+            for e in events
+        ]
+    }
+
+
+# ── Comments endpoints ─────────────────────────────────────
+
+@router.get("/{incident_id}/comments")
+async def get_incident_comments(
+    incident_id: str,
+    current_user: UserModel = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Get comments for an incident."""
+    import uuid as _uuid
+    try:
+        inc_uuid = _uuid.UUID(incident_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid incident ID")
+
+    incident = db.query(Incident).filter(Incident.id == inc_uuid).first()
+    if not incident:
+        raise HTTPException(status_code=404, detail="Incident not found")
+
+    comments = db.query(IncidentComment).filter(
+        IncidentComment.incident_id == inc_uuid,
+    ).order_by(IncidentComment.created_at.asc()).all()
+
+    return {
+        "comments": [
+            {
+                "id": str(c.id),
+                "author": c.author,
+                "comment": c.comment,
+                "created_at": c.created_at.isoformat() if c.created_at else None,
+            }
+            for c in comments
+        ]
+    }
+
+
+@router.post("/{incident_id}/comments")
+async def add_incident_comment(
+    incident_id: str,
+    body: CommentCreate,
+    current_user: UserModel = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Add a comment to an incident."""
+    import uuid as _uuid
+    try:
+        inc_uuid = _uuid.UUID(incident_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid incident ID")
+
+    incident = db.query(Incident).filter(Incident.id == inc_uuid).first()
+    if not incident:
+        raise HTTPException(status_code=404, detail="Incident not found")
+
+    comment = IncidentComment(
+        id=_uuid.uuid4(),
+        incident_id=inc_uuid,
+        author=current_user.username,
+        comment=body.comment,
+    )
+    db.add(comment)
+    db.flush()
+
+    # Timeline event
+    create_timeline_event(db, inc_uuid, "comment_added",
+                          description=f"Comment by {current_user.username}",
+                          created_by=current_user.username,
+                          metadata={"comment_id": str(comment.id)})
+
+    return {
+        "id": str(comment.id),
+        "author": comment.author,
+        "comment": comment.comment,
+        "created_at": comment.created_at.isoformat() if comment.created_at else None,
+    }
+
+
+# ── Tags endpoint ──────────────────────────────────────────
+
+@router.patch("/{incident_id}/tags")
+async def update_incident_tags(
+    incident_id: str,
+    body: TagsUpdate,
+    current_user: UserModel = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Update tags for an incident."""
+    import uuid as _uuid
+    try:
+        inc_uuid = _uuid.UUID(incident_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid incident ID")
+
+    incident = db.query(Incident).filter(Incident.id == inc_uuid).first()
+    if not incident:
+        raise HTTPException(status_code=404, detail="Incident not found")
+
+    old_tags = set(incident.tags or [])
+    new_tags = set(body.tags)
+
+    added = new_tags - old_tags
+    removed = old_tags - new_tags
+
+    incident.tags = list(new_tags)
+    incident.updated_at = datetime.now(timezone.utc)
+
+    # Timeline events for tag changes
+    for tag in added:
+        create_timeline_event(db, inc_uuid, "tag_added",
+                              description=f"Tag added: {tag}",
+                              created_by=current_user.username,
+                              metadata={"tag": tag})
+    for tag in removed:
+        create_timeline_event(db, inc_uuid, "tag_removed",
+                              description=f"Tag removed: {tag}",
+                              created_by=current_user.username,
+                              metadata={"tag": tag})
+
+    return {
+        "id": str(incident.id),
+        "tags": incident.tags,
         "updated_at": incident.updated_at.isoformat() if incident.updated_at else None,
     }
 

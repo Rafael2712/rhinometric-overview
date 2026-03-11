@@ -5,7 +5,7 @@ import { useAuthStore } from '../lib/auth/store'
 import {
   Bell, CheckCircle2, Search,
   Filter, ChevronDown, ChevronUp, Clock, Activity,
-  Flame, Eye, BarChart3, MessageSquare, Tag, Plus, X, Send
+  Flame, Eye, BarChart3
 } from 'lucide-react'
 
 /* ── Types ─────────────────────────────────────────────────────── */
@@ -23,7 +23,6 @@ interface IncidentSummary {
   alert_count: number
   created_at: string | null
   updated_at: string | null
-  tags?: string[]
 }
 
 interface IncidentDetail {
@@ -45,22 +44,6 @@ interface AlertEventRow {
   duration_seconds: number | null
   fingerprint: string
   summary: string
-}
-
-interface TimelineEvent {
-  id: string
-  event_type: string
-  description: string | null
-  created_by: string | null
-  created_at: string | null
-  metadata: Record<string, unknown> | null
-}
-
-interface Comment {
-  id: string
-  author: string
-  comment: string
-  created_at: string | null
 }
 
 interface IncidentStats {
@@ -466,108 +449,8 @@ function IncidentRow({ inc, isExpanded, detail, onToggle, onStatusChange, isMuta
 
 function IncidentDetailPanel({ detail }: { detail: IncidentDetail }) {
   const events = detail.alert_events || []
-  const { token } = useAuthStore()
-  const queryClient = useQueryClient()
-  const headers: Record<string, string> = { Authorization: `Bearer ${token}` }
-  const incidentId = detail.incident.id
-
-  const [activeTab, setActiveTab] = useState<'alerts' | 'timeline' | 'comments'>('alerts')
-  const [newComment, setNewComment] = useState('')
-  const [newTag, setNewTag] = useState('')
-
-  // Timeline query
-  const { data: timelineData } = useQuery({
-    queryKey: ['incident-timeline', incidentId],
-    queryFn: async () => {
-      const res = await fetch(`/api/incidents/${incidentId}/timeline`, { headers })
-      if (!res.ok) throw new Error('Failed')
-      return res.json() as Promise<{ timeline: TimelineEvent[] }>
-    },
-    refetchInterval: 15000,
-  })
-
-  // Comments query
-  const { data: commentsData } = useQuery({
-    queryKey: ['incident-comments', incidentId],
-    queryFn: async () => {
-      const res = await fetch(`/api/incidents/${incidentId}/comments`, { headers })
-      if (!res.ok) throw new Error('Failed')
-      return res.json() as Promise<{ comments: Comment[] }>
-    },
-    refetchInterval: 15000,
-  })
-
-  // Add comment mutation
-  const commentMutation = useMutation({
-    mutationFn: async (comment: string) => {
-      const res = await fetch(`/api/incidents/${incidentId}/comments`, {
-        method: 'POST',
-        headers: { ...headers, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ comment }),
-      })
-      if (!res.ok) throw new Error('Failed')
-      return res.json()
-    },
-    onSuccess: () => {
-      setNewComment('')
-      queryClient.invalidateQueries({ queryKey: ['incident-comments', incidentId] })
-      queryClient.invalidateQueries({ queryKey: ['incident-timeline', incidentId] })
-    },
-  })
-
-  // Tags mutation
-  const tagsMutation = useMutation({
-    mutationFn: async (tags: string[]) => {
-      const res = await fetch(`/api/incidents/${incidentId}/tags`, {
-        method: 'PATCH',
-        headers: { ...headers, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tags }),
-      })
-      if (!res.ok) throw new Error('Failed')
-      return res.json()
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['incident-detail'] })
-      queryClient.invalidateQueries({ queryKey: ['incidents'] })
-      queryClient.invalidateQueries({ queryKey: ['incident-timeline', incidentId] })
-    },
-  })
-
-  const currentTags: string[] = detail.incident.tags || []
-  const timeline = timelineData?.timeline || []
-  const comments = commentsData?.comments || []
-
-  const addTag = () => {
-    const tag = newTag.trim().toLowerCase()
-    if (tag && !currentTags.includes(tag)) {
-      tagsMutation.mutate([...currentTags, tag])
-      setNewTag('')
-    }
-  }
-
-  const removeTag = (tag: string) => {
-    tagsMutation.mutate(currentTags.filter((t) => t !== tag))
-  }
-
-  const handleCommentSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (newComment.trim()) commentMutation.mutate(newComment.trim())
-  }
-
-  const eventTypeIcon: Record<string, { color: string; label: string }> = {
-    incident_created:      { color: 'text-red-400',    label: 'Incident created' },
-    alert_linked:          { color: 'text-amber-400',  label: 'Alert linked' },
-    investigation_started: { color: 'text-blue-400',   label: 'Investigation started' },
-    comment_added:         { color: 'text-purple-400', label: 'Comment added' },
-    incident_resolved:     { color: 'text-green-400',  label: 'Incident resolved' },
-    tag_added:             { color: 'text-cyan-400',   label: 'Tag added' },
-    tag_removed:           { color: 'text-gray-400',   label: 'Tag removed' },
-    status_changed:        { color: 'text-blue-400',   label: 'Status changed' },
-  }
-
   return (
     <div className="space-y-3">
-      {/* Header info */}
       <div className="flex items-center gap-3 text-xs text-gray-400">
         <span>Incident ID: <span className="font-mono text-gray-300">{detail.incident.id.slice(0, 8)}</span></span>
         <span>|</span>
@@ -580,151 +463,40 @@ function IncidentDetailPanel({ detail }: { detail: IncidentDetail }) {
         )}
       </div>
 
-      {/* Tags section */}
-      <div className="flex items-center gap-2 flex-wrap">
-        <Tag size={14} className="text-gray-500" />
-        {currentTags.map((tag) => (
-          <span key={tag} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-cyan-900/30 text-cyan-400 border border-cyan-800/50">
-            {tag}
-            <button onClick={() => removeTag(tag)} className="hover:text-red-400 transition-colors"><X size={10} /></button>
-          </span>
-        ))}
-        <div className="inline-flex items-center gap-1">
-          <input
-            type="text"
-            value={newTag}
-            onChange={(e) => setNewTag(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addTag() } }}
-            placeholder="Add tag..."
-            className="bg-gray-800/50 border border-gray-700 rounded px-2 py-0.5 text-xs text-gray-300 w-24 focus:outline-none focus:border-cyan-500"
-          />
-          <button onClick={addTag} className="text-gray-500 hover:text-cyan-400"><Plus size={14} /></button>
-        </div>
-      </div>
+      <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">
+        Related Alert Events ({events.length})
+      </p>
 
-      {/* Tab bar */}
-      <div className="flex gap-1 border-b border-gray-700">
-        {([
-          { key: 'alerts' as const, label: `Alerts (${events.length})`, icon: Bell },
-          { key: 'timeline' as const, label: `Timeline (${timeline.length})`, icon: Clock },
-          { key: 'comments' as const, label: `Comments (${comments.length})`, icon: MessageSquare },
-        ]).map(({ key, label, icon: TabIcon }) => (
-          <button
-            key={key}
-            onClick={() => setActiveTab(key)}
-            className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium border-b-2 transition-colors ${
-              activeTab === key
-                ? 'border-blue-500 text-blue-400'
-                : 'border-transparent text-gray-500 hover:text-gray-300'
-            }`}
-          >
-            <TabIcon size={12} />
-            {label}
-          </button>
-        ))}
-      </div>
-
-      {/* Tab content: Alerts */}
-      {activeTab === 'alerts' && (
-        <>
-          {events.length === 0 ? (
-            <p className="text-sm text-gray-500 italic">No alert events linked yet</p>
-          ) : (
-            <div className="overflow-x-auto rounded-md border border-gray-700/50">
-              <table className="w-full text-xs">
-                <thead>
-                  <tr className="bg-gray-800/30 text-gray-400 uppercase tracking-wider text-left">
-                    <th className="px-3 py-2">Alert</th>
-                    <th className="px-3 py-2">Severity</th>
-                    <th className="px-3 py-2">Status</th>
-                    <th className="px-3 py-2">Started</th>
-                    <th className="px-3 py-2">Ended</th>
-                    <th className="px-3 py-2">Duration</th>
-                    <th className="px-3 py-2">Summary</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-700/30">
-                  {events.map((ev) => (
-                    <tr key={ev.id} className="hover:bg-gray-800/20">
-                      <td className="px-3 py-2 text-gray-300 font-medium">{ev.alert_name}</td>
-                      <td className="px-3 py-2"><SeverityBadge severity={ev.severity} /></td>
-                      <td className="px-3 py-2"><AlertStatusBadge status={ev.status} /></td>
-                      <td className="px-3 py-2 text-gray-400" title={formatTs(ev.started_at)}>{timeAgo(ev.started_at)}</td>
-                      <td className="px-3 py-2 text-gray-400">{ev.ended_at ? timeAgo(ev.ended_at) : '\u2014'}</td>
-                      <td className="px-3 py-2 text-gray-400">{formatDuration(ev.duration_seconds)}</td>
-                      <td className="px-3 py-2 text-gray-400 max-w-xs truncate">{ev.summary || '\u2014'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </>
-      )}
-
-      {/* Tab content: Timeline */}
-      {activeTab === 'timeline' && (
-        <div className="space-y-0">
-          {timeline.length === 0 ? (
-            <p className="text-sm text-gray-500 italic py-2">No timeline events</p>
-          ) : (
-            <div className="relative pl-4">
-              <div className="absolute left-[7px] top-2 bottom-2 w-px bg-gray-700" />
-              {timeline.map((evt) => {
-                const cfg = eventTypeIcon[evt.event_type] || { color: 'text-gray-400', label: evt.event_type }
-                const ts = evt.created_at ? new Date(evt.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''
-                return (
-                  <div key={evt.id} className="relative flex items-start gap-3 py-2">
-                    <div className={`w-2.5 h-2.5 rounded-full mt-1.5 ${cfg.color.replace('text-', 'bg-')} ring-2 ring-gray-900 z-10`} />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className={`text-xs font-medium ${cfg.color}`}>{cfg.label}</span>
-                        <span className="text-xs text-gray-600">{ts}</span>
-                        {evt.created_by && <span className="text-xs text-gray-500">by {evt.created_by}</span>}
-                      </div>
-                      {evt.description && <p className="text-xs text-gray-400 mt-0.5">{evt.description}</p>}
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Tab content: Comments */}
-      {activeTab === 'comments' && (
-        <div className="space-y-3">
-          {comments.length === 0 && (
-            <p className="text-sm text-gray-500 italic py-2">No comments yet</p>
-          )}
-          {comments.map((c) => (
-            <div key={c.id} className="bg-gray-800/40 rounded-lg p-3 border border-gray-700/30">
-              <div className="flex items-center gap-2 mb-1.5">
-                <span className="text-xs font-medium text-blue-400">{c.author}</span>
-                <span className="text-xs text-gray-600">{c.created_at ? new Date(c.created_at).toLocaleString() : ''}</span>
-              </div>
-              <p className="text-sm text-gray-300 whitespace-pre-wrap">{c.comment}</p>
-            </div>
-          ))}
-
-          {/* Add comment form */}
-          <form onSubmit={handleCommentSubmit} className="flex gap-2">
-            <input
-              type="text"
-              value={newComment}
-              onChange={(e) => setNewComment(e.target.value)}
-              placeholder="Add a comment..."
-              className="flex-1 bg-gray-800/50 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-300 focus:outline-none focus:border-blue-500"
-            />
-            <button
-              type="submit"
-              disabled={!newComment.trim() || commentMutation.isPending}
-              className="px-3 py-2 rounded-lg bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 disabled:opacity-50 transition-colors"
-            >
-              <Send size={14} />
-            </button>
-          </form>
+      {events.length === 0 ? (
+        <p className="text-sm text-gray-500 italic">No alert events linked yet</p>
+      ) : (
+        <div className="overflow-x-auto rounded-md border border-gray-700/50">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="bg-gray-800/30 text-gray-400 uppercase tracking-wider text-left">
+                <th className="px-3 py-2">Alert</th>
+                <th className="px-3 py-2">Severity</th>
+                <th className="px-3 py-2">Status</th>
+                <th className="px-3 py-2">Started</th>
+                <th className="px-3 py-2">Ended</th>
+                <th className="px-3 py-2">Duration</th>
+                <th className="px-3 py-2">Summary</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-700/30">
+              {events.map((ev) => (
+                <tr key={ev.id} className="hover:bg-gray-800/20">
+                  <td className="px-3 py-2 text-gray-300 font-medium">{ev.alert_name}</td>
+                  <td className="px-3 py-2"><SeverityBadge severity={ev.severity} /></td>
+                  <td className="px-3 py-2"><AlertStatusBadge status={ev.status} /></td>
+                  <td className="px-3 py-2 text-gray-400" title={formatTs(ev.started_at)}>{timeAgo(ev.started_at)}</td>
+                  <td className="px-3 py-2 text-gray-400">{ev.ended_at ? timeAgo(ev.ended_at) : '—'}</td>
+                  <td className="px-3 py-2 text-gray-400">{formatDuration(ev.duration_seconds)}</td>
+                  <td className="px-3 py-2 text-gray-400 max-w-xs truncate">{ev.summary || '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </div>

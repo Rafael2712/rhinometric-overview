@@ -3,7 +3,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from config import settings
 from database import engine, check_db_connection
 from models.alert_event import AlertEvent  # Phase 2.2
-from models.incident import Incident  # Phase 2.3
+from models.incident import Incident
+from models.incident_event import IncidentEvent
+from models.incident_comment import IncidentComment  # Phase 2.3
 from models.user import Base as UserBase
 from models.role import Base as RoleBase
 from models.alert_acknowledgement import AlertAcknowledgement
@@ -88,9 +90,20 @@ async def startup_event():
     # Auto-create incidents table (Phase 2.3 — Incident Management)
     try:
         Incident.__table__.create(bind=engine, checkfirst=True)
+        IncidentEvent.__table__.create(bind=engine, checkfirst=True)
+        IncidentComment.__table__.create(bind=engine, checkfirst=True)
         logger.info("Incidents table ready")
     except Exception as e:
         logger.warning(f"Could not create incidents table: {e}")
+
+    # Phase 2.5: Add tags column to incidents
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("ALTER TABLE incidents ADD COLUMN IF NOT EXISTS tags JSONB DEFAULT '[]'"))
+            conn.commit()
+        logger.info("incidents.tags column ready")
+    except Exception as e:
+        logger.warning(f"incidents.tags column check: {e}")
 
     # Auto-create alert_events table (Phase 2.2 — Alert Event Store)
     try:
@@ -98,7 +111,6 @@ async def startup_event():
         logger.info("Alert events table ready")
         # Phase 2.3: Add incident_id column if missing
         try:
-            from sqlalchemy import text
             with engine.connect() as conn:
                 conn.execute(text(
                     "ALTER TABLE alert_events ADD COLUMN IF NOT EXISTS "

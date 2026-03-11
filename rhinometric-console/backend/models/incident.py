@@ -9,7 +9,7 @@ and resolved when all linked alert events are resolved.
 
 import uuid
 from sqlalchemy import Column, String, DateTime, Index
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.sql import func
 from database import Base
 
@@ -28,6 +28,7 @@ class Incident(Base):
     resolved_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    tags = Column(JSONB, nullable=True, default=list)
 
     __table_args__ = (
         Index("ix_incidents_entity", "entity_type", "entity_name"),
