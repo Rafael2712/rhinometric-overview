@@ -1,9 +1,8 @@
 """
 Rhino Core - Correlation API
-Endpoints para correlación automática de eventos de observabilidad
+Endpoints para correlacion automatica de eventos de observabilidad
 
 Autor: Rhinometric.com
-Fecha: 09 de febrero de 2026
 """
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -19,10 +18,10 @@ router = APIRouter()
 
 class CorrelationRequest(BaseModel):
     """Request para correlacionar un evento"""
-    event_id: str = Field(..., description="ID único del evento")
+    event_id: str = Field(..., description="ID unico del evento")
     event_timestamp: datetime = Field(..., description="Timestamp del evento (ISO format)")
-    event_type: str = Field(..., description="Tipo de evento: anomaly, alert, log, trace")
-    event_metadata: Optional[Dict[str, Any]] = Field(default={}, description="Metadatos adicionales (host, service, labels)")
+    event_type: str = Field(..., description="Tipo de evento: anomaly, alert, log")
+    event_metadata: Optional[Dict[str, Any]] = Field(default={}, description="Metadatos adicionales (entity_type, entity_name, metric_name, source)")
 
 
 class CorrelationResponse(BaseModel):
@@ -48,34 +47,30 @@ async def correlate_event(
 ):
     """
     Correlaciona un evento con datos de observabilidad en una ventana de tiempo.
-    
+
     **Casos de uso:**
-    - Anomalía detectada por IA → buscar métricas, logs, trazas relacionadas
-    - Alerta disparada → buscar contexto completo
-    - Log de error → buscar métricas y trazas del mismo periodo
-    
-    **Nivel de correlación actual:** Nivel 1 (timestamp ±5 min)
-    
-    **Requiere autenticación:** Sí (cualquier rol)
+    - Anomalia detectada por IA -> buscar metricas y logs relacionadas
+    - Alerta disparada -> buscar contexto completo
+
+    **Nivel de correlacion actual:** Nivel 1 (timestamp +/-5 min)
+
+    **Requiere autenticacion:** Si (cualquier rol)
     """
     try:
-        # Ejecutar correlación
         result = await engine.correlate_event(
             event_id=correlation_req.event_id,
             event_timestamp=correlation_req.event_timestamp,
             event_type=correlation_req.event_type,
             event_metadata=correlation_req.event_metadata
         )
-        
-        # Agregar resumen de resultados
+
         result["summary"] = {
             "metrics_count": len(result.get("metrics", [])),
             "logs_count": len(result.get("logs", [])),
-            "traces_count": len(result.get("traces", [])),
+            "traces_count": 0,
             "anomalies_count": len(result.get("related_anomalies", []))
         }
-        
-        # Audit log
+
         await log_audit_event(
             category="correlation",
             action="event_correlated",
@@ -89,11 +84,10 @@ async def correlate_event(
                 "logs_found": result["summary"]["logs_count"]
             }
         )
-        
+
         return result
-    
+
     except Exception as e:
-        # Audit log de error
         await log_audit_event(
             category="correlation",
             action="event_correlation_failed",
@@ -103,7 +97,7 @@ async def correlate_event(
             ip_address=request.client.host if request.client else None,
             status="failure"
         )
-        
+
         raise HTTPException(
             status_code=500,
             detail=f"Correlation failed: {str(e)}"
@@ -115,18 +109,17 @@ async def correlation_health(
     engine: CorrelationEngine = Depends(get_correlation_engine)
 ):
     """
-    Verifica el estado del motor de correlación.
-    
-    **No requiere autenticación.**
+    Verifica el estado del motor de correlacion.
+
+    **No requiere autenticacion.**
     """
     return {
         "status": "healthy",
-        "engine": "CorrelationEngine v1.0",
+        "engine": "CorrelationEngine v2.0",
         "backends": {
             "victoria_metrics": engine.victoria_metrics_url,
             "prometheus": engine.prometheus_url,
             "loki": engine.loki_url,
-            "jaeger": engine.jaeger_url,
             "ai_anomaly": engine.ai_anomaly_url
         },
         "config": {
@@ -142,9 +135,9 @@ async def get_correlation_config(
     engine: CorrelationEngine = Depends(get_correlation_engine)
 ):
     """
-    Obtiene la configuración actual del motor de correlación.
-    
-    **Requiere autenticación:** Sí (cualquier rol)
+    Obtiene la configuracion actual del motor de correlacion.
+
+    **Requiere autenticacion:** Si (cualquier rol)
     """
     return {
         "correlation_window_seconds": engine.correlation_window,
@@ -155,7 +148,6 @@ async def get_correlation_config(
             "victoria_metrics": engine.victoria_metrics_url,
             "prometheus": engine.prometheus_url,
             "loki": engine.loki_url,
-            "jaeger": engine.jaeger_url,
             "ai_anomaly": engine.ai_anomaly_url
         }
     }

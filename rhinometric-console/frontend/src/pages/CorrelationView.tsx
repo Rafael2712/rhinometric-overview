@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, AlertCircle, Loader2, RefreshCw, ExternalLink, Lock } from 'lucide-react';
 import { useCorrelation } from '../hooks/useCorrelation';
 import { CorrelationTimeline } from '../components/CorrelationTimeline';
@@ -8,7 +8,6 @@ import { useAuthStore } from '../lib/auth/store';
 import { 
   getGrafanaMetricsUrl, 
   getGrafanaLogsUrl, 
-  buildLokiQuery,
   canAccessExternalTools,
   openExternalLink 
 } from '../utils/externalLinks';
@@ -27,7 +26,14 @@ interface TimelineEvent {
 
 export function CorrelationView() {
   const { id } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+
+  // Parse anomaly entity data from URL search params
+  const entityType = searchParams.get('entity_type') || '';
+  const entityName = searchParams.get('entity_name') || '';
+  const metricName = searchParams.get('metric_name') || '';
+  const source = searchParams.get('source') || '';
   const { loading, error, data, correlate } = useCorrelation();
   const { user } = useAuthStore();
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -51,7 +57,12 @@ export function CorrelationView() {
       event_id: id,
       event_timestamp: new Date().toISOString(),
       event_type: 'anomaly',
-      event_metadata: {}
+      event_metadata: {
+        entity_type: entityType,
+        entity_name: entityName,
+        metric_name: metricName,
+        source: source
+      }
     });
   };
 
@@ -224,12 +235,12 @@ export function CorrelationView() {
           </div>
         </div>
 
-        <div className="card bg-blue-500/10 border-blue-500/30">
+        <div className="card bg-gray-700/20 border-gray-600/30">
           <div className="flex items-center gap-3">
-            <div className="text-3xl">🔗</div>
+            <div className="text-3xl opacity-50">🔗</div>
             <div>
-              <div className="text-2xl font-bold text-white">{data.summary.traces_count}</div>
-              <div className="text-sm text-gray-400">Traces</div>
+              <div className="text-2xl font-bold text-gray-500">N/A</div>
+              <div className="text-sm text-gray-500">Traces (coming soon)</div>
             </div>
           </div>
         </div>
@@ -305,38 +316,10 @@ export function CorrelationView() {
           <button
             onClick={() => {
               if (hasExternalAccess) {
-                // Map correlation query_name AND anomaly metric_name to real PromQL
-                const metricMap: Record<string, string> = {
-                  // Backend correlation engine query_name keys
-                  'cpu_usage': '100 - (avg by (instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)',
-                  'memory_usage': '(1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100',
-                  'disk_usage': '(node_filesystem_size_bytes - node_filesystem_avail_bytes) / node_filesystem_size_bytes * 100',
-                  'network_receive': 'rate(node_network_receive_bytes_total[5m])',
-                  // Anomaly metric_name keys (node_* prefix)
-                  'node_cpu_usage': '100 - (avg by (instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)',
-                  'node_memory_usage': '(1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100',
-                  'node_disk_io': 'rate(node_disk_io_time_seconds_total[5m])',
-                  'node_network_receive': 'rate(node_network_receive_bytes_total[5m])',
-                  'node_network_transmit': 'rate(node_network_transmit_bytes_total[5m])',
-                  'node_disk_usage': '(node_filesystem_size_bytes - node_filesystem_avail_bytes) / node_filesystem_size_bytes * 100',
-                  // Rhinometric website metrics
-                  'rhinometric_website_dns_time': 'rhinometric_website_dns_time',
-                  'rhinometric_website_ssl_expiry': 'rhinometric_website_ssl_expiry',
-                  'rhinometric_website_response_time': 'rhinometric_website_response_time',
-                  'rhinometric_website_availability': 'rhinometric_website_availability',
-                  // Generic app metrics
-                  'postgres_connections': 'pg_stat_database_numbackends',
-                  'response_time_ms': 'http_request_duration_seconds',
-                  'error_rate': 'rate(http_requests_total{status=~"5.."}[5m])',
-                  'http_request_rate': 'sum(rate(http_requests_total[5m]))',
-                  'http_error_rate': 'sum(rate(http_requests_total{status=~"5.."}[5m]))',
-                  'http_latency_p95': 'histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket[5m])))',
-                  'http_latency_p99': 'histogram_quantile(0.99, sum by (le) (rate(http_request_duration_seconds_bucket[5m])))'
-                };
+                // Dynamic: use the first correlated metric's query_name as PromQL
+                // The backend already built the correct PromQL query
                 const firstMetric = data.metrics[0]?.query_name;
-                const metricQuery = firstMetric
-                  ? (metricMap[firstMetric] || firstMetric)
-                  : 'up';
+                const metricQuery = firstMetric || metricName || 'up';
                 const url = getGrafanaMetricsUrl(
                   metricQuery,
                   data.correlation_window.start,
@@ -373,9 +356,19 @@ export function CorrelationView() {
           <button
             onClick={() => {
               if (hasExternalAccess) {
-                const host = data.metadata?.host;
-                const level = data.metadata?.level;
-                const logQuery = buildLokiQuery(host, level);
+                // Dynamic LogQL based on entity context
+                const et = data.metadata?.entity_type || entityType;
+                let logQuery: string;
+                if (et === 'service') {
+                  const en = data.metadata?.entity_name || entityName;
+                  logQuery = `{job="console-backend"} |= "${en}" |~ "(?i)(error|warn|fail|timeout)"`;
+                } else if (et === 'infrastructure') {
+                  logQuery = '{job="docker_logs"} |~ "(?i)(error|warn|fail|oom)"';
+                } else if (et === 'website') {
+                  logQuery = '{job="console-backend"} |~ "(?i)(website|ssl|dns)" |~ "(?i)(error|warn)"';
+                } else {
+                  logQuery = '{job="console-backend"} |~ "(?i)(error|warn)"';
+                }
                 const url = getGrafanaLogsUrl(
                   logQuery,
                   data.correlation_window.start,
@@ -460,21 +453,13 @@ export function CorrelationView() {
           />
         )}
 
-        {/* Traces */}
-        {data.traces.length > 0 && (
-          <CorrelationCard
-            title="Related Traces"
-            icon="🔗"
-            data={data.traces}
-            type="traces"
-          />
-        )}
+        {/* Traces - out of scope, hidden */}
       </div>
 
       {/* Empty State */}
       {data.metrics.length === 0 && 
        data.logs.length === 0 && 
-       data.traces.length === 0 && 
+        
        data.related_anomalies.length === 0 && (
         <div className="card text-center py-16">
           <div className="text-6xl mb-4">🔍</div>

@@ -1,10 +1,10 @@
 """
-Rhino Core - Correlation Engine v1.0
-Motor de correlación automática para eventos de observabilidad
-Integra métricas (VictoriaMetrics/Prometheus), logs (Loki), trazas (Jaeger) y anomalías (IA)
+Rhino Core - Correlation Engine v2.0
+Dynamic correlation engine for observability events.
+Builds PromQL and LogQL queries from actual anomaly event data.
+NO hardcoded queries. Metrics + Logs only. Traces out of scope.
 
-Autor: Rhinometric.com
-Fecha: 09 de febrero de 2026
+Author: Rhinometric.com
 """
 
 import logging
@@ -16,68 +16,93 @@ from config import settings
 logger = logging.getLogger(__name__)
 
 
+# -- AI config name -> actual Prometheus metric name ----------------
+CONFIG_NAME_TO_METRIC: Dict[str, str] = {
+    "external_service_availability": "external_service_up",
+    "external_service_health": "external_service_health_score",
+    "external_service_latency": "external_service_latency_ms",
+    "cpu_usage": "node_cpu_usage",
+    "memory_usage": "node_memory_usage",
+    "disk_usage": "node_disk_usage",
+    "disk_io": "node_disk_io",
+    "network_receive": "node_network_receive",
+    "network_transmit": "node_network_transmit",
+    "website_response_time": "rhinometric_website_response_time",
+    "website_availability": "rhinometric_website_availability",
+    "website_dns_time": "rhinometric_website_dns_time",
+    "website_ssl_expiry": "rhinometric_website_ssl_expiry",
+}
+
+
+# -- Dynamic Query Registry ----------------------------------------
+METRIC_QUERY_TEMPLATES: Dict[str, Dict[str, str]] = {
+    "service": {
+        "external_service_latency_ms":
+            'external_service_latency_ms{{service_name="{entity_name}"}}',
+        "external_service_health_score":
+            'external_service_health_score{{service_name="{entity_name}"}}',
+        "external_service_up":
+            'external_service_up{{service_name="{entity_name}"}}',
+    },
+    "infrastructure": {
+        "node_cpu_usage":
+            '100 - (avg by (instance) (rate(node_cpu_seconds_total{{mode="idle"}}[5m])) * 100)',
+        "node_memory_usage":
+            '(1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100',
+        "node_disk_usage":
+            '(node_filesystem_size_bytes - node_filesystem_avail_bytes) / node_filesystem_size_bytes * 100',
+        "node_disk_io":
+            'rate(node_disk_io_time_seconds_total[5m])',
+        "node_network_receive":
+            'rate(node_network_receive_bytes_total[5m])',
+        "node_network_transmit":
+            'rate(node_network_transmit_bytes_total[5m])',
+    },
+    "website": {
+        "rhinometric_website_response_time": 'rhinometric_website_response_time',
+        "rhinometric_website_availability": 'rhinometric_website_availability',
+        "rhinometric_website_dns_time": 'rhinometric_website_dns_time',
+        "rhinometric_website_ssl_expiry": 'rhinometric_website_ssl_expiry',
+    },
+}
+
+LOG_QUERY_TEMPLATES: Dict[str, str] = {
+    "service":
+        '{{job="console-backend"}} |= "{entity_name}" |~ "(?i)(error|warn|fail|timeout|exception)"',
+    "infrastructure":
+        '{{job="docker_logs"}} |~ "(?i)(error|warn|fail|oom|exception)"',
+    "website":
+        '{{job="console-backend"}} |~ "(?i)(website|ssl|dns|response_time)" |~ "(?i)(error|warn|fail)"',
+}
+
+
 class CorrelationEngine:
     """
-    Motor de correlación de eventos de observabilidad.
-    
-    Nivel 1 (MVP): Correlación por timestamp (ventana de ±5 minutos)
-    Nivel 2 (Futuro): Correlación por topología (host, servicio, pod)
-    Nivel 3 (Futuro): Correlación por trace_id (OTLP)
+    Dynamic correlation engine for observability events.
+    Builds queries from anomaly entity_type / entity_name / metric_name / source.
+    Never falls back to hardcoded catch-all queries.
+    Traces are out of scope.
     """
-    
+
     def __init__(self):
         self.prometheus_url = settings.PROMETHEUS_URL or "http://prometheus:9090"
         self.victoria_metrics_url = "http://victoria-metrics:8428"
         self.loki_url = settings.LOKI_URL or "http://loki:3100"
-        self.jaeger_url = settings.JAEGER_URL or "http://jaeger:16686"
         self.ai_anomaly_url = settings.AI_ANOMALY_URL or "http://rhinometric-ai-anomaly:8085"
-        
-        # Configuración de ventana de correlación (en segundos)
-        self.correlation_window = 300  # ±5 minutos por defecto
-        
-        # Preferencia de TSDB (VictoriaMetrics first, fallback a Prometheus)
+        self.correlation_window = 300
         self.use_victoria_metrics = True
-        
-        logger.info("CorrelationEngine initialized")
-        logger.info(f"  • VictoriaMetrics: {self.victoria_metrics_url}")
-        logger.info(f"  • Prometheus: {self.prometheus_url}")
-        logger.info(f"  • Loki: {self.loki_url}")
-        logger.info(f"  • Correlation window: ±{self.correlation_window}s")
-    
-    async def correlate_event(
-        self, 
-        event_id: str,
-        event_timestamp: datetime,
-        event_type: str,  # "anomaly", "alert", "log", "trace"
-        event_metadata: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
-        """
-        Correlaciona un evento con datos de observabilidad en una ventana de tiempo.
-        
-        Args:
-            event_id: ID único del evento (ej. anomaly_12345)
-            event_timestamp: Timestamp del evento
-            event_type: Tipo de evento (anomaly, alert, log, trace)
-            event_metadata: Metadatos adicionales (host, service, labels, etc.)
-        
-        Returns:
-            Dict con datos correlacionados:
-            {
-                "event_id": "...",
-                "timestamp": "...",
-                "correlation_window": {"start": "...", "end": "..."},
-                "metrics": [...],  # Métricas relevantes en ventana
-                "logs": [...],     # Logs relacionados
-                "traces": [...],   # Trazas relacionadas (futuro)
-                "related_anomalies": [...]  # Otras anomalías en ventana
-            }
-        """
-        logger.info(f"Correlating event: {event_id} (type={event_type})")
-        
-        # Calcular ventana de correlación
+
+        logger.info("CorrelationEngine v2.0 initialized (dynamic queries, no traces)")
+        logger.info(f"  VictoriaMetrics: {self.victoria_metrics_url}")
+        logger.info(f"  Prometheus: {self.prometheus_url}")
+        logger.info(f"  Loki: {self.loki_url}")
+        logger.info(f"  Correlation window: +/-{self.correlation_window}s")
+
+    async def correlate_event(self, event_id: str, event_timestamp: datetime, event_type: str, event_metadata: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        logger.info(f"Correlating event: {event_id} (type={event_type}, metadata={event_metadata})")
         window_start = event_timestamp - timedelta(seconds=self.correlation_window)
         window_end = event_timestamp + timedelta(seconds=self.correlation_window)
-        
+
         correlation_result = {
             "event_id": event_id,
             "timestamp": event_timestamp.isoformat(),
@@ -93,90 +118,122 @@ class CorrelationEngine:
             "traces": [],
             "related_anomalies": []
         }
-        
-        # 🔍 Nivel 1: Correlación por timestamp
+
         try:
-            # Buscar métricas relevantes
-            metrics = await self._fetch_metrics_in_window(
-                window_start, 
-                window_end, 
-                event_metadata
-            )
+            metrics = await self._fetch_metrics_in_window(window_start, window_end, event_metadata)
             correlation_result["metrics"] = metrics
-            
-            # Buscar logs relacionados
-            logs = await self._fetch_logs_in_window(
-                window_start,
-                window_end,
-                event_metadata
-            )
+            logs = await self._fetch_logs_in_window(window_start, window_end, event_metadata)
             correlation_result["logs"] = logs
-            
-            # Buscar anomalías relacionadas (de IA Anomaly)
-            related_anomalies = await self._fetch_anomalies_in_window(
-                window_start,
-                window_end,
-                event_metadata
-            )
+            related_anomalies = await self._fetch_anomalies_in_window(window_start, window_end, event_metadata)
             correlation_result["related_anomalies"] = related_anomalies
-            
-            # TODO: Nivel 2 - Correlación por topología (host, service, pod)
-            # TODO: Nivel 3 - Correlación por trace_id (OTLP)
-            
-            logger.info(f"Correlation complete for {event_id}: " +
-                       f"{len(metrics)} metrics, {len(logs)} logs, " +
-                       f"{len(related_anomalies)} anomalies")
-            
+            logger.info(f"Correlation complete for {event_id}: {len(metrics)} metrics, {len(logs)} logs, {len(related_anomalies)} anomalies")
         except Exception as e:
             logger.error(f"Error correlating event {event_id}: {e}", exc_info=True)
             correlation_result["error"] = str(e)
-        
+
         return correlation_result
-    
-    async def _fetch_metrics_in_window(
-        self, 
-        start: datetime, 
-        end: datetime,
-        metadata: Optional[Dict[str, Any]]
-    ) -> List[Dict[str, Any]]:
-        """
-        Busca métricas relevantes en VictoriaMetrics/Prometheus en ventana de tiempo.
-        
-        Estrategia:
-        - Si metadata tiene 'host', buscar métricas de ese host
-        - Si metadata tiene 'metric_name', buscar esa métrica específica
-        - Si no, buscar métricas comunes (CPU, memory, disk)
-        """
+
+    @staticmethod
+    def _normalize_metric_name(metric_name: str) -> str:
+        if not metric_name:
+            return ""
+        base = metric_name.split("::")[0].strip()
+        return CONFIG_NAME_TO_METRIC.get(base, base)
+
+    def _build_metric_queries(self, metadata: Optional[Dict[str, Any]]) -> Dict[str, str]:
+        queries: Dict[str, str] = {}
+        if not metadata:
+            logger.warning("No metadata provided - cannot build metric queries")
+            return queries
+
+        entity_type = metadata.get("entity_type", "").lower()
+        raw_metric_name = metadata.get("metric_name", "")
+        metric_name = self._normalize_metric_name(raw_metric_name)
+        entity_name = metadata.get("entity_name", "")
+        if raw_metric_name != metric_name:
+            logger.info(f"Normalized metric_name: {raw_metric_name!r} -> {metric_name!r}")
+
+        if not entity_type and not metric_name:
+            logger.warning("No entity_type or metric_name in metadata - cannot build queries")
+            return queries
+
+        if not entity_type:
+            entity_type = self._infer_entity_type(metric_name)
+
+        templates = METRIC_QUERY_TEMPLATES.get(entity_type, {})
+
+        if metric_name and metric_name in templates:
+            query = templates[metric_name].format(entity_name=entity_name)
+            queries[metric_name] = query
+            for sibling_name, sibling_tmpl in templates.items():
+                if sibling_name != metric_name:
+                    queries[sibling_name] = sibling_tmpl.format(entity_name=entity_name)
+        elif metric_name:
+            if entity_name and entity_type == "service":
+                queries[metric_name] = f'{metric_name}{{service_name="{entity_name}"}}'
+            else:
+                queries[metric_name] = metric_name
+            logger.info(f"Using raw metric_name as PromQL: {metric_name}")
+        elif entity_type in METRIC_QUERY_TEMPLATES:
+            for name, tmpl in templates.items():
+                queries[name] = tmpl.format(entity_name=entity_name)
+
+        return queries
+
+    def _build_log_query(self, metadata: Optional[Dict[str, Any]]) -> Optional[str]:
+        if not metadata:
+            logger.warning("No metadata - cannot build log query")
+            return None
+
+        entity_type = metadata.get("entity_type", "").lower()
+        entity_name = metadata.get("entity_name", "")
+        metric_name = self._normalize_metric_name(metadata.get("metric_name", ""))
+
+        if not entity_type:
+            entity_type = self._infer_entity_type(metric_name)
+
+        if not entity_type:
+            logger.warning("Cannot determine entity_type for log query")
+            return None
+
+        template = LOG_QUERY_TEMPLATES.get(entity_type)
+        if template:
+            return template.format(entity_name=entity_name)
+
+        logger.warning(f"No log query template for entity_type={entity_type}")
+        return None
+
+    @staticmethod
+    def _infer_entity_type(metric_name: str) -> str:
+        if not metric_name:
+            return ""
+        if metric_name.startswith("external_service_"):
+            return "service"
+        if metric_name.startswith("node_"):
+            return "infrastructure"
+        if metric_name.startswith("rhinometric_website_"):
+            return "website"
+        return ""
+
+    async def _fetch_metrics_in_window(self, start: datetime, end: datetime, metadata: Optional[Dict[str, Any]]) -> List[Dict[str, Any]]:
         metrics_data = []
-        
-        # Seleccionar TSDB (VictoriaMetrics preferido)
         tsdb_url = self.victoria_metrics_url if self.use_victoria_metrics else self.prometheus_url
-        
+        queries = self._build_metric_queries(metadata)
+
+        if not queries:
+            logger.info("No metric queries generated - skipping metrics fetch")
+            return metrics_data
+
         try:
-            # Construir queries PromQL basadas en metadata
-            queries = self._build_metric_queries(metadata)
-            
             async with httpx.AsyncClient(timeout=30.0) as client:
                 for query_name, query in queries.items():
                     try:
-                        # Query range para ventana de tiempo
-                        params = {
-                            "query": query,
-                            "start": start.timestamp(),
-                            "end": end.timestamp(),
-                            "step": "30s"  # Resolución 30s
-                        }
-                        
-                        response = await client.get(
-                            f"{tsdb_url}/api/v1/query_range",
-                            params=params
-                        )
-                        
+                        params = {"query": query, "start": start.timestamp(), "end": end.timestamp(), "step": "30s"}
+                        response = await client.get(f"{tsdb_url}/api/v1/query_range", params=params)
                         if response.status_code == 200:
                             data = response.json()
                             if data.get("status") == "success":
                                 results = data.get("data", {}).get("result", [])
-                                
                                 for result in results:
                                     metrics_data.append({
                                         "query_name": query_name,
@@ -186,166 +243,59 @@ class CorrelationEngine:
                                     })
                         else:
                             logger.warning(f"Metrics query failed: {query_name} (status={response.status_code})")
-                    
                     except Exception as e:
                         logger.error(f"Error fetching metric {query_name}: {e}")
                         continue
-        
         except Exception as e:
             logger.error(f"Error connecting to TSDB: {e}")
-        
         return metrics_data
-    
-    async def _fetch_logs_in_window(
-        self, 
-        start: datetime, 
-        end: datetime,
-        metadata: Optional[Dict[str, Any]]
-    ) -> List[Dict[str, Any]]:
-        """
-        Busca logs relacionados en Loki en ventana de tiempo.
-        
-        Estrategia:
-        - Si metadata tiene 'host', buscar logs de ese host
-        - Si metadata tiene 'service', buscar logs de ese servicio
-        - Si metadata tiene 'level', filtrar por nivel (error, warning)
-        """
+
+    async def _fetch_logs_in_window(self, start: datetime, end: datetime, metadata: Optional[Dict[str, Any]]) -> List[Dict[str, Any]]:
         logs_data = []
-        
+        logql_query = self._build_log_query(metadata)
+
+        if not logql_query:
+            logger.info("No log query generated - skipping logs fetch")
+            return logs_data
+
         try:
-            # Construir LogQL query basada en metadata
-            logql_query = self._build_log_query(metadata)
-            
             async with httpx.AsyncClient(timeout=30.0) as client:
-                params = {
-                    "query": logql_query,
-                    "start": int(start.timestamp() * 1e9),  # Nanosegundos
-                    "end": int(end.timestamp() * 1e9),
-                    "limit": 500  # Límite de logs
-                }
-                
-                response = await client.get(
-                    f"{self.loki_url}/loki/api/v1/query_range",
-                    params=params
-                )
-                
+                params = {"query": logql_query, "start": int(start.timestamp() * 1e9), "end": int(end.timestamp() * 1e9), "limit": 500}
+                response = await client.get(f"{self.loki_url}/loki/api/v1/query_range", params=params)
                 if response.status_code == 200:
                     data = response.json()
                     if data.get("status") == "success":
                         results = data.get("data", {}).get("result", [])
-                        
                         for result in results:
                             stream_labels = result.get("stream", {})
                             values = result.get("values", [])
-                            
                             for timestamp_ns, log_line in values:
-                                logs_data.append({
-                                    "timestamp": int(timestamp_ns) / 1e9,  # Convertir a segundos
-                                    "labels": stream_labels,
-                                    "line": log_line
-                                })
+                                logs_data.append({"timestamp": int(timestamp_ns) / 1e9, "labels": stream_labels, "line": log_line})
                 else:
                     logger.warning(f"Loki query failed (status={response.status_code})")
-        
         except Exception as e:
             logger.error(f"Error fetching logs from Loki: {e}")
-        
         return logs_data
-    
-    async def _fetch_anomalies_in_window(
-        self, 
-        start: datetime, 
-        end: datetime,
-        metadata: Optional[Dict[str, Any]]
-    ) -> List[Dict[str, Any]]:
-        """
-        Busca anomalías detectadas por IA Anomaly en ventana de tiempo.
-        """
+
+    async def _fetch_anomalies_in_window(self, start: datetime, end: datetime, metadata: Optional[Dict[str, Any]]) -> List[Dict[str, Any]]:
         anomalies_data = []
-        
         try:
             async with httpx.AsyncClient(timeout=30.0) as client:
-                # Llamar al endpoint de IA Anomaly (asumiendo que tiene uno para búsqueda)
-                params = {
-                    "start": start.isoformat(),
-                    "end": end.isoformat()
-                }
-                
-                # TODO: Ajustar endpoint real de IA Anomaly cuando esté disponible
-                response = await client.get(
-                    f"{self.ai_anomaly_url}/api/anomalies",
-                    params=params
-                )
-                
+                params = {"start": start.isoformat(), "end": end.isoformat()}
+                response = await client.get(f"{self.ai_anomaly_url}/anomalies", params=params)
                 if response.status_code == 200:
                     anomalies_data = response.json().get("anomalies", [])
                 else:
                     logger.warning(f"AI Anomaly query failed (status={response.status_code})")
-        
         except Exception as e:
             logger.error(f"Error fetching anomalies from IA: {e}")
-        
         return anomalies_data
-    
-    def _build_metric_queries(self, metadata: Optional[Dict[str, Any]]) -> Dict[str, str]:
-        """
-        Construye queries PromQL relevantes basadas en metadata del evento.
-        """
-        queries = {}
-        
-        # Filtro de host si está disponible
-        host_filter = ""
-        if metadata and "host" in metadata:
-            host_filter = f'instance=~".*{metadata["host"]}.*"'
-        elif metadata and "instance" in metadata:
-            host_filter = f'instance="{metadata["instance"]}"'
-        
-        # Si hay métrica específica en metadata, buscarla
-        if metadata and "metric_name" in metadata:
-            queries["specific_metric"] = metadata["metric_name"]
-            if host_filter:
-                queries["specific_metric"] += f"{{{host_filter}}}"
-        else:
-            # Métricas comunes por defecto
-            queries["cpu_usage"] = f'100 - (avg by (instance) (rate(node_cpu_seconds_total{{mode="idle",{host_filter}}}[5m])) * 100)'
-            queries["memory_usage"] = f'(1 - (node_memory_MemAvailable_bytes{{{host_filter}}} / node_memory_MemTotal_bytes{{{host_filter}}})) * 100'
-            queries["disk_usage"] = f'(node_filesystem_size_bytes{{{host_filter}}} - node_filesystem_avail_bytes{{{host_filter}}}) / node_filesystem_size_bytes{{{host_filter}}} * 100'
-            queries["network_receive"] = f'rate(node_network_receive_bytes_total{{{host_filter}}}[5m])'
-        
-        return queries
-    
-    def _build_log_query(self, metadata: Optional[Dict[str, Any]]) -> str:
-        """
-        Construye query LogQL basada en metadata del evento.
-        """
-        # Query básico (todos los logs)
-        query = '{job=~".+"}'
-        
-        # Filtros adicionales basados en metadata
-        if metadata:
-            if "host" in metadata:
-                query = f'{{instance=~".*{metadata["host"]}.*"}}'
-            elif "service" in metadata:
-                query = f'{{job="{metadata["service"]}"}}'
-            
-            # Filtrar por nivel de error si se especifica
-            if "level" in metadata:
-                query += f' |~ "{metadata["level"]}"'
-            else:
-                # Por defecto, buscar errores y warnings
-                query += ' |~ "(?i)(error|warn|fail|exception)"'
-        
-        return query
 
 
-# Singleton para uso global
 _correlation_engine: Optional[CorrelationEngine] = None
 
 
 def get_correlation_engine() -> CorrelationEngine:
-    """
-    Obtiene la instancia singleton del motor de correlación.
-    """
     global _correlation_engine
     if _correlation_engine is None:
         _correlation_engine = CorrelationEngine()

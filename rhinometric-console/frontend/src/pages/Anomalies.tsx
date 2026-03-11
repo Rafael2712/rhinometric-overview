@@ -1,9 +1,10 @@
-import { AlertTriangle, TrendingUp, Filter, Download, X, GitMerge, Globe, CheckCircle2, BarChart3, FileText, Activity } from 'lucide-react'
+import { AlertTriangle, TrendingUp, Filter, Download, X, GitMerge, Globe, CheckCircle2, BarChart3, FileText } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../lib/auth/store'
 import { openGrafanaExplore } from '../utils/grafana'
+import { buildDynamicPromQL, buildDynamicLogQL } from '../utils/externalLinks'
 
 interface Anomaly {
   metric_name: string
@@ -214,7 +215,7 @@ export function AnomaliesPage() {
                       <td className="px-4 py-3">
                         <div className="flex items-center justify-center gap-2">
                           <button
-                            onClick={(e) => { e.stopPropagation(); navigate(`/correlations/${anomaly.timestamp}`) }}
+                            onClick={(e) => { e.stopPropagation(); navigate(`/correlations/${anomaly.timestamp}?entity_type=${encodeURIComponent(anomaly.entity_type || '')}&entity_name=${encodeURIComponent(anomaly.entity_name || '')}&metric_name=${encodeURIComponent(anomaly.metric_name)}&source=${encodeURIComponent(anomaly.source || '')}`) }}
                             className="text-purple-400 hover:bg-purple-500/10 text-xs font-medium px-3 py-1 rounded transition-colors flex items-center gap-1"
                             title="Full correlation analysis with metrics, logs and traces"
                           >
@@ -270,7 +271,7 @@ export function AnomaliesPage() {
                       {anomaly.current_value.toFixed(1)} / {anomaly.expected_value.toFixed(1)}
                     </span>
                     <button
-                      onClick={(e) => { e.stopPropagation(); navigate(`/correlations/${anomaly.timestamp}`) }}
+                      onClick={(e) => { e.stopPropagation(); navigate(`/correlations/${anomaly.timestamp}?entity_type=${encodeURIComponent(anomaly.entity_type || '')}&entity_name=${encodeURIComponent(anomaly.entity_name || '')}&metric_name=${encodeURIComponent(anomaly.metric_name)}&source=${encodeURIComponent(anomaly.source || '')}`) }}
                       className="text-purple-400 text-xs font-medium flex items-center gap-1"
                     >
                       <GitMerge size={12} />
@@ -386,29 +387,12 @@ export function AnomaliesPage() {
                     disabled={!selectedAnomaly.metric_name || selectedAnomaly.metric_name.includes('unknown')}
                     title={selectedAnomaly.metric_name && !selectedAnomaly.metric_name.includes('unknown') ? 'Open metrics in Grafana' : 'No metrics available for this anomaly'}
                     onClick={() => {
-                      const metricMap: Record<string, string> = {
-                        'node_cpu_usage': '100 - (avg by (instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)',
-                        'node_memory_usage': '(1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100',
-                        'node_disk_io': 'rate(node_disk_io_time_seconds_total[5m])',
-                        'node_network_receive': 'rate(node_network_receive_bytes_total[5m])',
-                        'node_network_transmit': 'rate(node_network_transmit_bytes_total[5m])',
-                        'node_disk_usage': '(node_filesystem_size_bytes - node_filesystem_avail_bytes) / node_filesystem_size_bytes * 100',
-                        'rhinometric_website_dns_time': 'rhinometric_website_dns_time',
-                        'rhinometric_website_ssl_expiry': 'rhinometric_website_ssl_expiry',
-                        'rhinometric_website_response_time': 'rhinometric_website_response_time',
-                        'rhinometric_website_availability': 'rhinometric_website_availability',
-                        'postgres_connections': 'pg_stat_database_numbackends',
-                        'response_time_ms': 'http_request_duration_seconds',
-                        'error_rate': 'rate(http_requests_total{status=~"5.."}[5m])',
-                        'http_request_rate': 'sum(rate(http_requests_total[5m]))',
-                        'http_error_rate': 'sum(rate(http_requests_total{status=~"5.."}[5m]))',
-                        'http_latency_p95': 'histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket[5m])))',
-                        'http_latency_p99': 'histogram_quantile(0.99, sum by (le) (rate(http_request_duration_seconds_bucket[5m])))',
-                        'external_service_latency': 'external_service_latency_ms',
-                        'external_service_health': 'external_service_health_score',
-                        'external_service_availability': 'external_service_up'
-                      }
-                      const prometheusQuery = metricMap[selectedAnomaly.metric_name] || selectedAnomaly.metric_name
+                      const prometheusQuery = buildDynamicPromQL({
+                        metric_name: selectedAnomaly.metric_name,
+                        entity_type: selectedAnomaly.entity_type,
+                        entity_name: selectedAnomaly.entity_name,
+                        source: selectedAnomaly.source
+                      })
                       const exploreUrl = `?orgId=1&left=${encodeURIComponent(JSON.stringify({
                         datasource: 'victoriametrics',
                         queries: [{ refId: 'A', expr: prometheusQuery }],
@@ -421,21 +405,28 @@ export function AnomaliesPage() {
                     Metrics
                   </button>
                   <button
-                    className="btn btn-secondary flex-1 min-h-[44px] text-sm flex items-center justify-center gap-2 opacity-50 cursor-not-allowed"
-                    disabled
-                    title="Coming soon"
+                    className={`btn flex-1 min-h-[44px] text-sm flex items-center justify-center gap-2${!selectedAnomaly.metric_name || selectedAnomaly.metric_name.includes('unknown') ? ' opacity-50 cursor-not-allowed' : ''}`}
+                    disabled={!selectedAnomaly.metric_name || selectedAnomaly.metric_name.includes('unknown')}
+                    title={selectedAnomaly.metric_name && !selectedAnomaly.metric_name.includes('unknown') ? 'Open logs in Grafana (Loki)' : 'No logs available for this anomaly'}
+                    onClick={() => {
+                      const logQuery = buildDynamicLogQL({
+                        metric_name: selectedAnomaly.metric_name,
+                        entity_type: selectedAnomaly.entity_type,
+                        entity_name: selectedAnomaly.entity_name,
+                        source: selectedAnomaly.source
+                      })
+                      const exploreUrl = `?orgId=1&left=${encodeURIComponent(JSON.stringify({
+                        datasource: 'loki',
+                        queries: [{ refId: 'A', expr: logQuery }],
+                        range: { from: 'now-6h', to: 'now' }
+                      }))}`
+                      openGrafanaExplore(exploreUrl)
+                    }}
                   >
                     <FileText size={16} />
                     Logs
                   </button>
-                  <button
-                    className="btn btn-secondary flex-1 min-h-[44px] text-sm flex items-center justify-center gap-2 opacity-50 cursor-not-allowed"
-                    disabled
-                    title="Coming soon"
-                  >
-                    <Activity size={16} />
-                    Traces
-                  </button>
+                  
                 </div>
               </div>}
 
