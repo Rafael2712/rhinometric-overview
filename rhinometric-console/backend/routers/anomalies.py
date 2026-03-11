@@ -3,6 +3,7 @@ from pydantic import BaseModel, Field
 from typing import Optional, List, Any, Dict
 import httpx
 import hashlib
+from datetime import datetime
 import logging
 import time
 from itertools import groupby as itertools_groupby
@@ -318,6 +319,12 @@ def _generate_fingerprint(entity_type: str, entity_name: str, metric_name: str, 
 _status_overrides: Dict[str, str] = {}
 VALID_STATUSES = {"active", "acknowledged", "false_positive", "suppressed", "resolved", "alert_created"}
 
+# Auto-resolution: groups with no new occurrences within this window
+# are automatically transitioned to "resolved".
+AUTO_RESOLVE_WINDOW = 1800  # seconds (30 minutes)
+# Statuses that must NOT be auto-resolved (user-intent statuses)
+_NO_AUTO_RESOLVE = {"false_positive", "suppressed", "alert_created"}
+
 
 def _build_anomaly_groups(normalized_anomalies: list[dict]) -> list[dict]:
     """Transform flat normalized anomalies into deduplicated groups.
@@ -377,6 +384,23 @@ def _build_anomaly_groups(normalized_anomalies: list[dict]) -> list[dict]:
     for g in groups.values():
         g["occurrences"].sort(key=lambda o: o["timestamp"], reverse=True)
         g["status"] = _status_overrides.get(g["fingerprint"], "active")
+
+    # ── Auto-resolution pass ──────────────────────────────────────
+    # If a group's last_seen is older than AUTO_RESOLVE_WINDOW and its
+    # status is eligible, automatically transition it to "resolved".
+    now = datetime.utcnow()
+    for g in groups.values():
+        if g["status"] in _NO_AUTO_RESOLVE:
+            continue  # never auto-resolve user-intent statuses
+        try:
+            last = datetime.fromisoformat(g["last_seen"].replace("Z", "+00:00").replace("+00:00", ""))
+        except Exception:
+            continue
+        age_seconds = (now - last).total_seconds()
+        if age_seconds > AUTO_RESOLVE_WINDOW:
+            g["status"] = "resolved"
+            # Persist so the override survives between API calls
+            _status_overrides[g["fingerprint"]] = "resolved"
 
     return list(groups.values())
 

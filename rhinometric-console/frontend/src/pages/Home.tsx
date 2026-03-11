@@ -131,7 +131,7 @@ export function HomePage() {
       link: '/services'
     },
     {
-      name: 'Active Anomalies',
+      name: 'Active Anomaly Groups',
       value: kpisData.active_anomalies.value,
       status: kpisData.active_anomalies.status,
       icon: AlertTriangle,
@@ -153,7 +153,7 @@ export function HomePage() {
   ] : [
     { name: 'Service Status', value: 'Loading...', status: 'success', icon: Activity, change: '', sparkline: [], trend: 'stable', link: '/system-health' },
     { name: 'Monitored Services', value: '...', status: 'success', icon: Server, change: '', sparkline: [], trend: 'stable', link: '/services' },
-    { name: 'Active Anomalies', value: '...', status: 'success', icon: AlertTriangle, change: '', sparkline: [], trend: 'stable', link: '/anomalies' },
+    { name: 'Active Anomaly Groups', value: '...', status: 'success', icon: AlertTriangle, change: '', sparkline: [], trend: 'stable', link: '/anomalies' },
     { name: 'Alerts (24h)', value: '...', status: 'success', icon: Bell, change: '', sparkline: [], trend: 'stable', link: '/alerts' },
   ]
 
