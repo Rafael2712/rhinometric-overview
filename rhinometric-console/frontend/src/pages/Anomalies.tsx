@@ -1,4 +1,4 @@
-import { AlertTriangle, TrendingUp, Filter, Download, X, GitMerge, Globe, CheckCircle2, BarChart3, FileText, Server, Monitor } from 'lucide-react'
+import { AlertTriangle, TrendingUp, Filter, Download, X, GitMerge, Globe, CheckCircle2, BarChart3, FileText, Server, Monitor, Layers, MapPin } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
@@ -22,6 +22,11 @@ interface Anomaly {
   analysis: string | null
   tags: string[] | null
   metadata: Record<string, any> | null
+  // Phase 1.3 context enrichment
+  environment: string
+  service_group: string
+  region: string | null
+  cluster: string | null
 }
 
 // Entity type badge component
@@ -211,6 +216,7 @@ export function AnomaliesPage() {
                     <th className="text-right px-4 py-3 text-sm font-semibold text-gray-400 whitespace-nowrap">Deviation</th>
                     <th className="text-right px-4 py-3 text-sm font-semibold text-gray-400 whitespace-nowrap">Current / Expected</th>
                     <th className="text-left px-4 py-3 text-sm font-semibold text-gray-400 whitespace-nowrap">Source</th>
+                    <th className="text-left px-4 py-3 text-sm font-semibold text-gray-400 whitespace-nowrap">Context</th>
                     <th className="text-center px-4 py-3 text-sm font-semibold text-gray-400 whitespace-nowrap">Actions</th>
                   </tr>
                 </thead>
@@ -255,6 +261,28 @@ export function AnomaliesPage() {
                         </span>
                       </td>
                       <td className="px-4 py-3">
+                        <div className="space-y-1">
+                          {anomaly.environment && anomaly.environment !== 'unknown' && (
+                            <div className="flex items-center gap-1">
+                              <MapPin size={10} className="text-emerald-400" />
+                              <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${
+                                anomaly.environment === 'production' || anomaly.environment === 'produccion'
+                                  ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
+                                  : anomaly.environment === 'staging' || anomaly.environment === 'Staging'
+                                  ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
+                                  : 'bg-gray-500/15 text-gray-400 border border-gray-500/30'
+                              }`}>{anomaly.environment}</span>
+                            </div>
+                          )}
+                          {anomaly.service_group && anomaly.service_group !== 'default' && (
+                            <div className="flex items-center gap-1">
+                              <Layers size={10} className="text-violet-400" />
+                              <span className="text-[10px] text-violet-300 bg-violet-500/10 px-1.5 py-0.5 rounded border border-violet-500/20">{anomaly.service_group}</span>
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
                         <div className="flex items-center justify-center gap-2">
                           <button
                             onClick={(e) => { e.stopPropagation(); navigate(`/correlations/${anomaly.timestamp}?entity_type=${encodeURIComponent(anomaly.entity_type)}&entity_name=${encodeURIComponent(anomaly.entity_name)}&metric_name=${encodeURIComponent(anomaly.metric_name)}&source=${encodeURIComponent(anomaly.source)}`) }}
@@ -293,6 +321,13 @@ export function AnomaliesPage() {
                   <div className="flex items-center gap-2 mb-1">
                     <code className="text-xs text-primary bg-primary/10 px-2 py-0.5 rounded truncate">{anomaly.metric_name}</code>
                     <span className="text-[10px] text-gray-500 bg-gray-700/50 px-1.5 py-0.5 rounded flex-shrink-0">{anomaly.source}</span>
+                    {anomaly.environment && anomaly.environment !== 'unknown' && (
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded flex-shrink-0 ${
+                        anomaly.environment === 'production' || anomaly.environment === 'produccion'
+                          ? 'bg-emerald-500/15 text-emerald-400'
+                          : 'bg-amber-500/15 text-amber-400'
+                      }`}>{anomaly.environment}</span>
+                    )}
                   </div>
                   <div className="flex items-center justify-between text-xs mb-2">
                     <span className="text-gray-500">
@@ -347,6 +382,24 @@ export function AnomaliesPage() {
               <div className="flex items-center gap-3 flex-wrap">
                 <EntityBadge entityType={selectedAnomaly.entity_type} entityName={selectedAnomaly.entity_name} />
                 <span className="text-xs text-gray-400 bg-gray-700/50 px-2 py-1 rounded">Source: {selectedAnomaly.source}</span>
+                {selectedAnomaly.environment && selectedAnomaly.environment !== 'unknown' && (
+                  <span className={`text-xs px-2 py-1 rounded flex items-center gap-1 ${
+                    selectedAnomaly.environment === 'production' || selectedAnomaly.environment === 'produccion'
+                      ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
+                      : selectedAnomaly.environment === 'staging' || selectedAnomaly.environment === 'Staging'
+                      ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
+                      : 'bg-gray-500/15 text-gray-400 border border-gray-500/30'
+                  }`}>
+                    <MapPin size={12} />
+                    {selectedAnomaly.environment}
+                  </span>
+                )}
+                {selectedAnomaly.service_group && selectedAnomaly.service_group !== 'default' && (
+                  <span className="text-xs text-violet-300 bg-violet-500/10 px-2 py-1 rounded border border-violet-500/20 flex items-center gap-1">
+                    <Layers size={12} />
+                    {selectedAnomaly.service_group}
+                  </span>
+                )}
                 <span className={`text-xs px-2 py-1 rounded ${selectedAnomaly.status === 'active' ? 'bg-error/20 text-error' : 'bg-green-500/20 text-green-400'}`}>
                   {selectedAnomaly.status.toUpperCase()}
                 </span>
@@ -521,7 +574,7 @@ export function AnomaliesPage() {
 
               {/* Note */}
               <div className="text-xs text-gray-500 text-center">
-                Unified Anomaly Model v1.2 &mdash; All anomalies follow a consistent schema
+                Unified Anomaly Model v1.3 &mdash; Context-enriched anomalies with environment and service grouping
               </div>
             </div>
           </div>
