@@ -40,6 +40,23 @@ class UnifiedAnomaly(BaseModel):
     service_group: str = Field(default="default", description="Logical service grouping")
     region: str | None = Field(default=None, description="Geographic region")
     cluster: str | None = Field(default=None, description="Cluster identifier")
+    # Priority field (Phase 1.4) — computed dynamically, not stored
+    priority: int = Field(default=2, description="Display priority: 1=service, 2=infrastructure, 3=website")
+
+
+# ── Priority + severity sort helpers ────────────────────────────
+ENTITY_PRIORITY = {
+    "service": 1,
+    "website": 2,
+    "infrastructure": 3,
+}
+
+SEVERITY_ORDER = {
+    "critical": 0,
+    "high": 1,
+    "medium": 2,
+    "low": 3,
+}
 
 
 class AnomaliesResponse(BaseModel):
@@ -202,6 +219,9 @@ def _enrich_anomaly(normalized: dict) -> dict:
     normalized.setdefault("region", None)
     normalized.setdefault("cluster", None)
 
+    # ── Phase 1.4: Compute priority dynamically ──
+    normalized["priority"] = ENTITY_PRIORITY.get(entity_type, 3)
+
     return normalized
 
 
@@ -361,11 +381,23 @@ async def get_anomalies(
                 if service_group:
                     normalized = [a for a in normalized if a["service_group"] == service_group]
 
-                # Sort by timestamp DESC
+                # Phase 1.4: Service-first sorting
+                # Priority ASC (services first) → Severity DESC (critical first) → Timestamp DESC (newest first)
                 normalized.sort(
-                    key=lambda x: x.get("timestamp", ""),
-                    reverse=True
+                    key=lambda x: (
+                        x.get("priority", 3),
+                        SEVERITY_ORDER.get(x.get("severity", "low"), 3),
+                        # Negate timestamp for DESC within same priority+severity
+                    )
                 )
+                # Stable secondary sort: within same priority+severity, newest first
+                from itertools import groupby
+                result = []
+                normalized_temp = sorted(normalized, key=lambda x: (x.get("priority", 3), SEVERITY_ORDER.get(x.get("severity", "low"), 3)))
+                for _, group in groupby(normalized_temp, key=lambda x: (x.get("priority", 3), SEVERITY_ORDER.get(x.get("severity", "low"), 3))):
+                    g = sorted(group, key=lambda x: x.get("timestamp", ""), reverse=True)
+                    result.extend(g)
+                normalized = result
 
                 return {
                     "anomalies": normalized,

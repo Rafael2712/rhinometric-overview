@@ -1,4 +1,4 @@
-import { AlertTriangle, TrendingUp, Filter, Download, X, GitMerge, Globe, CheckCircle2, BarChart3, FileText, Server, Monitor, Layers, MapPin } from 'lucide-react'
+import { AlertTriangle, TrendingUp, Filter, Download, X, GitMerge, Globe, CheckCircle2, BarChart3, FileText, Server, Monitor, Layers, MapPin, Shield } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
@@ -27,6 +27,8 @@ interface Anomaly {
   service_group: string
   region: string | null
   cluster: string | null
+  // Phase 1.4 priority (computed, not stored)
+  priority: number
 }
 
 // Entity type badge component
@@ -48,6 +50,23 @@ function EntityBadge({ entityType, entityName }: { entityType: string; entityNam
         {c.label}
       </span>
     </div>
+  )
+}
+
+// Priority indicator badge (Phase 1.4)
+function PriorityBadge({ priority, entityType }: { priority: number; entityType: string }) {
+  if (priority === 1 || entityType === 'service') {
+    return (
+      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-500/15 text-blue-400 border border-blue-500/25">
+        <Shield size={9} />
+        SERVICE
+      </span>
+    )
+  }
+  return (
+    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-gray-500/10 text-gray-500 border border-gray-600/20">
+      INFRA
+    </span>
   )
 }
 
@@ -209,6 +228,7 @@ export function AnomaliesPage() {
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-gray-700">
+                    <th className="text-center px-4 py-3 text-sm font-semibold text-gray-400 whitespace-nowrap w-[70px]"></th>
                     <th className="text-left px-4 py-3 text-sm font-semibold text-gray-400 whitespace-nowrap">Time</th>
                     <th className="text-left px-4 py-3 text-sm font-semibold text-gray-400 whitespace-nowrap">Entity</th>
                     <th className="text-left px-4 py-3 text-sm font-semibold text-gray-400 whitespace-nowrap">Metric</th>
@@ -223,6 +243,9 @@ export function AnomaliesPage() {
                 <tbody>
                   {anomalies.map((anomaly: Anomaly) => (
                     <tr key={anomaly.id} className="border-b border-gray-700/50 hover:bg-surface-light cursor-pointer transition-colors" onClick={() => setSelectedAnomaly(anomaly)}>
+                      <td className="px-4 py-3 text-center">
+                        <PriorityBadge priority={anomaly.priority} entityType={anomaly.entity_type} />
+                      </td>
                       <td className="px-4 py-3 text-xs text-gray-300 whitespace-nowrap">
                         {new Date(anomaly.timestamp).toLocaleTimeString()}
                       </td>
@@ -309,7 +332,10 @@ export function AnomaliesPage() {
                   onClick={() => setSelectedAnomaly(anomaly)}
                 >
                   <div className="flex items-start justify-between gap-2 mb-1.5">
-                    <EntityBadge entityType={anomaly.entity_type} entityName={anomaly.entity_name} />
+                    <div className="flex items-center gap-2">
+                      <EntityBadge entityType={anomaly.entity_type} entityName={anomaly.entity_name} />
+                      <PriorityBadge priority={anomaly.priority} entityType={anomaly.entity_type} />
+                    </div>
                     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium flex-shrink-0 ${
                       anomaly.severity === 'critical' || anomaly.severity === 'high' ? 'bg-error/20 text-error' :
                       anomaly.severity === 'medium' ? 'bg-warning/20 text-warning' :
@@ -574,7 +600,7 @@ export function AnomaliesPage() {
 
               {/* Note */}
               <div className="text-xs text-gray-500 text-center">
-                Unified Anomaly Model v1.3 &mdash; Context-enriched anomalies with environment and service grouping
+                Unified Anomaly Model v1.4 &mdash; Service-first prioritization with context enrichment
               </div>
             </div>
           </div>
