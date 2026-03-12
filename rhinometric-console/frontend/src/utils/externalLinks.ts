@@ -106,12 +106,12 @@ export function buildDynamicPromQL(anomaly: {
   // --- Infrastructure metrics ---
   if (entityType === 'infrastructure' || metricName.startsWith('node_')) {
     const infraMetrics: Record<string, string> = {
-      'node_cpu_usage': '100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)',
-      'node_memory_usage': '(1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100',
-      'node_disk_usage': '(node_filesystem_size_bytes - node_filesystem_avail_bytes) / node_filesystem_size_bytes * 100',
-      'node_disk_io': 'rate(node_disk_io_time_seconds_total[5m])',
-      'node_network_receive': 'rate(node_network_receive_bytes_total[5m])',
-      'node_network_transmit': 'rate(node_network_transmit_bytes_total[5m])',
+      'node_cpu_usage': '100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle",job="node-exporter"}[5m])) * 100)',
+      'node_memory_usage': '(1 - (node_memory_MemAvailable_bytes{job="node-exporter"} / node_memory_MemTotal_bytes{job="node-exporter"})) * 100',
+      'node_disk_usage': '(node_filesystem_size_bytes{job="node-exporter"} - node_filesystem_avail_bytes{job="node-exporter"}) / node_filesystem_size_bytes{job="node-exporter"} * 100',
+      'node_disk_io': 'rate(node_disk_io_time_seconds_total{job="node-exporter"}[5m])',
+      'node_network_receive': 'rate(node_network_receive_bytes_total{job="node-exporter"}[5m])',
+      'node_network_transmit': 'rate(node_network_transmit_bytes_total{job="node-exporter"}[5m])',
     };
     return infraMetrics[baseMetric] || baseMetric;
   }

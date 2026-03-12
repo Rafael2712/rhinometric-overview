@@ -53,9 +53,20 @@ export function CorrelationView() {
   const loadCorrelation = async () => {
     if (!id) return;
 
+    // id is the anomaly timestamp from URL — use it as the event timestamp
+    // so the correlation window centers on when the anomaly actually occurred
+    const eventTimestamp = (() => {
+      try {
+        const d = new Date(decodeURIComponent(id));
+        return isNaN(d.getTime()) ? new Date().toISOString() : d.toISOString();
+      } catch {
+        return new Date().toISOString();
+      }
+    })();
+
     await correlate({
       event_id: id,
-      event_timestamp: new Date().toISOString(),
+      event_timestamp: eventTimestamp,
       event_type: 'anomaly',
       event_metadata: {
         entity_type: entityType,
@@ -316,10 +327,41 @@ export function CorrelationView() {
           <button
             onClick={() => {
               if (hasExternalAccess) {
-                // Dynamic: use the first correlated metric's query_name as PromQL
-                // The backend already built the correct PromQL query
-                const firstMetric = data.metrics[0]?.query_name;
-                const metricQuery = firstMetric || metricName || 'up';
+                // Build the proper PromQL query using entity context
+                // data.metrics[0].query_name is a key name, not a valid PromQL expression
+                const et = data.metadata?.entity_type || entityType;
+                const en = data.metadata?.entity_name || entityName;
+                const mn = data.metadata?.metric_name || metricName;
+                let metricQuery: string;
+
+                if (et === 'service' || mn?.startsWith('external_service_')) {
+                  // Service metrics have service_name label
+                  const baseMetric = mn?.split('::')[0]?.trim() || '';
+                  const svcMetrics: Record<string, string> = {
+                    'external_service_latency_ms': `external_service_latency_ms{service_name="${en}"}`,
+                    'external_service_latency': `external_service_latency_ms{service_name="${en}"}`,
+                    'external_service_health_score': `external_service_health_score{service_name="${en}"}`,
+                    'external_service_health': `external_service_health_score{service_name="${en}"}`,
+                    'external_service_up': `external_service_up{service_name="${en}"}`,
+                    'external_service_availability': `external_service_up{service_name="${en}"}`,
+                  };
+                  metricQuery = svcMetrics[baseMetric] || `${baseMetric}{service_name="${en}"}`;
+                } else if (et === 'infrastructure' || mn?.startsWith('node_')) {
+                  // Infrastructure metrics - use proper PromQL with labels
+                  const baseMetric = mn?.split('::')[0]?.trim() || '';
+                  const infraMetrics: Record<string, string> = {
+                    'node_cpu_usage': '100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle",job="node-exporter"}[5m])) * 100)',
+                    'node_memory_usage': '(1 - (node_memory_MemAvailable_bytes{job="node-exporter"} / node_memory_MemTotal_bytes{job="node-exporter"})) * 100',
+                    'node_disk_usage': '(node_filesystem_size_bytes{job="node-exporter"} - node_filesystem_avail_bytes{job="node-exporter"}) / node_filesystem_size_bytes{job="node-exporter"} * 100',
+                    'node_disk_io': 'rate(node_disk_io_time_seconds_total{job="node-exporter"}[5m])',
+                    'node_network_receive': 'rate(node_network_receive_bytes_total{job="node-exporter"}[5m])',
+                    'node_network_transmit': 'rate(node_network_transmit_bytes_total{job="node-exporter"}[5m])',
+                  };
+                  metricQuery = infraMetrics[baseMetric] || baseMetric;
+                } else {
+                  metricQuery = mn || data.metrics[0]?.query_name || 'up';
+                }
+
                 const url = getGrafanaMetricsUrl(
                   metricQuery,
                   data.correlation_window.start,
