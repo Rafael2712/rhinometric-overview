@@ -16,30 +16,83 @@ import { format } from 'date-fns';
 
 const CORRELATION_VIEW_BUILD = '2026-02-16T12';
 
-const SEVERITY_ORDER: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3, info: 4 };
+const SEVERITY_SCORE: Record<string, number> = { critical: 50, high: 40, medium: 25, low: 10, info: 5 };
 const MAX_RELATED_ANOMALIES = 15;
 
-function rankAndLimitAnomalies(anomalies: any[]): any[] {
+// Metric family mapping for contextual grouping
+const METRIC_FAMILIES: Record<string, string[]> = {
+  network:  ['node_network_receive', 'node_network_transmit', 'node_network_errors', 'network'],
+  compute:  ['node_cpu_usage', 'node_cpu', 'node_load', 'cpu', 'load'],
+  memory:   ['node_memory_usage', 'node_memory_available', 'node_memory', 'memory'],
+  storage:  ['node_disk_usage', 'node_disk_io', 'node_disk', 'disk'],
+  service:  ['external_service_latency', 'external_service_availability', 'external_service_health',
+             'external_service_error', 'external_service_uptime', 'response_time'],
+};
+
+function getMetricFamily(metricName: string): string {
+  if (!metricName) return '';
+  const lower = metricName.toLowerCase();
+  for (const [family, keywords] of Object.entries(METRIC_FAMILIES)) {
+    if (keywords.some(kw => lower.includes(kw))) return family;
+  }
+  return '';
+}
+
+interface RankContext {
+  entityName: string;
+  entityType: string;
+  metricName: string;
+}
+
+function scoreAnomaly(item: any, ctx: RankContext): number {
+  let score = 0;
+  const currentFamily = getMetricFamily(ctx.metricName);
+  const itemFamily = getMetricFamily(item.metric_name || '');
+
+  // 1. Same entity name (exact match) — strongest signal
+  if (ctx.entityName && item.entity_name &&
+      item.entity_name.toLowerCase() === ctx.entityName.toLowerCase()) {
+    score += 1000;
+  }
+
+  // 2. Same metric family / domain
+  if (currentFamily && itemFamily && currentFamily === itemFamily) {
+    score += 500;
+  }
+
+  // 3. Same entity_type (infrastructure vs service)
+  if (ctx.entityType && item.entity_type &&
+      item.entity_type.toLowerCase() === ctx.entityType.toLowerCase()) {
+    score += 200;
+  }
+
+  // 4. Active anomalies over resolved
+  if (item.status !== 'resolved') {
+    score += 100;
+  }
+
+  // 5. Severity weight
+  score += SEVERITY_SCORE[item.severity] ?? 5;
+
+  // 6. Deviation weight (0-80 points, capped)
+  const dev = Math.abs(item.deviation_percent ?? 0);
+  score += Math.min(dev * 0.8, 80);
+
+  // 7. Recency weight (0-50 points, last 2 hours = max)
+  if (item.timestamp) {
+    const ageMs = Date.now() - new Date(item.timestamp).getTime();
+    const ageHours = ageMs / 3_600_000;
+    score += Math.max(0, 50 - ageHours * 10);
+  }
+
+  return score;
+}
+
+function rankAndLimitAnomalies(anomalies: any[], ctx: RankContext): any[] {
   if (!anomalies || anomalies.length === 0) return [];
   return [...anomalies]
-    .sort((a, b) => {
-      // Active before resolved
-      const aActive = a.status !== 'resolved' ? 0 : 1;
-      const bActive = b.status !== 'resolved' ? 0 : 1;
-      if (aActive !== bActive) return aActive - bActive;
-      // Higher severity first
-      const aSev = SEVERITY_ORDER[a.severity] ?? 5;
-      const bSev = SEVERITY_ORDER[b.severity] ?? 5;
-      if (aSev !== bSev) return aSev - bSev;
-      // Higher deviation first
-      const aDev = Math.abs(a.deviation_percent ?? 0);
-      const bDev = Math.abs(b.deviation_percent ?? 0);
-      if (aDev !== bDev) return bDev - aDev;
-      // Most recent first
-      const aTime = new Date(a.timestamp || 0).getTime();
-      const bTime = new Date(b.timestamp || 0).getTime();
-      return bTime - aTime;
-    })
+    .map(a => ({ ...a, _score: scoreAnomaly(a, ctx) }))
+    .sort((a, b) => b._score - a._score)
     .slice(0, MAX_RELATED_ANOMALIES);
 }
 
@@ -514,7 +567,11 @@ export function CorrelationView() {
 
         {/* Anomalies */}
         {data.related_anomalies.length > 0 && (() => {
-          const ranked = rankAndLimitAnomalies(data.related_anomalies);
+          const ranked = rankAndLimitAnomalies(data.related_anomalies, {
+            entityName: entityName || data.metadata?.entity_name || '',
+            entityType: entityType || data.metadata?.entity_type || '',
+            metricName: metricName || data.metadata?.metric_name || '',
+          });
           return (
             <CorrelationCard
               title="Related Anomalies"
