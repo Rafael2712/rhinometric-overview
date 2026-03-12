@@ -12,6 +12,7 @@ from models.alert_acknowledgement import AlertAcknowledgement
 
 from models.alert_history import AlertHistory
 from models.alert_rule import AlertRule
+from models.service_dependency import ServiceDependency
 # Observability imports
 from telemetry import setup_telemetry
 from metrics import PrometheusMiddleware, metrics_endpoint, update_db_pool_metrics
@@ -28,6 +29,7 @@ from routers import alert_rules as alert_rules_router
 from routers import incidents
 from routers import slo as slo_router
 from routers import system as system_router
+from routers import service_map as service_map_router
 
 app = FastAPI(
     title=settings.API_TITLE,
@@ -334,6 +336,7 @@ app.include_router(dashboards.router, prefix=f"{settings.API_PREFIX}/dashboards"
 app.include_router(settings_router.router, prefix=f"{settings.API_PREFIX}/settings", tags=["Settings"])
 app.include_router(correlation.router, prefix=f"{settings.API_PREFIX}/correlation", tags=["Correlation"])  # Rhino Core - Correlation Engine
 app.include_router(external_services.router, prefix=f"{settings.API_PREFIX}/external-services", tags=["External Services"])
+app.include_router(service_map_router.router, prefix=f"{settings.API_PREFIX}/service-map", tags=["Service Map"])
 app.include_router(system_router.router, prefix=f"{settings.API_PREFIX}/system", tags=["System"])  # System admin endpoints  # External Services Connector MVP
 
 if __name__ == "__main__":

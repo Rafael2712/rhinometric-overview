@@ -21,6 +21,7 @@ import { IntegrationsPage } from './pages/Integrations'
 import { ReportsPage } from './pages/Reports'
 import { UsersPage } from './pages/Users'
 import ServicesPage from './pages/Services'
+import { ServiceMapPage } from './pages/ServiceMap'
 import { SystemHealthPage } from './pages/SystemHealth'
 import { RoadmapPage } from './pages/Roadmap'
 import { AIInsightsPage } from './pages/AIInsights'
@@ -48,6 +49,7 @@ function App() {
           <Route path="dashboards" element={<DashboardsPage />} />
           <Route path="dashboards/:uid/view" element={<DashboardViewer />} />
           <Route path="services" element={<ServicesPage />} />
+          <Route path="service-map" element={<ServiceMapPage />} />
           <Route path="system-health" element={<SystemHealthPage />} />
           <Route path="anomalies" element={<AnomaliesPage />} />
           <Route path="ai-insights" element={<AIInsightsPage />} />

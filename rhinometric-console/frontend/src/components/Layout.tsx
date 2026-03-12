@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { Link, useLocation, Outlet } from 'react-router-dom'
-import { Home, LayoutDashboard, AlertTriangle, Bell, FileText, Network, CreditCard, Settings, LogOut, Menu, X, Users, Map, Globe, Brain, ClipboardList, Flame, Target, Shield } from 'lucide-react'
+import { Home, LayoutDashboard, AlertTriangle, Bell, FileText, Network, CreditCard, Settings, LogOut, Menu, X, Users, Map, Globe, Brain, ClipboardList, Flame, Target, Shield, Share2 } from 'lucide-react'
 import { useAuthStore } from '../lib/auth/store'
 
 const navigation = [
   { name: 'Home', href: '/', icon: Home },
   { name: 'Services', href: '/services', icon: Globe },
+  { name: 'Service Map', href: '/service-map', icon: Share2 },
   { name: 'Dashboards', href: '/dashboards', icon: LayoutDashboard },
   { name: 'AI Anomalies', href: '/anomalies', icon: AlertTriangle },
   { name: 'AI Insights', href: '/ai-insights', icon: Brain },
