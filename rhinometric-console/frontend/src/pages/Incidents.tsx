@@ -5,7 +5,8 @@ import { useAuthStore } from '../lib/auth/store'
 import {
   Bell, CheckCircle2, Search,
   Filter, ChevronDown, ChevronUp, Clock, Activity,
-  Flame, Eye, BarChart3, MessageSquare, Tag, Plus, X, Send
+  Flame, Eye, BarChart3, MessageSquare, Tag, Plus, X, Send,
+  Crosshair, AlertTriangle, Zap, FileText, TrendingUp, Shield
 } from 'lucide-react'
 
 /* ── Types ─────────────────────────────────────────────────────── */
@@ -62,6 +63,39 @@ interface Comment {
   comment: string
   created_at: string | null
 }
+
+interface RootCauseResult {
+  incident_id: string
+  likely_root_cause: {
+    entity: string | null
+    metric: string | null
+    confidence: string
+    description: string
+  }
+  score: number
+  evidence: Array<{
+    type: string
+    metric?: string
+    detail?: string
+    value?: number
+    baseline?: number
+    factor?: number
+    alert_name?: string
+    severity?: string
+    anomaly_score?: number
+    entity?: string
+    error_count?: number
+    samples?: string[]
+  }>
+  signal_counts: {
+    metric_spikes: number
+    alerts: number
+    anomalies: number
+    log_errors: number
+  }
+  analyzed_at: string
+}
+
 
 interface IncidentStats {
   total: number
@@ -471,7 +505,7 @@ function IncidentDetailPanel({ detail }: { detail: IncidentDetail }) {
   const headers: Record<string, string> = { Authorization: `Bearer ${token}` }
   const incidentId = detail.incident.id
 
-  const [activeTab, setActiveTab] = useState<'alerts' | 'timeline' | 'comments'>('alerts')
+  const [activeTab, setActiveTab] = useState<'alerts' | 'timeline' | 'comments' | 'root-cause'>('alerts')
   const [newComment, setNewComment] = useState('')
   const [newTag, setNewTag] = useState('')
 
@@ -495,6 +529,18 @@ function IncidentDetailPanel({ detail }: { detail: IncidentDetail }) {
       return res.json() as Promise<{ comments: Comment[] }>
     },
     refetchInterval: 15000,
+  })
+
+  // Root Cause query (Phase 2.7)
+  const { data: rootCauseData, isLoading: rootCauseLoading, refetch: refetchRootCause } = useQuery({
+    queryKey: ['incident-root-cause', incidentId],
+    queryFn: async () => {
+      const res = await fetch(`/api/incidents/${incidentId}/root-cause`, { headers })
+      if (!res.ok) throw new Error('Failed')
+      return res.json() as Promise<RootCauseResult>
+    },
+    enabled: activeTab === 'root-cause',
+    staleTime: 30000,
   })
 
   // Add comment mutation
@@ -608,6 +654,7 @@ function IncidentDetailPanel({ detail }: { detail: IncidentDetail }) {
           { key: 'alerts' as const, label: `Alerts (${events.length})`, icon: Bell },
           { key: 'timeline' as const, label: `Timeline (${timeline.length})`, icon: Clock },
           { key: 'comments' as const, label: `Comments (${comments.length})`, icon: MessageSquare },
+          { key: 'root-cause' as const, label: 'Root Cause', icon: Crosshair },
         ]).map(({ key, label, icon: TabIcon }) => (
           <button
             key={key}
@@ -727,6 +774,177 @@ function IncidentDetailPanel({ detail }: { detail: IncidentDetail }) {
           </form>
         </div>
       )}
+
+      {/* Tab content: Root Cause (Phase 2.7) */}
+      {activeTab === 'root-cause' && (
+        <div className="space-y-4">
+          {rootCauseLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-cyan-400"></div>
+              <span className="ml-3 text-sm text-gray-400">Analyzing root cause...</span>
+            </div>
+          ) : !rootCauseData ? (
+            <div className="text-center py-8">
+              <Crosshair size={24} className="mx-auto text-gray-600 mb-2" />
+              <p className="text-sm text-gray-500">No analysis data available</p>
+            </div>
+          ) : (
+            <>
+              {/* Likely Root Cause Card */}
+              <div className={`rounded-lg border p-4 ${
+                rootCauseData.likely_root_cause.confidence === 'high'
+                  ? 'bg-red-500/10 border-red-500/30'
+                  : rootCauseData.likely_root_cause.confidence === 'medium'
+                  ? 'bg-yellow-500/10 border-yellow-500/30'
+                  : rootCauseData.likely_root_cause.confidence === 'low'
+                  ? 'bg-blue-500/10 border-blue-500/30'
+                  : 'bg-gray-800/40 border-gray-700/30'
+              }`}>
+                <div className="flex items-center gap-2 mb-2">
+                  <Crosshair size={16} className={
+                    rootCauseData.likely_root_cause.confidence === 'high' ? 'text-red-400'
+                    : rootCauseData.likely_root_cause.confidence === 'medium' ? 'text-yellow-400'
+                    : rootCauseData.likely_root_cause.confidence === 'low' ? 'text-blue-400'
+                    : 'text-gray-500'
+                  } />
+                  <h3 className="text-sm font-semibold text-gray-200">Likely Root Cause</h3>
+                  <span className={`ml-auto text-xs px-2 py-0.5 rounded-full font-medium ${
+                    rootCauseData.likely_root_cause.confidence === 'high'
+                      ? 'bg-red-500/20 text-red-400'
+                      : rootCauseData.likely_root_cause.confidence === 'medium'
+                      ? 'bg-yellow-500/20 text-yellow-400'
+                      : rootCauseData.likely_root_cause.confidence === 'low'
+                      ? 'bg-blue-500/20 text-blue-400'
+                      : 'bg-gray-700 text-gray-400'
+                  }`}>
+                    {rootCauseData.likely_root_cause.confidence.toUpperCase()} confidence
+                  </span>
+                </div>
+                <p className="text-sm text-gray-300 leading-relaxed">
+                  {rootCauseData.likely_root_cause.description}
+                </p>
+                {rootCauseData.likely_root_cause.entity && (
+                  <div className="mt-2 flex items-center gap-3 text-xs text-gray-400">
+                    <span className="flex items-center gap-1">
+                      <Shield size={10} /> Entity: <span className="text-gray-200 font-mono">{rootCauseData.likely_root_cause.entity}</span>
+                    </span>
+                    {rootCauseData.likely_root_cause.metric && (
+                      <span className="flex items-center gap-1">
+                        <TrendingUp size={10} /> Metric: <span className="text-gray-200 font-mono">{rootCauseData.likely_root_cause.metric}</span>
+                      </span>
+                    )}
+                    <span className="flex items-center gap-1">
+                      <BarChart3 size={10} /> Score: <span className="text-gray-200 font-mono">{rootCauseData.score}</span>
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* Signal Counts Summary */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <div className="bg-gray-800/40 rounded-lg border border-gray-700/30 p-3 text-center">
+                  <TrendingUp size={14} className="mx-auto text-orange-400 mb-1" />
+                  <p className="text-lg font-bold text-gray-200">{rootCauseData.signal_counts.metric_spikes}</p>
+                  <p className="text-xs text-gray-500">Metric Spikes</p>
+                </div>
+                <div className="bg-gray-800/40 rounded-lg border border-gray-700/30 p-3 text-center">
+                  <Bell size={14} className="mx-auto text-red-400 mb-1" />
+                  <p className="text-lg font-bold text-gray-200">{rootCauseData.signal_counts.alerts}</p>
+                  <p className="text-xs text-gray-500">Alerts</p>
+                </div>
+                <div className="bg-gray-800/40 rounded-lg border border-gray-700/30 p-3 text-center">
+                  <Zap size={14} className="mx-auto text-purple-400 mb-1" />
+                  <p className="text-lg font-bold text-gray-200">{rootCauseData.signal_counts.anomalies}</p>
+                  <p className="text-xs text-gray-500">Anomalies</p>
+                </div>
+                <div className="bg-gray-800/40 rounded-lg border border-gray-700/30 p-3 text-center">
+                  <FileText size={14} className="mx-auto text-yellow-400 mb-1" />
+                  <p className="text-lg font-bold text-gray-200">{rootCauseData.signal_counts.log_errors}</p>
+                  <p className="text-xs text-gray-500">Log Errors</p>
+                </div>
+              </div>
+
+              {/* Evidence List */}
+              {rootCauseData.evidence.length > 0 && (
+                <div>
+                  <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Evidence</h4>
+                  <div className="space-y-2">
+                    {rootCauseData.evidence.map((ev, i) => (
+                      <div key={i} className="bg-gray-800/30 rounded-lg border border-gray-700/20 p-3">
+                        <div className="flex items-center gap-2 mb-1">
+                          {ev.type === 'metric_spike' && <TrendingUp size={12} className="text-orange-400" />}
+                          {ev.type === 'alert' && <AlertTriangle size={12} className="text-red-400" />}
+                          {ev.type === 'anomaly' && <Zap size={12} className="text-purple-400" />}
+                          {ev.type === 'log_errors' && <FileText size={12} className="text-yellow-400" />}
+                          <span className="text-xs font-medium text-gray-300 capitalize">
+                            {ev.type === 'metric_spike' ? 'Metric Spike' : ev.type === 'log_errors' ? 'Log Errors' : ev.type}
+                          </span>
+                          {ev.metric && (
+                            <span className="text-xs text-gray-500 font-mono ml-1">{ev.metric}</span>
+                          )}
+                        </div>
+                        <div className="text-xs text-gray-400 space-y-0.5">
+                          {ev.type === 'metric_spike' && (
+                            <>
+                              <p>Value: <span className="text-gray-200">{typeof ev.value === 'number' ? ev.value.toFixed(2) : ev.value}</span>
+                                {typeof ev.baseline === 'number' && (
+                                  <> vs baseline <span className="text-gray-200">{ev.baseline.toFixed(2)}</span></>
+                                )}
+                              </p>
+                              {typeof ev.factor === 'number' && (
+                                <p>Factor: <span className="text-orange-300 font-semibold">{ev.factor.toFixed(1)}x</span> increase</p>
+                              )}
+                            </>
+                          )}
+                          {ev.type === 'alert' && (
+                            <>
+                              {ev.alert_name && <p>Alert: <span className="text-gray-200">{ev.alert_name}</span></p>}
+                              {ev.severity && <p>Severity: <span className="text-gray-200">{ev.severity}</span></p>}
+                            </>
+                          )}
+                          {ev.type === 'anomaly' && (
+                            <>
+                              {ev.entity && <p>Entity: <span className="text-gray-200">{ev.entity}</span></p>}
+                              {typeof ev.anomaly_score === 'number' && (
+                                <p>Anomaly score: <span className="text-purple-300 font-semibold">{ev.anomaly_score.toFixed(2)}</span></p>
+                              )}
+                            </>
+                          )}
+                          {ev.type === 'log_errors' && (
+                            <>
+                              <p>Error count: <span className="text-yellow-300 font-semibold">{ev.error_count}</span></p>
+                              {ev.samples && ev.samples.length > 0 && (
+                                <div className="mt-1 space-y-1">
+                                  {ev.samples.map((s: string, j: number) => (
+                                    <p key={j} className="text-xs text-gray-500 font-mono truncate bg-gray-900/50 rounded px-2 py-0.5">{s}</p>
+                                  ))}
+                                </div>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Analysis metadata */}
+              <div className="flex items-center justify-between text-xs text-gray-600 pt-2 border-t border-gray-700/30">
+                <span>Analyzed: {rootCauseData.analyzed_at ? new Date(rootCauseData.analyzed_at).toLocaleString() : 'N/A'}</span>
+                <button
+                  onClick={() => refetchRootCause()}
+                  className="flex items-center gap-1 text-gray-500 hover:text-cyan-400 transition-colors"
+                >
+                  <Activity size={10} />
+                  Re-analyze
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
     </div>
   )
 }

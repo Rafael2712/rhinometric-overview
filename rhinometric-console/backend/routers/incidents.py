@@ -22,6 +22,9 @@ from models.incident_comment import IncidentComment
 from logging_config import get_logger
 
 logger = get_logger(__name__)
+
+# Root Cause Assistant (Phase 2.7)
+from services.root_cause_engine import analyze_incident_root_cause
 router = APIRouter()
 
 VALID_STATUSES = {"open", "investigating", "resolved"}
@@ -503,6 +506,27 @@ async def update_incident_tags(
         "tags": incident.tags,
         "updated_at": incident.updated_at.isoformat() if incident.updated_at else None,
     }
+
+
+
+
+# ── Root Cause Analysis (Phase 2.7) ────────────────────────────
+
+@router.get("/{incident_id}/root-cause")
+async def get_incident_root_cause(
+    incident_id: str,
+    db: Session = Depends(get_db),
+    current_user: UserModel = Depends(get_current_user),
+):
+    """
+    Analyse an incident and return a deterministic, explainable
+    root-cause hypothesis based on metrics, alerts, anomalies,
+    and log signals within a ±5-minute window.
+
+    Read-only — never mutates any data.
+    """
+    result = await analyze_incident_root_cause(incident_id, db)
+    return result
 
 
 # ── Private helpers ─────────────────────────────────────────────
