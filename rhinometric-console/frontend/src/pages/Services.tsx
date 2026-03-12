@@ -261,8 +261,20 @@ export default function Services() {
         method: 'POST', headers: apiHeaders,
         body: JSON.stringify({ service_type: formType, config: formConfig, timeout_seconds: formTimeout }),
       })
-      setTestResult(await res.json())
-    } catch (e: any) { setTestResult({ success: false, status: 'error', message: e.message }) }
+      if (!res.ok) {
+        // API returned 422 (validation) or other error — build a friendly result
+        const err = await res.json().catch(() => ({}))
+        const detail = err.detail
+        const msg = typeof detail === 'string'
+          ? detail
+          : detail?.error
+            ? `${detail.error}${detail.details?.length ? ': ' + detail.details.join(', ') : ''}`
+            : `Server returned HTTP ${res.status}`
+        setTestResult({ success: false, status: 'error', message: msg, status_code: null })
+      } else {
+        setTestResult(await res.json())
+      }
+    } catch (e: any) { setTestResult({ success: false, status: 'error', message: e.message, status_code: null }) }
     setTesting(false)
   }
 
@@ -399,18 +411,31 @@ export default function Services() {
         </div>
 
         {/* Test Connection Result */}
-        {testResult && (
-          <div className={`rounded-lg border p-4 ${testResult.success ? 'border-green-500/50 bg-green-500/10' : 'border-red-500/50 bg-red-500/10'}`}>
-            <div className="flex items-center gap-2">
-              {testResult.success ? <CheckCircle className="w-5 h-5 text-green-400" /> : <AlertCircle className="w-5 h-5 text-red-400" />}
-              <span className={testResult.success ? 'text-green-400 font-medium' : 'text-red-400 font-medium'}>
-                {testResult.success ? 'Connection successful' : 'Connection failed'}
-              </span>
-              {testResult.response_time_ms && <span className="text-gray-400 text-sm ml-2">{testResult.response_time_ms.toFixed(0)}ms</span>}
+        {testResult && (() => {
+          const isSuccess = testResult.success === true;
+          const isHttpError = !isSuccess && testResult.status_code != null;
+          const borderClass = isSuccess
+            ? 'border-green-500/50 bg-green-500/10'
+            : isHttpError
+              ? 'border-amber-500/50 bg-amber-500/10'
+              : 'border-red-500/50 bg-red-500/10';
+          const iconColor = isSuccess ? 'text-green-400' : isHttpError ? 'text-amber-400' : 'text-red-400';
+          const label = isSuccess
+            ? 'Connection successful'
+            : 'Connection test failed';
+          return (
+            <div className={`rounded-lg border p-4 ${borderClass}`}>
+              <div className="flex items-center gap-2">
+                {isSuccess ? <CheckCircle className={`w-5 h-5 ${iconColor}`} /> : <AlertCircle className={`w-5 h-5 ${iconColor}`} />}
+                <span className={`${iconColor} font-medium`}>{label}</span>
+                {testResult.response_time_ms != null && (
+                  <span className="text-gray-400 text-sm ml-2">{testResult.response_time_ms.toFixed(0)}ms</span>
+                )}
+              </div>
+              <p className="text-gray-400 text-sm mt-1">{testResult.message}</p>
             </div>
-            <p className="text-gray-400 text-sm mt-1">{testResult.message}</p>
-          </div>
-        )}
+          );
+        })()}
 
         {/* Actions */}
         <div className="flex items-center gap-3">

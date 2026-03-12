@@ -83,7 +83,7 @@ def test_http_connection(
         elapsed_ms = (time.monotonic() - start) * 1000
         status_code = resp.status_code
 
-        # Treat 3xx as informational (redirects are blocked, so report them)
+        # Classify HTTP status codes
         if 200 <= status_code < 300:
             status = "up"
             message = f"HTTP {status_code} - {elapsed_ms:.0f}ms"
@@ -92,14 +92,14 @@ def test_http_connection(
             location = resp.headers.get("location", "unknown")
             message = f"HTTP {status_code} redirect to {location} (not followed) - {elapsed_ms:.0f}ms"
         elif 400 <= status_code < 500:
-            status = "degraded"
-            message = f"HTTP {status_code} client error - {elapsed_ms:.0f}ms"
+            status = "down"
+            message = f"Endpoint responded with HTTP {status_code} in {elapsed_ms:.0f} ms. Please review base URL, health path, method, or authentication settings."
         else:
             status = "down"
-            message = f"HTTP {status_code} server error - {elapsed_ms:.0f}ms"
+            message = f"Endpoint responded with HTTP {status_code} (server error) in {elapsed_ms:.0f} ms."
 
         return {
-            "success": status in ("up", "degraded"),
+            "success": status == "up",
             "status": status,
             "message": message,
             "response_time_ms": round(elapsed_ms, 2),
