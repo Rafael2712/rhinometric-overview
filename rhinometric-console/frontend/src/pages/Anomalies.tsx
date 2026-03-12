@@ -1,13 +1,11 @@
 /* eslint-disable */ console.info("anomaly-ui-v2.1.1");
 import { AlertTriangle, TrendingUp, Filter, Download, X, GitMerge,
-  Globe, CheckCircle2, BarChart3, FileText, Server, Monitor, Layers, MapPin, Shield,
+  Globe, CheckCircle2, Server, Monitor, Layers, MapPin, Shield,
   Clock, Hash, Activity } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../lib/auth/store'
-import { openGrafanaExplore } from '../utils/grafana'
-import { buildDynamicPromQL, buildDynamicLogQL } from '../utils/externalLinks'
 
 interface AnomalyOccurrence {
   timestamp: string
@@ -99,7 +97,6 @@ export function AnomaliesPage() {
   const [entityTypeFilter, setEntityTypeFilter] = useState<string>('')
   const [statusFilter, setStatusFilter] = useState<string>('')
   const token = useAuthStore((state) => state.token)
-  const isAdmin = useAuthStore((state) => state.isAdmin)
   const navigate = useNavigate()
   const queryClient = useQueryClient()
 
@@ -532,55 +529,6 @@ export function AnomaliesPage() {
                   ))}
                 </div>
               )}
-
-              {/* Grafana Actions */}
-              {isAdmin() && <div>
-                <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold mb-2">Grafana</p>
-                <div className="flex flex-col sm:flex-row gap-2">
-                  <button
-                    className={`btn flex-1 min-h-[44px] text-sm flex items-center justify-center gap-2${!selectedGroup.metric_name || selectedGroup.metric_name.includes('unknown') ? ' opacity-50 cursor-not-allowed' : ''}`}
-                    disabled={!selectedGroup.metric_name || selectedGroup.metric_name.includes('unknown')}
-                    onClick={() => {
-                      const prometheusQuery = buildDynamicPromQL({
-                        metric_name: selectedGroup.metric_name,
-                        entity_type: selectedGroup.entity_type,
-                        entity_name: selectedGroup.entity_name,
-                        source: selectedGroup.source
-                      })
-                      const exploreUrl = `?orgId=1&left=${encodeURIComponent(JSON.stringify({
-                        datasource: 'victoriametrics',
-                        queries: [{ refId: 'A', expr: prometheusQuery }],
-                        range: { from: 'now-6h', to: 'now' }
-                      }))}`
-                      openGrafanaExplore(exploreUrl)
-                    }}
-                  >
-                    <BarChart3 size={16} />
-                    Metrics
-                  </button>
-                  <button
-                    className={`btn flex-1 min-h-[44px] text-sm flex items-center justify-center gap-2${!selectedGroup.metric_name || selectedGroup.metric_name.includes('unknown') ? ' opacity-50 cursor-not-allowed' : ''}`}
-                    disabled={!selectedGroup.metric_name || selectedGroup.metric_name.includes('unknown')}
-                    onClick={() => {
-                      const logQuery = buildDynamicLogQL({
-                        metric_name: selectedGroup.metric_name,
-                        entity_type: selectedGroup.entity_type,
-                        entity_name: selectedGroup.entity_name,
-                        source: selectedGroup.source
-                      })
-                      const exploreUrl = `?orgId=1&left=${encodeURIComponent(JSON.stringify({
-                        datasource: 'loki',
-                        queries: [{ refId: 'A', expr: logQuery }],
-                        range: { from: 'now-6h', to: 'now' }
-                      }))}`
-                      openGrafanaExplore(exploreUrl)
-                    }}
-                  >
-                    <FileText size={16} />
-                    Logs
-                  </button>
-                </div>
-              </div>}
 
               {/* Lifecycle Actions */}
               <div>
