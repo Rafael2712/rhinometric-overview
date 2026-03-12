@@ -12,6 +12,7 @@ import { AlertsPage } from './pages/Alerts'
 import { AlertHistoryPage } from './pages/AlertHistory'
 import { IncidentsPage } from './pages/Incidents'
 import { SLOPage } from './pages/SLO'
+import { AlertRulesPage } from './pages/AlertRules'
 import { LogsPage } from './pages/Logs'
 import { TracesPage } from './pages/Traces'
 import { LicensePage } from './pages/License'
@@ -55,6 +56,7 @@ function App() {
           <Route path="alert-history" element={<AlertHistoryPage />} />
           <Route path="incidents" element={<IncidentsPage />} />
           <Route path="slo" element={<SLOPage />} />
+          <Route path="alert-rules" element={<AlertRulesPage />} />
           <Route path="logs" element={<LogsPage />} />
           <Route path="traces" element={<TracesPage />} />
           <Route path="license" element={<LicensePage />} />
