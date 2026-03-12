@@ -16,6 +16,33 @@ import { format } from 'date-fns';
 
 const CORRELATION_VIEW_BUILD = '2026-02-16T12';
 
+const SEVERITY_ORDER: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3, info: 4 };
+const MAX_RELATED_ANOMALIES = 15;
+
+function rankAndLimitAnomalies(anomalies: any[]): any[] {
+  if (!anomalies || anomalies.length === 0) return [];
+  return [...anomalies]
+    .sort((a, b) => {
+      // Active before resolved
+      const aActive = a.status !== 'resolved' ? 0 : 1;
+      const bActive = b.status !== 'resolved' ? 0 : 1;
+      if (aActive !== bActive) return aActive - bActive;
+      // Higher severity first
+      const aSev = SEVERITY_ORDER[a.severity] ?? 5;
+      const bSev = SEVERITY_ORDER[b.severity] ?? 5;
+      if (aSev !== bSev) return aSev - bSev;
+      // Higher deviation first
+      const aDev = Math.abs(a.deviation_percent ?? 0);
+      const bDev = Math.abs(b.deviation_percent ?? 0);
+      if (aDev !== bDev) return bDev - aDev;
+      // Most recent first
+      const aTime = new Date(a.timestamp || 0).getTime();
+      const bTime = new Date(b.timestamp || 0).getTime();
+      return bTime - aTime;
+    })
+    .slice(0, MAX_RELATED_ANOMALIES);
+}
+
 interface TimelineEvent {
   timestamp: string;
   type: 'anomaly' | 'metric' | 'log' | 'alert';
@@ -486,14 +513,18 @@ export function CorrelationView() {
         )}
 
         {/* Anomalies */}
-        {data.related_anomalies.length > 0 && (
-          <CorrelationCard
-            title="Related Anomalies"
-            icon="⚠️"
-            data={data.related_anomalies}
-            type="anomalies"
-          />
-        )}
+        {data.related_anomalies.length > 0 && (() => {
+          const ranked = rankAndLimitAnomalies(data.related_anomalies);
+          return (
+            <CorrelationCard
+              title="Related Anomalies"
+              icon="🔍"
+              data={ranked}
+              type="anomalies"
+              totalCount={data.related_anomalies.length}
+            />
+          );
+        })()}
 
         {/* Traces - out of scope, hidden */}
       </div>
