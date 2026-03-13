@@ -120,6 +120,11 @@ export function AnomaliesPage() {
       const response = await fetch(`/api/anomalies?${params.toString()}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       })
+      if (response.status === 401) {
+        useAuthStore.getState().logout()
+        navigate('/login')
+        throw new Error('Session expired')
+      }
       if (response.status === 503) throw new Error('AI_SERVICE_UNAVAILABLE')
       if (!response.ok) throw new Error('Failed to fetch anomalies')
       return response.json()
@@ -157,6 +162,11 @@ export function AnomaliesPage() {
         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ status })
       })
+      if (response.status === 401) {
+        useAuthStore.getState().logout()
+        navigate('/login')
+        throw new Error('Session expired')
+      }
       if (!response.ok) throw new Error('Failed to update status')
       return response.json()
     },
@@ -265,8 +275,14 @@ export function AnomaliesPage() {
         ) : error && !isAIUnavailable ? (
           <div className="flex flex-col items-center justify-center py-16 px-4">
             <AlertTriangle className="text-error mb-4" size={48} />
-            <p className="text-white text-lg font-semibold mb-1">Failed to load anomalies</p>
-            <p className="text-sm text-gray-400">{(error as Error).message}</p>
+            <p className="text-white text-lg font-semibold mb-1">
+              {(error as Error).message === 'Session expired' ? 'Session expired' : 'Failed to load anomalies'}
+            </p>
+            <p className="text-sm text-gray-400">
+              {(error as Error).message === 'Session expired'
+                ? 'Redirecting to login...'
+                : (error as Error).message}
+            </p>
           </div>
         ) : isAIUnavailable ? (
           <div className="flex flex-col items-center justify-center py-16 px-4">
