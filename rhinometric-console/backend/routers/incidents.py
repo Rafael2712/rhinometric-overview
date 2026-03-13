@@ -78,7 +78,10 @@ def _highest_severity(current: str, incoming: str) -> str:
 
 def find_or_create_incident(db: Session, entity_type: str, entity_name: str,
                              severity: str, started_at: datetime) -> "Incident":
-    """Find an existing open/investigating incident for the entity, or create one."""
+    """Find an existing open/investigating incident for the entity, or create one.
+
+    Race-safe: handles concurrent INSERT attempts via savepoint + retry.
+    """
     key = _incident_key(entity_type, entity_name)
 
     existing = db.query(Incident).filter(
@@ -95,22 +98,35 @@ def find_or_create_incident(db: Session, entity_type: str, entity_name: str,
         return existing
 
     import uuid
-    incident = Incident(
-        id=uuid.uuid4(),
-        incident_key=key,
-        entity_name=entity_name,
-        entity_type=entity_type,
-        severity=severity,
-        status="open",
-        started_at=started_at,
-    )
-    db.add(incident)
-    db.flush()  # get the ID before commit
-    create_timeline_event(db, incident.id, "incident_created",
-                          description=f"Incident created automatically for {entity_name}",
-                          metadata={"entity_type": entity_type, "severity": severity})
-    logger.info(f"Created incident {incident.id} for {key}")
-    return incident
+    from sqlalchemy.exc import IntegrityError
+
+    try:
+        nested = db.begin_nested()  # SAVEPOINT
+        incident = Incident(
+            id=uuid.uuid4(),
+            incident_key=key,
+            entity_name=entity_name,
+            entity_type=entity_type,
+            severity=severity,
+            status="open",
+            started_at=started_at,
+        )
+        db.add(incident)
+        db.flush()  # get the ID before commit
+        create_timeline_event(db, incident.id, "incident_created",
+                              description=f"Incident created automatically for {entity_name}",
+                              metadata={"entity_type": entity_type, "severity": severity})
+        logger.info(f"Created incident {incident.id} for {key}")
+        return incident
+    except IntegrityError:
+        nested.rollback()
+        logger.info(f"Incident race resolved for {key}, fetching existing")
+        existing = db.query(Incident).filter(
+            Incident.incident_key == key,
+        ).order_by(Incident.started_at.desc()).first()
+        if existing:
+            return existing
+        raise  # should never happen
 
 
 def check_incident_resolution(db: Session, incident_id) -> None:

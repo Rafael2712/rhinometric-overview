@@ -1,5 +1,5 @@
 global:
-  resolve_timeout: 5m
+  resolve_timeout: 10m
   smtp_from: 'rafael.canelon@rhinometric.com'
   smtp_smarthost: smtp.zoho.eu:587
   smtp_auth_username: 'rafael.canelon@rhinometric.com'

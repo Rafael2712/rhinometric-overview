@@ -98,25 +98,30 @@ Anomalia detectada por IA en {{ .Labels.metric }}.
 *Troubleshooting:*
 {{ template "ai_anomaly_slack_troubleshooting" . }}
 
-{{ if or (eq .Labels.metric "node_cpu_usage") (eq .Labels.metric "node_memory_usage") (eq .Labels.metric "node_disk_usage") (eq .Labels.metric "node_disk_io") (eq .Labels.metric "node_network_receive") (eq .Labels.metric "node_network_transmit") -}}
-:desktop_computer: <https://console-staging.rhinometric.com/dashboards/rhinometric-system-overview/view|Ver Dashboard en Consola>
+{{- $m := .Labels.metric -}}
+{{- if match ".*::.*" $m -}}
+:desktop_computer: <https://console-staging.rhinometric.com/anomalies?metric={{ reReplaceAll "::.*" "" $m }}&entity={{ reReplaceAll ".*::" "" $m }}|Ver en Consola>
 {{- else -}}
-:desktop_computer: <https://console-staging.rhinometric.com/dashboards/ai-anomaly-service/view|Ver Dashboard en Consola>
+:desktop_computer: <https://console-staging.rhinometric.com/anomalies?metric={{ $m }}|Ver en Consola>
 {{- end }}
-{{ if eq .Labels.metric "node_cpu_usage" -}}
-:chart_with_upwards_trend: <http://46.225.231.117/grafana/d/rhinometric-system-overview/01-system-overview?viewPanel=1&theme=dark|Ver CPU en Grafana>
-{{- else if eq .Labels.metric "node_memory_usage" -}}
-:chart_with_upwards_trend: <http://46.225.231.117/grafana/d/rhinometric-system-overview/01-system-overview?viewPanel=2&theme=dark|Ver Memoria en Grafana>
-{{- else if eq .Labels.metric "node_disk_usage" -}}
-:chart_with_upwards_trend: <http://46.225.231.117/grafana/d/rhinometric-system-overview/01-system-overview?viewPanel=3&theme=dark|Ver Disco en Grafana>
-{{- else if eq .Labels.metric "node_disk_io" -}}
-:chart_with_upwards_trend: <http://46.225.231.117/grafana/d/rhinometric-system-overview/01-system-overview?viewPanel=3&theme=dark|Ver Disco IO en Grafana>
-{{- else if eq .Labels.metric "node_network_receive" -}}
-:chart_with_upwards_trend: <http://46.225.231.117/grafana/d/rhinometric-system-overview/01-system-overview?viewPanel=6&theme=dark|Ver Red en Grafana>
-{{- else if eq .Labels.metric "node_network_transmit" -}}
-:chart_with_upwards_trend: <http://46.225.231.117/grafana/d/rhinometric-system-overview/01-system-overview?viewPanel=6&theme=dark|Ver Red en Grafana>
-{{- else -}}
-:chart_with_upwards_trend: <http://46.225.231.117/grafana/d/ai-anomaly-service/05-ai-anomaly-service?theme=dark|Ver Anomalia en Grafana>
+{{- if match "external_service_latency" $m }}
+:chart_with_upwards_trend: <http://46.225.231.117/grafana/d/ext-svc-intelligence/external-services-intelligence?viewPanel=6&from=now-1h&to=now&theme=dark&var-service_name={{ reReplaceAll ".*::" "" $m }}|Ver en Grafana>
+{{- else if match "external_service_availability" $m }}
+:chart_with_upwards_trend: <http://46.225.231.117/grafana/d/ext-svc-intelligence/external-services-intelligence?viewPanel=5&from=now-1h&to=now&theme=dark&var-service_name={{ reReplaceAll ".*::" "" $m }}|Ver en Grafana>
+{{- else if match "external_service_health" $m }}
+:chart_with_upwards_trend: <http://46.225.231.117/grafana/d/ext-svc-intelligence/external-services-intelligence?viewPanel=12&from=now-1h&to=now&theme=dark&var-service_name={{ reReplaceAll ".*::" "" $m }}|Ver en Grafana>
+{{- else if eq $m "node_cpu_usage" }}
+:chart_with_upwards_trend: <http://46.225.231.117/grafana/d/rhinometric-system-overview/system-overview?viewPanel=1&from=now-1h&to=now&theme=dark|Ver CPU en Grafana>
+{{- else if eq $m "node_memory_usage" }}
+:chart_with_upwards_trend: <http://46.225.231.117/grafana/d/rhinometric-system-overview/system-overview?viewPanel=2&from=now-1h&to=now&theme=dark|Ver Memoria en Grafana>
+{{- else if match "node_disk" $m }}
+:chart_with_upwards_trend: <http://46.225.231.117/grafana/d/rhinometric-system-overview/system-overview?viewPanel=3&from=now-1h&to=now&theme=dark|Ver Disco en Grafana>
+{{- else if match "node_network" $m }}
+:chart_with_upwards_trend: <http://46.225.231.117/grafana/d/rhinometric-system-overview/system-overview?viewPanel=6&from=now-1h&to=now&theme=dark|Ver Red en Grafana>
+{{- else if match "container_" $m }}
+:chart_with_upwards_trend: <http://46.225.231.117/grafana/d/docker-new/docker-containers?from=now-1h&to=now&theme=dark|Ver Containers en Grafana>
+{{- else }}
+:chart_with_upwards_trend: <http://46.225.231.117/grafana/d/ai-anomaly-service/ai-anomaly-service?from=now-1h&to=now&theme=dark|Ver Anomalia en Grafana>
 {{- end }}
 
 ---

@@ -474,13 +474,13 @@ from fastapi import Request
 # Defense-in-depth alongside Alertmanager group_interval increase.
 import time as _time
 
-_EMAIL_COOLDOWN: dict = {}          # key=(metric,severity,status) → last_sent_ts
+_EMAIL_COOLDOWN: dict = {}          # key=(metric,severity) → last_sent_ts
 EMAIL_COOLDOWN_SECONDS = 3600       # 1 hour cooldown per unique alert
 
 
-def _email_cooldown_ok(metric: str, severity: str, status: str) -> bool:
+def _email_cooldown_ok(metric: str, severity: str) -> bool:
     """Return True if this alert should be emailed (not in cooldown)."""
-    key = (metric, severity, status)
+    key = (metric, severity)
     now = _time.time()
     last = _EMAIL_COOLDOWN.get(key, 0)
     if now - last < EMAIL_COOLDOWN_SECONDS:
@@ -616,6 +616,11 @@ async def alertmanager_email_webhook(request: Request):
                 console_dash=console_dash_path
             )
             
+            # ── Cooldown guard: skip if recently emailed for this metric+severity ──
+            if not _email_cooldown_ok(metric, severity.lower()):
+                logger.info("Email cooldown: skipping %s (sev=%s)", metric, severity)
+                continue
+
             for to_email in to_emails:
                 try:
                     from_addr = zoho_cfg.get("from_address", "rafael.canelon@rhinometric.com")

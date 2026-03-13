@@ -90,7 +90,7 @@ def render_alertmanager_config(channels: dict, ai_alerting_enabled: bool) -> str
     slack_cfg = channels.get("slack", {})
 
     # --- Global section ---
-    global_section = {"resolve_timeout": "5m"}
+    global_section = {"resolve_timeout": "10m"}
 
     if email_cfg.get("enabled") and email_cfg.get("smtp_host"):
         global_section["smtp_from"] = email_cfg.get("from_email", "")
