@@ -467,6 +467,32 @@ async def get_email_status(
 # --- Alertmanager Webhook for Email Forwarding via Zoho API ---
 from fastapi import Request
 
+
+# ── Email cooldown deduplication ──
+# Prevents repeated email alerts for the same metric+severity within a cooldown window.
+# Defense-in-depth alongside Alertmanager group_interval increase.
+import time as _time
+
+_EMAIL_COOLDOWN: dict = {}          # key=(metric,severity,status) → last_sent_ts
+EMAIL_COOLDOWN_SECONDS = 3600       # 1 hour cooldown per unique alert
+
+
+def _email_cooldown_ok(metric: str, severity: str, status: str) -> bool:
+    """Return True if this alert should be emailed (not in cooldown)."""
+    key = (metric, severity, status)
+    now = _time.time()
+    last = _EMAIL_COOLDOWN.get(key, 0)
+    if now - last < EMAIL_COOLDOWN_SECONDS:
+        return False
+    _EMAIL_COOLDOWN[key] = now
+    # Prune stale entries (keep cache bounded)
+    if len(_EMAIL_COOLDOWN) > 500:
+        cutoff = now - EMAIL_COOLDOWN_SECONDS * 2
+        stale = [k for k, v in _EMAIL_COOLDOWN.items() if v < cutoff]
+        for k in stale:
+            del _EMAIL_COOLDOWN[k]
+    return True
+
 RED_CIRCLE = chr(0x1F534)
 ORANGE_CIRCLE = chr(0x1F7E0)
 
@@ -535,15 +561,8 @@ async def alertmanager_email_webhook(request: Request):
             grafana_url = grafana_map.get(metric_raw, grafana_base + "/d/ai-anomaly-service/05-ai-anomaly-service?theme=dark")
 
             # Map metric to Console dashboard viewer path
-            console_dashboard_map = {
-                "node_cpu_usage": "/dashboards/rhinometric-system-overview/view",
-                "node_memory_usage": "/dashboards/rhinometric-system-overview/view",
-                "node_disk_usage": "/dashboards/rhinometric-system-overview/view",
-                "node_disk_io": "/dashboards/rhinometric-system-overview/view",
-                "node_network_receive": "/dashboards/rhinometric-system-overview/view",
-                "node_network_transmit": "/dashboards/rhinometric-system-overview/view",
-            }
-            console_dash_path = console_dashboard_map.get(metric_raw, "/dashboards/ai-anomaly-service/view")
+            # Deep link: always point to the anomalies page for AI alerts
+            console_dash_path = "/anomalies"
 
             body_html = (
                 '<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">'

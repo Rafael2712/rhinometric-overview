@@ -123,8 +123,8 @@ def render_alertmanager_config(channels: dict, ai_alerting_enabled: bool) -> str
                 "receiver": ai_critical_receiver,
                 "group_by": ["alertname", "metric", "severity"],
                 "group_wait": "30s",
-                "group_interval": "5m",
-                "repeat_interval": "4h",
+                "group_interval": "1h",
+                "repeat_interval": "24h",
                 "continue": False,
             },
             {
@@ -132,8 +132,8 @@ def render_alertmanager_config(channels: dict, ai_alerting_enabled: bool) -> str
                 "receiver": "blackhole",
                 "group_by": ["alertname", "metric", "severity"],
                 "group_wait": "30s",
-                "group_interval": "5m",
-                "repeat_interval": "4h",
+                "group_interval": "1h",
+                "repeat_interval": "24h",
                 "continue": False,
             },
             {
@@ -171,7 +171,7 @@ def render_alertmanager_config(channels: dict, ai_alerting_enabled: bool) -> str
                 {
                     "type": "button",
                     "text": "Ver Dashboard en Consola",
-                    "url": '{{- $m := (index .Alerts 0).Labels.metric -}}{{- if or (eq $m "node_cpu_usage") (eq $m "node_memory_usage") (eq $m "node_disk_usage") (eq $m "node_disk_io") (eq $m "node_network_receive") (eq $m "node_network_transmit") -}}https://console-staging.rhinometric.com/dashboards/rhinometric-system-overview/view{{- else -}}https://console-staging.rhinometric.com/dashboards/ai-anomaly-service/view{{- end -}}'
+                    "url": 'https://console-staging.rhinometric.com/anomalies'
                 },
                 {
                     "type": "button",

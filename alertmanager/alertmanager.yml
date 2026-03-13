@@ -3,7 +3,7 @@ global:
   smtp_from: 'rafael.canelon@rhinometric.com'
   smtp_smarthost: smtp.zoho.eu:587
   smtp_auth_username: 'rafael.canelon@rhinometric.com'
-  smtp_auth_password: ''
+  smtp_auth_password: 271211Rc$
   smtp_require_tls: true
   slack_api_url: https://hooks.slack.com/services/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
 templates:
@@ -27,8 +27,8 @@ route:
     - metric
     - severity
     group_wait: 30s
-    group_interval: 5m
-    repeat_interval: 4h
+    group_interval: 1h
+    repeat_interval: 24h
     continue: false
   - match:
       rhinometric_source: ai-anomaly
@@ -38,8 +38,8 @@ route:
     - metric
     - severity
     group_wait: 30s
-    group_interval: 5m
-    repeat_interval: 4h
+    group_interval: 1h
+    repeat_interval: 24h
     continue: false
   - match:
       severity: critical
@@ -58,7 +58,7 @@ route:
 receivers:
 - name: ai-anomaly-alerts
   slack_configs:
-  - channel: '#nuevo-canal'
+  - channel: '#canal-nuevo'
     username: Rhinometric AI
     icon_emoji: ':brain:'
     title: '{{ template "ai_anomaly_slack_title" (index .Alerts 0) }}'
@@ -66,11 +66,7 @@ receivers:
     actions:
     - type: button
       text: Ver Dashboard en Consola
-      url: '{{- $m := (index .Alerts 0).Labels.metric -}}{{- if or (eq $m "node_cpu_usage")
-        (eq $m "node_memory_usage") (eq $m "node_disk_usage") (eq $m "node_disk_io")
-        (eq $m "node_network_receive") (eq $m "node_network_transmit") -}}https://console-staging.rhinometric.com/dashboards/rhinometric-system-overview/view{{-
-        else -}}https://console-staging.rhinometric.com/dashboards/ai-anomaly-service/view{{-
-        end -}}'
+      url: https://console-staging.rhinometric.com/anomalies
     - type: button
       text: Ver en Grafana
       url: '{{- $m := (index .Alerts 0).Labels.metric -}}{{- if eq $m "node_cpu_usage"
