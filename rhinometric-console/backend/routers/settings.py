@@ -23,6 +23,7 @@ import httpx
 import json
 import os
 import logging
+from urllib.parse import quote as _url_quote
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -550,19 +551,41 @@ async def alertmanager_email_webhook(request: Request):
             # Map metric to correct Grafana dashboard/panel
             grafana_base = "http://46.225.231.117/grafana"
             metric_raw = labels.get("metric", labels.get("alertname", "unknown"))
-            grafana_map = {
-                "node_cpu_usage": grafana_base + "/d/rhinometric-system-overview/01-system-overview?viewPanel=1&theme=dark",
-                "node_memory_usage": grafana_base + "/d/rhinometric-system-overview/01-system-overview?viewPanel=2&theme=dark",
-                "node_disk_usage": grafana_base + "/d/rhinometric-system-overview/01-system-overview?viewPanel=3&theme=dark",
-                "node_disk_io": grafana_base + "/d/rhinometric-system-overview/01-system-overview?viewPanel=3&theme=dark",
-                "node_network_receive": grafana_base + "/d/rhinometric-system-overview/01-system-overview?viewPanel=6&theme=dark",
-                "node_network_transmit": grafana_base + "/d/rhinometric-system-overview/01-system-overview?viewPanel=6&theme=dark",
-            }
-            grafana_url = grafana_map.get(metric_raw, grafana_base + "/d/ai-anomaly-service/05-ai-anomaly-service?theme=dark")
+            # ── Parse metric label (format: metric_name::entity_name or just metric_name) ──
+            if "::" in metric_raw:
+                metric_key, entity_name_parsed = metric_raw.split("::", 1)
+            else:
+                metric_key = metric_raw
+                entity_name_parsed = ""
 
-            # Map metric to Console dashboard viewer path
-            # Deep link: always point to the anomalies page for AI alerts
-            console_dash_path = "/anomalies"
+            # ── Grafana deep link: correct dashboard + panel + time range + entity filter ──
+            _time_range = "from=now-1h&to=now"
+            _svc_filter = f"&var-service_name={_url_quote(entity_name_parsed)}" if entity_name_parsed else ""
+
+            if metric_key == "external_service_latency":
+                grafana_url = f"{grafana_base}/d/ext-svc-intelligence/external-services-intelligence?viewPanel=6&{_time_range}&theme=dark{_svc_filter}"
+            elif metric_key == "external_service_availability":
+                grafana_url = f"{grafana_base}/d/ext-svc-intelligence/external-services-intelligence?viewPanel=5&{_time_range}&theme=dark{_svc_filter}"
+            elif metric_key == "external_service_health":
+                grafana_url = f"{grafana_base}/d/ext-svc-intelligence/external-services-intelligence?viewPanel=12&{_time_range}&theme=dark{_svc_filter}"
+            elif metric_key == "node_cpu_usage":
+                grafana_url = f"{grafana_base}/d/rhinometric-system-overview/system-overview?viewPanel=1&{_time_range}&theme=dark"
+            elif metric_key == "node_memory_usage":
+                grafana_url = f"{grafana_base}/d/rhinometric-system-overview/system-overview?viewPanel=2&{_time_range}&theme=dark"
+            elif metric_key in ("node_disk_usage", "node_disk_io"):
+                grafana_url = f"{grafana_base}/d/rhinometric-system-overview/system-overview?viewPanel=3&{_time_range}&theme=dark"
+            elif metric_key in ("node_network_receive", "node_network_transmit"):
+                grafana_url = f"{grafana_base}/d/rhinometric-system-overview/system-overview?viewPanel=6&{_time_range}&theme=dark"
+            elif metric_key.startswith("container_"):
+                grafana_url = f"{grafana_base}/d/docker-new/docker-containers?{_time_range}&theme=dark"
+            else:
+                grafana_url = f"{grafana_base}/d/ai-anomaly-service/ai-anomaly-service?{_time_range}&theme=dark"
+
+            # ── Console deep link: /anomalies with metric + entity query params ──
+            console_params = f"metric={_url_quote(metric_key)}"
+            if entity_name_parsed:
+                console_params += f"&entity={_url_quote(entity_name_parsed)}"
+            console_dash_path = f"/anomalies?{console_params}"
 
             body_html = (
                 '<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">'

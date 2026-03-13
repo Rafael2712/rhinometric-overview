@@ -4,7 +4,7 @@ import { AlertTriangle, TrendingUp, Filter, Download, X, GitMerge,
   Clock, Hash, Activity } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuthStore } from '../lib/auth/store'
 
 interface AnomalyOccurrence {
@@ -93,9 +93,15 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 export function AnomaliesPage() {
+  const [searchParams, setSearchParams] = useSearchParams()
+  const urlMetric = searchParams.get('metric') || ''
+  const urlEntity = searchParams.get('entity') || ''
+  const urlEntityType = searchParams.get('entity_type') || ''
+
   const [selectedGroup, setSelectedGroup] = useState<AnomalyGroup | null>(null)
-  const [entityTypeFilter, setEntityTypeFilter] = useState<string>('')
+  const [entityTypeFilter, setEntityTypeFilter] = useState<string>(urlEntityType)
   const [statusFilter, setStatusFilter] = useState<string>('')
+  const [deepLinkHandled, setDeepLinkHandled] = useState(false)
   const token = useAuthStore((state) => state.token)
   const navigate = useNavigate()
   const queryClient = useQueryClient()
@@ -122,6 +128,27 @@ export function AnomaliesPage() {
     refetchInterval: 30000,
     retry: false,
   })
+
+  // ── Deep link: auto-select matching anomaly group from URL params ──
+  useEffect(() => {
+    if (deepLinkHandled || !groupsData?.anomaly_groups?.length) return
+    if (!urlMetric && !urlEntity) return
+
+    const groups: AnomalyGroup[] = groupsData.anomaly_groups
+    const match = groups.find((g: AnomalyGroup) => {
+      const metricMatch = !urlMetric || g.metric_name === urlMetric
+      const entityMatch = !urlEntity || g.entity_name === urlEntity
+      return metricMatch && entityMatch
+    })
+    if (match) {
+      setSelectedGroup(match)
+    }
+    setDeepLinkHandled(true)
+    // Clean URL params after handling (keeps URL clean)
+    if (urlMetric || urlEntity) {
+      setSearchParams({}, { replace: true })
+    }
+  }, [groupsData, urlMetric, urlEntity, deepLinkHandled, setSearchParams])
 
   const statusMutation = useMutation({
     mutationFn: async ({ fingerprint, status }: { fingerprint: string; status: string }) => {
