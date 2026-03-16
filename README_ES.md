@@ -58,7 +58,7 @@ Agregación de logs vía Loki/Promtail integrada en las vistas de anomalías e i
 La infraestructura de trazado Jaeger/OpenTelemetry está desplegada y lista. La recolección de datos de trazas requiere que las aplicaciones estén instrumentadas con SDKs de OpenTelemetry. Para la mayoría de despliegues, las métricas y logs proporcionan las señales principales de observabilidad.
 
 ### Control de Acceso Basado en Roles
-Sistema de permisos con cuatro roles (SuperAdmin, Admin, Operador, Visor) aplicado tanto a nivel de API como de interfaz.
+Sistema de permisos con cuatro roles (Owner, Admin, Operador, Visor) aplicado tanto a nivel de API como de interfaz.
 
 ### Licenciamiento
 Niveles de licencia basados en servicios: Community, Professional, Enterprise. Cada nivel define el número máximo de servicios monitorizados y las funcionalidades disponibles.

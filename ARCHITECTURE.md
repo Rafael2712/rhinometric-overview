@@ -95,8 +95,8 @@ graph TB
 | 3 | backend | FastAPI + Python 3.11 | 8105 | REST API, business logic, data access |
 | 4 | postgres | PostgreSQL 16 | 5432 | Primary database for all application state |
 | 5 | redis | Redis 7 | 6379 | Caching, session data, real-time pub/sub |
-| 6 | prometheus | Prometheus | 9090 | Short-term metric buffer (15-day retention) |
-| 7 | victoriametrics | VictoriaMetrics | 8428 | Long-term metric storage (1-year retention) |
+| 6 | prometheus | Prometheus | 9090 | Short-term metric buffer (30-day retention) |
+| 7 | victoriametrics | VictoriaMetrics | 8428 | Long-term metric storage (90-day retention) |
 | 8 | loki | Grafana Loki | 3100 | Log aggregation and query engine |
 | 9 | jaeger | Jaeger | 16686 | Distributed tracing (available — requires app instrumentation) |
 | 10 | grafana | Grafana | 3001 | Metric visualization and dashboards |
@@ -108,7 +108,7 @@ graph TB
 | 16 | redis-exporter | Prometheus Redis Exporter | 9121 | Redis performance metrics |
 | 17 | blackbox-exporter | Prometheus Blackbox Exporter | 9115 | Service endpoint probe checks |
 | 18 | promtail | Grafana Promtail | — | Log collection agent |
-| 19 | ai-anomaly | Custom | 8110 | Anomaly detection engine (IsolationForest, LOF, MAD) |
+| 19 | ai-anomaly | Custom | 8085 | Anomaly detection engine (IsolationForest, LOF, MAD) |
 | 20 | license-server-v2 | Custom Python | 8200 | License key validation |
 | 21 | license-ui | React | 8201 | License management interface |
 

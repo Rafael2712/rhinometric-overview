@@ -69,7 +69,7 @@ First public-facing release with product documentation and branding. Introduced 
 
 - Frontend migrated from Create React App to Vite.
 - Authentication changed from session-based to JWT.
-- Prometheus reconfigured as 15-day short-term buffer with VictoriaMetrics as long-term store.
+- Prometheus reconfigured as 30-day short-term buffer with VictoriaMetrics as long-term store.
 
 ---
 

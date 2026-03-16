@@ -69,7 +69,7 @@ Primera versión pública con documentación de producto y marca. Introdujo dete
 
 - Frontend migrado de Create React App a Vite.
 - Autenticación cambiada de basada en sesión a JWT.
-- Prometheus reconfigurado como buffer de corto plazo de 15 días con VictoriaMetrics como almacén de largo plazo.
+- Prometheus reconfigurado como buffer de corto plazo de 30 días con VictoriaMetrics como almacén de largo plazo.
 
 ---
 

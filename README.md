@@ -58,7 +58,7 @@ Log aggregation via Loki/Promtail integrated into anomaly and incident views.
 Jaeger/OpenTelemetry tracing infrastructure is deployed and ready. Trace data collection requires applications to be instrumented with OpenTelemetry SDKs. For most deployments, metrics and logs provide the primary observability signals.
 
 ### Role-Based Access Control
-Four-role permission system (SuperAdmin, Admin, Operator, Viewer) enforced at both API and UI levels.
+Four-role permission system (Owner, Admin, Operator, Viewer) enforced at both API and UI levels.
 
 ### Licensing
 Service-based license tiers: Community, Professional, Enterprise. Each tier defines the maximum number of monitored services and available features.

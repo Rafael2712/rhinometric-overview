@@ -163,11 +163,11 @@ Jaeger y OpenTelemetry Collector están desplegados como parte del stack de la p
 ---
 
 ### RBAC
-Sistema de permisos con cuatro roles aplicado a nivel de API (middleware FastAPI) e interfaz (guardas de rutas React). SuperAdmin gestiona usuarios y licencias. Admin gestiona funcionalidades de monitoreo. Operador maneja alertas e incidentes. Visor tiene acceso de solo lectura a la plataforma.
+Sistema de permisos con cuatro roles aplicado a nivel de API (middleware FastAPI) e interfaz (guardas de rutas React). Owner gestiona usuarios y licencias. Admin gestiona funcionalidades de monitoreo. Operador maneja alertas e incidentes. Visor tiene acceso de solo lectura a la plataforma.
 
 | Rol | Usuarios | Servicios | Alertas | Incidentes | Configuración |
 |-----|:--------:|:---------:|:-------:|:----------:|:-------------:|
-| SuperAdmin | Gestionar | Gestionar | Completo | Completo | Completo |
+| Owner | Gestionar | Gestionar | Completo | Completo | Completo |
 | Admin | Ver | Gestionar | Completo | Completo | Limitado |
 | Operador | Ver | Ver | Crear | Gestionar | — |
 | Visor | — | Ver | Ver | Ver | — |
