@@ -125,7 +125,7 @@ The backend exposes all APIs under `/api/`. Key routes:
 | `/api/alert-history` | Historical alert records |
 | `/api/incidents` | Incident lifecycle management |
 | `/api/external-services` | Service inventory & monitoring |
-| `/api/correlation/{anomaly_group_id}` | Anomaly correlation engine |
+| `/api/correlation/correlate` | Anomaly correlation engine (POST) |
 | `/api/service-map` | Service topology & dependencies |
 | `/api/slo` | SLO/SLA definitions & compliance |
 | `/api/logs` | Log query interface |

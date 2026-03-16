@@ -61,8 +61,7 @@ Validate software license keys, enforce tier-based feature access, and control t
 |--------|------|-------------|
 | GET | `/api/license/status` | Current license status and tier |
 | POST | `/api/license/activate` | Activate a license key |
-| GET | `/api/license/features` | Available features for current tier |
-| POST | `/api/license/validate` | Force re-validation |
+| GET | `/api/license/limits` | License limits and current usage per role |
 
 ## Infrastructure Components
 
@@ -78,7 +77,7 @@ Validate software license keys, enforce tier-based feature access, and control t
 
 ## Frontend
 
-- **Route:** `/licensing`
+- **Route:** `/license`
 - **Key Features:** License status display, key activation form, tier information, feature availability matrix, current service count vs. tier limit.
 
 ## Pre-Production Notes

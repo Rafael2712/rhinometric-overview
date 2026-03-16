@@ -13,7 +13,7 @@ Automatically detect abnormal metric behavior across all monitored services with
 ## What It Does
 
 - Runs as a **dedicated anomaly detection engine** in its own container (`ai-anomaly`) that connects to VictoriaMetrics via PromQL.
-- Pulls metric time-series for all active services at configurable intervals (default: 5 minutes).
+- Pulls metric time-series for all active services at configurable intervals (default: 10 minutes).
 - Applies an IsolationForest ensemble model to each metric series.
 - Scores each data point with an anomaly probability (0.0–1.0).
 - Groups co-occurring anomalies by service and time window into **anomaly groups**.
@@ -66,7 +66,7 @@ VictoriaMetrics ──PromQL──▶ Anomaly Detection Engine ──PostgreSQL�
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `ANOMALY_CHECK_INTERVAL` | `300` | Seconds between analysis runs |
+| `ANOMALY_CHECK_INTERVAL` | `600` | Seconds between analysis runs |
 | `ANOMALY_SCORE_THRESHOLD` | `0.7` | Minimum score to flag as anomaly |
 | `MAD_THRESHOLD_PCT` | `0.3` | Minimum data point exceedance ratio |
 | `ISOLATION_FOREST_ESTIMATORS` | `100` | Number of trees in the ensemble |

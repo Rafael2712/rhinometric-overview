@@ -20,7 +20,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Alert Rules Engine**: Rule-based alerting with threshold, rate-of-change, and absence conditions.
 - **Notification Pipeline**: Slack and email notifications triggered by alert rules. Configurable channels per rule with severity mapping.
 - **Deep Link System**: Grafana deep links generated per service/anomaly with time-range context. Panels for CPU, memory, latency, HTTP errors, and saturation.
-- **RBAC System**: Role-based access control with 4 roles (SuperAdmin, Admin, Operator, Viewer) enforced at both API and UI levels.
+- **RBAC System**: Role-based access control with 4 roles (Owner, Admin, Operator, Viewer) enforced at both API and UI levels.
 - **Licensing Module**: Service-based license validation with tier enforcement (Community, Professional, Enterprise). Tiers control the number of monitored services and available features.
 - **30% MAD Threshold Guard**: Anomaly detection engine rejects groups with fewer than 30% data points above the MAD threshold.
 - **Notification Cooldown**: Configurable cooldown per alert rule prevents duplicate notifications during sustained anomaly events.

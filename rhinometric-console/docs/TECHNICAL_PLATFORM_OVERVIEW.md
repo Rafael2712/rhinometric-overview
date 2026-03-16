@@ -56,7 +56,7 @@ graph TB
     end
 
     subgraph "Intelligence Layer"
-        AI["Anomaly Detection<br/>Engine :8088"]
+        AI["Anomaly Detection<br/>Engine :8085"]
     end
 
     USER --> NGINX
@@ -113,7 +113,7 @@ graph TB
 | `rhinometric-redis-exporter` | oliver006/redis_exporter | 9121 | Redis metrics | — |
 | `rhinometric-blackbox-exporter` | prom/blackbox-exporter | 9115 | External endpoint probing | — |
 | `rhinometric-promtail` | grafana/promtail | — | Log shipping | — |
-| `rhinometric-ai-anomaly` | custom | 8088 | Anomaly detection engine (IsolationForest, LOF, MAD) | HTTP /health |
+| `rhinometric-ai-anomaly` | custom | 8085 | Anomaly detection engine (IsolationForest, LOF, MAD) | HTTP /health |
 | `rhinometric-license-server-v2` | custom | 8200 | License management | HTTP /health |
 | `rhinometric-license-ui` | custom | 3003 | License activation UI | HTTP / |
 
@@ -249,8 +249,8 @@ External → :80 (Nginx)
 ### 5.1 Architecture
 
 - **Type:** Dedicated detection engine running as a containerized service
-- **Port:** 8088
-- **Check interval:** 300 seconds (5 minutes)
+- **Port:** 8085
+- **Check interval:** 600 seconds (10 minutes)
 - **Data source:** VictoriaMetrics (PromQL queries)
 
 ### 5.2 Detection Models
@@ -412,10 +412,10 @@ flowchart LR
 
 | Data Type | Default Retention |
 |-----------|------------------|
-| Prometheus metrics | 15 days |
+| Prometheus metrics | 30 days |
 | VictoriaMetrics | 90 days |
-| Loki logs | 30 days |
-| Jaeger traces | 7 days |
+| Loki logs | 7 days |
+| Jaeger traces | 2 days |
 | PostgreSQL records | Indefinite (with cleanup service) |
 
 ### 8.3 Self-Monitoring
@@ -433,7 +433,7 @@ The platform monitors itself:
 1. **Single-node architecture:** No horizontal scaling, no HA. Single point of failure.
 2. **Grafana dependency:** Dashboards rely on embedded Grafana; no native dashboard builder.
 3. **Detection engine packaging:** The anomaly detection engine ships as a pre-built container image; source is not distributed with the deployment.
-4. **No database migrations:** Schema changes require manual SQL or recreating containers.
+4. **Partial migration coverage:** Alembic is configured with initial migrations, but not all schema changes are tracked yet. Broader migration coverage needed.
 5. **SMTP coupling:** Email delivery depends on Zoho SMTP; no fallback provider.
 6. **Secret management:** Environment variables in `.env` file; no vault integration.
 7. **No CI/CD pipeline:** Deployment is manual `docker compose` commands.

@@ -46,8 +46,9 @@ Enriched Context → Anomaly Detail / Incident Timeline
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/api/correlation/` | Query correlations for a service + time range |
-| GET | `/api/correlation/{anomaly_group_id}` | Correlations linked to a specific anomaly group |
+| POST | `/api/correlation/correlate` | Correlate an event with observability data in a time window |
+| GET | `/api/correlation/health` | Correlation engine health check |
+| GET | `/api/correlation/config` | Current correlation engine configuration |
 
 ## Dependencies
 

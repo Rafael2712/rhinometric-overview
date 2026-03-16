@@ -21,7 +21,7 @@ Centralized log aggregation for all monitored services and infrastructure compon
 - Log streams are labeled by: container name, service name, log level, and environment.
 - The platform exposes a log search interface via Grafana Explore and optionally via the native UI.
 - Correlation Engine queries Loki to enrich anomaly and incident views with relevant log entries.
-- Log retention is configurable (default: 15 days in Loki).
+- Log retention is configurable (default: 7 days in Loki).
 
 ### What It Does Not Do
 

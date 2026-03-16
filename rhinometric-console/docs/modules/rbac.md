@@ -14,13 +14,13 @@ Control user access to platform features based on assigned roles. Enforced at bo
 
 - **Authentication**: JWT-based authentication with token issued on login. Tokens contain user ID, role, and expiry.
 - **4 Predefined Roles**:
-  - **SuperAdmin**: Full access including user management, license operations, and system configuration.
+  - **Owner**: Full access including user management, license operations, and system configuration.
   - **Admin**: Full access to monitoring and incident management features. Cannot manage users or licenses.
   - **Operator**: Can view all data, create/modify alert rules, manage incidents. Cannot modify system settings.
   - **Viewer**: Read-only access to dashboards, anomalies, incidents. Cannot create or modify any resources.
 - **API Enforcement**: FastAPI dependency injection checks the JWT role claim against route-level permission requirements.
 - **UI Enforcement**: React route guards check user role from auth store. Restricted components/buttons are hidden or disabled based on role.
-- **User Management**: SuperAdmin can create, edit, deactivate, and assign roles to users.
+- **User Management**: Owner can create, edit, deactivate, and assign roles to users.
 - **Session**: JWT tokens expire after a configurable period (default: 24 hours). Refresh flow is available.
 
 ## What It Does Not Do
@@ -35,7 +35,7 @@ Control user access to platform features based on assigned roles. Enforced at bo
 
 ## Role Permission Matrix
 
-| Permission | SuperAdmin | Admin | Operator | Viewer |
+| Permission | Owner | Admin | Operator | Viewer |
 |-----------|:----------:|:-----:|:--------:|:------:|
 | View dashboards | ✓ | ✓ | ✓ | ✓ |
 | View anomalies | ✓ | ✓ | ✓ | ✓ |
@@ -71,10 +71,10 @@ Control user access to platform features based on assigned roles. Enforced at bo
 |--------|------|-------------|
 | POST | `/api/auth/login` | Authenticate and receive JWT |
 | POST | `/api/auth/refresh` | Refresh JWT token |
-| GET | `/api/users/` | List users (SuperAdmin only) |
-| POST | `/api/users/` | Create user (SuperAdmin only) |
-| PUT | `/api/users/{id}` | Update user (SuperAdmin only) |
-| DELETE | `/api/users/{id}` | Deactivate user (SuperAdmin only) |
+| GET | `/api/users/` | List users (Owner only) |
+| POST | `/api/users/` | Create user (Owner only) |
+| PUT | `/api/users/{id}` | Update user (Owner only) |
+| DELETE | `/api/users/{id}` | Deactivate user (Owner only) |
 | GET | `/api/users/me` | Current user profile |
 
 ## Configuration
@@ -95,7 +95,7 @@ Control user access to platform features based on assigned roles. Enforced at bo
 
 ## Frontend
 
-- **Routes:** `/users` (SuperAdmin), `/profile`
+- **Routes:** `/users` (Owner), `/profile`
 - **Key Features:** User list with role assignment, user creation form, profile editor.
 - **Guards:** React `ProtectedRoute` component checks role before rendering. Insufficient role redirects to dashboard.
 

@@ -46,12 +46,12 @@ Central registry of all monitored endpoints. **Services are the primary entity a
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/api/services/` | List all services |
-| POST | `/api/services/` | Register a new service |
-| GET | `/api/services/{id}` | Get service details |
-| PUT | `/api/services/{id}` | Update service configuration |
-| DELETE | `/api/services/{id}` | Remove a service |
-| GET | `/api/services/{id}/status` | Current health status |
+| GET | `/api/external-services` | List all services |
+| POST | `/api/external-services` | Register a new service |
+| GET | `/api/external-services/{service_id}` | Get service details |
+| PUT | `/api/external-services/{service_id}` | Update service configuration |
+| DELETE | `/api/external-services/{service_id}` | Remove a service |
+| GET | `/api/external-services/{service_id}/status` | Current health status |
 
 ## Dependencies
 

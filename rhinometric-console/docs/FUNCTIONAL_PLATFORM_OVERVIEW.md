@@ -53,7 +53,7 @@ Every module feeds into this pipeline, creating a unified operational picture fr
 **Purpose:** Automatic detection of statistical anomalies across all monitored metrics using machine learning models.
 
 **What it does:**
-- Runs a detection cycle every 5 minutes (configurable)
+- Runs a detection cycle every 10 minutes (configurable)
 - Analyzes infrastructure metrics (CPU, memory, disk, network) and service metrics (latency, health, availability)
 - Uses multiple detection models: **Isolation Forest**, **Local Outlier Factor (LOF)**, and **Statistical (MAD-based modified Z-score)**
 - Groups anomalies by fingerprint (metric + entity) with occurrence history
@@ -369,7 +369,7 @@ Every module feeds into this pipeline, creating a unified operational picture fr
 **What it does:**
 - License server (Python/FastAPI) with PostgreSQL backend
 - License key validation (format: `RHINO-XXXX-XXXX-XXXX-XXXX`)
-- Tier support: `starter`, `professional`, `enterprise`
+- Tier support: `community`, `professional`, `enterprise`
 - Feature gating based on tier
 - **Service-based model:** Each tier defines the maximum number of monitored services (e.g., Community = 10, Professional = 50, Enterprise = unlimited)
 - License UI for activation and status display

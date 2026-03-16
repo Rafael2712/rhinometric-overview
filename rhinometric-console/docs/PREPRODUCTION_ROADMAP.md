@@ -43,7 +43,7 @@ The current Services page is designed for 10–30 services. For commercial viabi
 **Priority:** P0
 **Effort:** Ongoing
 
-- [ ] Database migration system (Alembic setup)
+- [x] Database migration system (Alembic setup — initial migrations in place)
 - [ ] Error handling standardization across all routers
 - [ ] API response schema validation (Pydantic models for all responses)
 - [ ] Remove hardcoded URLs and magic numbers
