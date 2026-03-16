@@ -120,16 +120,18 @@ def _calculate_overall_status(
     degraded: int,
     down: int,
     total: int,
-    has_latency_anomalies: bool = False,
 ) -> str:
     """
-    Determine the global platform health status.
+    Determine the global platform health status based on ACTUAL service state.
 
     Rules (in priority order):
       1. >10% of services DOWN  → CRITICAL
       2. ANY service DOWN       → DEGRADED
-      3. Latency anomalies exist → DEGRADED
+      3. ANY service DEGRADED   → DEGRADED
       4. Everything healthy      → OPERATIONAL
+
+    Note: AI anomalies are informational and intentionally excluded.
+    They have their own dedicated card on the Home dashboard.
     """
     if total == 0:
         return "OPERATIONAL"
@@ -142,7 +144,7 @@ def _calculate_overall_status(
     if down > 0:
         return "DEGRADED"
 
-    if has_latency_anomalies:
+    if degraded > 0:
         return "DEGRADED"
 
     return "OPERATIONAL"
@@ -200,7 +202,7 @@ async def get_services_summary(db: Session) -> Dict[str, Any]:
     # --- Parallel-ish data collection ---
     prom_data = await _fetch_prometheus_up_targets()
     ext_data = _fetch_external_services_from_db(db)
-    has_latency = await _check_latency_anomalies()
+    # Latency anomalies intentionally excluded — they are informational, not service health
 
     # --- Internal (platform) services ---
     internal_total = prom_data["internal_up"] + prom_data["internal_down"]
@@ -235,7 +237,6 @@ async def get_services_summary(db: Session) -> Dict[str, Any]:
         degraded=total_degraded,
         down=total_down,
         total=total_services,
-        has_latency_anomalies=has_latency,
     )
 
     return {

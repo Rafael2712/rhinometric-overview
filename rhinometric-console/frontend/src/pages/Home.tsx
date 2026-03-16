@@ -17,6 +17,36 @@ interface KPIHistory {
   alerts_24h: SparklinePoint[]
 }
 
+interface ServiceSummary {
+  total_services: number
+  external_services: number
+  internal_services: number
+  healthy: number
+  degraded: number
+  down: number
+  overall_status: string
+}
+
+/** Map backend overall_status to UI badge status key */
+function mapSummaryStatus(overall: string): 'success' | 'warning' | 'error' {
+  switch (overall) {
+    case 'OPERATIONAL': return 'success'
+    case 'CRITICAL':    return 'error'
+    default:            return 'warning' // DEGRADED or unknown
+  }
+}
+
+/** Map backend overall_status to human-readable label */
+function mapSummaryLabel(overall: string): string {
+  switch (overall) {
+    case 'OPERATIONAL': return 'Operational'
+    case 'DEGRADED':    return 'Degraded'
+    case 'CRITICAL':    return 'Critical'
+    default:            return overall
+  }
+}
+
+
 export function HomePage() {
   const navigate = useNavigate()
   const [history, setHistory] = useState<KPIHistory>({
@@ -50,6 +80,22 @@ export function HomePage() {
     refetchInterval: 5000, // Refresh every 5 seconds for "live" feel
   })
 
+
+  // Fetch service summary (single source of truth for health status)
+  const { data: summaryData } = useQuery<ServiceSummary>({
+    queryKey: ['services-summary', token],
+    queryFn: async () => {
+      if (!token) throw new Error('No token available')
+      const response = await fetch('/api/services/summary', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      if (!response.ok) throw new Error('Failed to fetch service summary')
+      return response.json()
+    },
+    enabled: !!token,
+    refetchInterval: 5000,
+  })
+
   // Update history when new data arrives
   useEffect(() => {
     if (kpisData) {
@@ -62,19 +108,21 @@ export function HomePage() {
           return newSeries.slice(-20)
         }
 
-        // Use real service status percentage instead of random
-        const serviceStatusValue = kpisData.service_status.value === "Operational" ? 100 :
-                                  (kpisData.service_status.operational_count / kpisData.service_status.total_count) * 100
+        // Use summary endpoint as source of truth for service health %
+        const serviceStatusValue = summaryData
+          ? (summaryData.total_services > 0 ? (summaryData.healthy / summaryData.total_services) * 100 : 100)
+          : (kpisData.service_status.value === "Operational" ? 100 :
+              (kpisData.service_status.operational_count / kpisData.service_status.total_count) * 100)
 
         return {
           service_status: updateSeries(prev.service_status, serviceStatusValue),
-          monitored_hosts: updateSeries(prev.monitored_hosts, kpisData.monitored_hosts.value),
+          monitored_hosts: updateSeries(prev.monitored_hosts, summaryData ? summaryData.total_services : kpisData.monitored_hosts.value),
           active_anomalies: updateSeries(prev.active_anomalies, kpisData.active_anomalies.value),
           alerts_24h: updateSeries(prev.alerts_24h, kpisData.alerts_24h.value)
         }
       })
     }
-  }, [kpisData])
+  }, [kpisData, summaryData])
 
   // Fetch historical data once on mount
   const { data: historyData } = useQuery({
@@ -112,20 +160,24 @@ export function HomePage() {
   const kpis = kpisData ? [
     {
       name: 'Service Status',
-      value: kpisData.service_status.value,
-      status: kpisData.service_status.status,
+      value: summaryData ? mapSummaryLabel(summaryData.overall_status) : kpisData.service_status.value,
+      status: summaryData ? mapSummaryStatus(summaryData.overall_status) : kpisData.service_status.status,
       icon: Activity,
-      change: kpisData.service_status.change,
+      change: summaryData
+        ? `${summaryData.healthy}/${summaryData.total_services} healthy · ${summaryData.down > 0 ? summaryData.down + ' down' : 'All up'}`
+        : kpisData.service_status.change,
       sparkline: history.service_status,
       trend: 'up',
       link: '/system-health'
     },
     {
       name: 'Monitored Services',
-      value: kpisData.monitored_hosts.value,
-      status: kpisData.monitored_hosts.status,
+      value: summaryData ? String(summaryData.total_services) : kpisData.monitored_hosts.value,
+      status: summaryData ? (summaryData.down > 0 ? 'warning' : 'success') : kpisData.monitored_hosts.status,
       icon: Server,
-      change: kpisData.monitored_hosts.change,
+      change: summaryData
+        ? `${summaryData.external_services} external · ${summaryData.internal_services} internal`
+        : kpisData.monitored_hosts.change,
       sparkline: history.monitored_hosts,
       trend: 'stable',
       link: '/services'
@@ -195,8 +247,8 @@ export function HomePage() {
                 <div className="p-1.5 sm:p-2 bg-primary/10 rounded-lg">
                   <Icon className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
                 </div>
-                <span className={`text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full ${kpi.status === 'success' ? 'bg-success/10 text-success' : 'bg-warning/10 text-warning'}`}>
-                  {kpi.status === 'success' ? 'Healthy' : 'Warning'}
+                <span className={`text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full ${kpi.status === 'success' ? 'bg-success/10 text-success' : kpi.status === 'error' ? 'bg-red-500/10 text-red-400' : 'bg-warning/10 text-warning'}`}>
+                  {kpi.status === 'success' ? 'Healthy' : kpi.status === 'error' ? 'Critical' : 'Warning'}
                 </span>
               </div>
               <p className="text-text-muted text-xs sm:text-sm mb-0.5 sm:mb-1">{kpi.name}</p>
@@ -215,7 +267,7 @@ export function HomePage() {
                       <Line
                         type="monotone"
                         dataKey="value"
-                        stroke={kpi.status === 'success' ? '#10b981' : '#f59e0b'}
+                        stroke={kpi.status === 'success' ? '#10b981' : kpi.status === 'error' ? '#ef4444' : '#f59e0b'}
                         strokeWidth={2}
                         dot={false}
                         isAnimationActive={false}
