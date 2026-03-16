@@ -2,7 +2,7 @@
 
 # Rhinometric
 
-**Intelligent Observability for Modern Infrastructure**
+**Service-Centric Observability Platform**
 
 [![Version](https://img.shields.io/badge/version-2.7.0-blue.svg)]()
 [![License](https://img.shields.io/badge/license-Proprietary-red.svg)]()
@@ -11,19 +11,21 @@
 
 ## What is Rhinometric?
 
-Rhinometric is an enterprise observability platform that unifies metrics, logs, traces, and AI-driven anomaly detection into a single operational console. It is designed for infrastructure and DevOps teams that need to monitor services, detect issues before they cause outages, and manage incidents with full lifecycle support.
+Rhinometric is a **service-centric observability platform** that organizes all operational data — metrics, logs, and AI-driven anomaly detection — around **monitored services** as the primary entity. It is designed for infrastructure and DevOps teams that need to monitor services, detect issues before they cause outages, and manage incidents with full lifecycle support.
 
 Unlike traditional monitoring tools that rely exclusively on static thresholds, Rhinometric adds an AI anomaly detection layer that automatically identifies abnormal behavior across all monitored services — without requiring manual rule configuration for every metric.
+
+The platform's commercial model is based on the number of **monitored services**, with three license tiers offering progressively more capabilities.
 
 ---
 
 ## Core Capabilities
 
 ### Service Monitoring
-Register and monitor services with periodic health checks. View real-time status, historical availability, and detailed metrics through integrated Grafana dashboards.
+Register and monitor services with periodic health checks. View real-time status, historical availability, and detailed metrics through integrated Grafana dashboards. Services are the central entity around which all platform modules are organized.
 
 ### AI Anomaly Detection
-An IsolationForest-based detector analyzes metric time-series data and identifies statistical anomalies, grouping related deviations by service and time window. A MAD threshold guard filters noise to reduce false positives.
+A dedicated anomaly detection engine analyzes metric time-series data and identifies statistical anomalies using IsolationForest, LOF, and MAD-based models. Related deviations are grouped by service and time window. A 30% MAD threshold guard filters noise to reduce false positives.
 
 ### AI Insights
 Natural-language summaries explain detected anomalies in plain terms — describing what changed, by how much, and potential impact — so operators can understand issues without manual metric analysis.
@@ -44,19 +46,22 @@ Live dependency graph showing service interconnections, health status, and anoma
 Define Service Level Objectives with error-budget tracking and alert on budget exhaustion before SLA breaches occur.
 
 ### Correlation Engine
-Cross-signal analysis linking metrics, logs, and traces to anomaly events for context enrichment.
+Cross-signal analysis linking metrics and logs (and optionally traces, when available) to anomaly events for context enrichment.
 
 ### Notification Pipeline
 Slack and email notifications with configurable channels, cooldown periods, resolve timeouts, and severity-appropriate templates.
 
-### Centralized Logs & Traces
-Log aggregation via Loki/Promtail and distributed tracing via Jaeger/OpenTelemetry, integrated into anomaly and incident views.
+### Centralized Logs
+Log aggregation via Loki/Promtail integrated into anomaly and incident views.
+
+### Distributed Tracing (Available)
+Jaeger/OpenTelemetry tracing infrastructure is deployed and ready. Trace data collection requires applications to be instrumented with OpenTelemetry SDKs. For most deployments, metrics and logs provide the primary observability signals.
 
 ### Role-Based Access Control
 Four-role permission system (SuperAdmin, Admin, Operator, Viewer) enforced at both API and UI levels.
 
 ### Licensing
-Hardware-fingerprinted license validation with three tiers: Community, Professional, Enterprise.
+Service-based license tiers: Community, Professional, Enterprise. Each tier defines the maximum number of monitored services and available features.
 
 ---
 
@@ -75,12 +80,12 @@ Rhinometric runs as a containerized stack of 21 Docker services:
 │                  Data Layer                          │
 │  PostgreSQL │ Redis │ VictoriaMetrics │ Prometheus   │
 ├─────────────────────────────────────────────────────┤
-│               Observability Stack                   │
-│  Loki │ Jaeger │ OTel Collector │ Grafana           │
-│  Alertmanager │ Promtail                            │
+│             Observability & Intelligence            │
+│  Loki │ Grafana │ Alertmanager │ Promtail           │
+│  Anomaly Detection Engine │ License Server          │
 ├─────────────────────────────────────────────────────┤
-│               Intelligence Layer                    │
-│  AI Anomaly Detector │ License Server               │
+│          Available Capabilities                     │
+│  Jaeger │ OTel Collector (tracing)                  │
 ├─────────────────────────────────────────────────────┤
 │               Infrastructure Exporters              │
 │  Node Exporter │ cAdvisor │ Postgres Exporter       │
@@ -94,13 +99,13 @@ Rhinometric runs as a containerized stack of 21 Docker services:
 |-------|-----------|
 | Frontend | React 18, TypeScript, Vite, TanStack Query, Zustand |
 | Backend | Python 3.11, FastAPI, SQLAlchemy, Pydantic |
-| Database | PostgreSQL 15, Redis 7 |
+| Database | PostgreSQL 16, Redis 7 |
 | Metrics | Prometheus, VictoriaMetrics |
 | Logs | Loki, Promtail |
-| Traces | Jaeger, OpenTelemetry Collector |
 | Visualization | Grafana |
-| AI Detection | IsolationForest (scikit-learn), custom Python service |
+| Anomaly Detection | IsolationForest, LOF, MAD — dedicated detection engine |
 | Alerting | Alertmanager, custom notification pipeline |
+| Tracing (available) | Jaeger, OpenTelemetry Collector |
 | Proxy | Nginx |
 | Deployment | Docker Compose |
 
@@ -123,7 +128,7 @@ Rhinometric runs as a containerized stack of 21 Docker services:
 
 | Feature | Community | Professional | Enterprise |
 |---------|:---------:|:------------:|:----------:|
-| Service Monitoring | ✓ (10 max) | ✓ (50 max) | ✓ (Unlimited) |
+| Monitored Services | Up to 10 | Up to 50 | Unlimited |
 | Health Dashboards | ✓ | ✓ | ✓ |
 | AI Anomaly Detection | — | ✓ | ✓ |
 | AI Insights | — | ✓ | ✓ |
@@ -152,8 +157,8 @@ Rhinometric runs as a containerized stack of 21 Docker services:
 
 ## Contact
 
-**Rhinometric Team**  
-Website: [rhinometric.com](https://rhinometric.com)  
+**Rhinometric Team**
+Website: [rhinometric.com](https://rhinometric.com)
 Email: info@rhinometric.com
 
 ---

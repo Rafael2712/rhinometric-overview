@@ -1,6 +1,6 @@
 # Rhinometric — Modules
 
-**Version:** 2.7.0  
+**Version:** 2.7.0
 **Maintained by:** Rhinometric Team — info@rhinometric.com
 
 ---
@@ -23,9 +23,10 @@ Rhinometric is organized into 15 functional modules. The table below summarizes 
 | SLO/SLA | Error budget and compliance tracking | — | — | ✓ | Stable |
 | Correlation Engine | Cross-signal context enrichment | — | ✓ | ✓ | Beta |
 | Notifications | Slack and Email delivery pipeline | Email | All | All | Stable |
-| Logs & Traces | Centralized log and trace access | ✓ | ✓ | ✓ | Stable |
+| Logs | Centralized log aggregation and search | ✓ | ✓ | ✓ | Stable |
+| Distributed Tracing | Trace exploration (requires instrumentation) | ✓ | ✓ | ✓ | Available |
 | RBAC | Role-based access control | 2 roles | 3 roles | 4 roles | Stable |
-| Licensing | License validation and tier enforcement | ✓ | ✓ | ✓ | Stable |
+| Licensing | Service-based license validation and tier enforcement | ✓ | ✓ | ✓ | Stable |
 
 ---
 
@@ -33,6 +34,8 @@ Rhinometric is organized into 15 functional modules. The table below summarizes 
 
 ### Service Monitoring
 Register endpoints with URL, protocol, and check interval. Rhinometric uses Blackbox Exporter to perform periodic health probes, storing results in Prometheus/VictoriaMetrics. The dashboard shows real-time status, availability percentages over configurable windows, and links to Grafana metric panels.
+
+**Services are the primary entity** around which the entire platform is organized. The commercial model, anomaly detection, alerting, incident management, and SLO tracking all reference monitored services as their core unit.
 
 **Key capabilities:**
 - HTTP/HTTPS/TCP health probes
@@ -43,10 +46,11 @@ Register endpoints with URL, protocol, and check interval. Rhinometric uses Blac
 ---
 
 ### AI Anomaly Detection
-A containerized IsolationForest model analyzes metric time-series from VictoriaMetrics at regular intervals. Data points scoring above the anomaly threshold are grouped by service and time window. A 30% MAD (Median Absolute Deviation) guard filters noise by discarding groups with insufficient statistical significance.
+A dedicated anomaly detection engine analyzes metric time-series from VictoriaMetrics at regular intervals. Data points scoring above the anomaly threshold are grouped by service and time window. A 30% MAD (Median Absolute Deviation) guard filters noise by discarding groups with insufficient statistical significance.
 
 **Key capabilities:**
 - Automatic anomaly detection without manual thresholds
+- Multiple models: IsolationForest, LOF, MAD-based Statistical
 - Severity scoring (Low, Medium, High, Critical)
 - Anomaly grouping by service and time
 - Noise filtering with MAD threshold guard
@@ -118,10 +122,10 @@ Define objectives per service with target metrics (availability, latency, error 
 ---
 
 ### Correlation Engine
-Links metrics, logs, and traces around an anomaly event. Queries VictoriaMetrics for co-occurring metric deviations, Loki for error-level log entries, and Jaeger for high-latency or error traces within the trigger time window. Results enrich anomaly and incident views.
+Links metrics and logs around an anomaly event. Queries VictoriaMetrics for co-occurring metric deviations, Loki for error-level log entries, and optionally Jaeger for traces when instrumented applications are available. Results enrich anomaly and incident views.
 
 **Key capabilities:**
-- Cross-signal correlation (metrics + logs + traces)
+- Cross-signal correlation (metrics + logs, optionally traces)
 - Temporal proximity ranking
 - Anomaly and incident enrichment
 
@@ -138,18 +142,28 @@ Alert-triggered notifications delivered via Slack webhooks and SMTP email. Templ
 
 ---
 
-### Logs & Traces
-Centralized collection and access to log and trace data. Promtail agents ship container logs to Loki; OpenTelemetry-instrumented services export traces to Jaeger via the OTel Collector. Data accessible through Grafana Explore and the Correlation Engine.
+### Logs
+Centralized log aggregation and search. Promtail agents ship container logs to Loki. Data is accessible through Grafana Explore and the Correlation Engine.
 
 **Key capabilities:**
 - Container log aggregation
-- Distributed tracing
-- Integration with Grafana data sources
+- LogQL query interface
+- Integration with anomaly and incident views
+
+---
+
+### Distributed Tracing (Available Capability)
+Jaeger and OpenTelemetry Collector are deployed as part of the platform stack. Trace data collection **requires applications to be instrumented with OpenTelemetry SDKs**. Currently, only the Rhinometric backend itself emits traces. For most deployments, metrics and logs provide the primary observability signals.
+
+**Key capabilities:**
+- Trace search and span waterfall visualization
+- Jaeger integration via Grafana
+- Available for OTel-instrumented services
 
 ---
 
 ### RBAC
-Four-role permission system enforced at API (FastAPI middleware) and UI (React route guards) levels. SuperAdmin manages users and licenses. Admin manages monitoring features. Operator handles alerts and incidents. Viewer has read-only access the platform.
+Four-role permission system enforced at API (FastAPI middleware) and UI (React route guards) levels. SuperAdmin manages users and licenses. Admin manages monitoring features. Operator handles alerts and incidents. Viewer has read-only access to the platform.
 
 | Role | Users | Services | Alerts | Incidents | Settings |
 |------|:-----:|:--------:|:------:|:---------:|:--------:|
@@ -161,7 +175,13 @@ Four-role permission system enforced at API (FastAPI middleware) and UI (React r
 ---
 
 ### Licensing
-Hardware-fingerprinted license validation with three tiers. The License Server validates keys on startup and periodically. Feature availability is controlled by the active tier. The License UI provides a standalone interface for key entry and status display.
+Service-based license validation with three tiers. Each tier defines the maximum number of monitored services and available features. The License Server validates keys on startup and periodically. The License UI provides a standalone interface for key entry and status display.
+
+| Tier | Max Services | AI Features | Advanced Modules |
+|------|:-----------:|:-----------:|:----------------:|
+| Community | 10 | — | — |
+| Professional | 50 | ✓ | Partial |
+| Enterprise | Unlimited | ✓ | Full |
 
 ---
 
@@ -178,7 +198,7 @@ Services ──▶ AI Anomaly ──▶ AI Insights
                 ├──▶ Correlation Engine
                 │         │
                 │         ├── Logs (Loki)
-                │         └── Traces (Jaeger)
+                │         └── Traces (Jaeger, when available)
                 │
                 └──▶ Service Map
                           │
@@ -186,7 +206,7 @@ Services ──▶ AI Anomaly ──▶ AI Insights
 
 SLO/SLA ◀── Services + Alert Rules
 RBAC ──▶ All modules (permission enforcement)
-Licensing ──▶ All modules (feature gating)
+Licensing ──▶ All modules (feature gating + service count limits)
 ```
 
 ---

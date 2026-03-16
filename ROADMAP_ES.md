@@ -1,39 +1,42 @@
 # Rhinometric — Hoja de Ruta Pública
 
-**Versión:** 2.7.0  
-**Mantenido por:** Rhinometric Team — info@rhinometric.com
+**Versión:** 2.7.0
+**Mantenido por:** Equipo Rhinometric — info@rhinometric.com
 
 ---
 
 ## Estado Actual
 
-Rhinometric 2.7.0 es la versión más reciente, proporcionando detección de anomalías con IA, gestión de incidentes, análisis de causa raíz y un stack de observabilidad completo con 21 servicios contenedorizados.
+Rhinometric 2.7.0 es la última versión, ofreciendo una plataforma de observabilidad centrada en servicios con detección de anomalías con IA, gestión de incidentes, análisis de causa raíz e inteligencia operativa a través de 21 servicios containerizados.
 
 ---
 
 ## Planificado para v2.8.0 (Q2 2026)
 
 ### Estabilidad de la Plataforma
-- **Monitoreo de Servicios Escalable**: Paginación, búsqueda y operaciones masivas para 100+ servicios.
-- **Panel de Inicio Configurable**: Widgets seleccionables por usuario con persistencia de diseño por rol.
+- **Dashboard de Inicio Configurable**: Widgets seleccionables por el usuario con persistencia de layout basada en roles.
+- **Monitorización de Servicios Escalable**: Paginación, búsqueda y operaciones masivas para 100–200 servicios monitorizados.
 - **Migraciones de Base de Datos**: Versionado de esquema gestionado con Alembic para actualizaciones seguras.
 
 ### Distribución
-- **Instalador Ansible**: Despliegue empresarial automatizado con validación previa, verificaciones de compatibilidad de SO y capacidad de rollback.
-- **Validador de Licencias Compilado**: Binario de validación de licencias en Rust con huella de hardware (reemplaza implementación en Python).
+- **Instalador Ansible**: Despliegue empresarial automatizado con validación previa, verificación de compatibilidad de SO y capacidad de rollback.
+- **Validador de Licencias Compilado**: Binario Rust con validación basada en servicios y resistencia a manipulación (reemplaza implementación Python).
 
 ### Calidad
-- **Suite de Tests**: Tests unitarios (objetivo 80% cobertura), tests de integración, tests E2E para flujos críticos de usuario.
+- **Suite de Tests**: Tests unitarios (objetivo 80% cobertura), tests de integración, tests E2E para flujos de usuario críticos.
 - **Tests de Carga**: Operación validada con 100+ servicios, 1000+ flujos de métricas, 50+ grupos de anomalías, 10+ usuarios concurrentes.
+
+### Documentación
+- **Sitio de Documentación**: Portal de documentación versionado, con búsqueda y soporte multiidioma (EN/ES).
 
 ---
 
 ## Planificado para v2.9.0 (Q3 2026)
 
 ### Seguridad
-- **Registro de Auditoría**: Log completo de todas las operaciones administrativas.
+- **Pista de Auditoría**: Registro completo de todas las operaciones administrativas.
 - **Autenticación por API Key**: Acceso programático para automatización e integraciones.
-- **Gestión de Secretos**: Integración con vault cifrado para credenciales y llaves.
+- **Gestión de Secretos**: Integración con vault cifrado para credenciales y claves.
 
 ### Expansión de la Plataforma
 - **Notificaciones Microsoft Teams**: Soporte nativo de canal Teams.
@@ -45,14 +48,14 @@ Rhinometric 2.7.0 es la versión más reciente, proporcionando detección de ano
 
 ### Funcionalidades Enterprise
 - **SSO/LDAP/SAML**: Integración con proveedores de identidad externos.
-- **Constructor de Paneles Nativo**: Creación de paneles con arrastrar y soltar sin dependencia de Grafana.
-- **Arquitectura Multi-Tenant**: Aislamiento por tenant con branding personalizado y vistas de administración cruzada.
+- **Constructor de Dashboards Nativo**: Creación de dashboards drag-and-drop sin dependencia de Grafana.
+- **Arquitectura Multi-Tenant**: Aislamiento de tenants con marca por tenant, vistas de administración cross-tenant.
 - **Canales de Notificación Avanzados**: OpsGenie, SMS (Twilio), webhooks personalizados.
 
 ### Mejoras de IA
 - **Analítica Predictiva**: Pronósticos basados en tendencias para planificación de capacidad.
-- **Ajuste de Modelo Personalizado**: Parámetros de detección de anomalías por servicio.
-- **Bucle de Retroalimentación de Falsos Positivos**: Aprendizaje de falsos positivos marcados por el usuario para mejorar precisión.
+- **Ajuste de Modelos Personalizado**: Parámetros de detección de anomalías por servicio.
+- **Bucle de Retroalimentación de Falsos Positivos**: Aprendizaje de falsos positivos marcados por el usuario para mejorar la precisión.
 
 ---
 
@@ -64,25 +67,26 @@ Rhinometric 2.7.0 es la versión más reciente, proporcionando detección de ano
 | AI Insights (Lenguaje Natural) | ✅ Entregado |
 | Motor de Reglas de Alerta | ✅ Entregado |
 | Ciclo de Vida de Alertas e Historial | ✅ Entregado |
-| Gestión de Incidentes (Timeline/Comentarios/Tags) | ✅ Entregado |
+| Gestión de Incidentes (Línea Temporal/Comentarios/Etiquetas) | ✅ Entregado |
 | Análisis de Causa Raíz | ✅ Entregado |
 | Mapa de Servicios | ✅ Entregado |
 | SLO/SLA con Presupuesto de Error | ✅ Entregado |
-| Motor de Correlación (Métricas/Logs/Trazas) | ✅ Entregado |
+| Motor de Correlación (Métricas/Logs) | ✅ Entregado |
 | Pipeline de Notificaciones (Slack/Email) | ✅ Entregado |
 | RBAC (4 Roles) | ✅ Entregado |
-| Licenciamiento con Huella de Hardware | ✅ Entregado |
+| Niveles de Licencia Basados en Servicios | ✅ Entregado |
 | Deep Links de Grafana | ✅ Entregado |
 | Stack Docker de 21 Contenedores | ✅ Entregado |
+| Infraestructura de Trazado Distribuido (Disponible) | ✅ Desplegado |
 
 ---
 
 ## Cómo Priorizamos
 
-Los elementos se priorizan usando un marco P0–P2:
+Los elementos se priorizan usando un framework P0–P2:
 
-- **P0 (Debe Tener)**: Requerido para viabilidad comercial y despliegue en clientes.
-- **P1 (Debería Tener)**: Mejora significativamente el valor del producto y la preparación operativa.
+- **P0 (Imprescindible)**: Requerido para viabilidad comercial y despliegue en cliente.
+- **P1 (Debería tener)**: Mejora significativamente el valor del producto y la preparación operativa.
 - **P2 (Deseable)**: Mejora el posicionamiento competitivo y la experiencia del cliente.
 
 ---

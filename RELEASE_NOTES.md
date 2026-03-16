@@ -8,7 +8,7 @@
 
 ### Highlights
 
-Version 2.7.0 represents a major platform expansion from monitoring into full observability and incident management. This release introduces AI-powered anomaly analysis, a complete incident management lifecycle, root cause analysis, SLO tracking, and a notification pipeline — transforming Rhinometric from a monitoring dashboard into an operational intelligence platform.
+Version 2.7.0 represents a major platform expansion from monitoring into full service-centric observability and incident management. This release introduces AI-powered anomaly analysis, a complete incident management lifecycle, root cause analysis, SLO tracking, and a notification pipeline — transforming Rhinometric into an operational intelligence platform organized around monitored services.
 
 ### New Modules
 
@@ -18,7 +18,7 @@ Version 2.7.0 represents a major platform expansion from monitoring into full ob
 | **Root Cause Analysis** | Automated dependency-graph traversal to identify failure origin |
 | **Service Map** | Live topology visualization with health status overlay |
 | **SLO/SLA Management** | Error-budget tracking with proactive breach alerting |
-| **Correlation Engine** | Cross-signal linking of metrics, logs, and traces |
+| **Correlation Engine** | Cross-signal linking of metrics and logs for context enrichment |
 | **Incident Management** | Full lifecycle with timeline, comments, tags, and state machine |
 | **Alert History** | Persistent searchable log of all alerts with CSV export |
 | **Alert Rules** | Configurable conditions with threshold, anomaly, and absence types |
@@ -44,9 +44,9 @@ Version 2.7.0 represents a major platform expansion from monitoring into full ob
 ### Infrastructure
 
 - 21 Docker containers running in production configuration.
-- AI anomaly detector deployed as standalone containerized service.
-- License Server v2 operational with hardware fingerprinting.
-- Full observability stack: Prometheus, VictoriaMetrics, Loki, Jaeger, Grafana, Alertmanager, OTel Collector.
+- Anomaly detection engine deployed as dedicated containerized service.
+- License Server v2 operational with service-based tier validation.
+- Observability stack: Prometheus, VictoriaMetrics, Loki, Grafana, Alertmanager, with optional distributed tracing via Jaeger/OTel Collector.
 
 ---
 
@@ -54,14 +54,14 @@ Version 2.7.0 represents a major platform expansion from monitoring into full ob
 
 ### Highlights
 
-First public-facing release with product documentation and branding. Introduced AI anomaly detection, long-term metric storage, and the full observability stack.
+First public-facing release with product documentation and branding. Introduced AI anomaly detection, long-term metric storage, and the core observability stack.
 
 ### New Features
 
 - AI Anomaly Detection v1 (IsolationForest-based).
 - VictoriaMetrics integration for long-term metric retention.
-- Jaeger distributed tracing via OpenTelemetry Collector.
 - Loki log aggregation with Promtail agents.
+- Distributed tracing infrastructure deployed (Jaeger + OTel Collector) — available for instrumented applications.
 - Rhinometric brand identity applied to frontend.
 - Public product documentation.
 
