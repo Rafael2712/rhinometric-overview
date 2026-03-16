@@ -1,3 +1,5 @@
+> **[English]** | [Español](README_ES.md)
+
 # Rhinometric
 
 **Intelligent Observability for Modern Infrastructure**
