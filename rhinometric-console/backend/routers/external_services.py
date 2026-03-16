@@ -43,6 +43,10 @@ class ExternalServiceCreate(BaseModel):
     config: Dict[str, Any] = Field(default_factory=dict)
     timeout_seconds: int = Field(default=10, ge=1, le=120)
     check_interval_seconds: int = Field(default=60, ge=10, le=86400)
+    # Classification metadata (optional)
+    catalog_type: Optional[str] = Field(None, max_length=50, description="Service classification: REST_API, SOAP_API, WEB_APP, MOBILE_API, DATABASE, QUEUE, MICROSERVICE, INTERNAL_SERVICE, EXTERNAL_SERVICE, or custom")
+    category: Optional[str] = Field(None, max_length=100, description="Logical grouping: payments, authentication, mobile-backend, analytics, etc.")
+    tags: Optional[List[str]] = Field(None, description="Array of string labels: ['critical', 'external', 'payments']")
 
 
 class ExternalServiceUpdate(BaseModel):
@@ -53,6 +57,10 @@ class ExternalServiceUpdate(BaseModel):
     config: Optional[Dict[str, Any]] = None
     timeout_seconds: Optional[int] = Field(None, ge=1, le=120)
     check_interval_seconds: Optional[int] = Field(None, ge=10, le=86400)
+    # Classification metadata (optional)
+    catalog_type: Optional[str] = Field(None, max_length=50)
+    category: Optional[str] = Field(None, max_length=100)
+    tags: Optional[List[str]] = None
 
 
 class TestConnectionRequest(BaseModel):
@@ -67,6 +75,9 @@ class ExternalServiceResponse(BaseModel):
     service_type: str
     environment: Optional[str]
     description: Optional[str]
+    catalog_type: Optional[str] = None
+    category: Optional[str] = None
+    tags: Optional[List[str]] = None
     enabled: bool
     config: Dict[str, Any]
     timeout_seconds: int
@@ -197,6 +208,9 @@ def create_external_service(
         config=payload.config,
         timeout_seconds=payload.timeout_seconds,
         check_interval_seconds=payload.check_interval_seconds,
+        catalog_type=payload.catalog_type,
+        category=payload.category,
+        tags=payload.tags,
         status=ServiceStatus.UNKNOWN,
         created_by=current_user.id,
     )

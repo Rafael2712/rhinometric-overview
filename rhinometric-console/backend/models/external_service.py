@@ -43,6 +43,11 @@ class ExternalService(Base):
     )
     environment = Column(String(100), nullable=True)
     description = Column(Text, nullable=True)
+
+    # ── Classification metadata (for Service Catalog) ──
+    catalog_type = Column(String(50), nullable=True, index=True)   # REST_API, WEB_APP, DATABASE, etc.
+    category = Column(String(100), nullable=True, index=True)      # payments, authentication, etc.
+    tags = Column(JSONB, nullable=True)                            # ["critical", "external", "payments"]
     enabled = Column(Boolean, default=True, nullable=False, index=True)
 
     # Connection configuration (JSON)
@@ -90,6 +95,9 @@ class ExternalService(Base):
             "service_type": self.service_type.value if self.service_type else None,
             "environment": self.environment,
             "description": self.description,
+            "catalog_type": self.catalog_type,
+            "category": self.category,
+            "tags": self.tags or [],
             "enabled": self.enabled,
             "config": cfg,
             "timeout_seconds": self.timeout_seconds,
