@@ -2,7 +2,6 @@
 
 **Date:** October 27, 2025  
 **Environment:** Windows 10 + Docker Engine 28.3.2  
-**Tester:** GitHub Copilot (Automated Agent)  
 **Status:** ⚠️ **PARTIALLY SUCCESSFUL** (7/16 services running)
 
 ---
@@ -662,7 +661,6 @@ Rhinometric v2.1.0 Enterprise package was **partially deployed** in a Windows en
 ---
 
 **Report Generated:** October 27, 2025, 20:30 CET  
-**Agent:** GitHub Copilot  
 **Docker Version:** 28.3.2  
 **Compose Version:** v2.x  
 **OS:** Windows 10 Build 19045  

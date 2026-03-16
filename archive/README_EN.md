@@ -184,8 +184,8 @@ LICENSE_KEY=RHINO-TRIAL-2025-XXXXXXXXXXXX
 
 # SMTP (Optional - for email notifications)
 SMTP_HOST=smtp.zoho.eu
-SMTP_USER=rafael.canelon@rhinometric.com
-SMTP_FROM=rafael.canelon@rhinometric.com
+SMTP_USER=info@rhinometric.com
+SMTP_FROM=info@rhinometric.com
 SMTP_PASSWORD=YourAppPassword
 ```
 
@@ -310,12 +310,12 @@ curl http://localhost:3000/api/health
 ## Ì∂ò Support
 
 ### Technical Support
-- Ì≥ß **Email**: rafael.canelon@rhinometric.com
+- Ì≥ß **Email**: info@rhinometric.com
 - ‚è∞ **Schedule**: Monday-Friday, 9:00-18:00 CET
 - Ì∞õ **Report Issues**: [GitHub Issues](https://github.com/Rafael2712/rhinometric-overview/issues)
 
 ### Commercial Licenses
-- Ì≤º **Sales**: rafael.canelon@rhinometric.com
+- Ì≤º **Sales**: info@rhinometric.com
 - Ì≥Ñ **Trial**: 30 days automatic
 - Ìø¢ **Enterprise**: Perpetual/annual licenses available
 
@@ -330,7 +330,7 @@ curl http://localhost:3000/api/health
 - ‚ùå **Redistribution**: Prohibited without authorization
 - ‚ùå **Commercial**: Requires paid license
 
-Contact: rafael.canelon@rhinometric.com
+Contact: info@rhinometric.com
 
 ---
 

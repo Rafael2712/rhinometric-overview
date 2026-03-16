@@ -130,10 +130,10 @@ rm -rf ~/rhinometric_data_v2.1
 
 ## ��� Soporte
 
-- ��� **Email**: rafael.canelon@rhinometric.com
+- ��� **Email**: info@rhinometric.com
 - ⏰ **Horario**: Lunes-Viernes, 9:00-18:00 CET
 - ��� **Issues**: https://github.com/Rafael2712/rhinometric-overview/issues
-- ��� **Licencias**: rafael.canelon@rhinometric.com
+- ��� **Licencias**: info@rhinometric.com
 
 ## �� Licencia
 

@@ -180,7 +180,7 @@ const clientData = {
 // EmailService.js
 async function sendLicenseEmail(clientData, licenseKey) {
   const emailTemplate = {
-    from: 'rafael.canelon@rhinometric.com',
+    from: 'info@rhinometric.com',
     to: clientData.email,
     subject: `Rhinometric v2.1.0 - Tu licencia ${clientData.licenseType}`,
     
@@ -205,7 +205,7 @@ async function sendLicenseEmail(clientData, licenseKey) {
       - FAQ: docs/FAQ.md
       
       📧 SOPORTE:
-      rafael.canelon@rhinometric.com
+      info@rhinometric.com
       
       ¡Bienvenido a Rhinometric!
       
@@ -363,5 +363,5 @@ Backend (license-server-v2):
 ## 📧 Contacto
 
 **Rafael Canel**  
-rafael.canelon@rhinometric.com  
+info@rhinometric.com  
 GitHub: https://github.com/Rafael2712/rhinometric-overview

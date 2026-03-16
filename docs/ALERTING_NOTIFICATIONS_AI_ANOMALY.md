@@ -73,7 +73,7 @@ Alertmanager (:9093)
     │    - Troubleshooting inline
     │    - Botones: Consola + Grafana
     │
-    └──► Email (Zoho → rafael.canelon@rhinometric.com)
+    └──► Email (Zoho → info@rhinometric.com)
          Template: ai_anomaly_email.tmpl
          - Header con color por severidad
          - Seccion "Que ha detectado Rhinometric"

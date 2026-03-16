@@ -311,7 +311,7 @@ docker compose restart
 
 ## í³ž Contacto TÃ©cnico
 
-- Email: rafael.canelon@rhinometric.com
+- Email: info@rhinometric.com
 - Docs: https://docs.rhinometric.com/architecture
 - GitHub: https://github.com/Rafael2712/rhinometric-overview
 

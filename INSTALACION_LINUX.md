@@ -628,7 +628,7 @@ sudo certbot renew --dry-run
 
 - 📖 Docs: `docs/` directory
 - 🐙 GitHub: https://github.com/Rafael2712/mi-proyecto/issues
-- 📧 Email: rafael.canelon@rhinometric.com
+- 📧 Email: info@rhinometric.com
 - 💬 Discord: https://discord.gg/rhinometric
 
 ---

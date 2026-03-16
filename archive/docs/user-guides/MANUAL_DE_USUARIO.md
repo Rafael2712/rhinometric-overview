@@ -207,7 +207,7 @@ R: Depende de tu licencia (1-5, 6-50, ilimitado).
 
 ## Ì≥û Soporte
 
-- Email: rafael.canelon@rhinometric.com
+- Email: info@rhinometric.com
 - Tel√©fono: +34 900 123 456
 - GitHub: https://github.com/Rafael2712/rhinometric-overview
 

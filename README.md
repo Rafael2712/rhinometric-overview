@@ -1,101 +1,159 @@
-﻿#  Rhinometric Platform - Documentation
+# Rhinometric
 
-**Version:** 2.5.1  
-**Last Updated:** December 2025
+**Intelligent Observability for Modern Infrastructure**
 
----
-
-##  Languages / Idiomas
-
-- [ English Documentation](./docs/en/) - **Primary**
-- [ Documentación en Español](./docs/es/) - **Secundario**
+[![Version](https://img.shields.io/badge/version-2.7.0-blue.svg)]()
+[![License](https://img.shields.io/badge/license-Proprietary-red.svg)]()
 
 ---
 
-##  English Documentation
+## What is Rhinometric?
 
-### **Getting Started**
-1. [**Product Overview**](./docs/en/OVERVIEW.md) - What is Rhinometric? Problems solved, use cases
-2. [**Installation Guide**](./docs/en/INSTALLATION.md) - Step-by-step setup for Ubuntu/Rocky Linux
-3. [**Technical Architecture**](./docs/en/ARCHITECTURE.md) - Component details, data flows, ports
+Rhinometric is an enterprise observability platform that unifies metrics, logs, traces, and AI-driven anomaly detection into a single operational console. It is designed for infrastructure and DevOps teams that need to monitor services, detect issues before they cause outages, and manage incidents with full lifecycle support.
 
-### **User Guides**
-- [User Guide](./docs/en/USER_GUIDE.md) - Screen-by-screen walkthrough *(coming soon)*
-- [FAQ](./docs/en/FAQ.md) - Frequently asked questions *(coming soon)*
-- [Troubleshooting](./docs/en/TROUBLESHOOTING.md) - Common issues and solutions *(coming soon)*
-
-### **Certification**
-- [Platform Audit](./docs/es/AUDIT_CERTIFICACION.md) - 100% Real Data Certification (Spanish only)
+Unlike traditional monitoring tools that rely exclusively on static thresholds, Rhinometric adds an AI anomaly detection layer that automatically identifies abnormal behavior across all monitored services — without requiring manual rule configuration for every metric.
 
 ---
 
-##  Documentación en Español
+## Core Capabilities
 
-### **Primeros Pasos**
-1. [**Resumen del Producto**](./docs/es/OVERVIEW_PRODUCTO.md) - Qué es Rhinometric, problemas resueltos, casos de uso
-2. [**Guía de Instalación**](./docs/es/INSTALACION_RHINOMETRIC_ONPREM.md) - Instalación paso a paso para Ubuntu/Rocky Linux
-3. [**Arquitectura Técnica**](./docs/es/ARQUITECTURA_TECNICA.md) - Detalles de componentes, flujos de datos, puertos
+### Service Monitoring
+Register and monitor services with periodic health checks. View real-time status, historical availability, and detailed metrics through integrated Grafana dashboards.
 
-### **Guías de Usuario**
-- [**Guía de Uso Completa**](./docs/es/GUIA_USO_CONSOLE_RHINOMETRIC.md) - Walkthrough pantalla por pantalla
-- [**Preguntas Frecuentes**](./docs/es/FAQ_RHINOMETRIC.md) - 30 preguntas con respuestas
-- [**Troubleshooting**](./docs/es/TROUBLESHOOTING.md) - 25 problemas comunes con soluciones
+### AI Anomaly Detection
+An IsolationForest-based detector analyzes metric time-series data and identifies statistical anomalies, grouping related deviations by service and time window. A MAD threshold guard filters noise to reduce false positives.
 
-### **Certificación**
-- [**Auditoría de Plataforma**](./docs/es/AUDIT_CERTIFICACION.md) - Certificación 100% Datos Reales
+### AI Insights
+Natural-language summaries explain detected anomalies in plain terms — describing what changed, by how much, and potential impact — so operators can understand issues without manual metric analysis.
 
----
+### Alert Rules & Alerting
+Define alert rules based on thresholds, anomaly severity, or metric absence. Alerts fire when conditions are met and follow a lifecycle (firing → acknowledged → resolved) with configurable notification channels.
 
-##  Quick Start
+### Incident Management
+Full lifecycle incident management with state machine (open → acknowledged → investigating → resolved → closed), timeline, comments, tags, linked alerts, and assigned owners.
 
-### **Docker Compose** (Recommended)
-\\\ash
-# Download latest release
-curl -L https://github.com/Rafael2712/rhinometric-overview/releases/download/v2.5.1/rhinometric-v2.5.1.tar.gz -o rhinometric.tar.gz
-tar -xzf rhinometric.tar.gz
-cd rhinometric
+### Root Cause Analysis
+When incidents are created from anomaly alerts, the platform traverses the service dependency graph to identify and rank the most likely origin of the failure.
 
-# Start platform
-docker-compose up -d
+### Service Map
+Live dependency graph showing service interconnections, health status, and anomaly propagation paths.
 
-# Access Console
-open http://localhost:3002
-# Login: admin / admin (change immediately)
-\\\
+### SLO/SLA Tracking
+Define Service Level Objectives with error-budget tracking and alert on budget exhaustion before SLA breaches occur.
 
-### **System Requirements**
-- **CPU:** 4 vCPU (minimum), 8 vCPU (recommended)
-- **RAM:** 8 GB (minimum), 16 GB (recommended)
-- **Disk:** 50 GB SSD (minimum), 200 GB SSD (recommended)
-- **OS:** Ubuntu 22.04+, Rocky Linux 8+, Debian 11+
+### Correlation Engine
+Cross-signal analysis linking metrics, logs, and traces to anomaly events for context enrichment.
 
----
+### Notification Pipeline
+Slack and email notifications with configurable channels, cooldown periods, resolve timeouts, and severity-appropriate templates.
 
-##  Links
+### Centralized Logs & Traces
+Log aggregation via Loki/Promtail and distributed tracing via Jaeger/OpenTelemetry, integrated into anomaly and incident views.
 
-- **GitHub (Public Docs):** [Rafael2712/rhinometric-overview](https://github.com/Rafael2712/rhinometric-overview)
-- **GitHub (Private Code):** [Rafael2712/mi-proyecto](https://github.com/Rafael2712/mi-proyecto) *(private)*
-- **Releases:** [Download v2.5.1](https://github.com/Rafael2712/rhinometric-overview/releases)
-- **Issues:** [Report Bug](https://github.com/Rafael2712/rhinometric-overview/issues)
+### Role-Based Access Control
+Four-role permission system (SuperAdmin, Admin, Operator, Viewer) enforced at both API and UI levels.
+
+### Licensing
+Hardware-fingerprinted license validation with three tiers: Community, Professional, Enterprise.
 
 ---
 
-##  Support
+## Architecture Overview
 
-- **Email:** support@rhinometric.com
-- **Documentation:** This repository
-- **Commercial Support:** Available for Annual/Perpetual/Enterprise licenses
+Rhinometric runs as a containerized stack of 21 Docker services:
+
+```
+┌─────────────────────────────────────────────────────┐
+│                      NGINX                          │
+│              (Reverse Proxy + SSL)                  │
+├───────────────────────┬─────────────────────────────┤
+│     Frontend          │         Backend API         │
+│  React 18 + Vite      │      FastAPI (Python)       │
+├───────────────────────┴─────────────────────────────┤
+│                  Data Layer                          │
+│  PostgreSQL │ Redis │ VictoriaMetrics │ Prometheus   │
+├─────────────────────────────────────────────────────┤
+│               Observability Stack                   │
+│  Loki │ Jaeger │ OTel Collector │ Grafana           │
+│  Alertmanager │ Promtail                            │
+├─────────────────────────────────────────────────────┤
+│               Intelligence Layer                    │
+│  AI Anomaly Detector │ License Server               │
+├─────────────────────────────────────────────────────┤
+│               Infrastructure Exporters              │
+│  Node Exporter │ cAdvisor │ Postgres Exporter       │
+│  Redis Exporter │ Blackbox Exporter                 │
+└─────────────────────────────────────────────────────┘
+```
+
+## Technology Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Frontend | React 18, TypeScript, Vite, TanStack Query, Zustand |
+| Backend | Python 3.11, FastAPI, SQLAlchemy, Pydantic |
+| Database | PostgreSQL 15, Redis 7 |
+| Metrics | Prometheus, VictoriaMetrics |
+| Logs | Loki, Promtail |
+| Traces | Jaeger, OpenTelemetry Collector |
+| Visualization | Grafana |
+| AI Detection | IsolationForest (scikit-learn), custom Python service |
+| Alerting | Alertmanager, custom notification pipeline |
+| Proxy | Nginx |
+| Deployment | Docker Compose |
 
 ---
 
-##  License
+## Deployment Requirements
 
-This documentation is licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
-
-The Rhinometric platform software is proprietary. See [LICENSE](./LICENSE) for details.
+| Resource | Minimum | Recommended |
+|----------|---------|-------------|
+| CPU | 4 cores | 8 cores |
+| RAM | 16 GB | 32 GB |
+| Storage | 100 GB SSD | 250 GB SSD |
+| OS | Ubuntu 22.04+ / Rocky Linux 8+ | Ubuntu 24.04 |
+| Docker | 24.0+ | Latest stable |
+| Docker Compose | v2.20+ | Latest stable |
 
 ---
 
-** 2025 Rhinometric - Enterprise Observability Platform**
+## License Tiers
 
-*Built with  for DevOps teams who value simplicity, privacy, and cost-efficiency.*
+| Feature | Community | Professional | Enterprise |
+|---------|:---------:|:------------:|:----------:|
+| Service Monitoring | ✓ (10 max) | ✓ (50 max) | ✓ (Unlimited) |
+| Health Dashboards | ✓ | ✓ | ✓ |
+| AI Anomaly Detection | — | ✓ | ✓ |
+| AI Insights | — | ✓ | ✓ |
+| Alert Rules | Basic | Full | Full |
+| Incident Management | — | ✓ | ✓ |
+| Root Cause Analysis | — | — | ✓ |
+| Service Map | — | ✓ | ✓ |
+| SLO/SLA | — | — | ✓ |
+| Correlation Engine | — | ✓ | ✓ |
+| RBAC | 2 roles | 3 roles | 4 roles |
+| Notification Channels | Email | Email + Slack | All |
+| Support | Community | Email | Priority |
+
+---
+
+## Documentation
+
+| Document | Description |
+|----------|-------------|
+| [Architecture](ARCHITECTURE.md) | Detailed architecture with data flow diagrams |
+| [Modules](MODULES.md) | Feature matrix and module descriptions |
+| [Release Notes](RELEASE_NOTES.md) | Version history and changes |
+| [Roadmap](ROADMAP.md) | Public roadmap and upcoming features |
+
+---
+
+## Contact
+
+**Rhinometric Team**  
+Website: [rhinometric.com](https://rhinometric.com)  
+Email: info@rhinometric.com
+
+---
+
+*Copyright 2024–2026 Rhinometric. All rights reserved.*

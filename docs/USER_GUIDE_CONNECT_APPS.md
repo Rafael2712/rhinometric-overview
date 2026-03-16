@@ -12,7 +12,7 @@
 | **Versión / Version** | v2.1.0 – Octubre 2025 | v2.1.0 – October 2025 |
 | **Audiencia / Audience** | Equipos DevOps, Integradores, Administradores IT | DevOps Teams, Integrators, IT Administrators |
 | **Cumplimiento / Compliance** | RGPD (UE 2016/679), ENS (España) | GDPR (EU 2016/679), ENS (Spain) |
-| **Contacto / Contact** | rafael.canelon@rhinometric.com | rafael.canelon@rhinometric.com |
+| **Contacto / Contact** | info@rhinometric.com | info@rhinometric.com |
 | **Web** | https://rhinometric.com | https://rhinometric.com |
 
 ---
@@ -237,7 +237,7 @@ docker logs prometheus | grep 'Scrape succeeded'
 
 | Español | English |
 |---------|---------|
-| **Email:** rafael.canelon@rhinometric.com | **Email:** rafael.canelon@rhinometric.com |
+| **Email:** info@rhinometric.com | **Email:** info@rhinometric.com |
 | **Horario:** Lunes–Viernes 9:00–18:00 CET | **Schedule:** Monday–Friday 9:00–18:00 CET |
 | **Issues:** https://github.com/Rafael2712/rhinometric-overview/issues | **Issues:** https://github.com/Rafael2712/rhinometric-overview/issues |
 | **Documentación:** https://github.com/Rafael2712/rhinometric-overview | **Documentation:** https://github.com/Rafael2712/rhinometric-overview |

@@ -3,7 +3,7 @@
 **Bienvenido a Rhinometric**  
 En 5 minutos estar√°s viendo m√©tricas reales de tu infraestructura.
 
-Ì≥ß **Soporte**: rafael.canelon@rhinometric.com  
+Ì≥ß **Soporte**: info@rhinometric.com  
 Ì≥± **WhatsApp**: +34 611 33 90 30  
 Ìºê **Web**: https://rhinometric.com
 
@@ -70,13 +70,13 @@ ip addr show | grep inet
 
 ## Licencias
 
-**Trial 30 d√≠as**: rafael.canelon@rhinometric.com
+**Trial 30 d√≠as**: info@rhinometric.com
 
 ---
 
 ## Soporte
 
-Ì≥ß rafael.canelon@rhinometric.com  
+Ì≥ß info@rhinometric.com  
 Ì≥± WhatsApp: +34 611 33 90 30
 
 ---

@@ -623,7 +623,7 @@ chmod +x verify.sh
 
 ### **Comunidad**
 - 💬 GitHub Issues: https://github.com/Rafael2712/mi-proyecto/issues
-- 📧 Email (solo versión comercial): rafael.canelon@rhinometric.com
+- 📧 Email (solo versión comercial): info@rhinometric.com
 
 ### **Logs para reportar problemas**
 

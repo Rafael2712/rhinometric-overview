@@ -12,7 +12,7 @@
 | **Versión / Version** | v2.1.0 – Octubre 2025 | v2.1.0 – October 2025 |
 | **Audiencia / Audience** | Ayuntamientos, Empresas Públicas, Instituciones | Municipalities, Public Companies, Institutions |
 | **Cumplimiento / Compliance** | RGPD (UE 2016/679), ENS (España) | GDPR (EU 2016/679), ENS (Spain) |
-| **Contacto / Contact** | rafael.canelon@rhinometric.com | rafael.canelon@rhinometric.com |
+| **Contacto / Contact** | info@rhinometric.com | info@rhinometric.com |
 | **Web** | https://rhinometric.com | https://rhinometric.com |
 | **Soporte / Support** | Lunes–Viernes 9:00–18:00 CET | Monday–Friday 9:00–18:00 CET |
 
@@ -114,7 +114,7 @@
 
 | Español | English |
 |---------|---------|
-| **Canal:** Correo electrónico (rafael.canelon@rhinometric.com) | **Channel:** Email (rafael.canelon@rhinometric.com) |
+| **Canal:** Correo electrónico (info@rhinometric.com) | **Channel:** Email (info@rhinometric.com) |
 | **Horario:** Lunes–Viernes 9:00–18:00 CET | **Schedule:** Monday–Friday 9:00–18:00 CET |
 | **Respuesta:** < 24 horas en días laborables | **Response:** < 24 hours on business days |
 | **Cobertura:** Consultas técnicas, resolución de incidencias, actualizaciones | **Coverage:** Technical inquiries, incident resolution, updates |
@@ -178,8 +178,8 @@
 
 | Español | English |
 |---------|---------|
-| **Email Comercial:** rafael.canelon@rhinometric.com | **Commercial Email:** rafael.canelon@rhinometric.com |
-| **Email Soporte:** rafael.canelon@rhinometric.com | **Support Email:** rafael.canelon@rhinometric.com |
+| **Email Comercial:** info@rhinometric.com | **Commercial Email:** info@rhinometric.com |
+| **Email Soporte:** info@rhinometric.com | **Support Email:** info@rhinometric.com |
 | **Web Oficial:** https://rhinometric.com | **Official Website:** https://rhinometric.com |
 | **GitHub:** https://github.com/Rafael2712/rhinometric-overview | **GitHub:** https://github.com/Rafael2712/rhinometric-overview |
 | **Horario:** Lunes–Viernes 9:00–18:00 CET | **Schedule:** Monday–Friday 9:00–18:00 CET |

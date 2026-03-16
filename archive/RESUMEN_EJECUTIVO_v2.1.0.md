@@ -322,7 +322,7 @@ Credenciales default:
 
 ### **Versiones Comerciales** (Futuro)
 
-**Precios disponibles a consultar**: rafael.canelon@rhinometric.com
+**Precios disponibles a consultar**: info@rhinometric.com
 
 Rhinometric ofrece planes personalizados según el tamaño de tu infraestructura, número de servicios monitorizados y requerimientos de soporte. Contáctanos para una cotización específica para tu organización.
 
@@ -355,7 +355,7 @@ Rhinometric ofrece planes personalizados según el tamaño de tu infraestructura
 
 ### **Comunidad**
 
-- 📧 **Email**: rafael.canelon@rhinometric.com
+- 📧 **Email**: info@rhinometric.com
 - 💬 **Discord**: https://discord.gg/rhinometric (coming soon)
 - 📚 **Docs**: https://docs.rhinometric.io (coming soon)
 - 🐙 **GitHub**: https://github.com/Rafael2712/rhinometric-overview (público)

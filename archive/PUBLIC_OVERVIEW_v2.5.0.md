@@ -220,15 +220,15 @@ rhinometric-overview/
 
 ## í³ž Contact Information
 
-**Email**: rafael.canelon@rhinometric.com  
+**Email**: info@rhinometric.com  
 **Website**: https://rhinometric.com  
 **Docs**: https://docs.rhinometric.com  
 **GitHub**: https://github.com/Rafael2712/rhinometric-overview  
 **LinkedIn**: https://linkedin.com/company/rhinometric
 
-**Sales Inquiries**: rafael.canelon@rhinometric.com  
-**Technical Support**: rafael.canelon@rhinometric.com  
-**Licensing**: rafael.canelon@rhinometric.com
+**Sales Inquiries**: info@rhinometric.com  
+**Technical Support**: info@rhinometric.com  
+**Licensing**: info@rhinometric.com
 
 ---
 
@@ -243,7 +243,7 @@ rhinometric-overview/
 - [x] User manuals cover all features
 - [x] Architecture docs technically accurate
 - [x] No sensitive data exposed (IPs, passwords, tokens)
-- [x] Contact information correct (rafael.canelon@rhinometric.com)
+- [x] Contact information correct (info@rhinometric.com)
 - [x] Links verified (no 404s)
 - [x] Branding consistent (Rhinometric Enterprise)
 - [x] Version numbers consistent (2.5.0 everywhere)
@@ -319,7 +319,7 @@ rhinometric-overview/
 **Version**: v2.5.0-public  
 **Status**: âœ… **PUBLISHED**  
 **Date**: November 9, 2024  
-**Release Manager**: Rafael CanelÃ³n
+**Release Manager**: Rhinometric Team
 
 ---
 

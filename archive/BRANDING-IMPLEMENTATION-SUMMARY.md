@@ -446,6 +446,5 @@ Follow detailed guide in `docs/ova/OVA-README.md` → "Personalización del Bran
 
 ---
 
-**Prepared by**: GitHub Copilot (Claude Sonnet 4.5)  
 **Commit**: 3e85877  
 **Date**: 2024-01-15
