@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import {
   Server, AlertCircle, CheckCircle, Activity, Globe, Database, 
   Network, Plus, Trash2, Play, Power, PowerOff, Edit, ArrowLeft,
-  RefreshCw, Clock, Lock
+  RefreshCw, Clock, Lock, Search, Tag, X
 } from 'lucide-react'
 import { useAuthStore } from '../lib/auth/store'
 
@@ -14,6 +14,9 @@ interface ExternalServiceData {
   service_type: 'http' | 'postgresql'
   environment: string | null
   description: string | null
+  catalog_type: string | null
+  category: string | null
+  tags: string[]
   enabled: boolean
   config: Record<string, any>
   timeout_seconds: number
@@ -205,6 +208,11 @@ export default function Services() {
   const [testResult, setTestResult] = useState<any>(null)
   const [actionLoading, setActionLoading] = useState<number | null>(null)
 
+  // Catalog filter state
+  const [filterSearch, setFilterSearch] = useState('')
+  const [filterCatalogType, setFilterCatalogType] = useState('')
+  const [filterCategory, setFilterCategory] = useState('')
+
   const apiHeaders = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
   const canManage = isAdmin()  // Only ADMIN/OWNER can create/edit/delete/toggle
 
@@ -327,6 +335,21 @@ export default function Services() {
       </div>
     )
   }
+
+  // Catalog metadata: unique values for filter dropdowns
+  const catalogTypes = [...new Set(extServices.map(s => s.catalog_type).filter(Boolean))] as string[]
+  const categories = [...new Set(extServices.map(s => s.category).filter(Boolean))] as string[]
+  const hasActiveFilters = !!(filterSearch || filterCatalogType || filterCategory)
+
+  // Client-side filtering
+  const filteredServices = extServices.filter(svc => {
+    if (filterSearch && !svc.name.toLowerCase().includes(filterSearch.toLowerCase())) return false
+    if (filterCatalogType && svc.catalog_type !== filterCatalogType) return false
+    if (filterCategory && svc.category !== filterCategory) return false
+    return true
+  })
+
+  const clearFilters = () => { setFilterSearch(''); setFilterCatalogType(''); setFilterCategory('') }
 
   const platform = platformData?.platform ?? { services: [], total: 0, up: 0, down: 0 }
 
@@ -521,6 +544,52 @@ export default function Services() {
           </div>
 
           {/* Empty state */}
+          {/* Filter bar */}
+          {extServices.length > 0 && (
+            <div className="bg-gray-800/50 rounded-lg border border-gray-700/50 p-4">
+              <div className="flex flex-wrap items-center gap-3">
+                {/* Search */}
+                <div className="relative flex-1 min-w-[200px]">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                  <input
+                    type="text"
+                    placeholder="Search services..."
+                    value={filterSearch}
+                    onChange={e => setFilterSearch(e.target.value)}
+                    className="w-full pl-9 pr-3 py-2 bg-gray-900/50 border border-gray-700 rounded-lg text-sm text-white placeholder-gray-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                  />
+                </div>
+                {/* Catalog Type filter */}
+                <select
+                  value={filterCatalogType}
+                  onChange={e => setFilterCatalogType(e.target.value)}
+                  className="px-3 py-2 bg-gray-900/50 border border-gray-700 rounded-lg text-sm text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                >
+                  <option value="">All Catalog Types</option>
+                  {catalogTypes.map(ct => <option key={ct} value={ct}>{ct}</option>)}
+                </select>
+                {/* Category filter */}
+                <select
+                  value={filterCategory}
+                  onChange={e => setFilterCategory(e.target.value)}
+                  className="px-3 py-2 bg-gray-900/50 border border-gray-700 rounded-lg text-sm text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                >
+                  <option value="">All Categories</option>
+                  {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                </select>
+                {/* Clear button */}
+                {hasActiveFilters && (
+                  <button onClick={clearFilters} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-gray-700/50 transition-colors">
+                    <X className="w-4 h-4" /> Clear
+                  </button>
+                )}
+              </div>
+              {hasActiveFilters && (
+                <p className="text-gray-500 text-xs mt-2">Showing {filteredServices.length} of {extServices.length} services</p>
+              )}
+            </div>
+          )}
+
           {extServices.length === 0 ? (
             <div className="bg-gray-800/50 rounded-lg border border-gray-700/50 p-16 text-center">
               <Globe className="w-16 h-16 text-gray-600 mx-auto mb-4" />
@@ -546,6 +615,8 @@ export default function Services() {
                     <tr className="border-b border-gray-700/50">
                       <th className="text-left p-4 text-gray-400 font-medium">Service</th>
                       <th className="text-left p-4 text-gray-400 font-medium">Type</th>
+                      <th className="text-left p-4 text-gray-400 font-medium">Catalog Type</th>
+                      <th className="text-left p-4 text-gray-400 font-medium">Category</th>
                       <th className="text-left p-4 text-gray-400 font-medium">Target</th>
                       <th className="text-left p-4 text-gray-400 font-medium">Status</th>
                       <th className="text-left p-4 text-gray-400 font-medium">Latency</th>
@@ -554,7 +625,14 @@ export default function Services() {
                     </tr>
                   </thead>
                   <tbody>
-                    {extServices.map(svc => (
+                    {filteredServices.length === 0 && hasActiveFilters && (
+                      <tr><td colSpan={9} className="p-8 text-center text-gray-500">
+                        <Search className="w-8 h-8 mx-auto mb-2 text-gray-600" />
+                        <p>No services match the current filters</p>
+                        <button onClick={clearFilters} className="text-blue-400 hover:text-blue-300 text-sm mt-1">Clear filters</button>
+                      </td></tr>
+                    )}
+                    {filteredServices.map(svc => (
                       <tr key={svc.id} className={`border-b border-gray-700/30 hover:bg-gray-700/30 transition-colors ${!svc.enabled ? 'opacity-50' : ''}`}>
                         <td className="p-4">
                           <div className="flex items-center gap-3">
@@ -564,10 +642,21 @@ export default function Services() {
                             <div>
                               <p className="text-white font-medium">{svc.name}</p>
                               {svc.environment && <p className="text-gray-500 text-xs">{svc.environment}</p>}
+                              {svc.tags && svc.tags.length > 0 && (
+                                <div className="flex flex-wrap gap-1 mt-1">
+                                  {svc.tags.map((tag, i) => (
+                                    <span key={i} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-400/10 text-blue-400">
+                                      <Tag className="w-2.5 h-2.5" />{tag}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
                             </div>
                           </div>
                         </td>
                         <td className="p-4"><TypeBadge type={svc.service_type} /></td>
+                        <td className="p-4 text-sm text-gray-300">{svc.catalog_type || <span className="text-gray-600">&ndash;</span>}</td>
+                        <td className="p-4 text-sm text-gray-300">{svc.category || <span className="text-gray-600">&ndash;</span>}</td>
                         <td className="p-4">
                           <code className="text-sm text-gray-300 bg-gray-900/50 px-2 py-1 rounded truncate max-w-[200px] inline-block">
                             {targetDisplay(svc)}
