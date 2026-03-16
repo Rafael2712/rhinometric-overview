@@ -1,24 +1,23 @@
 # Module: Licensing
 
-**Version:** 2.7.0  
-**Classification:** Internal  
+**Version:** 2.7.0
+**Classification:** Internal
 **Maintained by:** Rhinometric Team — info@rhinometric.com
 
 ---
 
 ## Purpose
 
-Validate software license keys, enforce tier-based feature access, and provide a management interface for license operations. The module ensures only authorized deployments can access platform features.
+Validate software license keys, enforce tier-based feature access, and control the number of monitored services per deployment. The module ensures only authorized deployments can access platform features according to their license tier.
 
 ## What It Does
 
 - **License Server** (`license-server-v2`): Standalone container that validates license keys.
-- **Hardware Fingerprinting**: Generates a unique hardware fingerprint from the deployment server's characteristics (CPU ID, MAC address, disk serial). License keys are bound to this fingerprint.
-- **Tier System**: Three tiers with different feature sets:
+- **Service-Based Model**: License tiers define the maximum number of monitored services:
   - **Community**: Basic monitoring, up to 10 services, no AI features.
   - **Professional**: AI anomaly detection, alerting, up to 50 services.
   - **Enterprise**: Full platform, unlimited services, SLO/SLA, RBAC, priority support.
-- **Validation Flow**: Backend queries the license server on startup and periodically. Validation checks: key format, expiry date, hardware match, tier assignment.
+- **Validation Flow**: Backend queries the license server on startup and periodically. Validation checks: key format, expiry date, tier assignment, service count within tier limit.
 - **License UI** (`license-ui`): Standalone web interface for license key entry and status display.
 - **Feature Gating**: Backend API checks the active license tier before allowing access to tier-restricted features.
 
@@ -28,7 +27,6 @@ Validate software license keys, enforce tier-based feature access, and provide a
 - Does not support floating/concurrent license models.
 - Does not phone home (no internet connectivity required after activation).
 - Does not provide usage metering for billing purposes.
-- Does not survive hardware changes without re-activation.
 - Feature gating is not yet fully enforced across all modules.
 
 ## Architecture
@@ -39,8 +37,9 @@ Validate software license keys, enforce tier-based feature access, and provide a
 └──────────────┘       └───────────────────┘       └──────────────┘
                               │
                               ▼
-                    Hardware Fingerprint
-                    + License Key Store
+                    License Key Store
+                    + Tier Configuration
+                    + Service Count Limits
 ```
 
 ## Data Model
@@ -50,7 +49,7 @@ Validate software license keys, enforce tier-based feature access, and provide a
 | `id` | UUID | Primary key |
 | `license_key` | String | Encrypted license key |
 | `tier` | Enum | community, professional, enterprise |
-| `hardware_fingerprint` | String | Bound hardware ID |
+| `max_services` | Integer | Maximum monitored services for this tier |
 | `issued_at` | DateTime | Key issue date |
 | `expires_at` | DateTime | Key expiration date |
 | `is_active` | Boolean | Whether currently valid |
@@ -75,25 +74,24 @@ Validate software license keys, enforce tier-based feature access, and provide a
 ## Dependencies
 
 - **PostgreSQL**: Stores license records.
-- **Backend API**: Queries license status for feature gating.
-- **Hardware**: Fingerprint generation tied to host hardware.
+- **Backend API**: Queries license status for feature gating and service count enforcement.
 
 ## Frontend
 
 - **Route:** `/licensing`
-- **Key Features:** License status display, key activation form, tier information, feature availability matrix.
+- **Key Features:** License status display, key activation form, tier information, feature availability matrix, current service count vs. tier limit.
 
 ## Pre-Production Notes
 
-The current Python license server will be replaced with a compiled Rust binary before commercial release to prevent reverse engineering. See PREPRODUCTION_ROADMAP.md for details.
+The current Python license server handles validation, tier enforcement, and service-count limits. Before commercial release, a compiled Rust binary will replace the Python implementation to provide tamper resistance and prevent reverse engineering. See PREPRODUCTION_ROADMAP.md for details.
 
 ## Known Limitations
 
-1. Hardware fingerprint changes (e.g., NIC replacement) require re-activation.
-2. Feature gating is not fully enforced across all modules.
-3. No floating/concurrent license model.
-4. No usage metering.
-5. Python-based validator can be inspected — Rust replacement planned.
+1. Feature gating is not fully enforced across all modules.
+2. No floating/concurrent license model.
+3. No usage metering.
+4. Python-based validator can be inspected — Rust replacement planned for tamper resistance.
+5. Service count enforcement is validated at the API level; infrastructure containers always start regardless of license state.
 
 ---
 

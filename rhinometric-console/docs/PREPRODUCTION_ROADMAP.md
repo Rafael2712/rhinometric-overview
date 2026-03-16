@@ -1,8 +1,8 @@
 # Rhinometric — Pre-Production Roadmap
 
-**Version:** 2.7.0  
-**Date:** March 2026  
-**Classification:** Internal — Confidential  
+**Version:** 2.7.0
+**Date:** March 2026
+**Classification:** Internal — Confidential
 **Maintained by:** Rhinometric Team — info@rhinometric.com
 
 ---
@@ -15,21 +15,9 @@ This document tracks the remaining items required before Rhinometric can be rele
 
 ## 1. Platform Stability (P0 — Must Have)
 
-### 1.1 Service Monitoring Redesign
-**Status:** Not Started  
-**Priority:** P0  
-**Effort:** 2–3 weeks
-
-The current Services page is designed for 10–30 services. For commercial viability, it must support 100–200 services with:
-- Pagination and search
-- Bulk operations (enable/disable, delete)
-- Group/tag-based filtering
-- Performance optimization for large service lists
-- Import/export service definitions (CSV/JSON)
-
-### 1.2 Home Dashboard — Configurable Widgets
-**Status:** Not Started  
-**Priority:** P0  
+### 1.1 Home Dashboard — Configurable Widgets
+**Status:** Not Started
+**Priority:** P0
 **Effort:** 1–2 weeks
 
 The Home page currently shows hardcoded KPI cards. It needs:
@@ -38,9 +26,21 @@ The Home page currently shows hardcoded KPI cards. It needs:
 - Role-based dashboard views
 - Persistent layout preferences per user
 
+### 1.2 Service Monitoring Redesign
+**Status:** Not Started
+**Priority:** P0
+**Effort:** 2–3 weeks
+
+The current Services page is designed for 10–30 services. For commercial viability, it must support 100–200 monitored services with:
+- Pagination and search
+- Bulk operations (enable/disable, delete)
+- Group/tag-based filtering
+- Performance optimization for large service lists
+- Import/export service definitions (CSV/JSON)
+
 ### 1.3 Close Technical Debt
-**Status:** In Progress  
-**Priority:** P0  
+**Status:** In Progress
+**Priority:** P0
 **Effort:** Ongoing
 
 - [ ] Database migration system (Alembic setup)
@@ -53,20 +53,22 @@ The Home page currently shows hardcoded KPI cards. It needs:
 
 ## 2. Licensing & Distribution (P0)
 
-### 2.1 Rust Binary License Validator
-**Status:** Not Started  
-**Priority:** P0  
+### 2.1 Compiled License Validator
+**Status:** Not Started
+**Priority:** P0
 **Effort:** 2–3 weeks
 
 Replace the current Python license validator with a compiled Rust binary that:
-- Validates license keys with hardware fingerprinting
-- Cannot be easily reverse-engineered
+- Validates license keys with service-based tier enforcement (service count limits)
+- Provides tamper resistance to prevent reverse engineering
 - Works offline (no phone-home required)
 - Integrates as a sidecar or library
 
+The current Python license server is functional for development and pre-production. The Rust replacement adds production-grade tamper resistance and validation performance.
+
 ### 2.2 Ansible-Based Enterprise Installer
-**Status:** Not Started  
-**Priority:** P0  
+**Status:** Not Started
+**Priority:** P0
 **Effort:** 2 weeks
 
 Replace manual Docker Compose deployment with:
@@ -77,12 +79,12 @@ Replace manual Docker Compose deployment with:
 - Rollback capability
 
 ### 2.3 License Tier Enforcement
-**Status:** Partial  
-**Priority:** P0  
+**Status:** Partial
+**Priority:** P0
 **Effort:** 1 week
 
-Current state: License server validates keys and assigns tiers. Missing:
-- [ ] Feature gating enforcement across all modules
+Current state: License server validates keys and assigns tiers. Tiers define maximum monitored service count. Missing:
+- [ ] Complete feature gating enforcement across all modules
 - [ ] Graceful degradation when license expires
 - [ ] Usage metrics collection for metering
 
@@ -91,8 +93,8 @@ Current state: License server validates keys and assigns tiers. Missing:
 ## 3. Testing & Quality (P0)
 
 ### 3.1 Test Coverage for Core Modules
-**Status:** Not Started  
-**Priority:** P0  
+**Status:** Not Started
+**Priority:** P0
 **Effort:** 3–4 weeks
 
 - [ ] Unit tests for backend services (target: 80% coverage)
@@ -101,8 +103,8 @@ Current state: License server validates keys and assigns tiers. Missing:
 - [ ] Load tests for API endpoints under stress
 
 ### 3.2 Load & Performance Testing
-**Status:** Not Started  
-**Priority:** P0  
+**Status:** Not Started
+**Priority:** P0
 **Effort:** 1 week
 
 Validate platform behavior with:
@@ -113,8 +115,8 @@ Validate platform behavior with:
 - 7-day continuous operation stability test
 
 ### 3.3 Production Deployment Validation
-**Status:** Partial  
-**Priority:** P0  
+**Status:** Partial
+**Priority:** P0
 **Effort:** 1 week
 
 The platform is currently deployed on a single staging server. Before release:
@@ -129,8 +131,8 @@ The platform is currently deployed on a single staging server. Before release:
 ## 4. Security Hardening (P1)
 
 ### 4.1 RBAC Hardening & Audit Trail
-**Status:** Partial  
-**Priority:** P1  
+**Status:** Partial
+**Priority:** P1
 **Effort:** 1–2 weeks
 
 Current state: 4 roles are implemented. Missing:
@@ -140,8 +142,8 @@ Current state: 4 roles are implemented. Missing:
 - [ ] Session management (concurrent session limits)
 
 ### 4.2 Secret Management
-**Status:** Not Started  
-**Priority:** P1  
+**Status:** Not Started
+**Priority:** P1
 **Effort:** 1 week
 
 - [ ] Move secrets from `.env` to encrypted vault (HashiCorp Vault or SOPS)
@@ -153,8 +155,8 @@ Current state: 4 roles are implemented. Missing:
 ## 5. Documentation (P1)
 
 ### 5.1 Complete Documentation Pack
-**Status:** In Progress  
-**Priority:** P1  
+**Status:** In Progress
+**Priority:** P1
 **Effort:** 1 week
 
 - [x] Functional platform overview
@@ -168,21 +170,21 @@ Current state: 4 roles are implemented. Missing:
 - [ ] Video walkthroughs
 
 ### 5.2 Documentation Site
-**Status:** Not Started  
-**Priority:** P1  
+**Status:** Not Started
+**Priority:** P1
 **Effort:** 1 week
 
 Define and build the final documentation hosting:
 - Options: GitBook, Docusaurus, MkDocs, or self-hosted
-- Must support versioning, search, and multi-language
+- Must support versioning, search, and multi-language (EN/ES)
 
 ---
 
 ## 6. Platform Expansion (P2)
 
 ### 6.1 Additional Notification Channels
-**Status:** Not Started  
-**Priority:** P2  
+**Status:** Not Started
+**Priority:** P2
 - [ ] Microsoft Teams
 - [ ] PagerDuty
 - [ ] OpsGenie
@@ -190,22 +192,22 @@ Define and build the final documentation hosting:
 - [ ] Custom webhook
 
 ### 6.2 Dashboard Builder v1
-**Status:** Not Started  
-**Priority:** P2  
+**Status:** Not Started
+**Priority:** P2
 - [ ] Native dashboard creation (not Grafana-dependent)
 - [ ] Drag-and-drop widget placement
 - [ ] Template gallery
 
 ### 6.3 SSO / LDAP / SAML
-**Status:** Not Started  
-**Priority:** P2  
+**Status:** Not Started
+**Priority:** P2
 - [ ] LDAP/Active Directory integration
 - [ ] SAML 2.0 IdP support
 - [ ] OAuth 2.0 / OIDC
 
 ### 6.4 Multi-Tenant Architecture
-**Status:** Not Started  
-**Priority:** P2  
+**Status:** Not Started
+**Priority:** P2
 - [ ] Tenant isolation at database level
 - [ ] Per-tenant branding
 - [ ] Cross-tenant admin views
@@ -228,5 +230,5 @@ Define and build the final documentation hosting:
 
 ---
 
-*Document generated by Rhinometric Team — info@rhinometric.com*  
+*Document generated by Rhinometric Team — info@rhinometric.com*
 *Last updated: March 2026*

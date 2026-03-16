@@ -1,14 +1,14 @@
 # Module: Services
 
-**Version:** 2.7.0  
-**Classification:** Internal  
+**Version:** 2.7.0
+**Classification:** Internal
 **Maintained by:** Rhinometric Team — info@rhinometric.com
 
 ---
 
 ## Purpose
 
-Central registry of all monitored endpoints. Every other module (anomalies, alerts, incidents, SLO) references services as the primary unit of observation.
+Central registry of all monitored endpoints. **Services are the primary entity around which the entire Rhinometric platform is organized.** Every other module — anomalies, alerts, incidents, SLOs, root cause analysis, service map — references services as the core unit of observation. The commercial licensing model is also based on the number of monitored services.
 
 ## What It Does
 

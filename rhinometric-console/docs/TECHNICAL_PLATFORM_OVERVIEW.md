@@ -1,8 +1,8 @@
 # Rhinometric Platform — Technical Overview
 
-**Version:** 2.7.0  
-**Date:** March 2026  
-**Classification:** Internal — Confidential  
+**Version:** 2.7.0
+**Date:** March 2026
+**Classification:** Internal — Confidential
 **Maintained by:** Rhinometric Team — info@rhinometric.com
 
 ---
@@ -32,9 +32,12 @@ graph TB
         PROM["Prometheus<br/>:9090"]
         VM["VictoriaMetrics<br/>:8428"]
         LOKI["Loki<br/>:3100"]
-        JAEGER["Jaeger<br/>:16686"]
         GRAFANA["Grafana<br/>:3000"]
         AM["Alertmanager<br/>:9093"]
+    end
+
+    subgraph "Available Capabilities"
+        JAEGER["Jaeger<br/>:16686"]
         OTEL["OTel Collector<br/>:4317/:4318"]
     end
 
@@ -52,8 +55,8 @@ graph TB
         REDIS["Redis 7<br/>:6379"]
     end
 
-    subgraph "AI/ML"
-        AI["AI Anomaly Detector<br/>Go Binary :8088"]
+    subgraph "Intelligence Layer"
+        AI["Anomaly Detection<br/>Engine :8088"]
     end
 
     USER --> NGINX
@@ -100,17 +103,17 @@ graph TB
 | `rhinometric-prometheus` | prom/prometheus | 9090 | Metrics scraping & short-term storage | HTTP /-/healthy |
 | `rhinometric-victoria-metrics` | victoriametrics | 8428 | Long-term metrics storage | HTTP /health |
 | `rhinometric-loki` | grafana/loki | 3100 | Log aggregation | HTTP /ready |
-| `rhinometric-jaeger` | jaegertracing/all-in-one | 16686 | Distributed tracing | HTTP / |
+| `rhinometric-jaeger` | jaegertracing/all-in-one | 16686 | Distributed tracing (available — requires app instrumentation) | HTTP / |
 | `rhinometric-grafana` | grafana/grafana | 3000 | Dashboard visualization | HTTP /api/health |
 | `rhinometric-alertmanager` | prom/alertmanager | 9093 | Alert routing & grouping | HTTP /-/healthy |
 | `rhinometric-otel-collector` | otel/opentelemetry-collector | 4317/4318 | Telemetry reception | HTTP /health |
-| `rhinometric-node-exporter` | prom/node-exporter | 9100 | Host metrics | — |
+| `rhinometric-node-exporter` | prom/node-exporter | 9100 | System metrics (CPU, memory, disk, network) | — |
 | `rhinometric-cadvisor` | gcr.io/cadvisor | 8080 | Container metrics | HTTP /healthz |
 | `rhinometric-postgres-exporter` | prometheuscommunity/postgres-exporter | 9187 | PostgreSQL metrics | HTTP / |
 | `rhinometric-redis-exporter` | oliver006/redis_exporter | 9121 | Redis metrics | — |
 | `rhinometric-blackbox-exporter` | prom/blackbox-exporter | 9115 | External endpoint probing | — |
 | `rhinometric-promtail` | grafana/promtail | — | Log shipping | — |
-| `rhinometric-ai-anomaly` | custom (Go) | 8088 | ML anomaly detection | HTTP /health |
+| `rhinometric-ai-anomaly` | custom | 8088 | Anomaly detection engine (IsolationForest, LOF, MAD) | HTTP /health |
 | `rhinometric-license-server-v2` | custom | 8200 | License management | HTTP /health |
 | `rhinometric-license-ui` | custom | 3003 | License activation UI | HTTP / |
 
@@ -143,7 +146,7 @@ External → :80 (Nginx)
 | Router | Prefix | Auth | Description |
 |--------|--------|------|-------------|
 | `auth` | `/api/auth` | Public (login) / JWT | Authentication, user profile, password management |
-| `anomalies` | `/api/anomalies` | JWT | Anomaly groups, status updates, AI service proxy |
+| `anomalies` | `/api/anomalies` | JWT | Anomaly groups, status updates, detection engine proxy |
 | `alerts` | `/api/alerts` | JWT | Active alerts from Alertmanager |
 | `alert_rules` | `/api/alert-rules` | JWT | Alert rule CRUD |
 | `alert_history` | `/api/alert-history` | JWT | Historical alert records |
@@ -230,7 +233,7 @@ External → :80 (Nginx)
 | SLO | `/slo` | SLO/SLA tracking |
 | Correlation | `/correlation/:fingerprint` | Anomaly correlation detail |
 | Logs | `/logs` | Log explorer |
-| Traces | `/traces` | Trace search |
+| Traces | `/traces` | Trace search (available) |
 | Dashboards | `/dashboards` | Grafana dashboard list |
 | Dashboard Viewer | `/dashboards/:uid` | Embedded Grafana dashboard |
 | Settings | `/settings` | Platform configuration |
@@ -241,11 +244,11 @@ External → :80 (Nginx)
 
 ---
 
-## 5. AI Anomaly Detection Service
+## 5. Anomaly Detection Engine
 
 ### 5.1 Architecture
 
-- **Language:** Go (compiled binary)
+- **Type:** Dedicated detection engine running as a containerized service
 - **Port:** 8088
 - **Check interval:** 300 seconds (5 minutes)
 - **Data source:** VictoriaMetrics (PromQL queries)
@@ -276,7 +279,7 @@ External → :80 (Nginx)
 ### 5.4 Alerting Integration
 
 ```
-AI Detector → Alertmanager (POST /api/v2/alerts)
+Detection Engine → Alertmanager (POST /api/v2/alerts)
                     │
                     ├── group_by: [metric, entity_name, severity]
                     ├── group_wait: 30s
@@ -312,7 +315,7 @@ flowchart LR
     end
 
     subgraph Analysis
-        AI[AI Anomaly Detector]
+        AI[Anomaly Detection Engine]
         CORR[Correlation Engine]
         RCA[Root Cause Engine]
     end
@@ -415,12 +418,12 @@ flowchart LR
 | Jaeger traces | 7 days |
 | PostgreSQL records | Indefinite (with cleanup service) |
 
-### 8.3 Monitoring of Rhinometric
+### 8.3 Self-Monitoring
 
 The platform monitors itself:
 - Backend exposes `/metrics` endpoint (Prometheus format)
 - cAdvisor monitors all container resource usage
-- Node Exporter monitors host system
+- Node Exporter monitors system resources (CPU, memory, disk, network)
 - Health checks on all containers via Docker healthcheck
 
 ---
@@ -429,7 +432,7 @@ The platform monitors itself:
 
 1. **Single-node architecture:** No horizontal scaling, no HA. Single point of failure.
 2. **Grafana dependency:** Dashboards rely on embedded Grafana; no native dashboard builder.
-3. **Go binary opacity:** AI anomaly detector is a compiled Go binary without source in container.
+3. **Detection engine packaging:** The anomaly detection engine ships as a pre-built container image; source is not distributed with the deployment.
 4. **No database migrations:** Schema changes require manual SQL or recreating containers.
 5. **SMTP coupling:** Email delivery depends on Zoho SMTP; no fallback provider.
 6. **Secret management:** Environment variables in `.env` file; no vault integration.
@@ -438,5 +441,5 @@ The platform monitors itself:
 
 ---
 
-*Document generated by Rhinometric Team — info@rhinometric.com*  
+*Document generated by Rhinometric Team — info@rhinometric.com*
 *Last updated: March 2026*

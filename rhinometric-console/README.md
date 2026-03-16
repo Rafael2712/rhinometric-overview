@@ -1,7 +1,7 @@
 # Rhinometric Console — Private Repository
 
-**Version:** 2.7.0  
-**Maintained by:** Rhinometric Team  
+**Version:** 2.7.0
+**Maintained by:** Rhinometric Team
 **Contact:** info@rhinometric.com
 
 ---
@@ -9,6 +9,8 @@
 ## Overview
 
 This is the private monorepo for the **Rhinometric Console** — the central management interface of the Rhinometric Observability Platform. It contains the full-stack application (backend + frontend), configuration for all infrastructure services, and deployment tooling.
+
+Rhinometric is a **service-centric observability platform**. Every module — anomalies, alerts, incidents, SLOs, root cause analysis — is organized around **monitored services** as the primary entity. The platform combines automated anomaly detection, structured incident management, and operational intelligence to help teams detect and resolve issues before they impact users.
 
 ## Repository Structure
 
@@ -33,7 +35,6 @@ rhinometric-console/
 │   ├── FUNCTIONAL_PLATFORM_OVERVIEW.md
 │   ├── TECHNICAL_PLATFORM_OVERVIEW.md
 │   └── PREPRODUCTION_ROADMAP.md
-├── archive/                  # Legacy/superseded documentation
 ├── docker-compose.yml        # Full platform orchestration
 └── CHANGELOG.md              # Release history
 ```
@@ -48,11 +49,11 @@ rhinometric-console/
 | Cache | Redis 7 | Session cache, rate limiting |
 | Metrics | Prometheus + VictoriaMetrics | Time-series storage |
 | Logs | Loki + Promtail | Log aggregation |
-| Traces | Jaeger + OpenTelemetry | Distributed tracing |
 | Dashboards | Grafana 10 | Visualization |
 | Alerts | Alertmanager 0.27 | Alert routing & grouping |
 | Proxy | Nginx | Reverse proxy, TLS termination |
-| AI/ML | Custom Go service | Anomaly detection (Isolation Forest, LOF, Statistical) |
+| Anomaly Detection | Dedicated detection engine | IsolationForest, LOF, Statistical (MAD) |
+| Tracing (available) | Jaeger + OpenTelemetry | Distributed tracing (requires app instrumentation) |
 
 ## Quick Start (Development)
 
@@ -63,13 +64,13 @@ cd mi-proyecto
 
 # Copy environment
 cp .env.example .env
-# Edit .env with your credentials
+# Edit .env with your credentials (database, SMTP, JWT secret, default admin password)
 
 # Start all services
 docker compose up -d
 
 # Access
-# Console:     http://localhost (admin / admin123)
+# Console:     http://localhost (credentials configured in .env)
 # Grafana:     http://localhost/grafana/
 # Backend API: http://localhost/api/
 ```
@@ -124,7 +125,7 @@ The backend exposes all APIs under `/api/`. Key routes:
 | `/api/alert-history` | Historical alert records |
 | `/api/incidents` | Incident lifecycle management |
 | `/api/external-services` | Service inventory & monitoring |
-| `/api/correlation/{fingerprint}` | Anomaly correlation engine |
+| `/api/correlation/{anomaly_group_id}` | Anomaly correlation engine |
 | `/api/service-map` | Service topology & dependencies |
 | `/api/slo` | SLO/SLA definitions & compliance |
 | `/api/logs` | Log query interface |
@@ -140,5 +141,5 @@ Proprietary — Rhinometric. All rights reserved.
 
 ---
 
-*Rhinometric Console — Enterprise Observability Platform*  
+*Rhinometric Console — Service-Centric Observability Platform*
 *info@rhinometric.com — https://rhinometric.com*

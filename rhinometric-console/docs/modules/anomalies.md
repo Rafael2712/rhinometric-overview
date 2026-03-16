@@ -1,7 +1,7 @@
 # Module: AI Anomaly Detection
 
-**Version:** 2.7.0  
-**Classification:** Internal  
+**Version:** 2.7.0
+**Classification:** Internal
 **Maintained by:** Rhinometric Team — info@rhinometric.com
 
 ---
@@ -12,7 +12,7 @@ Automatically detect abnormal metric behavior across all monitored services with
 
 ## What It Does
 
-- Runs as a standalone Python container (`ai-anomaly`) that connects to VictoriaMetrics via PromQL.
+- Runs as a **dedicated anomaly detection engine** in its own container (`ai-anomaly`) that connects to VictoriaMetrics via PromQL.
 - Pulls metric time-series for all active services at configurable intervals (default: 5 minutes).
 - Applies an IsolationForest ensemble model to each metric series.
 - Scores each data point with an anomaly probability (0.0–1.0).
@@ -33,7 +33,7 @@ Automatically detect abnormal metric behavior across all monitored services with
 ## Architecture
 
 ```
-VictoriaMetrics ──PromQL──▶ ai-anomaly container ──PostgreSQL──▶ Backend API ──▶ Frontend
+VictoriaMetrics ──PromQL──▶ Anomaly Detection Engine ──PostgreSQL──▶ Backend API ──▶ Frontend
                                     │
                                     └──▶ anomaly_events table ──▶ Alert Rules Engine
 ```

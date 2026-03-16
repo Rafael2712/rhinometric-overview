@@ -1,21 +1,21 @@
 # Rhinometric Platform — Functional Overview
 
-**Version:** 2.7.0  
-**Date:** March 2026  
-**Classification:** Internal — Confidential  
+**Version:** 2.7.0
+**Date:** March 2026
+**Classification:** Internal — Confidential
 **Maintained by:** Rhinometric Team — info@rhinometric.com
 
 ---
 
 ## 1. Executive Summary
 
-Rhinometric is an enterprise observability platform built on a **service-centric** architecture. Unlike traditional monitoring tools that focus on infrastructure metrics, Rhinometric organizes all telemetry data — metrics, logs, traces, and anomalies — around the concept of **services** as the primary entity.
+Rhinometric is a **service-centric observability platform**. Unlike traditional monitoring tools that focus on infrastructure metrics or host-level data, Rhinometric organizes all telemetry — metrics, logs, and anomaly signals — around **monitored services** as the primary entity.
 
-The platform provides a complete observability pipeline:
+The platform provides a complete operational intelligence pipeline:
 
 **Services → Health Checks → Anomaly Detection → Alerts → Incidents → Root Cause Analysis → Service Map → SLO Tracking**
 
-Every module in the platform feeds into this pipeline, creating a unified operational picture from raw metrics to business-level SLA compliance.
+Every module feeds into this pipeline, creating a unified operational picture from raw metrics to business-level SLA compliance. The commercial model is based on the number of **monitored services**, not hosts or infrastructure nodes.
 
 ---
 
@@ -23,7 +23,7 @@ Every module in the platform feeds into this pipeline, creating a unified operat
 
 ### 2.1 Service Monitoring
 
-**Purpose:** Central registry of all monitored services with automated health checking.
+**Purpose:** Central registry of all monitored services with automated health checking. Services are the primary entity around which the entire platform is organized.
 
 **What it does:**
 - Maintains an inventory of external services (APIs, databases, websites)
@@ -37,7 +37,7 @@ Every module in the platform feeds into this pipeline, creating a unified operat
 - APM-level code instrumentation
 - Custom protocol checks beyond HTTP/TCP/PostgreSQL
 
-**Inputs:** Service definitions (URL, type, check interval, expected response)  
+**Inputs:** Service definitions (URL, type, check interval, expected response)
 **Outputs:** Health scores, availability percentages, latency metrics, status (up/down/degraded)
 
 **Dependencies:** PostgreSQL (service definitions), Prometheus (metrics export), Health Checker service
@@ -66,14 +66,14 @@ Every module in the platform feeds into this pipeline, creating a unified operat
 - Does not perform root cause analysis (that's a separate module)
 - Does not generate predictions or forecasts
 
-**Inputs:** Prometheus/VictoriaMetrics time-series data, service health metrics  
+**Inputs:** Prometheus/VictoriaMetrics time-series data, service health metrics
 **Outputs:** Anomaly groups with fingerprints, severity, deviation %, occurrence history
 
-**Dependencies:** AI Anomaly Service (Go binary), VictoriaMetrics, Backend API
+**Dependencies:** Anomaly detection engine (dedicated container), VictoriaMetrics, Backend API
 
 **Limitations:**
 - Detection models require a minimum of data points (configurable window, default 28 samples)
-- Go binary runs as a compiled service; source code is not included in the container
+- The anomaly detection engine runs as a dedicated container; source code is not distributed with the deployment
 
 ---
 
@@ -92,7 +92,8 @@ Every module in the platform feeds into this pipeline, creating a unified operat
 - Does not provide remediation suggestions (planned for future)
 - Analysis is deterministic, not generative
 
-**Inputs:** Anomaly groups, metric metadata, historical baselines  
+**Inputs:** Anomaly groups, metric metadata, historical baselines
+
 **Outputs:** Analysis strings with current value, expected range, deviation context
 
 **Dependencies:** AI Anomaly Detection module
@@ -115,7 +116,7 @@ Every module in the platform feeds into this pipeline, creating a unified operat
 - Does not support complex boolean logic across multiple rules (single expression per rule)
 - Does not provide a visual rule builder (PromQL text input only)
 
-**Inputs:** PromQL expression, severity, duration, labels  
+**Inputs:** PromQL expression, severity, duration, labels
 **Outputs:** Alert rule definitions stored in PostgreSQL and synced to Alertmanager
 
 **Dependencies:** Alertmanager, Prometheus
@@ -138,7 +139,7 @@ Every module in the platform feeds into this pipeline, creating a unified operat
 - Does not aggregate alerts across multiple Alertmanager instances
 - Does not support alert silencing from the UI (must use Alertmanager directly)
 
-**Inputs:** Alertmanager API, alert webhook events  
+**Inputs:** Alertmanager API, alert webhook events
 **Outputs:** Active alert list, alert history records with timestamps
 
 **Dependencies:** Alertmanager, PostgreSQL (alert history)
@@ -163,7 +164,7 @@ Every module in the platform feeds into this pipeline, creating a unified operat
 - Does not integrate with PagerDuty or OpsGenie (planned)
 - No automated runbook execution
 
-**Inputs:** Alert webhooks, user actions  
+**Inputs:** Alert webhooks, user actions
 **Outputs:** Incident records with timeline, comments, tags, status transitions
 
 **Dependencies:** Alertmanager webhook, PostgreSQL
@@ -186,7 +187,8 @@ Every module in the platform feeds into this pipeline, creating a unified operat
 - Does not execute remediation actions
 - Not a substitute for human investigation
 
-**Inputs:** Anomaly fingerprint, correlated metrics, alert history  
+**Inputs:** Anomaly fingerprint, correlated metrics, alert history
+
 **Outputs:** Root cause hypotheses, contributing factors, confidence scores
 
 **Dependencies:** Correlation Engine, AI Anomaly Detection, Alert History
@@ -209,7 +211,8 @@ Every module in the platform feeds into this pipeline, creating a unified operat
 - Does not show traffic flow or request volumes
 - Does not support multiple topology views
 
-**Inputs:** Service dependency definitions, real-time health data  
+**Inputs:** Service dependency definitions, real-time health data
+
 **Outputs:** Interactive topology graph with health overlay
 
 **Dependencies:** Service Monitoring, PostgreSQL (dependency definitions)
@@ -232,7 +235,7 @@ Every module in the platform feeds into this pipeline, creating a unified operat
 - Does not support composite SLOs (single metric per SLO)
 - No automatic SLO suggestion based on historical data
 
-**Inputs:** SLO definition (metric, target, window), real-time metrics  
+**Inputs:** SLO definition (metric, target, window), real-time metrics
 **Outputs:** Compliance percentage, error budget remaining, burn rate
 
 **Dependencies:** Prometheus/VictoriaMetrics, Service Monitoring
@@ -256,7 +259,7 @@ Every module in the platform feeds into this pipeline, creating a unified operat
 - Does not support per-user notification preferences
 - No notification scheduling or quiet hours
 
-**Inputs:** Alert webhook events from Alertmanager  
+**Inputs:** Alert webhook events from Alertmanager
 **Outputs:** Formatted Slack messages, HTML emails with deep links
 
 **Dependencies:** Alertmanager, Zoho SMTP, Slack webhook URL
@@ -282,7 +285,7 @@ Every module in the platform feeds into this pipeline, creating a unified operat
 - Does not establish causal relationships (correlation only)
 - Does not correlate across multiple time granularities simultaneously
 
-**Inputs:** Anomaly fingerprint, time range  
+**Inputs:** Anomaly fingerprint, time range
 **Outputs:** Correlated metrics list, related anomaly groups, correlation scores
 
 **Dependencies:** VictoriaMetrics, AI Anomaly Detection
@@ -305,30 +308,30 @@ Every module in the platform feeds into this pipeline, creating a unified operat
 - No log analytics or automatic pattern detection
 - No log-to-trace correlation from the Console UI
 
-**Inputs:** LogQL queries  
+**Inputs:** LogQL queries
 **Outputs:** Log entries with timestamps, labels, and content
 
 **Dependencies:** Loki, Promtail
 
 ---
 
-### 2.13 Traces
+### 2.13 Traces (Available Capability)
 
 **Purpose:** Distributed trace exploration.
+
+**Current State:** Traces are an **available capability** within the platform, not a primary pillar. The infrastructure (Jaeger + OTel Collector) is deployed and functional, but trace data collection requires applications to be instrumented with OpenTelemetry SDKs. Currently, only the Rhinometric backend itself emits traces. For most deployments, metrics and logs provide the primary observability signals.
 
 **What it does:**
 - Search traces by service, operation, duration, and time range
 - View trace detail with span waterfall
 - Jaeger backend integration
 
-**Current State:** Basic integration. The Console provides a search interface that proxies to Jaeger. Trace data collection requires applications to be instrumented with OpenTelemetry SDKs. Currently, only the backend itself emits traces via the OTel Collector.
-
 **What it does NOT do:**
 - No automatic trace-to-log correlation
 - No trace-to-metric correlation
 - No service dependency inference from traces
 
-**Inputs:** Trace search parameters  
+**Inputs:** Trace search parameters
 **Outputs:** Trace list, span detail view
 
 **Dependencies:** Jaeger, OpenTelemetry Collector
@@ -352,7 +355,7 @@ Every module in the platform feeds into this pipeline, creating a unified operat
 - No SSO/SAML/OAuth (planned)
 - No fine-grained resource-level permissions (role-based only)
 
-**Inputs:** User credentials  
+**Inputs:** User credentials
 **Outputs:** JWT token, user profile with roles
 
 **Dependencies:** PostgreSQL (user records)
@@ -368,18 +371,19 @@ Every module in the platform feeds into this pipeline, creating a unified operat
 - License key validation (format: `RHINO-XXXX-XXXX-XXXX-XXXX`)
 - Tier support: `starter`, `professional`, `enterprise`
 - Feature gating based on tier
+- **Service-based model:** Each tier defines the maximum number of monitored services (e.g., Community = 10, Professional = 50, Enterprise = unlimited)
 - License UI for activation and status display
 - Grace period handling for expired licenses
 
-**Current State:** The license server is functional and deployed. License validation is integrated into the backend. The Rust-based binary license validator and Ansible-based deployment automation are planned for pre-production but not yet implemented.
+**Current State:** The license server is functional and deployed. License validation is integrated into the backend. Tiers currently control feature access and service count limits. The compiled Rust-based license validator with tamper resistance is planned for pre-production but not yet implemented.
 
 **What it does NOT do:**
-- No hardware fingerprinting (planned with Rust agent)
 - No online activation (offline key-based only)
 - No usage metering
+- No floating/concurrent license models
 
-**Inputs:** License key  
-**Outputs:** License status, tier, expiry date, enabled features
+**Inputs:** License key
+**Outputs:** License status, tier, expiry date, enabled features, service count limit
 
 **Dependencies:** License Server, PostgreSQL, Redis
 
@@ -388,46 +392,46 @@ Every module in the platform feeds into this pipeline, creating a unified operat
 ## 3. Functional Data Flow
 
 ```
-┌─────────────────────────────────────────────────────────────────────┐
+┌──────────────────────────────────────────────────────────────────────┐
 │                        DATA SOURCES                                  │
-│  Infrastructure (node_exporter, cAdvisor, postgres_exporter)        │
-│  Services (health_checker → HTTP/TCP/PG checks)                     │
-│  Applications (OpenTelemetry SDK → traces)                          │
+│  Infrastructure (node_exporter, cAdvisor, postgres_exporter)         │
+│  Services (health_checker → HTTP/TCP/PG checks)                      │
 │  Logs (Promtail → container logs)                                    │
-└──────────────┬──────────────────────────────────────────────────────┘
+│  Traces (OpenTelemetry SDK → optional, requires instrumentation)     │
+└──────────────┬───────────────────────────────────────────────────────┘
                │
                ▼
 ┌──────────────────────────────────────────────────────────────────────┐
 │                      COLLECTION & STORAGE                            │
 │  Prometheus ──► VictoriaMetrics (long-term metrics)                  │
-│  Loki (logs)    Jaeger (traces)    PostgreSQL (state)               │
-└──────────────┬──────────────────────────────────────────────────────┘
+│  Loki (logs)    Jaeger (traces, when available)    PostgreSQL (state)│
+└──────────────┬───────────────────────────────────────────────────────┘
                │
                ▼
 ┌──────────────────────────────────────────────────────────────────────┐
 │                      ANALYSIS ENGINES                                │
-│  AI Anomaly Detector (Go) ──► anomaly groups + fingerprints         │
+│  Anomaly Detection Engine ──► anomaly groups + fingerprints          │
 │  Correlation Engine ──► related metrics + anomalies                  │
-│  Root Cause Engine ──► hypotheses + contributing factors             │
+│  Root Cause Engine ──► hypotheses + contributing factors              │
 │  Health Checker ──► service scores + availability                    │
-└──────────────┬──────────────────────────────────────────────────────┘
+└──────────────┬───────────────────────────────────────────────────────┘
                │
                ▼
 ┌──────────────────────────────────────────────────────────────────────┐
 │                      ALERTING PIPELINE                               │
-│  Alertmanager ──► route + group ──► webhook ──► Backend             │
+│  Alertmanager ──► route + group ──► webhook ──► Backend              │
 │  Backend ──► incident creation + email cooldown                      │
-│  Backend ──► Slack webhook + Email (Zoho SMTP)                      │
-└──────────────┬──────────────────────────────────────────────────────┘
+│  Backend ──► Slack webhook + Email (Zoho SMTP)                       │
+└──────────────┬───────────────────────────────────────────────────────┘
                │
                ▼
 ┌──────────────────────────────────────────────────────────────────────┐
 │                      CONSOLE UI                                      │
-│  Home Dashboard ── Services ── Anomalies ── Alerts ── Incidents     │
-│  Service Map ── SLO/SLA ── Logs ── Traces ── Settings               │
-│  AI Insights ── Correlation ── Root Cause ── Alert Rules            │
-│  Users (RBAC) ── License ── Dashboards (Grafana embed)              │
-└─────────────────────────────────────────────────────────────────────┘
+│  Home Dashboard ── Services ── Anomalies ── Alerts ── Incidents      │
+│  Service Map ── SLO/SLA ── Logs ── Traces ── Settings                │
+│  AI Insights ── Correlation ── Root Cause ── Alert Rules             │
+│  Users (RBAC) ── License ── Dashboards (Grafana embed)               │
+└──────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -447,15 +451,15 @@ Every module in the platform feeds into this pipeline, creating a unified operat
 | SLO/SLA | — | Service Monitoring, Prometheus |
 | Notifications | — | Alertmanager webhook |
 | Logs | — | Loki (Promtail) |
-| Traces | — | Jaeger (OTel Collector) |
+| Traces (available) | — | Jaeger (OTel Collector, when instrumented) |
 
 ---
 
 ## 5. Known Limitations (Current State)
 
 1. **Service scaling:** UI optimized for <30 services; needs redesign for 100+ services
-2. **Trace coverage:** Only backend self-traces; requires app instrumentation for full coverage
-3. **License enforcement:** Key-based validation works; hardware fingerprinting and Rust agent pending
+2. **Trace coverage:** Only backend self-traces; full coverage requires application instrumentation with OpenTelemetry SDKs
+3. **License enforcement:** Key-based validation with service-count limits works; compiled Rust validator in development
 4. **Installer:** Docker Compose based; Ansible-based enterprise installer not yet built
 5. **External integrations:** Only Slack and Email; PagerDuty, Teams, OpsGenie planned
 6. **No SSO/LDAP:** Authentication is local JWT only
@@ -464,5 +468,5 @@ Every module in the platform feeds into this pipeline, creating a unified operat
 
 ---
 
-*Document generated by Rhinometric Team — info@rhinometric.com*  
+*Document generated by Rhinometric Team — info@rhinometric.com*
 *Last updated: March 2026*
