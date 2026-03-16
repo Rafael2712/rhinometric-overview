@@ -182,6 +182,18 @@ function PgForm({ config, onChange }: { config: Record<string,any>; onChange: (c
     </div>
   )
 }
+const CATALOG_TYPE_OPTIONS = [
+  { value: '', label: 'None' },
+  { value: 'REST_API', label: 'REST API' },
+  { value: 'SOAP_API', label: 'SOAP API' },
+  { value: 'WEB_APP', label: 'Web Application' },
+  { value: 'MOBILE_API', label: 'Mobile API' },
+  { value: 'DATABASE', label: 'Database' },
+  { value: 'INTERNAL_SERVICE', label: 'Internal Service' },
+  { value: 'EXTERNAL_SERVICE', label: 'External Service' },
+  { value: 'OTHER', label: 'Other' },
+]
+
 /* ─── Main Component ─────────────────────────────────────────── */
 
 export default function Services() {
@@ -202,6 +214,12 @@ export default function Services() {
   const [formTimeout, setFormTimeout] = useState(10)
   const [formInterval, setFormInterval] = useState(60)
   const [editId, setEditId] = useState<number | null>(null)
+
+  // Catalog metadata form state
+  const [formCatalogType, setFormCatalogType] = useState('')
+  const [formCategory, setFormCategory] = useState('')
+  const [formTags, setFormTags] = useState<string[]>([])
+  const [formTagInput, setFormTagInput] = useState('')
 
   // Test connection state
   const [testing, setTesting] = useState(false)
@@ -250,6 +268,7 @@ export default function Services() {
     setFormType('http'); setFormName(''); setFormEnv(''); setFormDesc('')
     setFormConfig({}); setFormTimeout(10); setFormInterval(60)
     setEditId(null); setTestResult(null)
+    setFormCatalogType(''); setFormCategory(''); setFormTags([]); setFormTagInput('')
   }
 
   const openCreate = () => { resetForm(); setView('create') }
@@ -259,6 +278,8 @@ export default function Services() {
     setFormEnv(svc.environment || ''); setFormDesc(svc.description || '')
     setFormConfig(svc.config || {}); setFormTimeout(svc.timeout_seconds)
     setFormInterval(svc.check_interval_seconds); setTestResult(null)
+    setFormCatalogType(svc.catalog_type || ''); setFormCategory(svc.category || '')
+    setFormTags(svc.tags && Array.isArray(svc.tags) ? svc.tags : []); setFormTagInput('')
     setView('edit')
   }
 
@@ -291,6 +312,8 @@ export default function Services() {
       name: formName, service_type: formType, environment: formEnv || null,
       description: formDesc || null, config: formConfig,
       timeout_seconds: formTimeout, check_interval_seconds: formInterval, enabled: true,
+      catalog_type: formCatalogType || null, category: formCategory || null,
+      tags: formTags.length > 0 ? formTags : null,
     }
     try {
       const url = editId ? `/api/external-services/${editId}` : '/api/external-services'
@@ -422,6 +445,64 @@ export default function Services() {
             <label className="block text-sm font-medium text-gray-300 mb-1">Description</label>
             <textarea value={formDesc} onChange={e => setFormDesc(e.target.value)} rows={2}
               placeholder="Optional description" className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-3 py-2 text-white placeholder-gray-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
+          </div>
+        </div>
+
+        {/* Classification (catalog metadata) */}
+        <div className="bg-gray-800/50 rounded-lg border border-gray-700/50 p-6 space-y-4">
+          <h2 className="text-lg font-semibold text-white mb-2">Classification</h2>
+          <p className="text-gray-500 text-xs -mt-1">Optional metadata for organizing and filtering services.</p>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">Catalog Type</label>
+              <select value={formCatalogType} onChange={e => setFormCatalogType(e.target.value)}
+                className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-3 py-2 text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
+                {CATALOG_TYPE_OPTIONS.map((o: { value: string; label: string }) => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">Category</label>
+              <input type="text" value={formCategory} onChange={e => setFormCategory(e.target.value)}
+                placeholder="e.g. payments, auth, infrastructure"
+                className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-3 py-2 text-white placeholder-gray-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1">Tags</label>
+            <div className="flex flex-wrap gap-1.5 mb-2">
+              {formTags.map((tag, i) => (
+                <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-400/10 text-blue-400 border border-blue-400/20">
+                  {tag}
+                  <button type="button" onClick={() => setFormTags(formTags.filter((_: string, j: number) => j !== i))}
+                    className="ml-0.5 hover:text-red-400 transition-colors">
+                    <X className="w-3 h-3" />
+                  </button>
+                </span>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <input type="text" value={formTagInput} onChange={e => setFormTagInput(e.target.value)}
+                onKeyDown={e => {
+                  if ((e.key === 'Enter' || e.key === ',') && formTagInput.trim()) {
+                    e.preventDefault()
+                    const newTag = formTagInput.trim().toLowerCase().replace(/,/g, '')
+                    if (newTag && !formTags.includes(newTag)) setFormTags([...formTags, newTag])
+                    setFormTagInput('')
+                  }
+                }}
+                placeholder="Type a tag and press Enter"
+                className="flex-1 bg-gray-900/50 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
+              <button type="button" onClick={() => {
+                  const newTag = formTagInput.trim().toLowerCase().replace(/,/g, '')
+                  if (newTag && !formTags.includes(newTag)) setFormTags([...formTags, newTag])
+                  setFormTagInput('')
+                }}
+                disabled={!formTagInput.trim()}
+                className="px-3 py-2 rounded-lg text-sm bg-blue-600/20 text-blue-400 hover:bg-blue-600/30 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+                Add
+              </button>
+            </div>
+            <p className="text-gray-600 text-xs mt-1.5">Press Enter or comma to add. Click ?? to remove.</p>
           </div>
         </div>
 
