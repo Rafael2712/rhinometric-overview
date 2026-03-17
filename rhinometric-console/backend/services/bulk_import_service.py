@@ -301,17 +301,128 @@ def _validate_row(row: Dict[str, Any], row_num: int) -> Tuple[Optional[Dict[str,
     }, []
 
 
+def _sniff_delimiter(sample: str) -> str:
+    """Detect CSV delimiter from a sample of content."""
+    # Try csv.Sniffer first
+    try:
+        dialect = csv.Sniffer().sniff(sample, delimiters=",;\t")
+        return dialect.delimiter
+    except csv.Error:
+        pass
+    # Fallback: count occurrences in first line
+    first_line = sample.split("\n")[0] if "\n" in sample else sample
+    counts = {
+        ",": first_line.count(","),
+        ";": first_line.count(";"),
+        "\t": first_line.count("\t"),
+    }
+    # Pick the delimiter with most occurrences (min 1)
+    best = max(counts, key=counts.get)
+    if counts[best] >= 1:
+        return best
+    return ","  # ultimate fallback
+
+
+# Canonical required columns and their known aliases, for early
+# header-level validation.  Lowercase.
+_REQUIRED_HEADER_MAP = {
+    "service_type": {"service_type", "type", "servicetype"},
+}
+
+# Optional but useful to detect: url (required for HTTP but not PG)
+_USEFUL_HEADER_MAP = {
+    "url": {"url", "target", "endpoint"},
+}
+
+
+def _validate_csv_headers(
+    fieldnames: List[str],
+) -> Optional[str]:
+    """
+    Check that required columns (or their aliases) exist in headers.
+    Returns an error string or None if OK.
+    """
+    if not fieldnames:
+        return "CSV file has no header row"
+
+    headers_lower = {h.strip().lower() for h in fieldnames if h}
+
+    # Must have 'name'
+    if "name" not in headers_lower:
+        return (
+            "CSV missing required column: name. "
+            "First row must be a header with column names."
+        )
+
+    # Must have service_type or alias
+    for canonical, aliases in _REQUIRED_HEADER_MAP.items():
+        if not headers_lower & aliases:
+            alias_list = ", ".join(sorted(aliases - {canonical}))
+            return (
+                f"CSV missing required column: {canonical} "
+                f"(accepted aliases: {alias_list}). "
+                "Check that your CSV uses comma, semicolon, or tab as delimiter "
+                "and that the first row contains column headers."
+            )
+
+    return None
+
+
 def parse_csv(content: str) -> Tuple[List[Dict[str, Any]], Optional[str]]:
-    """Parse CSV content into list of row dicts."""
+    """
+    Parse CSV content into list of row dicts.
+
+    Supports comma, semicolon, and tab delimiters (auto-detected).
+    Handles UTF-8 BOM, Windows/Mac line endings, and header spacing.
+    """
     try:
         # Handle BOM
         if content.startswith("\ufeff"):
             content = content[1:]
-        reader = csv.DictReader(io.StringIO(content))
+
+        # Normalize line endings to \n
+        content = content.replace("\r\n", "\n").replace("\r", "\n")
+
+        # Strip leading/trailing whitespace (empty lines)
+        content = content.strip()
+        if not content:
+            return [], "CSV file is empty"
+
+        # Sniff delimiter from first ~3 lines
+        sample_lines = "\n".join(content.split("\n")[:3])
+        delimiter = _sniff_delimiter(sample_lines)
+
+        reader = csv.DictReader(io.StringIO(content), delimiter=delimiter)
+
+        # Strip whitespace from header names
+        if reader.fieldnames:
+            reader.fieldnames = [
+                (f.strip() if f else f) for f in reader.fieldnames
+            ]
+
+        # Early structural header validation
+        header_err = _validate_csv_headers(reader.fieldnames or [])
+        if header_err:
+            detected = {"," : "comma", ";": "semicolon", "\t": "tab"}.get(delimiter, delimiter)
+            return [], f"{header_err} (detected delimiter: {detected})"
+
         rows = list(reader)
         if not rows:
-            return [], "CSV file is empty or has no data rows"
-        return rows, None
+            return [], "CSV file has headers but no data rows"
+
+        # Strip whitespace from all cell values
+        cleaned_rows = []
+        for row in rows:
+            cleaned = {}
+            for k, v in row.items():
+                if k is None:
+                    continue  # extra columns beyond header
+                key = k.strip() if k else k
+                val = v.strip() if isinstance(v, str) else v
+                cleaned[key] = val
+            cleaned_rows.append(cleaned)
+
+        return cleaned_rows, None
     except Exception as e:
         return [], f"Failed to parse CSV: {str(e)}"
 

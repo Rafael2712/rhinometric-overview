@@ -1506,6 +1506,7 @@ export default function Services() {
                       <p><span className="text-gray-300">PostgreSQL:</span> host, port, database_name, username, password</p>
                       <p><span className="text-gray-300">Optional:</span> environment, description, timeout_seconds, check_interval_seconds, enabled, catalog_type, category, tags</p>
                       <p className="pt-1 border-t border-gray-700/30"><span className="text-gray-300">Aliases accepted:</span> type or serviceType &rarr; service_type &bull; target or endpoint &rarr; url &bull; catalogType &rarr; catalog_type &bull; timeout &rarr; timeout_seconds &bull; checkInterval &rarr; check_interval_seconds &bull; authType &rarr; auth_type &bull; authValue &rarr; auth_value</p>
+                      <p><span className="text-gray-300">Delimiters:</span> CSV can use comma, semicolon, or tab as column separator (auto-detected)</p>
                       <p><span className="text-gray-300">Tags:</span> comma, semicolon, or pipe separated (e.g. &quot;critical,external,api&quot;)</p>
                       <p><span className="text-gray-300">Auth:</span> leave auth_type empty if not needed &mdash; do not use &quot;None&quot;</p>
                     </div>
