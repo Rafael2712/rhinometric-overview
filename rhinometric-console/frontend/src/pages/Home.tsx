@@ -1,4 +1,4 @@
-import { Activity, Server, AlertTriangle, Bell, TrendingUp, TrendingDown, Map, Shield } from 'lucide-react'
+import { Activity, Server, AlertTriangle, Bell, TrendingUp, TrendingDown, Shield } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useAuthStore } from '../lib/auth/store'
@@ -330,81 +330,6 @@ export function HomePage() {
             </div>
           )
         })}
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-        <div className="card">
-          <h3 className="text-base sm:text-lg font-semibold text-white mb-3 sm:mb-4">System Health</h3>
-          <div className="space-y-3">
-            {['Infrastructure', 'Network', 'Database', 'Applications'].map((category) => (
-              <div key={category} className="flex items-center justify-between">
-                <span className="text-text-secondary text-sm">{category}</span>
-                <div className="flex items-center space-x-2">
-                  <div className="w-2 h-2 rounded-full bg-success" />
-                  <span className="text-sm text-success">OK</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="card">
-          <h3 className="text-base sm:text-lg font-semibold text-white mb-3 sm:mb-4">Recent Activity</h3>
-          <div className="space-y-3">
-            <div className="flex items-start space-x-3">
-              <div className="w-2 h-2 rounded-full bg-primary mt-2 flex-shrink-0" />
-              <div>
-                <p className="text-sm text-white">System started successfully</p>
-                <p className="text-xs text-text-muted">2 minutes ago</p>
-              </div>
-            </div>
-            <div className="flex items-start space-x-3">
-              <div className="w-2 h-2 rounded-full bg-success mt-2 flex-shrink-0" />
-              <div>
-                <p className="text-sm text-white">All collectors connected</p>
-                <p className="text-xs text-text-muted">5 minutes ago</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-
-      {/* Roadmap Snapshot */}
-      <div
-        className="card hover:border-secondary/50 cursor-pointer transition-all duration-200 hover:shadow-lg hover:shadow-secondary/10"
-        onClick={() => navigate('/roadmap')}
-      >
-        <div className="flex items-start gap-3">
-          <div className="p-2 bg-secondary/10 rounded-lg flex-shrink-0">
-            <Map className="w-5 h-5 sm:w-6 sm:h-6 text-secondary" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <h3 className="text-base sm:text-lg font-semibold text-white mb-1">Roadmap Snapshot</h3>
-            <div className="flex flex-wrap gap-2 mb-2">
-              <span className="text-[10px] sm:text-xs px-2 py-0.5 rounded-full bg-primary/15 text-primary font-medium">P0: 5 items</span>
-              <span className="text-[10px] sm:text-xs px-2 py-0.5 rounded-full bg-secondary/15 text-secondary font-medium">P1: 7 items</span>
-              <span className="text-[10px] sm:text-xs px-2 py-0.5 rounded-full bg-warning/10 text-warning font-medium">P2: 4 items</span>
-            </div>
-            <p className="text-text-muted text-xs sm:text-sm">View full product roadmap →</p>
-          </div>
-        </div>
-      </div>
-
-      <div className="card bg-primary/5 border-primary/20">
-        <div className="flex items-start gap-3 sm:space-x-4">
-          <div className="p-2 bg-primary/10 rounded-lg flex-shrink-0">
-            <Activity className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
-          </div>
-          <div className="min-w-0">
-            <h3 className="text-base sm:text-lg font-semibold text-white mb-1 sm:mb-2">Real-time Metrics Integration</h3>
-            <p className="text-text-muted text-xs sm:text-sm mb-3 sm:mb-4">This dashboard displays live metrics from Prometheus, active anomalies from the AI engine, and recent alerts from AlertManager.</p>
-            <div className="flex flex-wrap gap-2">
-              <span className="text-[10px] sm:text-xs px-2 sm:px-3 py-1 bg-success/20 text-success rounded-full">✓ Backend API: Connected</span>
-              <span className="text-[10px] sm:text-xs px-2 sm:px-3 py-1 bg-success/20 text-success rounded-full">✓ Frontend: Ready</span>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   )
