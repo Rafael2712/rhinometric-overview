@@ -389,6 +389,24 @@ export default function Services() {
   const openImportModal = () => { resetImport(); setShowImportModal(true) }
   const closeImportModal = () => { setShowImportModal(false); resetImport() }
 
+  const downloadTemplate = async (format: 'csv' | 'json') => {
+    try {
+      const res = await fetch(`/api/external-services/import/template/${format}`, {
+        headers: { 'Authorization': `Bearer ${token}` },
+      })
+      if (!res.ok) throw new Error('Download failed')
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `import_template.${format}`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } catch (e) { console.error('Template download error:', e) }
+  }
+
   const handleImportValidate = async () => {
     if (!importFile) return
     setImportLoading(true)
@@ -958,12 +976,12 @@ export default function Services() {
                   <div className="flex items-center gap-3 p-3 rounded-lg bg-gray-900/50 border border-gray-700/50">
                     <FileText className="w-4 h-4 text-gray-400 flex-shrink-0" />
                     <span className="text-gray-400 text-sm">Download template:</span>
-                    <a href="/api/external-services/import/template/csv" className="text-blue-400 hover:text-blue-300 text-sm font-medium flex items-center gap-1">
+                    <button onClick={() => downloadTemplate('csv')} className="text-blue-400 hover:text-blue-300 text-sm font-medium flex items-center gap-1">
                       <Download className="w-3.5 h-3.5" /> CSV
-                    </a>
-                    <a href="/api/external-services/import/template/json" className="text-blue-400 hover:text-blue-300 text-sm font-medium flex items-center gap-1">
+                    </button>
+                    <button onClick={() => downloadTemplate('json')} className="text-blue-400 hover:text-blue-300 text-sm font-medium flex items-center gap-1">
                       <Download className="w-3.5 h-3.5" /> JSON
-                    </a>
+                    </button>
                   </div>
 
                   {/* File input */}
