@@ -602,6 +602,16 @@ export default function Services() {
           </div>
         </div>
 
+        {/* Read-only banner for non-admin users */}
+        {!canManage && (
+          <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+            <Lock className="w-5 h-5 text-yellow-400 flex-shrink-0" />
+            <p className="text-yellow-300 text-sm">
+              <span className="font-medium">View-only mode.</span> You can explore the configuration but only administrators can create or modify services.
+            </p>
+          </div>
+        )}
+
         {bulkStep === 'form' && (
           <div className="space-y-6">
             {/* Common Settings */}
@@ -610,66 +620,67 @@ export default function Services() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="col-span-2">
                   <label className="block text-sm text-gray-400 mb-1">Base URL <span className="text-gray-600">(optional)</span></label>
-                  <input value={bulkBaseUrl} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setBulkBaseUrl(e.target.value)}
-                    placeholder="https://api.company.com" className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-3 py-2 text-white placeholder-gray-600 focus:border-blue-500 focus:outline-none" />
+                  <input value={bulkBaseUrl} onChange={(e: React.ChangeEvent<HTMLInputElement>) => canManage && setBulkBaseUrl(e.target.value)} readOnly={!canManage}
+                    placeholder="https://api.company.com" className={`w-full bg-gray-900/50 border border-gray-700 rounded-lg px-3 py-2 placeholder-gray-600 focus:outline-none ${canManage ? 'text-white focus:border-blue-500' : 'text-gray-500 cursor-not-allowed'}`} />
                   <p className="text-gray-600 text-xs mt-1">If set, endpoint paths will be appended to this URL</p>
                 </div>
                 <div>
                   <label className="block text-sm text-gray-400 mb-1">Method</label>
-                  <select value={bulkMethod} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setBulkMethod(e.target.value)}
-                    className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-3 py-2 text-white focus:border-blue-500 focus:outline-none">
+                  <select value={bulkMethod} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => canManage && setBulkMethod(e.target.value)} disabled={!canManage}
+                    className={`w-full bg-gray-900/50 border border-gray-700 rounded-lg px-3 py-2 focus:outline-none ${canManage ? 'text-white focus:border-blue-500' : 'text-gray-500 cursor-not-allowed'}`}>
                     {['GET','POST','PUT','DELETE','PATCH','HEAD','OPTIONS'].map((m: string) => <option key={m} value={m}>{m}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="block text-sm text-gray-400 mb-1">Environment</label>
-                  <input value={bulkEnv} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setBulkEnv(e.target.value)}
-                    placeholder="production" className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-3 py-2 text-white placeholder-gray-600 focus:border-blue-500 focus:outline-none" />
+                  <input value={bulkEnv} onChange={(e: React.ChangeEvent<HTMLInputElement>) => canManage && setBulkEnv(e.target.value)} readOnly={!canManage}
+                    placeholder="production" className={`w-full bg-gray-900/50 border border-gray-700 rounded-lg px-3 py-2 placeholder-gray-600 focus:outline-none ${canManage ? 'text-white focus:border-blue-500' : 'text-gray-500 cursor-not-allowed'}`} />
                 </div>
                 <div>
                   <label className="block text-sm text-gray-400 mb-1">Timeout (s)</label>
-                  <input type="number" value={bulkTimeout} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setBulkTimeout(Number(e.target.value))}
-                    min={1} max={120} className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-3 py-2 text-white focus:border-blue-500 focus:outline-none" />
+                  <input type="number" value={bulkTimeout} onChange={(e: React.ChangeEvent<HTMLInputElement>) => canManage && setBulkTimeout(Number(e.target.value))} readOnly={!canManage}
+                    min={1} max={120} className={`w-full bg-gray-900/50 border border-gray-700 rounded-lg px-3 py-2 focus:outline-none ${canManage ? 'text-white focus:border-blue-500' : 'text-gray-500 cursor-not-allowed'}`} />
                 </div>
                 <div>
                   <label className="block text-sm text-gray-400 mb-1">Check Interval (s)</label>
-                  <input type="number" value={bulkInterval} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setBulkInterval(Number(e.target.value))}
-                    min={10} max={86400} className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-3 py-2 text-white focus:border-blue-500 focus:outline-none" />
+                  <input type="number" value={bulkInterval} onChange={(e: React.ChangeEvent<HTMLInputElement>) => canManage && setBulkInterval(Number(e.target.value))} readOnly={!canManage}
+                    min={10} max={86400} className={`w-full bg-gray-900/50 border border-gray-700 rounded-lg px-3 py-2 focus:outline-none ${canManage ? 'text-white focus:border-blue-500' : 'text-gray-500 cursor-not-allowed'}`} />
                 </div>
                 <div>
                   <label className="block text-sm text-gray-400 mb-1">Catalog Type</label>
-                  <select value={bulkCatalogType} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setBulkCatalogType(e.target.value)}
-                    className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-3 py-2 text-white focus:border-blue-500 focus:outline-none">
+                  <select value={bulkCatalogType} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => canManage && setBulkCatalogType(e.target.value)} disabled={!canManage}
+                    className={`w-full bg-gray-900/50 border border-gray-700 rounded-lg px-3 py-2 focus:outline-none ${canManage ? 'text-white focus:border-blue-500' : 'text-gray-500 cursor-not-allowed'}`}>
                     {CATALOG_TYPE_OPTIONS.map((o: {value:string;label:string}) => <option key={o.value} value={o.value}>{o.label}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="block text-sm text-gray-400 mb-1">Category</label>
-                  <input value={bulkCategory} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setBulkCategory(e.target.value)}
-                    placeholder="payments, auth, mobile..." className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-3 py-2 text-white placeholder-gray-600 focus:border-blue-500 focus:outline-none" />
+                  <input value={bulkCategory} onChange={(e: React.ChangeEvent<HTMLInputElement>) => canManage && setBulkCategory(e.target.value)} readOnly={!canManage}
+                    placeholder="payments, auth, mobile..." className={`w-full bg-gray-900/50 border border-gray-700 rounded-lg px-3 py-2 placeholder-gray-600 focus:outline-none ${canManage ? 'text-white focus:border-blue-500' : 'text-gray-500 cursor-not-allowed'}`} />
                 </div>
               </div>
               {/* Tags */}
               <div>
                 <label className="block text-sm text-gray-400 mb-1">Common Tags</label>
                 <div className="flex items-center gap-2">
-                  <input value={bulkTagInput} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setBulkTagInput(e.target.value)}
+                  <input value={bulkTagInput} onChange={(e: React.ChangeEvent<HTMLInputElement>) => canManage && setBulkTagInput(e.target.value)} readOnly={!canManage}
                     onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
-                      if (e.key === 'Enter' && bulkTagInput.trim()) {
+                      if (canManage && e.key === 'Enter' && bulkTagInput.trim()) {
                         e.preventDefault()
                         const t = bulkTagInput.trim().toLowerCase()
                         if (!bulkTags.includes(t)) setBulkTags([...bulkTags, t])
                         setBulkTagInput('')
                       }
                     }}
-                    placeholder="Press Enter to add tag" className="flex-1 bg-gray-900/50 border border-gray-700 rounded-lg px-3 py-2 text-white placeholder-gray-600 focus:border-blue-500 focus:outline-none text-sm" />
+                    placeholder="Press Enter to add tag" className={`flex-1 bg-gray-900/50 border border-gray-700 rounded-lg px-3 py-2 placeholder-gray-600 focus:outline-none text-sm ${canManage ? 'text-white focus:border-blue-500' : 'text-gray-500 cursor-not-allowed'}`} />
                 </div>
                 {bulkTags.length > 0 && (
                   <div className="flex flex-wrap gap-1.5 mt-2">
                     {bulkTags.map((t: string) => (
                       <span key={t} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-blue-400/10 text-blue-400">
                         {t}
-                        <button onClick={() => setBulkTags(bulkTags.filter((x: string) => x !== t))} className="hover:text-blue-300">
+                        <button onClick={() => canManage && setBulkTags(bulkTags.filter((x: string) => x !== t))} disabled={!canManage}
+                          className={canManage ? "hover:text-blue-300" : "cursor-not-allowed opacity-50"}>
                           <X className="w-3 h-3" />
                         </button>
                       </span>
@@ -683,8 +694,8 @@ export default function Services() {
                 <div className="grid grid-cols-2 gap-4 mt-3">
                   <div>
                     <label className="block text-sm text-gray-400 mb-1">Auth Type</label>
-                    <select value={bulkAuthType} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setBulkAuthType(e.target.value)}
-                      className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-3 py-2 text-white focus:border-blue-500 focus:outline-none">
+                    <select value={bulkAuthType} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => canManage && setBulkAuthType(e.target.value)} disabled={!canManage}
+                      className={`w-full bg-gray-900/50 border border-gray-700 rounded-lg px-3 py-2 focus:outline-none ${canManage ? 'text-white focus:border-blue-500' : 'text-gray-500 cursor-not-allowed'}`}>
                       <option value="">None</option>
                       <option value="bearer">Bearer Token</option>
                       <option value="api_key">API Key</option>
@@ -694,16 +705,16 @@ export default function Services() {
                   {bulkAuthType && (
                     <div>
                       <label className="block text-sm text-gray-400 mb-1">Auth Value</label>
-                      <input value={bulkAuthValue} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setBulkAuthValue(e.target.value)}
-                        placeholder="Token or credentials" className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-3 py-2 text-white placeholder-gray-600 focus:border-blue-500 focus:outline-none" />
+                      <input value={bulkAuthValue} onChange={(e: React.ChangeEvent<HTMLInputElement>) => canManage && setBulkAuthValue(e.target.value)} readOnly={!canManage}
+                        placeholder="Token or credentials" className={`w-full bg-gray-900/50 border border-gray-700 rounded-lg px-3 py-2 placeholder-gray-600 focus:outline-none ${canManage ? 'text-white focus:border-blue-500' : 'text-gray-500 cursor-not-allowed'}`} />
                     </div>
                   )}
                 </div>
               </details>
               {/* Enabled toggle */}
               <div className="flex items-center gap-3">
-                <button onClick={() => setBulkEnabled(!bulkEnabled)}
-                  className={`relative w-10 h-5 rounded-full transition-colors ${bulkEnabled ? 'bg-emerald-500' : 'bg-gray-600'}`}>
+                <button onClick={() => canManage && setBulkEnabled(!bulkEnabled)} disabled={!canManage}
+                  className={`relative w-10 h-5 rounded-full transition-colors ${!canManage ? 'bg-gray-700 cursor-not-allowed opacity-50' : bulkEnabled ? 'bg-emerald-500' : 'bg-gray-600'}`}>
                   <div className={`absolute w-4 h-4 rounded-full bg-white top-0.5 transition-transform ${bulkEnabled ? 'translate-x-5' : 'translate-x-0.5'}`} />
                 </button>
                 <span className="text-sm text-gray-400">Enable monitoring after creation</span>
@@ -715,13 +726,15 @@ export default function Services() {
               <div className="flex items-center justify-between">
                 <h3 className="text-white font-medium flex items-center gap-2"><Layers className="w-4 h-4 text-emerald-400" /> API Endpoints</h3>
                 <div className="flex items-center gap-2">
-                  <button onClick={() => setBulkPasteMode(!bulkPasteMode)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm border border-gray-600 text-gray-400 hover:text-white hover:border-gray-500 transition-colors">
+                  <button onClick={() => canManage && setBulkPasteMode(!bulkPasteMode)} disabled={!canManage}
+                    title={!canManage ? 'Only administrators can create services' : ''}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm border transition-colors ${canManage ? 'border-gray-600 text-gray-400 hover:text-white hover:border-gray-500' : 'border-gray-700 text-gray-600 cursor-not-allowed opacity-50'}`}>
                     <Copy className="w-3.5 h-3.5" /> {bulkPasteMode ? 'Manual Entry' : 'Quick Paste'}
                   </button>
                   {!bulkPasteMode && (
-                    <button onClick={bulkAddItem}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm bg-gray-700 text-gray-300 hover:bg-gray-600 hover:text-white transition-colors">
+                    <button onClick={canManage ? bulkAddItem : undefined} disabled={!canManage}
+                      title={!canManage ? 'Only administrators can create services' : ''}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm transition-colors ${canManage ? 'bg-gray-700 text-gray-300 hover:bg-gray-600 hover:text-white' : 'bg-gray-800 text-gray-600 cursor-not-allowed opacity-50'}`}>
                       <Plus className="w-3.5 h-3.5" /> Add Row
                     </button>
                   )}
@@ -731,10 +744,11 @@ export default function Services() {
               {bulkPasteMode ? (
                 <div className="space-y-3">
                   <p className="text-gray-500 text-xs">Paste one API per line. Format: <code className="text-gray-400">Name, /path</code> or just <code className="text-gray-400">/path</code> (name auto-generated)</p>
-                  <textarea value={bulkPasteText} onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setBulkPasteText(e.target.value)}
+                  <textarea value={bulkPasteText} onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => canManage && setBulkPasteText(e.target.value)} readOnly={!canManage}
                     rows={8} placeholder={"Auth API, /auth\nPayments API, /payments\nCustomers API, /customers\n/orders\n/inventory"}
-                    className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-3 py-2 text-white placeholder-gray-600 focus:border-blue-500 focus:outline-none font-mono text-sm" />
-                  <button onClick={bulkParsePaste} disabled={!bulkPasteText.trim()}
+                    className={`w-full bg-gray-900/50 border border-gray-700 rounded-lg px-3 py-2 placeholder-gray-600 focus:outline-none font-mono text-sm ${canManage ? 'text-white focus:border-blue-500' : 'text-gray-500 cursor-not-allowed'}`} />
+                  <button onClick={canManage ? bulkParsePaste : undefined} disabled={!canManage || !bulkPasteText.trim()}
+                    title={!canManage ? 'Only administrators can create services' : ''}
                     className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium transition-colors">
                     Parse {bulkPasteText.split('\n').filter((l: string) => l.trim()).length} lines
                   </button>
@@ -754,28 +768,30 @@ export default function Services() {
                     <div key={idx} className="grid grid-cols-12 gap-2 items-center">
                       <div className="col-span-1 text-gray-600 text-sm text-center">{idx + 1}</div>
                       <div className="col-span-4">
-                        <input value={item.name} onChange={(e: React.ChangeEvent<HTMLInputElement>) => bulkUpdateItem(idx, 'name', e.target.value)}
-                          placeholder="API name" className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-2.5 py-1.5 text-white text-sm placeholder-gray-600 focus:border-blue-500 focus:outline-none" />
+                        <input value={item.name} onChange={(e: React.ChangeEvent<HTMLInputElement>) => canManage && bulkUpdateItem(idx, 'name', e.target.value)} readOnly={!canManage}
+                          placeholder="API name" className={`w-full bg-gray-900/50 border border-gray-700 rounded-lg px-2.5 py-1.5 text-sm placeholder-gray-600 focus:outline-none ${canManage ? 'text-white focus:border-blue-500' : 'text-gray-500 cursor-not-allowed'}`} />
                       </div>
                       <div className="col-span-5">
-                        <input value={item.path} onChange={(e: React.ChangeEvent<HTMLInputElement>) => bulkUpdateItem(idx, 'path', e.target.value)}
-                          placeholder="/endpoint or https://..." className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-2.5 py-1.5 text-white text-sm placeholder-gray-600 focus:border-blue-500 focus:outline-none" />
+                        <input value={item.path} onChange={(e: React.ChangeEvent<HTMLInputElement>) => canManage && bulkUpdateItem(idx, 'path', e.target.value)} readOnly={!canManage}
+                          placeholder="/endpoint or https://..." className={`w-full bg-gray-900/50 border border-gray-700 rounded-lg px-2.5 py-1.5 text-sm placeholder-gray-600 focus:outline-none ${canManage ? 'text-white focus:border-blue-500' : 'text-gray-500 cursor-not-allowed'}`} />
                       </div>
                       <div className="col-span-1">
-                        <input value={item.method || ''} onChange={(e: React.ChangeEvent<HTMLInputElement>) => bulkUpdateItem(idx, 'method', e.target.value)}
-                          placeholder="" className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-2 py-1.5 text-white text-sm text-center placeholder-gray-700 focus:border-blue-500 focus:outline-none" title="Override method (leave empty for common)" />
+                        <input value={item.method || ''} onChange={(e: React.ChangeEvent<HTMLInputElement>) => canManage && bulkUpdateItem(idx, 'method', e.target.value)} readOnly={!canManage}
+                          placeholder="" className={`w-full bg-gray-900/50 border border-gray-700 rounded-lg px-2 py-1.5 text-sm text-center placeholder-gray-700 focus:outline-none ${canManage ? 'text-white focus:border-blue-500' : 'text-gray-500 cursor-not-allowed'}`} title="Override method (leave empty for common)" />
                       </div>
                       <div className="col-span-1 flex justify-center">
-                        <button onClick={() => bulkRemoveItem(idx)} disabled={bulkItems.length <= 1}
-                          className="p-1 rounded text-gray-600 hover:text-red-400 disabled:opacity-30 transition-colors">
+                        <button onClick={() => canManage && bulkRemoveItem(idx)} disabled={!canManage || bulkItems.length <= 1}
+                          title={!canManage ? 'Only administrators can modify services' : ''}
+                          className={`p-1 rounded transition-colors disabled:opacity-30 ${canManage ? 'text-gray-600 hover:text-red-400' : 'text-gray-700 cursor-not-allowed'}`}>
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       </div>
                     </div>
                   ))}
                   {/* Quick add more */}
-                  <button onClick={bulkAddItem}
-                    className="w-full py-2 border border-dashed border-gray-700 rounded-lg text-gray-500 hover:text-gray-300 hover:border-gray-600 text-sm transition-colors">
+                  <button onClick={canManage ? bulkAddItem : undefined} disabled={!canManage}
+                    title={!canManage ? 'Only administrators can create services' : ''}
+                    className={`w-full py-2 border border-dashed rounded-lg text-sm transition-colors ${canManage ? 'border-gray-700 text-gray-500 hover:text-gray-300 hover:border-gray-600' : 'border-gray-800 text-gray-700 cursor-not-allowed opacity-50'}`}>
                     + Add another endpoint
                   </button>
                 </div>
@@ -788,7 +804,8 @@ export default function Services() {
               <div className="flex items-center gap-3">
                 <button onClick={() => { setView('list'); resetBulkHttp() }}
                   className="px-4 py-2 rounded-lg text-gray-400 hover:text-white transition-colors">Cancel</button>
-                <button onClick={handleBulkPreview} disabled={filledItems.length === 0 || bulkLoading}
+                <button onClick={canManage ? handleBulkPreview : undefined} disabled={!canManage || filledItems.length === 0 || bulkLoading}
+                  title={!canManage ? 'Only administrators can create services' : ''}
                   className="flex items-center gap-2 px-5 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors">
                   {bulkLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
                   Validate & Preview
@@ -874,7 +891,8 @@ export default function Services() {
                 <button onClick={() => { setView('list'); resetBulkHttp() }}
                   className="px-4 py-2 rounded-lg text-gray-400 hover:text-white transition-colors">Cancel</button>
                 {bulkPreview && !bulkPreview.error && bulkPreview.valid_count > 0 && (
-                  <button onClick={handleBulkConfirm} disabled={bulkLoading}
+                  <button onClick={canManage ? handleBulkConfirm : undefined} disabled={!canManage || bulkLoading}
+                    title={!canManage ? 'Only administrators can create services' : ''}
                     className="flex items-center gap-2 px-5 py-2 rounded-lg bg-green-600 text-white hover:bg-green-500 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors">
                     {bulkLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
                     Create {bulkPreview.valid_count} Service{bulkPreview.valid_count !== 1 ? 's' : ''}
@@ -1459,6 +1477,16 @@ export default function Services() {
             </div>
 
             <div className="p-6 space-y-5">
+              {/* Read-only banner for non-admin users */}
+              {!canManage && (
+                <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+                  <Lock className="w-5 h-5 text-yellow-400 flex-shrink-0" />
+                  <p className="text-yellow-300 text-sm">
+                    <span className="font-medium">View-only mode.</span> You can explore the configuration but only administrators can create or modify services.
+                  </p>
+                </div>
+              )}
+
               {/* Step 1: Upload */}
               {importStep === 'upload' && (
                 <>
@@ -1477,9 +1505,9 @@ export default function Services() {
                   {/* File input */}
                   <div className="space-y-3">
                     <label className="block">
-                      <div className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${importFile ? 'border-blue-500/50 bg-blue-500/5' : 'border-gray-600 hover:border-gray-500'}`}>
-                        <input type="file" accept=".csv,.json" className="hidden"
-                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => { if (e.target.files?.[0]) setImportFile(e.target.files[0]) }} />
+                      <div className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${!canManage ? 'border-gray-700 bg-gray-800/30 cursor-not-allowed opacity-60' : importFile ? 'border-blue-500/50 bg-blue-500/5 cursor-pointer' : 'border-gray-600 hover:border-gray-500 cursor-pointer'}`}>
+                        <input type="file" accept=".csv,.json" className="hidden" disabled={!canManage}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => { if (canManage && e.target.files?.[0]) setImportFile(e.target.files[0]) }} />
                         {importFile ? (
                           <div className="space-y-1">
                             <FileText className="w-8 h-8 text-blue-400 mx-auto" />
@@ -1515,7 +1543,8 @@ export default function Services() {
                   {/* Action */}
                   <div className="flex justify-end gap-3 pt-2">
                     <button onClick={closeImportModal} className="px-4 py-2 rounded-lg text-gray-400 hover:text-white transition-colors">Cancel</button>
-                    <button onClick={handleImportValidate} disabled={!importFile || importLoading}
+                    <button onClick={canManage ? handleImportValidate : undefined} disabled={!canManage || !importFile || importLoading}
+                      title={!canManage ? 'Only administrators can import services' : ''}
                       className="flex items-center gap-2 px-5 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors">
                       {importLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
                       Validate & Preview
@@ -1602,7 +1631,8 @@ export default function Services() {
                     <div className="flex gap-3">
                       <button onClick={closeImportModal} className="px-4 py-2 rounded-lg text-gray-400 hover:text-white transition-colors">Cancel</button>
                       {importPreview && !importPreview.error && importPreview.valid_count > 0 && (
-                        <button onClick={handleImportConfirm} disabled={importLoading}
+                        <button onClick={canManage ? handleImportConfirm : undefined} disabled={!canManage || importLoading}
+                          title={!canManage ? 'Only administrators can import services' : ''}
                           className="flex items-center gap-2 px-5 py-2 rounded-lg bg-green-600 text-white hover:bg-green-500 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors">
                           {importLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
                           Import {importPreview.valid_count} Service{importPreview.valid_count !== 1 ? 's' : ''}
