@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import {
   Server, AlertCircle, CheckCircle, Activity, Globe, Database, 
   Network, Plus, Trash2, Play, Power, PowerOff, Edit, ArrowLeft,
-  RefreshCw, Clock, Lock, Search, Tag, X, Upload, FileText, Download
+  RefreshCw, Clock, Lock, Search, Tag, X, Upload, FileText, Download, Layers, Copy
 } from 'lucide-react'
 import { useAuthStore } from '../lib/auth/store'
 
@@ -46,7 +46,7 @@ interface PlatformData {
 interface ExtSummary { total: number; enabled: number; up: number; down: number; degraded: number; unknown: number }
 
 type Tab = 'external' | 'platform'
-type View = 'list' | 'create' | 'edit'
+type View = 'list' | 'create' | 'edit' | 'bulk-http'
 
 /* ─── Helpers ────────────────────────────────────────────────── */
 
@@ -239,6 +239,27 @@ export default function Services() {
   const [importPreview, setImportPreview] = useState<any>(null)
   const [importResult, setImportResult] = useState<any>(null)
 
+  // Bulk HTTP state
+  const [bulkBaseUrl, setBulkBaseUrl] = useState('')
+  const [bulkMethod, setBulkMethod] = useState('GET')
+  const [bulkEnv, setBulkEnv] = useState('')
+  const [bulkTimeout, setBulkTimeout] = useState(10)
+  const [bulkInterval, setBulkInterval] = useState(60)
+  const [bulkEnabled, setBulkEnabled] = useState(true)
+  const [bulkCatalogType, setBulkCatalogType] = useState('REST_API')
+  const [bulkCategory, setBulkCategory] = useState('')
+  const [bulkTags, setBulkTags] = useState<string[]>([])
+  const [bulkTagInput, setBulkTagInput] = useState('')
+  const [bulkAuthType, setBulkAuthType] = useState('')
+  const [bulkAuthValue, setBulkAuthValue] = useState('')
+  const [bulkItems, setBulkItems] = useState<{name: string; path: string; method?: string}[]>([{name: '', path: ''}])
+  const [bulkPasteMode, setBulkPasteMode] = useState(false)
+  const [bulkPasteText, setBulkPasteText] = useState('')
+  const [bulkStep, setBulkStep] = useState<'form' | 'preview' | 'result'>('form')
+  const [bulkLoading, setBulkLoading] = useState(false)
+  const [bulkPreview, setBulkPreview] = useState<any>(null)
+  const [bulkResult, setBulkResult] = useState<any>(null)
+
   const apiHeaders = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
   const canManage = isAdmin()  // Only ADMIN/OWNER can create/edit/delete/toggle
 
@@ -407,6 +428,110 @@ export default function Services() {
     } catch (e) { console.error('Template download error:', e) }
   }
 
+  const resetBulkHttp = () => {
+    setBulkBaseUrl(''); setBulkMethod('GET'); setBulkEnv(''); setBulkTimeout(10); setBulkInterval(60)
+    setBulkEnabled(true); setBulkCatalogType('REST_API'); setBulkCategory(''); setBulkTags([]); setBulkTagInput('')
+    setBulkAuthType(''); setBulkAuthValue('')
+    setBulkItems([{name: '', path: ''}]); setBulkPasteMode(false); setBulkPasteText('')
+    setBulkStep('form'); setBulkPreview(null); setBulkResult(null); setBulkLoading(false)
+  }
+
+  const openBulkHttp = () => { resetBulkHttp(); setView('bulk-http') }
+
+  const bulkAddItem = () => setBulkItems([...bulkItems, {name: '', path: ''}])
+
+  const bulkRemoveItem = (idx: number) => {
+    if (bulkItems.length <= 1) return
+    setBulkItems(bulkItems.filter((_: any, i: number) => i !== idx))
+  }
+
+  const bulkUpdateItem = (idx: number, field: string, value: string) => {
+    setBulkItems(bulkItems.map((item: any, i: number) => i === idx ? {...item, [field]: value} : item))
+  }
+
+  const bulkParsePaste = () => {
+    const lines = bulkPasteText.split('\n').filter((l: string) => l.trim())
+    const parsed = lines.map((line: string) => {
+      const parts = line.split(',').map((s: string) => s.trim())
+      if (parts.length >= 2) return { name: parts[0], path: parts[1], method: parts[2] || '' }
+      // Single column: use as path, auto-generate name
+      const p = parts[0]
+      const autoName = p.replace(/^\//,'').replace(/\//g,' ').replace(/[_-]/g,' ')
+        .split(' ').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') + ' API'
+      return { name: autoName, path: p }
+    })
+    if (parsed.length > 0) {
+      setBulkItems(parsed)
+      setBulkPasteMode(false)
+      setBulkPasteText('')
+    }
+  }
+
+  const buildBulkPayload = (dryRun: boolean) => ({
+    dry_run: dryRun,
+    common: {
+      base_url: bulkBaseUrl || undefined,
+      method: bulkMethod,
+      environment: bulkEnv || undefined,
+      timeout_seconds: bulkTimeout,
+      check_interval_seconds: bulkInterval,
+      enabled: bulkEnabled,
+      catalog_type: bulkCatalogType || 'REST_API',
+      category: bulkCategory || undefined,
+      tags: bulkTags.length > 0 ? bulkTags : undefined,
+      auth_type: bulkAuthType || undefined,
+      auth_value: bulkAuthValue || undefined,
+    },
+    items: bulkItems.filter((it: any) => it.name.trim() || it.path.trim()).map((it: any) => ({
+      name: it.name.trim(),
+      path: it.path.trim(),
+      ...(it.method ? { method: it.method.trim().toUpperCase() } : {}),
+    })),
+  })
+
+  const handleBulkPreview = async () => {
+    setBulkLoading(true)
+    try {
+      const res = await fetch('/api/external-services/bulk-http', {
+        method: 'POST', headers: apiHeaders,
+        body: JSON.stringify(buildBulkPayload(true)),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        setBulkPreview({ error: err.detail || `Server error ${res.status}` })
+      } else {
+        setBulkPreview(await res.json())
+      }
+      setBulkStep('preview')
+    } catch (e: any) {
+      setBulkPreview({ error: e.message })
+      setBulkStep('preview')
+    }
+    setBulkLoading(false)
+  }
+
+  const handleBulkConfirm = async () => {
+    setBulkLoading(true)
+    try {
+      const res = await fetch('/api/external-services/bulk-http', {
+        method: 'POST', headers: apiHeaders,
+        body: JSON.stringify(buildBulkPayload(false)),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        setBulkResult({ error: err.detail || `Server error ${res.status}` })
+      } else {
+        setBulkResult(await res.json())
+        await fetchExternal()
+      }
+      setBulkStep('result')
+    } catch (e: any) {
+      setBulkResult({ error: e.message })
+      setBulkStep('result')
+    }
+    setBulkLoading(false)
+  }
+
   const handleImportValidate = async () => {
     if (!importFile) return
     setImportLoading(true)
@@ -461,6 +586,367 @@ export default function Services() {
   const platform = platformData?.platform ?? { services: [], total: 0, up: 0, down: 0 }
 
   // ── Create/Edit Form View ──────────────────────────────────────
+
+  // ── Bulk HTTP View ───────────────────────────────────────────
+  if (view === 'bulk-http') {
+    const filledItems = bulkItems.filter((it: any) => it.name.trim() || it.path.trim())
+    return (
+      <div className="space-y-6 max-w-4xl">
+        <div className="flex items-center gap-3">
+          <button onClick={() => { setView('list'); resetBulkHttp() }} className="p-2 rounded-lg hover:bg-gray-700/50 text-gray-400 hover:text-white">
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          <div>
+            <h1 className="text-2xl font-bold text-white">Multiple APIs</h1>
+            <p className="text-gray-400 text-sm">Create multiple HTTP services in one operation</p>
+          </div>
+        </div>
+
+        {bulkStep === 'form' && (
+          <div className="space-y-6">
+            {/* Common Settings */}
+            <div className="bg-gray-800/50 rounded-xl border border-gray-700/50 p-5 space-y-4">
+              <h3 className="text-white font-medium flex items-center gap-2"><Globe className="w-4 h-4 text-blue-400" /> Common Settings</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="col-span-2">
+                  <label className="block text-sm text-gray-400 mb-1">Base URL <span className="text-gray-600">(optional)</span></label>
+                  <input value={bulkBaseUrl} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setBulkBaseUrl(e.target.value)}
+                    placeholder="https://api.company.com" className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-3 py-2 text-white placeholder-gray-600 focus:border-blue-500 focus:outline-none" />
+                  <p className="text-gray-600 text-xs mt-1">If set, endpoint paths will be appended to this URL</p>
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1">Method</label>
+                  <select value={bulkMethod} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setBulkMethod(e.target.value)}
+                    className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-3 py-2 text-white focus:border-blue-500 focus:outline-none">
+                    {['GET','POST','PUT','DELETE','PATCH','HEAD','OPTIONS'].map((m: string) => <option key={m} value={m}>{m}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1">Environment</label>
+                  <input value={bulkEnv} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setBulkEnv(e.target.value)}
+                    placeholder="production" className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-3 py-2 text-white placeholder-gray-600 focus:border-blue-500 focus:outline-none" />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1">Timeout (s)</label>
+                  <input type="number" value={bulkTimeout} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setBulkTimeout(Number(e.target.value))}
+                    min={1} max={120} className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-3 py-2 text-white focus:border-blue-500 focus:outline-none" />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1">Check Interval (s)</label>
+                  <input type="number" value={bulkInterval} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setBulkInterval(Number(e.target.value))}
+                    min={10} max={86400} className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-3 py-2 text-white focus:border-blue-500 focus:outline-none" />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1">Catalog Type</label>
+                  <select value={bulkCatalogType} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setBulkCatalogType(e.target.value)}
+                    className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-3 py-2 text-white focus:border-blue-500 focus:outline-none">
+                    {CATALOG_TYPE_OPTIONS.map((o: {value:string;label:string}) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1">Category</label>
+                  <input value={bulkCategory} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setBulkCategory(e.target.value)}
+                    placeholder="payments, auth, mobile..." className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-3 py-2 text-white placeholder-gray-600 focus:border-blue-500 focus:outline-none" />
+                </div>
+              </div>
+              {/* Tags */}
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">Common Tags</label>
+                <div className="flex items-center gap-2">
+                  <input value={bulkTagInput} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setBulkTagInput(e.target.value)}
+                    onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
+                      if (e.key === 'Enter' && bulkTagInput.trim()) {
+                        e.preventDefault()
+                        const t = bulkTagInput.trim().toLowerCase()
+                        if (!bulkTags.includes(t)) setBulkTags([...bulkTags, t])
+                        setBulkTagInput('')
+                      }
+                    }}
+                    placeholder="Press Enter to add tag" className="flex-1 bg-gray-900/50 border border-gray-700 rounded-lg px-3 py-2 text-white placeholder-gray-600 focus:border-blue-500 focus:outline-none text-sm" />
+                </div>
+                {bulkTags.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mt-2">
+                    {bulkTags.map((t: string) => (
+                      <span key={t} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-blue-400/10 text-blue-400">
+                        {t}
+                        <button onClick={() => setBulkTags(bulkTags.filter((x: string) => x !== t))} className="hover:text-blue-300">
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+              {/* Auth */}
+              <details className="text-sm">
+                <summary className="text-gray-400 cursor-pointer hover:text-gray-300">Authentication (optional)</summary>
+                <div className="grid grid-cols-2 gap-4 mt-3">
+                  <div>
+                    <label className="block text-sm text-gray-400 mb-1">Auth Type</label>
+                    <select value={bulkAuthType} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setBulkAuthType(e.target.value)}
+                      className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-3 py-2 text-white focus:border-blue-500 focus:outline-none">
+                      <option value="">None</option>
+                      <option value="bearer">Bearer Token</option>
+                      <option value="api_key">API Key</option>
+                      <option value="basic">Basic Auth</option>
+                    </select>
+                  </div>
+                  {bulkAuthType && (
+                    <div>
+                      <label className="block text-sm text-gray-400 mb-1">Auth Value</label>
+                      <input value={bulkAuthValue} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setBulkAuthValue(e.target.value)}
+                        placeholder="Token or credentials" className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-3 py-2 text-white placeholder-gray-600 focus:border-blue-500 focus:outline-none" />
+                    </div>
+                  )}
+                </div>
+              </details>
+              {/* Enabled toggle */}
+              <div className="flex items-center gap-3">
+                <button onClick={() => setBulkEnabled(!bulkEnabled)}
+                  className={`relative w-10 h-5 rounded-full transition-colors ${bulkEnabled ? 'bg-emerald-500' : 'bg-gray-600'}`}>
+                  <div className={`absolute w-4 h-4 rounded-full bg-white top-0.5 transition-transform ${bulkEnabled ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                </button>
+                <span className="text-sm text-gray-400">Enable monitoring after creation</span>
+              </div>
+            </div>
+
+            {/* Endpoints List */}
+            <div className="bg-gray-800/50 rounded-xl border border-gray-700/50 p-5 space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-white font-medium flex items-center gap-2"><Layers className="w-4 h-4 text-emerald-400" /> API Endpoints</h3>
+                <div className="flex items-center gap-2">
+                  <button onClick={() => setBulkPasteMode(!bulkPasteMode)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm border border-gray-600 text-gray-400 hover:text-white hover:border-gray-500 transition-colors">
+                    <Copy className="w-3.5 h-3.5" /> {bulkPasteMode ? 'Manual Entry' : 'Quick Paste'}
+                  </button>
+                  {!bulkPasteMode && (
+                    <button onClick={bulkAddItem}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm bg-gray-700 text-gray-300 hover:bg-gray-600 hover:text-white transition-colors">
+                      <Plus className="w-3.5 h-3.5" /> Add Row
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {bulkPasteMode ? (
+                <div className="space-y-3">
+                  <p className="text-gray-500 text-xs">Paste one API per line. Format: <code className="text-gray-400">Name, /path</code> or just <code className="text-gray-400">/path</code> (name auto-generated)</p>
+                  <textarea value={bulkPasteText} onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setBulkPasteText(e.target.value)}
+                    rows={8} placeholder={"Auth API, /auth\nPayments API, /payments\nCustomers API, /customers\n/orders\n/inventory"}
+                    className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-3 py-2 text-white placeholder-gray-600 focus:border-blue-500 focus:outline-none font-mono text-sm" />
+                  <button onClick={bulkParsePaste} disabled={!bulkPasteText.trim()}
+                    className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium transition-colors">
+                    Parse {bulkPasteText.split('\n').filter((l: string) => l.trim()).length} lines
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {/* Header */}
+                  <div className="grid grid-cols-12 gap-2 text-xs text-gray-500 px-1">
+                    <div className="col-span-1">#</div>
+                    <div className="col-span-4">Service Name</div>
+                    <div className="col-span-5">Path / URL</div>
+                    <div className="col-span-1">Method</div>
+                    <div className="col-span-1"></div>
+                  </div>
+                  {/* Rows */}
+                  {bulkItems.map((item: any, idx: number) => (
+                    <div key={idx} className="grid grid-cols-12 gap-2 items-center">
+                      <div className="col-span-1 text-gray-600 text-sm text-center">{idx + 1}</div>
+                      <div className="col-span-4">
+                        <input value={item.name} onChange={(e: React.ChangeEvent<HTMLInputElement>) => bulkUpdateItem(idx, 'name', e.target.value)}
+                          placeholder="API name" className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-2.5 py-1.5 text-white text-sm placeholder-gray-600 focus:border-blue-500 focus:outline-none" />
+                      </div>
+                      <div className="col-span-5">
+                        <input value={item.path} onChange={(e: React.ChangeEvent<HTMLInputElement>) => bulkUpdateItem(idx, 'path', e.target.value)}
+                          placeholder="/endpoint or https://..." className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-2.5 py-1.5 text-white text-sm placeholder-gray-600 focus:border-blue-500 focus:outline-none" />
+                      </div>
+                      <div className="col-span-1">
+                        <input value={item.method || ''} onChange={(e: React.ChangeEvent<HTMLInputElement>) => bulkUpdateItem(idx, 'method', e.target.value)}
+                          placeholder="" className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-2 py-1.5 text-white text-sm text-center placeholder-gray-700 focus:border-blue-500 focus:outline-none" title="Override method (leave empty for common)" />
+                      </div>
+                      <div className="col-span-1 flex justify-center">
+                        <button onClick={() => bulkRemoveItem(idx)} disabled={bulkItems.length <= 1}
+                          className="p-1 rounded text-gray-600 hover:text-red-400 disabled:opacity-30 transition-colors">
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                  {/* Quick add more */}
+                  <button onClick={bulkAddItem}
+                    className="w-full py-2 border border-dashed border-gray-700 rounded-lg text-gray-500 hover:text-gray-300 hover:border-gray-600 text-sm transition-colors">
+                    + Add another endpoint
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center justify-between">
+              <p className="text-gray-500 text-sm">{filledItems.length} endpoint{filledItems.length !== 1 ? 's' : ''} ready</p>
+              <div className="flex items-center gap-3">
+                <button onClick={() => { setView('list'); resetBulkHttp() }}
+                  className="px-4 py-2 rounded-lg text-gray-400 hover:text-white transition-colors">Cancel</button>
+                <button onClick={handleBulkPreview} disabled={filledItems.length === 0 || bulkLoading}
+                  className="flex items-center gap-2 px-5 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors">
+                  {bulkLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+                  Validate & Preview
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Preview Step */}
+        {bulkStep === 'preview' && bulkPreview && (
+          <div className="space-y-5">
+            {bulkPreview.error ? (
+              <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400">
+                <p className="font-medium">Validation failed</p>
+                <p className="text-sm mt-1">{bulkPreview.error}</p>
+              </div>
+            ) : (
+              <>
+                {/* Summary cards */}
+                <div className="grid grid-cols-4 gap-3">
+                  {[
+                    { label: 'Total', value: bulkPreview.total_received, color: 'text-gray-300' },
+                    { label: 'Valid', value: bulkPreview.valid_count, color: 'text-green-400' },
+                    { label: 'Invalid', value: bulkPreview.invalid_count, color: 'text-red-400' },
+                    { label: 'Duplicates', value: bulkPreview.duplicate_count, color: 'text-yellow-400' },
+                  ].map((c: { label: string; value: number; color: string }) => (
+                    <div key={c.label} className="bg-gray-800/50 rounded-lg p-3 border border-gray-700/50 text-center">
+                      <p className="text-gray-500 text-xs">{c.label}</p>
+                      <p className={`text-xl font-bold ${c.color}`}>{c.value}</p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Valid preview table */}
+                {bulkPreview.valid_preview?.length > 0 && (
+                  <div>
+                    <p className="text-sm text-gray-400 mb-2">Services to be created:</p>
+                    <div className="max-h-60 overflow-y-auto bg-gray-900/50 rounded-lg border border-gray-700/50">
+                      <table className="w-full text-sm">
+                        <thead><tr className="border-b border-gray-700/50">
+                          <th className="text-left p-2 text-gray-500 text-xs">#</th>
+                          <th className="text-left p-2 text-gray-500 text-xs">Name</th>
+                          <th className="text-left p-2 text-gray-500 text-xs">URL</th>
+                          <th className="text-left p-2 text-gray-500 text-xs">Method</th>
+                        </tr></thead>
+                        <tbody>
+                          {bulkPreview.valid_preview.map((s: any) => (
+                            <tr key={s.row} className="border-b border-gray-700/30">
+                              <td className="p-2 text-gray-500">{s.row}</td>
+                              <td className="p-2 text-white">{s.name}</td>
+                              <td className="p-2 text-gray-400 truncate max-w-[300px]">{s.url}</td>
+                              <td className="p-2 text-gray-500">{s.method}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {/* Errors */}
+                {bulkPreview.errors?.length > 0 && (
+                  <div>
+                    <p className="text-sm text-gray-400 mb-2">Issues found:</p>
+                    <div className="max-h-40 overflow-y-auto space-y-1">
+                      {bulkPreview.errors.map((e: any, i: number) => (
+                        <div key={i} className={`p-2 rounded text-xs ${e.status === 'skipped' ? 'bg-yellow-500/10 border border-yellow-500/20 text-yellow-400' : 'bg-red-500/10 border border-red-500/20 text-red-400'}`}>
+                          <span className="font-medium">#{e.row}: {e.name}</span>{' \u2014 '}{e.errors?.join('; ')}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* Actions */}
+            <div className="flex justify-between">
+              <button onClick={() => { setBulkStep('form'); setBulkPreview(null) }}
+                className="px-4 py-2 rounded-lg text-gray-400 hover:text-white transition-colors">\u2190 Back</button>
+              <div className="flex gap-3">
+                <button onClick={() => { setView('list'); resetBulkHttp() }}
+                  className="px-4 py-2 rounded-lg text-gray-400 hover:text-white transition-colors">Cancel</button>
+                {bulkPreview && !bulkPreview.error && bulkPreview.valid_count > 0 && (
+                  <button onClick={handleBulkConfirm} disabled={bulkLoading}
+                    className="flex items-center gap-2 px-5 py-2 rounded-lg bg-green-600 text-white hover:bg-green-500 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors">
+                    {bulkLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                    Create {bulkPreview.valid_count} Service{bulkPreview.valid_count !== 1 ? 's' : ''}
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Result Step */}
+        {bulkStep === 'result' && bulkResult && (
+          <div className="space-y-5">
+            {bulkResult.error ? (
+              <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400">
+                <p className="font-medium">Creation failed</p>
+                <p className="text-sm mt-1">{bulkResult.error}</p>
+              </div>
+            ) : (
+              <>
+                <div className={`p-4 rounded-lg border ${bulkResult.created_count > 0 ? 'bg-green-500/10 border-green-500/30' : 'bg-yellow-500/10 border-yellow-500/30'}`}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <CheckCircle className={`w-5 h-5 ${bulkResult.created_count > 0 ? 'text-green-400' : 'text-yellow-400'}`} />
+                    <span className={`font-medium ${bulkResult.created_count > 0 ? 'text-green-400' : 'text-yellow-400'}`}>Bulk creation complete</span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-3 text-sm">
+                    <div><span className="text-gray-500">Created:</span> <span className="text-green-400 font-medium">{bulkResult.created_count}</span></div>
+                    <div><span className="text-gray-500">Skipped:</span> <span className="text-yellow-400 font-medium">{bulkResult.skipped_count}</span></div>
+                    <div><span className="text-gray-500">Invalid:</span> <span className="text-red-400 font-medium">{bulkResult.invalid_count}</span></div>
+                  </div>
+                </div>
+
+                {bulkResult.created_services?.length > 0 && (
+                  <div>
+                    <p className="text-sm text-gray-400 mb-2">Created services:</p>
+                    <div className="max-h-40 overflow-y-auto space-y-1">
+                      {bulkResult.created_services.map((s: any) => (
+                        <div key={s.id} className="flex items-center gap-2 p-2 bg-green-500/5 rounded text-sm border border-green-500/10">
+                          <CheckCircle className="w-3.5 h-3.5 text-green-400 flex-shrink-0" />
+                          <span className="text-white">{s.name}</span>
+                          <span className="text-gray-500 truncate ml-auto max-w-[250px]">{s.url}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {bulkResult.errors?.length > 0 && (
+                  <div>
+                    <p className="text-sm text-gray-400 mb-2">Issues:</p>
+                    <div className="max-h-32 overflow-y-auto space-y-1">
+                      {bulkResult.errors.map((e: any, i: number) => (
+                        <div key={i} className={`p-2 rounded text-xs ${e.status === 'skipped' ? 'bg-yellow-500/10 text-yellow-400' : 'bg-red-500/10 text-red-400'}`}>
+                          <span className="font-medium">{e.name}</span>{' \u2014 '}{e.errors?.join('; ')}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+
+            <div className="flex justify-end">
+              <button onClick={() => { setView('list'); resetBulkHttp() }}
+                className="px-5 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-500 font-medium transition-colors">Done</button>
+            </div>
+          </div>
+        )}
+      </div>
+    )
+  }
+
   if (view === 'create' || view === 'edit') {
     const isValid = formName.trim() && (
       formType === 'http' ? !!formConfig.url :
@@ -660,6 +1146,10 @@ export default function Services() {
             <button onClick={openImportModal}
               className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-gray-600 text-gray-300 hover:text-white hover:border-gray-500 font-medium transition-colors">
               <Upload className="w-4 h-4" /> Import
+            </button>
+            <button onClick={openBulkHttp}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-emerald-600/50 text-emerald-400 hover:text-emerald-300 hover:border-emerald-500/60 font-medium transition-colors">
+              <Layers className="w-4 h-4" /> Multiple APIs
             </button>
             <button onClick={openCreate}
               className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-blue-600 text-white hover:bg-blue-500 font-medium transition-colors shadow-lg shadow-blue-600/20">

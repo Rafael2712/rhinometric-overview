@@ -16,6 +16,7 @@ from models.external_service_check import ExternalServiceCheck
 from models.external_service_check import ExternalServiceCheck
 from services.connector_service import test_http_connection, test_postgresql_connection
 from services.config_validation import validate_service_config
+from services.bulk_http_service import process_bulk_http
 from services.bulk_import_service import (
     parse_csv, parse_json, process_import,
     generate_csv_template, generate_json_template,
@@ -268,6 +269,60 @@ def download_json_template(
         headers={"Content-Disposition": "attachment; filename=rhinometric_services_template.json"},
     )
 
+
+
+
+@router.post("/bulk-http")
+def bulk_create_http_services(
+    payload: Dict[str, Any],
+    db: Session = Depends(get_db),
+    current_user: UserModel = Depends(admin_only),
+):
+    """
+    Bulk create multiple HTTP/HTTPS services from a structured payload.
+
+    Two-step flow:
+      1. Call with dry_run=true (default) to preview/validate.
+      2. Call with dry_run=false to confirm and create services.
+
+    Payload:
+    {
+        "dry_run": true,
+        "common": {
+            "base_url": "https://api.example.com",
+            "method": "GET",
+            "environment": "production",
+            "timeout_seconds": 10,
+            "check_interval_seconds": 60,
+            "enabled": true,
+            "catalog_type": "REST_API",
+            "category": "payments",
+            "tags": ["api"],
+            "auth_type": "bearer"
+        },
+        "items": [
+            {"name": "Auth API", "path": "/auth"},
+            {"name": "Payments API", "path": "/payments", "method": "POST"}
+        ]
+    }
+    """
+    items = payload.get("items", [])
+    if not items:
+        raise HTTPException(status_code=400, detail="No items provided.")
+    if len(items) > 100:
+        raise HTTPException(status_code=400, detail=f"Too many items ({len(items)}). Maximum is 100.")
+
+    result = process_bulk_http(payload, db, current_user.id)
+    dry_run = payload.get("dry_run", True)
+
+    logger.info(
+        f"[BulkHTTP] {'Preview' if dry_run else 'Create'} by user {current_user.username}: "
+        f"received={result['total_received']}, valid={result['valid_count']}, "
+        f"invalid={result['invalid_count']}, duplicates={result['duplicate_count']}, "
+        f"created={result['created_count']}"
+    )
+
+    return result
 
 @router.get("/{service_id}", response_model=ExternalServiceResponse)
 def get_external_service(
