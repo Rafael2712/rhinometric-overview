@@ -1499,13 +1499,15 @@ export default function Services() {
 
                   {/* Expected columns help */}
                   <details className="text-sm">
-                    <summary className="text-gray-400 cursor-pointer hover:text-gray-300">Expected columns</summary>
+                    <summary className="text-gray-400 cursor-pointer hover:text-gray-300">Expected columns &amp; aliases</summary>
                     <div className="mt-2 p-3 bg-gray-900/50 rounded-lg border border-gray-700/50 text-gray-500 text-xs space-y-1">
                       <p><span className="text-gray-300">Required:</span> name, service_type (http | postgresql)</p>
-                      <p><span className="text-gray-300">HTTP config:</span> url, method, health_path, auth_type</p>
-                      <p><span className="text-gray-300">PostgreSQL config:</span> host, port, database, username, password</p>
+                      <p><span className="text-gray-300">HTTP:</span> url, method, health_path, auth_type, auth_value</p>
+                      <p><span className="text-gray-300">PostgreSQL:</span> host, port, database_name, username, password</p>
                       <p><span className="text-gray-300">Optional:</span> environment, description, timeout_seconds, check_interval_seconds, enabled, catalog_type, category, tags</p>
-                      <p><span className="text-gray-300">Tags:</span> semicolon or comma separated (e.g. "critical;external;api")</p>
+                      <p className="pt-1 border-t border-gray-700/30"><span className="text-gray-300">Aliases accepted:</span> type or serviceType &rarr; service_type &bull; target or endpoint &rarr; url &bull; catalogType &rarr; catalog_type &bull; timeout &rarr; timeout_seconds &bull; checkInterval &rarr; check_interval_seconds &bull; authType &rarr; auth_type &bull; authValue &rarr; auth_value</p>
+                      <p><span className="text-gray-300">Tags:</span> comma, semicolon, or pipe separated (e.g. &quot;critical,external,api&quot;)</p>
+                      <p><span className="text-gray-300">Auth:</span> leave auth_type empty if not needed &mdash; do not use &quot;None&quot;</p>
                     </div>
                   </details>
 

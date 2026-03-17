@@ -15,6 +15,11 @@ Duplicate policy (v1):
 Execution model:
   - dry_run=True:  validate only, return preview, write nothing.
   - dry_run=False: insert valid rows, skip invalid/duplicate, return report.
+
+Field alias support (v2):
+  The importer accepts multiple column/key names for the same
+  canonical field.  See FIELD_ALIASES below.  This keeps backward
+  compatibility with earlier imports while aligning with the UI.
 """
 
 import csv
@@ -41,6 +46,38 @@ VALID_SERVICE_TYPES = {"http", "postgresql"}
 DEFAULT_TIMEOUT = 10
 DEFAULT_INTERVAL = 60
 
+# ── Field alias mapping ─────────────────────────────────────────
+# All keys are lowercase (applied AFTER lowercasing raw keys).
+# Maps alternative column/key names -> canonical internal name.
+FIELD_ALIASES: Dict[str, str] = {
+    # service_type
+    "type":                     "service_type",
+    "servicetype":              "service_type",
+    "service_type":             "service_type",
+    # url
+    "target":                   "url",
+    "endpoint":                 "url",
+    "url":                      "url",
+    # catalog_type
+    "catalogtype":              "catalog_type",
+    "catalog_type":             "catalog_type",
+    # check_interval_seconds
+    "checkinterval":            "check_interval_seconds",
+    "check_interval":           "check_interval_seconds",
+    "checkintervalseconds":     "check_interval_seconds",
+    "check_interval_seconds":   "check_interval_seconds",
+    # timeout_seconds
+    "timeout":                  "timeout_seconds",
+    "timeout_seconds":          "timeout_seconds",
+    # auth
+    "authtype":                 "auth_type",
+    "auth_type":                "auth_type",
+    "authvalue":                "auth_value",
+    "auth_value":               "auth_value",
+}
+
+
+# ── Helpers ─────────────────────────────────────────────────────
 
 def _parse_bool(val: Any) -> bool:
     """Parse a boolean from various string representations."""
@@ -67,7 +104,7 @@ def _parse_int(val: Any, default: int) -> int:
 
 
 def _parse_tags(val: Any) -> List[str]:
-    """Parse tags from string (;/, separated) or list."""
+    """Parse tags from string (| ; , separated) or list."""
     if val is None:
         return []
     if isinstance(val, list):
@@ -75,17 +112,43 @@ def _parse_tags(val: Any) -> List[str]:
     s = str(val).strip()
     if not s:
         return []
-    # Support both ; and , as separators
-    if ";" in s:
+    # Support |  ;  and , as separators (priority order)
+    if "|" in s:
+        parts = s.split("|")
+    elif ";" in s:
         parts = s.split(";")
     else:
         parts = s.split(",")
     return list(dict.fromkeys(t.strip().lower() for t in parts if t.strip()))
 
 
+def _normalize_auth(val: Any) -> Optional[str]:
+    """Normalize auth_type: 'none'/'None'/'null'/'' -> None."""
+    if val is None:
+        return None
+    s = str(val).strip()
+    if not s or s.lower() in ("none", "null", "n/a", "na", "-"):
+        return None
+    return s
+
+
+def _apply_aliases(row: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Apply field alias mapping to a normalized (lowercase-keyed) row.
+    If both an alias and the canonical name exist, canonical wins.
+    """
+    result: Dict[str, Any] = {}
+    for key, value in row.items():
+        canonical = FIELD_ALIASES.get(key, key)  # unmapped keys pass through
+        if canonical in result:
+            continue  # don't overwrite if canonical already set
+        result[canonical] = value
+    return result
+
+
 def _build_config(row: Dict[str, Any], service_type: str) -> Dict[str, Any]:
     """Build the config dict from flat row fields."""
-    config = {}
+    config: Dict[str, Any] = {}
     if service_type == "http":
         if row.get("url"):
             config["url"] = str(row["url"]).strip()
@@ -96,11 +159,12 @@ def _build_config(row: Dict[str, Any], service_type: str) -> Dict[str, Any]:
         hp = row.get("health_path") or row.get("config.health_path")
         if hp and str(hp).strip():
             config["health_path"] = str(hp).strip()
-        at = row.get("auth_type") or row.get("config.auth_type")
-        if at and str(at).strip():
-            config["auth_type"] = str(at).strip()
+        # Auth — normalize "None"/"none"/"null" to actual None
+        at = _normalize_auth(row.get("auth_type") or row.get("config.auth_type"))
+        if at:
+            config["auth_type"] = at
         av = row.get("auth_value") or row.get("config.auth_value")
-        if av and str(av).strip():
+        if av and str(av).strip() and str(av).strip().lower() not in ("none", "null", ""):
             config["auth_value"] = str(av).strip()
     elif service_type == "postgresql":
         if row.get("host") or row.get("config.host"):
@@ -108,7 +172,8 @@ def _build_config(row: Dict[str, Any], service_type: str) -> Dict[str, Any]:
         port = row.get("port") or row.get("config.port")
         if port:
             config["port"] = _parse_int(port, 5432)
-        db_name = row.get("database") or row.get("config.database") or row.get("database_name") or row.get("config.database_name")
+        db_name = (row.get("database") or row.get("config.database")
+                   or row.get("database_name") or row.get("config.database_name"))
         if db_name:
             config["database_name"] = str(db_name).strip()
         user = row.get("username") or row.get("config.username")
@@ -122,9 +187,16 @@ def _build_config(row: Dict[str, Any], service_type: str) -> Dict[str, Any]:
             config["ssl_mode"] = str(ssl).strip()
     # If the row already has a nested "config" dict (JSON import), merge it
     if isinstance(row.get("config"), dict):
-        # Row-level config object takes precedence
         for k, v in row["config"].items():
             if v is not None and str(v).strip() != "":
+                # Normalize auth_type inside config too
+                if k == "auth_type":
+                    v = _normalize_auth(v)
+                    if v is None:
+                        continue
+                if k == "auth_value":
+                    if str(v).strip().lower() in ("none", "null", ""):
+                        continue
                 config[k] = v
     return config
 
@@ -142,8 +214,9 @@ def _get_primary_target(service_type: str, config: Dict[str, Any]) -> str:
 
 
 def _normalize_row(raw: Dict[str, Any]) -> Dict[str, Any]:
-    """Normalize a row dict: strip keys, handle case."""
-    return {str(k).strip().lower(): v for k, v in raw.items() if k is not None}
+    """Normalize a row dict: strip keys, lowercase, apply aliases."""
+    lowered = {str(k).strip().lower(): v for k, v in raw.items() if k is not None}
+    return _apply_aliases(lowered)
 
 
 def _validate_row(row: Dict[str, Any], row_num: int) -> Tuple[Optional[Dict[str, Any]], List[str]]:
@@ -152,7 +225,7 @@ def _validate_row(row: Dict[str, Any], row_num: int) -> Tuple[Optional[Dict[str,
     Returns (parsed_service_dict, errors).
     If errors is non-empty, parsed_service_dict is None.
     """
-    errors = []
+    errors: List[str] = []
     normalized = _normalize_row(row)
 
     # Required: name
@@ -160,10 +233,13 @@ def _validate_row(row: Dict[str, Any], row_num: int) -> Tuple[Optional[Dict[str,
     if not name:
         errors.append("name is required")
 
-    # Required: service_type
+    # Required: service_type (with alias support)
     stype_raw = str(normalized.get("service_type") or "").strip().lower()
     if not stype_raw:
-        errors.append("service_type is required (http or postgresql)")
+        errors.append(
+            "service_type is required (http or postgresql). "
+            "Accepted aliases: type, serviceType"
+        )
     elif stype_raw not in VALID_SERVICE_TYPES:
         errors.append(f"service_type must be 'http' or 'postgresql', got: '{stype_raw}'")
 
@@ -196,7 +272,16 @@ def _validate_row(row: Dict[str, Any], row_num: int) -> Tuple[Optional[Dict[str,
     # Validate config using existing validation logic
     _, config_errors = validate_service_config(service_type, config, service_name=name)
     if config_errors:
-        errors.extend(config_errors)
+        # Enrich url-missing error when service_type is http
+        enriched = []
+        for ce in config_errors:
+            if "url" in ce.lower() and "required" in ce.lower():
+                enriched.append(
+                    f"{ce} — Accepted column names: url, target, endpoint"
+                )
+            else:
+                enriched.append(ce)
+        errors.extend(enriched)
 
     if errors:
         return None, errors
@@ -352,11 +437,11 @@ def process_import(
             "target": target,
         })
 
-    # If dry_run, stop here ??? don't write anything
+    # If dry_run, stop here - don't write anything
     if dry_run:
         return result
 
-    # ?????? Insert valid services ??????
+    # Insert valid services
     for svc_data in valid_services:
         try:
             svc = ExternalService(
@@ -403,18 +488,45 @@ def process_import(
 
 
 def generate_csv_template() -> str:
-    """Generate a CSV template with example rows."""
-    header = "name,service_type,environment,description,timeout_seconds,check_interval_seconds,enabled,catalog_type,category,tags,url,method,health_path,auth_type,host,port,database,username,password"
+    """Generate a CSV template with example rows aligned with the UI."""
+    header = (
+        "name,service_type,url,method,environment,description,"
+        "timeout_seconds,check_interval_seconds,enabled,"
+        "catalog_type,category,tags,auth_type,auth_value,"
+        "host,port,database_name,username,password"
+    )
     examples = [
-        'Payment Gateway API,http,production,Payment processing API,15,60,true,REST_API,payments,"critical;external;payments",https://api.payments.example.com,GET,/health,bearer,,,,',
-        'Analytics DB,postgresql,production,Main analytics database,10,120,true,DATABASE,infrastructure,"internal;postgresql",,,,,,db.internal.example.com,5432,analytics_db,analytics_user,secure_password',
+        'Payment Gateway API,http,https://api.payments.example.com/health,GET,production,'
+        'Payment processing API,15,60,true,REST_API,payments,"critical,external,payments",bearer,token-xxxx,,,,,',
+        'User Service,http,https://users.internal.example.com/status,GET,production,'
+        'Internal user service,10,60,true,INTERNAL_SERVICE,backend,"internal,users",,,,,,',
+        'Analytics DB,postgresql,,,,Main analytics database,10,120,true,'
+        'DATABASE,infrastructure,"internal,postgresql",,,db.internal.example.com,5432,'
+        'analytics_db,analytics_user,secure_password',
     ]
     return header + "\n" + "\n".join(examples) + "\n"
 
 
 def generate_json_template() -> str:
-    """Generate a JSON template with example entries."""
+    """Generate a JSON template with example entries and alias docs."""
     template = {
+        "_documentation": {
+            "required_fields": ["name", "service_type (or type)"],
+            "http_required": "config.url (or top-level url / target / endpoint)",
+            "postgresql_required": "config.host, config.port, config.database_name, config.username",
+            "accepted_aliases": {
+                "type / serviceType": "service_type",
+                "target / endpoint": "url (top-level or inside config)",
+                "catalogType": "catalog_type",
+                "timeout": "timeout_seconds",
+                "checkInterval / check_interval": "check_interval_seconds",
+                "authType": "auth_type",
+                "authValue": "auth_value",
+            },
+            "auth_note": "Omit auth_type and auth_value if not needed. Do NOT send auth_type: 'None'.",
+            "tags_note": "JSON array of strings, e.g. [\"critical\", \"api\"]. In CSV use comma, semicolon, or pipe.",
+            "catalog_types": sorted(list(VALID_CATALOG_TYPES)),
+        },
         "services": [
             {
                 "name": "Payment Gateway API",
@@ -428,11 +540,28 @@ def generate_json_template() -> str:
                 "category": "payments",
                 "tags": ["critical", "external", "payments"],
                 "config": {
-                    "url": "https://api.payments.example.com",
+                    "url": "https://api.payments.example.com/health",
                     "method": "GET",
                     "health_path": "/health",
-                    "auth_type": "bearer"
-                }
+                    "auth_type": "bearer",
+                    "auth_value": "your-token-here",
+                },
+            },
+            {
+                "name": "User Service",
+                "service_type": "http",
+                "environment": "production",
+                "description": "Internal user management",
+                "timeout_seconds": 10,
+                "check_interval_seconds": 60,
+                "enabled": True,
+                "catalog_type": "INTERNAL_SERVICE",
+                "category": "backend",
+                "tags": ["internal", "users"],
+                "config": {
+                    "url": "https://users.internal.example.com/status",
+                    "method": "GET",
+                },
             },
             {
                 "name": "Analytics DB",
@@ -450,9 +579,9 @@ def generate_json_template() -> str:
                     "port": 5432,
                     "database_name": "analytics_db",
                     "username": "analytics_user",
-                    "password": "secure_password"
-                }
-            }
-        ]
+                    "password": "secure_password",
+                },
+            },
+        ],
     }
     return json.dumps(template, indent=2)
