@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import {
   Server, AlertCircle, CheckCircle, Activity, Globe, Database, 
   Network, Plus, Trash2, Play, Power, PowerOff, Edit, ArrowLeft,
-  RefreshCw, Clock, Lock, Search, Tag, X
+  RefreshCw, Clock, Lock, Search, Tag, X, Upload, FileText, Download
 } from 'lucide-react'
 import { useAuthStore } from '../lib/auth/store'
 
@@ -231,6 +231,14 @@ export default function Services() {
   const [filterCatalogType, setFilterCatalogType] = useState('')
   const [filterCategory, setFilterCategory] = useState('')
 
+  // Bulk Import state
+  const [showImportModal, setShowImportModal] = useState(false)
+  const [importFile, setImportFile] = useState<File | null>(null)
+  const [importStep, setImportStep] = useState<'upload' | 'preview' | 'result'>('upload')
+  const [importLoading, setImportLoading] = useState(false)
+  const [importPreview, setImportPreview] = useState<any>(null)
+  const [importResult, setImportResult] = useState<any>(null)
+
   const apiHeaders = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
   const canManage = isAdmin()  // Only ADMIN/OWNER can create/edit/delete/toggle
 
@@ -373,6 +381,64 @@ export default function Services() {
   })
 
   const clearFilters = () => { setFilterSearch(''); setFilterCatalogType(''); setFilterCategory('') }
+
+  // ── Import handlers ──────────────────────────────────────
+  const resetImport = () => {
+    setImportFile(null); setImportStep('upload'); setImportPreview(null); setImportResult(null)
+  }
+  const openImportModal = () => { resetImport(); setShowImportModal(true) }
+  const closeImportModal = () => { setShowImportModal(false); resetImport() }
+
+  const handleImportValidate = async () => {
+    if (!importFile) return
+    setImportLoading(true)
+    try {
+      const formData = new FormData()
+      formData.append('file', importFile)
+      const res = await fetch('/api/external-services/import?dry_run=true', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
+        body: formData,
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        setImportPreview({ error: err.detail || `Server error ${res.status}` })
+      } else {
+        setImportPreview(await res.json())
+      }
+      setImportStep('preview')
+    } catch (e: any) {
+      setImportPreview({ error: e.message })
+      setImportStep('preview')
+    }
+    setImportLoading(false)
+  }
+
+  const handleImportConfirm = async () => {
+    if (!importFile) return
+    setImportLoading(true)
+    try {
+      const formData = new FormData()
+      formData.append('file', importFile)
+      const res = await fetch('/api/external-services/import?dry_run=false', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
+        body: formData,
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        setImportResult({ error: err.detail || `Server error ${res.status}` })
+      } else {
+        setImportResult(await res.json())
+        await fetchExternal()
+      }
+      setImportStep('result')
+    } catch (e: any) {
+      setImportResult({ error: e.message })
+      setImportStep('result')
+    }
+    setImportLoading(false)
+  }
 
   const platform = platformData?.platform ?? { services: [], total: 0, up: 0, down: 0 }
 
@@ -572,10 +638,16 @@ export default function Services() {
           <p className="text-gray-400 mt-1">Manage and monitor your connected services</p>
         </div>
         {activeTab === 'external' && (
-          <button onClick={openCreate}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-blue-600 text-white hover:bg-blue-500 font-medium transition-colors shadow-lg shadow-blue-600/20">
-            <Plus className="w-4 h-4" /> Connect Service
-          </button>
+          <div className="flex items-center gap-3">
+            <button onClick={openImportModal}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-gray-600 text-gray-300 hover:text-white hover:border-gray-500 font-medium transition-colors">
+              <Upload className="w-4 h-4" /> Import
+            </button>
+            <button onClick={openCreate}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-blue-600 text-white hover:bg-blue-500 font-medium transition-colors shadow-lg shadow-blue-600/20">
+              <Plus className="w-4 h-4" /> Connect Service
+            </button>
+          </div>
         )}
       </div>
 
@@ -858,6 +930,245 @@ export default function Services() {
             Last updated: {platformData ? new Date(platformData.timestamp).toLocaleString() : 'N/A'}
           </div>
         </>
+      )}
+
+      {/* ── BULK IMPORT MODAL ────────────────────────────────── */}
+      {showImportModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="bg-gray-800 rounded-xl border border-gray-700 shadow-2xl w-full max-w-2xl max-h-[85vh] overflow-y-auto">
+            {/* Header */}
+            <div className="flex items-center justify-between p-6 border-b border-gray-700">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-blue-400/10 rounded-lg"><Upload className="w-5 h-5 text-blue-400" /></div>
+                <div>
+                  <h2 className="text-lg font-semibold text-white">Import Services</h2>
+                  <p className="text-gray-400 text-sm">Bulk import from CSV or JSON</p>
+                </div>
+              </div>
+              <button onClick={closeImportModal} className="p-2 rounded-lg hover:bg-gray-700 text-gray-400 hover:text-white transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-5">
+              {/* Step 1: Upload */}
+              {importStep === 'upload' && (
+                <>
+                  {/* Templates */}
+                  <div className="flex items-center gap-3 p-3 rounded-lg bg-gray-900/50 border border-gray-700/50">
+                    <FileText className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                    <span className="text-gray-400 text-sm">Download template:</span>
+                    <a href="/api/external-services/import/template/csv" className="text-blue-400 hover:text-blue-300 text-sm font-medium flex items-center gap-1">
+                      <Download className="w-3.5 h-3.5" /> CSV
+                    </a>
+                    <a href="/api/external-services/import/template/json" className="text-blue-400 hover:text-blue-300 text-sm font-medium flex items-center gap-1">
+                      <Download className="w-3.5 h-3.5" /> JSON
+                    </a>
+                  </div>
+
+                  {/* File input */}
+                  <div className="space-y-3">
+                    <label className="block">
+                      <div className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${importFile ? 'border-blue-500/50 bg-blue-500/5' : 'border-gray-600 hover:border-gray-500'}`}>
+                        <input type="file" accept=".csv,.json" className="hidden"
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => { if (e.target.files?.[0]) setImportFile(e.target.files[0]) }} />
+                        {importFile ? (
+                          <div className="space-y-1">
+                            <FileText className="w-8 h-8 text-blue-400 mx-auto" />
+                            <p className="text-white font-medium">{importFile.name}</p>
+                            <p className="text-gray-500 text-sm">{(importFile.size / 1024).toFixed(1)} KB</p>
+                          </div>
+                        ) : (
+                          <div className="space-y-2">
+                            <Upload className="w-8 h-8 text-gray-500 mx-auto" />
+                            <p className="text-gray-300">Click to select a file</p>
+                            <p className="text-gray-500 text-sm">Supports .csv and .json (max 1 MB, 200 services)</p>
+                          </div>
+                        )}
+                      </div>
+                    </label>
+                  </div>
+
+                  {/* Expected columns help */}
+                  <details className="text-sm">
+                    <summary className="text-gray-400 cursor-pointer hover:text-gray-300">Expected columns</summary>
+                    <div className="mt-2 p-3 bg-gray-900/50 rounded-lg border border-gray-700/50 text-gray-500 text-xs space-y-1">
+                      <p><span className="text-gray-300">Required:</span> name, service_type (http | postgresql)</p>
+                      <p><span className="text-gray-300">HTTP config:</span> url, method, health_path, auth_type</p>
+                      <p><span className="text-gray-300">PostgreSQL config:</span> host, port, database, username, password</p>
+                      <p><span className="text-gray-300">Optional:</span> environment, description, timeout_seconds, check_interval_seconds, enabled, catalog_type, category, tags</p>
+                      <p><span className="text-gray-300">Tags:</span> semicolon or comma separated (e.g. "critical;external;api")</p>
+                    </div>
+                  </details>
+
+                  {/* Action */}
+                  <div className="flex justify-end gap-3 pt-2">
+                    <button onClick={closeImportModal} className="px-4 py-2 rounded-lg text-gray-400 hover:text-white transition-colors">Cancel</button>
+                    <button onClick={handleImportValidate} disabled={!importFile || importLoading}
+                      className="flex items-center gap-2 px-5 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors">
+                      {importLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+                      Validate & Preview
+                    </button>
+                  </div>
+                </>
+              )}
+
+              {/* Step 2: Preview */}
+              {importStep === 'preview' && importPreview && (
+                <>
+                  {importPreview.error ? (
+                    <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400">
+                      <p className="font-medium">Validation failed</p>
+                      <p className="text-sm mt-1">{importPreview.error}</p>
+                    </div>
+                  ) : (
+                    <>
+                      {/* Summary cards */}
+                      <div className="grid grid-cols-4 gap-3">
+                        {[
+                          { label: 'Total', value: importPreview.total_received, color: 'text-gray-300' },
+                          { label: 'Valid', value: importPreview.valid_count, color: 'text-green-400' },
+                          { label: 'Invalid', value: importPreview.invalid_count, color: 'text-red-400' },
+                          { label: 'Duplicates', value: importPreview.duplicate_count, color: 'text-yellow-400' },
+                        ].map((c: { label: string; value: number; color: string }) => (
+                          <div key={c.label} className="bg-gray-900/50 rounded-lg p-3 border border-gray-700/50 text-center">
+                            <p className="text-gray-500 text-xs">{c.label}</p>
+                            <p className={`text-xl font-bold ${c.color}`}>{c.value}</p>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Valid services preview */}
+                      {importPreview.valid_preview?.length > 0 && (
+                        <div>
+                          <p className="text-sm text-gray-400 mb-2">Services to be created:</p>
+                          <div className="max-h-40 overflow-y-auto bg-gray-900/50 rounded-lg border border-gray-700/50">
+                            <table className="w-full text-sm">
+                              <thead><tr className="border-b border-gray-700/50">
+                                <th className="text-left p-2 text-gray-500 text-xs">Row</th>
+                                <th className="text-left p-2 text-gray-500 text-xs">Name</th>
+                                <th className="text-left p-2 text-gray-500 text-xs">Type</th>
+                                <th className="text-left p-2 text-gray-500 text-xs">Target</th>
+                              </tr></thead>
+                              <tbody>
+                                {importPreview.valid_preview.map((s: any) => (
+                                  <tr key={s.row} className="border-b border-gray-700/30">
+                                    <td className="p-2 text-gray-500">{s.row}</td>
+                                    <td className="p-2 text-white">{s.name}</td>
+                                    <td className="p-2 text-gray-400">{s.service_type}</td>
+                                    <td className="p-2 text-gray-500 truncate max-w-[200px]">{s.target}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Errors/skipped */}
+                      {importPreview.errors?.length > 0 && (
+                        <div>
+                          <p className="text-sm text-gray-400 mb-2">Issues found:</p>
+                          <div className="max-h-40 overflow-y-auto space-y-1">
+                            {importPreview.errors.map((e: any, i: number) => (
+                              <div key={i} className={`p-2 rounded text-xs ${e.status === 'skipped' ? 'bg-yellow-500/10 border border-yellow-500/20 text-yellow-400' : 'bg-red-500/10 border border-red-500/20 text-red-400'}`}>
+                                <span className="font-medium">Row {e.row}: {e.name}</span>
+                                {' — '}{e.errors?.join('; ')}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  {/* Actions */}
+                  <div className="flex justify-between pt-2">
+                    <button onClick={() => { setImportStep('upload'); setImportPreview(null) }}
+                      className="px-4 py-2 rounded-lg text-gray-400 hover:text-white transition-colors">
+                      ← Back
+                    </button>
+                    <div className="flex gap-3">
+                      <button onClick={closeImportModal} className="px-4 py-2 rounded-lg text-gray-400 hover:text-white transition-colors">Cancel</button>
+                      {importPreview && !importPreview.error && importPreview.valid_count > 0 && (
+                        <button onClick={handleImportConfirm} disabled={importLoading}
+                          className="flex items-center gap-2 px-5 py-2 rounded-lg bg-green-600 text-white hover:bg-green-500 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors">
+                          {importLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                          Import {importPreview.valid_count} Service{importPreview.valid_count !== 1 ? 's' : ''}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* Step 3: Result */}
+              {importStep === 'result' && importResult && (
+                <>
+                  {importResult.error ? (
+                    <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400">
+                      <p className="font-medium">Import failed</p>
+                      <p className="text-sm mt-1">{importResult.error}</p>
+                    </div>
+                  ) : (
+                    <>
+                      <div className={`p-4 rounded-lg border ${importResult.created_count > 0 ? 'bg-green-500/10 border-green-500/30' : 'bg-yellow-500/10 border-yellow-500/30'}`}>
+                        <div className="flex items-center gap-2 mb-2">
+                          <CheckCircle className={`w-5 h-5 ${importResult.created_count > 0 ? 'text-green-400' : 'text-yellow-400'}`} />
+                          <span className={`font-medium ${importResult.created_count > 0 ? 'text-green-400' : 'text-yellow-400'}`}>
+                            Import complete
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-3 gap-3 text-sm">
+                          <div><span className="text-gray-500">Created:</span> <span className="text-green-400 font-medium">{importResult.created_count}</span></div>
+                          <div><span className="text-gray-500">Skipped:</span> <span className="text-yellow-400 font-medium">{importResult.skipped_count}</span></div>
+                          <div><span className="text-gray-500">Invalid:</span> <span className="text-red-400 font-medium">{importResult.invalid_count}</span></div>
+                        </div>
+                      </div>
+
+                      {/* Created services list */}
+                      {importResult.created_services?.length > 0 && (
+                        <div>
+                          <p className="text-sm text-gray-400 mb-2">Created services:</p>
+                          <div className="max-h-32 overflow-y-auto space-y-1">
+                            {importResult.created_services.map((s: any) => (
+                              <div key={s.id} className="flex items-center gap-2 p-2 bg-green-500/5 rounded text-sm border border-green-500/10">
+                                <CheckCircle className="w-3.5 h-3.5 text-green-400 flex-shrink-0" />
+                                <span className="text-white">{s.name}</span>
+                                <span className="text-gray-500">({s.service_type})</span>
+                                <span className="text-gray-600 ml-auto">id={s.id}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {importResult.errors?.length > 0 && (
+                        <div>
+                          <p className="text-sm text-gray-400 mb-2">Issues:</p>
+                          <div className="max-h-32 overflow-y-auto space-y-1">
+                            {importResult.errors.map((e: any, i: number) => (
+                              <div key={i} className={`p-2 rounded text-xs ${e.status === 'skipped' ? 'bg-yellow-500/10 text-yellow-400' : 'bg-red-500/10 text-red-400'}`}>
+                                <span className="font-medium">{e.name}</span>{' — '}{e.errors?.join('; ')}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  <div className="flex justify-end pt-2">
+                    <button onClick={closeImportModal}
+                      className="px-5 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-500 font-medium transition-colors">
+                      Done
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

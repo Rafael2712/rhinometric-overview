@@ -2,7 +2,7 @@
 External Services router - CRUD + test connection for HTTP and PostgreSQL connectors.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, File, UploadFile
 from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any
 from datetime import datetime, timezone, timedelta, timedelta
@@ -16,7 +16,12 @@ from models.external_service_check import ExternalServiceCheck
 from models.external_service_check import ExternalServiceCheck
 from services.connector_service import test_http_connection, test_postgresql_connection
 from services.config_validation import validate_service_config
+from services.bulk_import_service import (
+    parse_csv, parse_json, process_import,
+    generate_csv_template, generate_json_template,
+)
 from services.state_repository import clear_in_memory_state
+from fastapi.responses import PlainTextResponse
 
 import logging
 
@@ -167,6 +172,101 @@ def get_external_services_summary(
         "degraded": degraded,
         "unknown": unknown,
     }
+
+
+
+
+# ?????? Bulk Import ???????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+
+@router.post("/import")
+async def import_external_services(
+    file: UploadFile = File(...),
+    dry_run: bool = Query(default=True, description="If true, validate only without creating services"),
+    db: Session = Depends(get_db),
+    current_user: UserModel = Depends(admin_only),
+):
+    """
+    Bulk import external services from CSV or JSON file.
+
+    Two-step flow:
+      1. Call with dry_run=true to preview/validate.
+      2. Call with dry_run=false to confirm and create services.
+
+    Duplicate policy:
+      - Services with the same name AND same primary target (URL or host:port/db)
+        as an existing service are SKIPPED.
+      - No existing services are modified or deleted.
+    """
+    # Determine format from filename
+    filename = (file.filename or "").lower()
+    if not (filename.endswith(".csv") or filename.endswith(".json")):
+        raise HTTPException(
+            status_code=400,
+            detail="Unsupported file format. Please upload a .csv or .json file.",
+        )
+
+    # Read file content
+    try:
+        raw_bytes = await file.read()
+        content = raw_bytes.decode("utf-8-sig")  # Handle BOM
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Failed to read file: {str(e)}")
+
+    # Size guard (max 1MB)
+    if len(raw_bytes) > 1_048_576:
+        raise HTTPException(status_code=400, detail="File too large. Maximum size is 1 MB.")
+
+    # Parse
+    if filename.endswith(".csv"):
+        rows, parse_error = parse_csv(content)
+    else:
+        rows, parse_error = parse_json(content)
+
+    if parse_error:
+        raise HTTPException(status_code=400, detail=parse_error)
+
+    # Row limit guard
+    if len(rows) > 200:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Too many rows ({len(rows)}). Maximum is 200 services per import.",
+        )
+
+    # Process
+    result = process_import(rows, db, current_user.id, dry_run=dry_run)
+
+    logger.info(
+        f"[BulkImport] {'Preview' if dry_run else 'Import'} by user {current_user.username}: "
+        f"received={result['total_received']}, valid={result['valid_count']}, "
+        f"invalid={result['invalid_count']}, duplicates={result['duplicate_count']}, "
+        f"created={result['created_count']}"
+    )
+
+    return result
+
+
+@router.get("/import/template/csv")
+def download_csv_template(
+    current_user: UserModel = Depends(get_current_user),
+):
+    """Download a CSV template for bulk service import."""
+    return PlainTextResponse(
+        content=generate_csv_template(),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=rhinometric_services_template.csv"},
+    )
+
+
+@router.get("/import/template/json")
+def download_json_template(
+    current_user: UserModel = Depends(get_current_user),
+):
+    """Download a JSON template for bulk service import."""
+    return PlainTextResponse(
+        content=generate_json_template(),
+        media_type="application/json",
+        headers={"Content-Disposition": "attachment; filename=rhinometric_services_template.json"},
+    )
 
 
 @router.get("/{service_id}", response_model=ExternalServiceResponse)
