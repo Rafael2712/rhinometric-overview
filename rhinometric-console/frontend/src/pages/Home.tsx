@@ -1,4 +1,4 @@
-import { Activity, Server, AlertTriangle, Bell, TrendingUp, TrendingDown, Map } from 'lucide-react'
+import { Activity, Server, AlertTriangle, Bell, TrendingUp, TrendingDown, Map, Shield } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useAuthStore } from '../lib/auth/store'
@@ -13,11 +13,31 @@ interface SparklinePoint {
 interface KPIHistory {
   service_status: SparklinePoint[]
   monitored_hosts: SparklinePoint[]
+  platform_health: SparklinePoint[]
   active_anomalies: SparklinePoint[]
   alerts_24h: SparklinePoint[]
 }
 
+interface MonitoredServices {
+  total: number
+  healthy: number
+  degraded: number
+  down: number
+  status: string
+}
+
+interface PlatformComponents {
+  total: number
+  healthy: number
+  down: number
+  status: string
+}
+
 interface ServiceSummary {
+  // New separated sections
+  monitored_services: MonitoredServices
+  platform_components: PlatformComponents
+  // Backward-compatible flat fields
   total_services: number
   external_services: number
   internal_services: number
@@ -27,7 +47,7 @@ interface ServiceSummary {
   overall_status: string
 }
 
-/** Map backend overall_status to UI badge status key */
+/** Map backend status to UI badge status key */
 function mapSummaryStatus(overall: string): 'success' | 'warning' | 'error' {
   switch (overall) {
     case 'OPERATIONAL': return 'success'
@@ -36,7 +56,7 @@ function mapSummaryStatus(overall: string): 'success' | 'warning' | 'error' {
   }
 }
 
-/** Map backend overall_status to human-readable label */
+/** Map backend status to human-readable label */
 function mapSummaryLabel(overall: string): string {
   switch (overall) {
     case 'OPERATIONAL': return 'Operational'
@@ -52,6 +72,7 @@ export function HomePage() {
   const [history, setHistory] = useState<KPIHistory>({
     service_status: [],
     monitored_hosts: [],
+    platform_health: [],
     active_anomalies: [],
     alerts_24h: []
   })
@@ -108,15 +129,23 @@ export function HomePage() {
           return newSeries.slice(-20)
         }
 
-        // Use summary endpoint as source of truth for service health %
-        const serviceStatusValue = summaryData
-          ? (summaryData.total_services > 0 ? (summaryData.healthy / summaryData.total_services) * 100 : 100)
+        // Service status: based on MONITORED SERVICES only (customer perspective)
+        const mon = summaryData?.monitored_services
+        const serviceStatusValue = mon
+          ? (mon.total > 0 ? (mon.healthy / mon.total) * 100 : 100)
           : (kpisData.service_status.value === "Operational" ? 100 :
               (kpisData.service_status.operational_count / kpisData.service_status.total_count) * 100)
 
+        // Platform health: based on PLATFORM COMPONENTS only
+        const plat = summaryData?.platform_components
+        const platformHealthValue = plat
+          ? (plat.total > 0 ? (plat.healthy / plat.total) * 100 : 100)
+          : 100
+
         return {
           service_status: updateSeries(prev.service_status, serviceStatusValue),
-          monitored_hosts: updateSeries(prev.monitored_hosts, summaryData ? summaryData.total_services : kpisData.monitored_hosts.value),
+          monitored_hosts: updateSeries(prev.monitored_hosts, mon ? mon.total : (summaryData ? summaryData.external_services : kpisData.monitored_hosts.value)),
+          platform_health: updateSeries(prev.platform_health, platformHealthValue),
           active_anomalies: updateSeries(prev.active_anomalies, kpisData.active_anomalies.value),
           alerts_24h: updateSeries(prev.alerts_24h, kpisData.alerts_24h.value)
         }
@@ -150,37 +179,56 @@ export function HomePage() {
       setHistory({
         service_status: mapPoints(historyData.service_status),
         monitored_hosts: mapPoints(historyData.monitored_hosts),
+        platform_health: historyData.platform_health ? mapPoints(historyData.platform_health) : [],
         active_anomalies: mapPoints(historyData.active_anomalies),
         alerts_24h: mapPoints(historyData.alerts_24h)
       })
     }
   }, [historyData])
 
+  // Derive separated data from summary
+  const mon = summaryData?.monitored_services
+  const plat = summaryData?.platform_components
+
   // Map API data to KPI cards with sparkline data
   const kpis = kpisData ? [
     {
       name: 'Service Status',
-      value: summaryData ? mapSummaryLabel(summaryData.overall_status) : kpisData.service_status.value,
-      status: summaryData ? mapSummaryStatus(summaryData.overall_status) : kpisData.service_status.status,
+      value: mon ? mapSummaryLabel(mon.status) : (summaryData ? mapSummaryLabel(summaryData.overall_status) : kpisData.service_status.value),
+      status: mon ? mapSummaryStatus(mon.status) : (summaryData ? mapSummaryStatus(summaryData.overall_status) : kpisData.service_status.status),
       icon: Activity,
-      change: summaryData
-        ? `${summaryData.healthy}/${summaryData.total_services} healthy · ${summaryData.down > 0 ? summaryData.down + ' down' : 'All up'}`
-        : kpisData.service_status.change,
+      change: mon
+        ? `${mon.healthy}/${mon.total} healthy` + (mon.down > 0 ? ` · ${mon.down} down` : ' · All up')
+        : (summaryData
+          ? `${summaryData.healthy}/${summaryData.total_services} healthy · ${summaryData.down > 0 ? summaryData.down + ' down' : 'All up'}`
+          : kpisData.service_status.change),
       sparkline: history.service_status,
       trend: 'up',
       link: '/system-health'
     },
     {
       name: 'Monitored Services',
-      value: summaryData ? String(summaryData.total_services) : kpisData.monitored_hosts.value,
-      status: summaryData ? (summaryData.down > 0 ? 'warning' : 'success') : kpisData.monitored_hosts.status,
+      value: mon ? String(mon.total) : (summaryData ? String(summaryData.external_services) : kpisData.monitored_hosts.value),
+      status: mon ? (mon.down > 0 ? 'warning' : 'success') : (summaryData ? (summaryData.down > 0 ? 'warning' : 'success') : kpisData.monitored_hosts.status),
       icon: Server,
-      change: summaryData
-        ? `${summaryData.external_services} external · ${summaryData.internal_services} internal`
-        : kpisData.monitored_hosts.change,
+      change: mon
+        ? `${mon.healthy} up` + (mon.degraded > 0 ? ` · ${mon.degraded} degraded` : '') + (mon.down > 0 ? ` · ${mon.down} down` : '')
+        : (summaryData ? `${summaryData.external_services} external · ${summaryData.internal_services} internal` : kpisData.monitored_hosts.change),
       sparkline: history.monitored_hosts,
       trend: 'stable',
       link: '/services'
+    },
+    {
+      name: 'Platform Health',
+      value: plat ? mapSummaryLabel(plat.status) : 'Operational',
+      status: plat ? mapSummaryStatus(plat.status) : 'success' as const,
+      icon: Shield,
+      change: plat
+        ? `${plat.healthy}/${plat.total} components` + (plat.down > 0 ? ` · ${plat.down} down` : ' · All up')
+        : 'Loading...',
+      sparkline: history.platform_health,
+      trend: 'stable',
+      link: '/system-health'
     },
     {
       name: 'Active Anomaly Groups',
@@ -205,6 +253,7 @@ export function HomePage() {
   ] : [
     { name: 'Service Status', value: 'Loading...', status: 'success', icon: Activity, change: '', sparkline: [], trend: 'stable', link: '/system-health' },
     { name: 'Monitored Services', value: '...', status: 'success', icon: Server, change: '', sparkline: [], trend: 'stable', link: '/services' },
+    { name: 'Platform Health', value: '...', status: 'success', icon: Shield, change: '', sparkline: [], trend: 'stable', link: '/system-health' },
     { name: 'Active Anomaly Groups', value: '...', status: 'success', icon: AlertTriangle, change: '', sparkline: [], trend: 'stable', link: '/anomalies' },
     { name: 'Alerts (24h)', value: '...', status: 'success', icon: Bell, change: '', sparkline: [], trend: 'stable', link: '/alerts' },
   ]
@@ -231,7 +280,7 @@ export function HomePage() {
         {error && <p className="text-error text-sm mt-2">❌ Error: {(error as Error).message}</p>}
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
+      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 lg:gap-6">
         {kpis.map((kpi) => {
           const Icon = kpi.icon
           const TrendIcon = kpi.trend === 'up' ? TrendingUp : TrendingDown
@@ -259,7 +308,7 @@ export function HomePage() {
                 )}
               </div>
 
-              {/* Mini Sparkline Chart (últimas 24h) */}
+              {/* Mini Sparkline Chart */}
               {kpi.sparkline.length > 0 && (
                 <div className="h-8 sm:h-12 -mx-1 sm:-mx-2 mb-1 sm:mb-2">
                   <ResponsiveContainer width="100%" height="100%">

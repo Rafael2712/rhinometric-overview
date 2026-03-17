@@ -2,7 +2,9 @@
 Service Summary Aggregation Service
 
 Aggregates health data from BOTH external monitored services
-and internal platform services to produce a unified health overview.
+and internal platform services to produce a structured health overview
+with clear separation between customer-monitored services and
+internal platform components.
 
 Used by: GET /api/services/summary
 """
@@ -122,13 +124,13 @@ def _calculate_overall_status(
     total: int,
 ) -> str:
     """
-    Determine the global platform health status based on ACTUAL service state.
+    Determine health status based on ACTUAL service state.
 
     Rules (in priority order):
-      1. >10% of services DOWN  → CRITICAL
-      2. ANY service DOWN       → DEGRADED
-      3. ANY service DEGRADED   → DEGRADED
-      4. Everything healthy      → OPERATIONAL
+      1. >10% of services DOWN  -> CRITICAL
+      2. ANY service DOWN       -> DEGRADED
+      3. ANY service DEGRADED   -> DEGRADED
+      4. Everything healthy     -> OPERATIONAL
 
     Note: AI anomalies are informational and intentionally excluded.
     They have their own dedicated card on the Home dashboard.
@@ -160,7 +162,7 @@ async def _check_latency_anomalies() -> bool:
       - metric must contain "latency"
       - severity must be "high" or "critical" (ignore low/medium noise)
 
-    Timeout: 3 seconds — this is a best-effort enrichment.
+    Timeout: 3 seconds -- this is a best-effort enrichment.
     """
     SIGNIFICANT_SEVERITIES = {"high", "critical"}
     try:
@@ -196,13 +198,15 @@ async def get_services_summary(db: Session) -> Dict[str, Any]:
       - Internal platform services (from Prometheus `up` metric)
       - External monitored services (from PostgreSQL external_services table)
 
-    Returns a flat summary dict ready for JSON response.
+    Returns a structured summary with SEPARATE sections for:
+      - monitored_services: customer external services only
+      - platform_components: internal platform services only
+    Plus backward-compatible flat fields.
     """
 
     # --- Parallel-ish data collection ---
     prom_data = await _fetch_prometheus_up_targets()
     ext_data = _fetch_external_services_from_db(db)
-    # Latency anomalies intentionally excluded — they are informational, not service health
 
     # --- Internal (platform) services ---
     internal_total = prom_data["internal_up"] + prom_data["internal_down"]
@@ -210,7 +214,6 @@ async def get_services_summary(db: Session) -> Dict[str, Any]:
     internal_down = prom_data["internal_down"]
 
     # --- External services (DB-registered + Prometheus-scraped external) ---
-    # DB-registered externals
     ext_healthy = ext_data["up"]
     ext_degraded = ext_data["degraded"]
     ext_down = ext_data["down"]
@@ -220,17 +223,32 @@ async def get_services_summary(db: Session) -> Dict[str, Any]:
     prom_ext_up = prom_data["prom_external_up"]
     prom_ext_down = prom_data["prom_external_down"]
 
-    # Combined external counts
-    all_ext_total = ext_total + prom_ext_up + prom_ext_down
-    all_ext_healthy = ext_healthy + prom_ext_up
-    all_ext_degraded = ext_degraded
-    all_ext_down = ext_down + prom_ext_down
+    # Combined external counts (= monitored services)
+    monitored_total = ext_total + prom_ext_up + prom_ext_down
+    monitored_healthy = ext_healthy + prom_ext_up
+    monitored_degraded = ext_degraded
+    monitored_down = ext_down + prom_ext_down
 
-    # --- Grand totals ---
-    total_services = internal_total + all_ext_total
-    total_healthy = internal_healthy + all_ext_healthy
-    total_degraded = all_ext_degraded  # internal services are only up/down
-    total_down = internal_down + all_ext_down
+    # --- Overall statuses computed SEPARATELY ---
+    monitored_status = _calculate_overall_status(
+        healthy=monitored_healthy,
+        degraded=monitored_degraded,
+        down=monitored_down,
+        total=monitored_total,
+    )
+
+    platform_status = _calculate_overall_status(
+        healthy=internal_healthy,
+        degraded=0,  # internal services are only up/down
+        down=internal_down,
+        total=internal_total,
+    )
+
+    # --- Grand totals (backward compat) ---
+    total_services = internal_total + monitored_total
+    total_healthy = internal_healthy + monitored_healthy
+    total_degraded = monitored_degraded
+    total_down = internal_down + monitored_down
 
     overall_status = _calculate_overall_status(
         healthy=total_healthy,
@@ -240,8 +258,23 @@ async def get_services_summary(db: Session) -> Dict[str, Any]:
     )
 
     return {
+        # === NEW: Separated sections ===
+        "monitored_services": {
+            "total": monitored_total,
+            "healthy": monitored_healthy,
+            "degraded": monitored_degraded,
+            "down": monitored_down,
+            "status": monitored_status,
+        },
+        "platform_components": {
+            "total": internal_total,
+            "healthy": internal_healthy,
+            "down": internal_down,
+            "status": platform_status,
+        },
+        # === Backward-compatible flat fields ===
         "total_services": total_services,
-        "external_services": all_ext_total,
+        "external_services": monitored_total,
         "internal_services": internal_total,
         "healthy": total_healthy,
         "degraded": total_degraded,
