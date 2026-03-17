@@ -34,10 +34,8 @@ interface PlatformComponents {
 }
 
 interface ServiceSummary {
-  // New separated sections
   monitored_services: MonitoredServices
   platform_components: PlatformComponents
-  // Backward-compatible flat fields
   total_services: number
   external_services: number
   internal_services: number
@@ -52,7 +50,7 @@ function mapSummaryStatus(overall: string): 'success' | 'warning' | 'error' {
   switch (overall) {
     case 'OPERATIONAL': return 'success'
     case 'CRITICAL':    return 'error'
-    default:            return 'warning' // DEGRADED or unknown
+    default:            return 'warning'
   }
 }
 
@@ -83,26 +81,26 @@ export function HomePage() {
 
   const token = useAuthStore((state) => state.token)
 
-  // Fetch KPIs from backend API
+  // Fetch KPIs from backend API (used ONLY for anomalies + alerts)
   const { data: kpisData, isLoading, error } = useQuery({
     queryKey: ['kpis', token],
     queryFn: async () => {
       if (!token) throw new Error('No token available')
-
       const response = await fetch('/api/kpis', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+        headers: { 'Authorization': `Bearer ${token}` }
       })
       if (!response.ok) throw new Error('Failed to fetch KPIs')
       return response.json()
     },
     enabled: !!token,
-    refetchInterval: 5000, // Refresh every 5 seconds for "live" feel
+    refetchInterval: 5000,
   })
 
-
-  // Fetch service summary (single source of truth for health status)
+  // Fetch service summary ? SINGLE SOURCE OF TRUTH for service health.
+  // This endpoint returns ALREADY-SEPARATED data:
+  //   monitored_services  = external/client services ONLY
+  //   platform_components = internal platform services ONLY
+  // We NEVER fall back to KPIs or flat fields for service/platform cards.
   const { data: summaryData } = useQuery<ServiceSummary>({
     queryKey: ['services-summary', token],
     queryFn: async () => {
@@ -117,34 +115,55 @@ export function HomePage() {
     refetchInterval: 5000,
   })
 
-  // Update history when new data arrives
+  // ??????????????????????????????????????????????
+  // STRICT separation: derive from sub-objects ONLY
+  // ??????????????????????????????????????????????
+  const mon  = summaryData?.monitored_services   // external-only
+  const plat = summaryData?.platform_components  // internal-only
+
+  // DEBUG: log separation to console so we can verify no intersection
+  useEffect(() => {
+    if (summaryData) {
+      const m = summaryData.monitored_services
+      const p = summaryData.platform_components
+      console.group('[Home] Data-source separation audit')
+      console.log('Monitored Services (external):', m)
+      console.log('Platform Components (internal):', p)
+      console.log(`Monitored total=${m.total}, healthy=${m.healthy}, degraded=${m.degraded}, down=${m.down}, status=${m.status}`)
+      console.log(`Platform  total=${p.total}, healthy=${p.healthy}, down=${p.down}, status=${p.status}`)
+      console.log(`Intersection check: monitored_total(${m.total}) + platform_total(${p.total}) = ${m.total + p.total}, grand_total=${summaryData.total_services}`)
+      console.assert(
+        m.total + p.total === summaryData.total_services,
+        'DATA LEAK: monitored + platform !== total_services'
+      )
+      console.groupEnd()
+    }
+  }, [summaryData])
+
+  // Update sparkline history
   useEffect(() => {
     if (kpisData) {
       const now = Date.now()
       setHistory(prev => {
         const updateSeries = (series: SparklinePoint[], newValue: any) => {
           const val = typeof newValue === 'string' ? parseFloat(newValue) || 0 : newValue
-          // Keep last 20 points
           const newSeries = [...series, { time: now, value: val }]
           return newSeries.slice(-20)
         }
 
-        // Service status: based on MONITORED SERVICES only (customer perspective)
-        const mon = summaryData?.monitored_services
+        // Service status sparkline: % healthy of EXTERNALS ONLY
         const serviceStatusValue = mon
           ? (mon.total > 0 ? (mon.healthy / mon.total) * 100 : 100)
-          : (kpisData.service_status.value === "Operational" ? 100 :
-              (kpisData.service_status.operational_count / kpisData.service_status.total_count) * 100)
+          : 100
 
-        // Platform health: based on PLATFORM COMPONENTS only
-        const plat = summaryData?.platform_components
+        // Platform health sparkline: % healthy of INTERNALS ONLY
         const platformHealthValue = plat
           ? (plat.total > 0 ? (plat.healthy / plat.total) * 100 : 100)
           : 100
 
         return {
           service_status: updateSeries(prev.service_status, serviceStatusValue),
-          monitored_hosts: updateSeries(prev.monitored_hosts, mon ? mon.total : (summaryData ? summaryData.external_services : kpisData.monitored_hosts.value)),
+          monitored_hosts: updateSeries(prev.monitored_hosts, mon ? mon.total : 0),
           platform_health: updateSeries(prev.platform_health, platformHealthValue),
           active_anomalies: updateSeries(prev.active_anomalies, kpisData.active_anomalies.value),
           alerts_24h: updateSeries(prev.alerts_24h, kpisData.alerts_24h.value)
@@ -172,7 +191,7 @@ export function HomePage() {
   useEffect(() => {
     if (historyData) {
       const mapPoints = (points: any[]) => points.map(p => ({
-        time: p.timestamp * 1000, // Convert to ms
+        time: p.timestamp * 1000,
         value: p.value
       }))
 
@@ -186,50 +205,59 @@ export function HomePage() {
     }
   }, [historyData])
 
-  // Derive separated data from summary
-  const mon = summaryData?.monitored_services
-  const plat = summaryData?.platform_components
+  // ??????????????????????????????????????????????
+  // KPI CARDS ? each card uses ONE exclusive data source
+  // ??????????????????????????????????????????????
+  //
+  // Service Status   ? mon  (monitored_services, externals ONLY)
+  // Monitored Svcs   ? mon  (monitored_services, externals ONLY)
+  // Platform Health  ? plat (platform_components, internals ONLY)
+  // Anomaly Groups   ? kpisData.active_anomalies (independent)
+  // Alerts (24h)     ? kpisData.alerts_24h       (independent)
+  //
+  // NO fallback to flat/mixed fields. If summary hasn't loaded ? "Loading?"
 
-  // Map API data to KPI cards with sparkline data
   const kpis = kpisData ? [
+    // ?? Card 1: Service Status (EXTERNAL ONLY) ??????????????
     {
       name: 'Service Status',
-      value: mon ? mapSummaryLabel(mon.status) : (summaryData ? mapSummaryLabel(summaryData.overall_status) : kpisData.service_status.value),
-      status: mon ? mapSummaryStatus(mon.status) : (summaryData ? mapSummaryStatus(summaryData.overall_status) : kpisData.service_status.status),
+      value: mon ? mapSummaryLabel(mon.status) : 'Loading...',
+      status: mon ? mapSummaryStatus(mon.status) : ('success' as const),
       icon: Activity,
       change: mon
-        ? `${mon.healthy}/${mon.total} healthy` + (mon.down > 0 ? ` · ${mon.down} down` : ' · All up')
-        : (summaryData
-          ? `${summaryData.healthy}/${summaryData.total_services} healthy · ${summaryData.down > 0 ? summaryData.down + ' down' : 'All up'}`
-          : kpisData.service_status.change),
+        ? `${mon.healthy}/${mon.total} healthy` + (mon.down > 0 ? ` \u00b7 ${mon.down} down` : ' \u00b7 All up')
+        : '',
       sparkline: history.service_status,
       trend: 'up',
       link: '/system-health'
     },
+    // ?? Card 2: Monitored Services (EXTERNAL ONLY) ??????????
     {
       name: 'Monitored Services',
-      value: mon ? String(mon.total) : (summaryData ? String(summaryData.external_services) : kpisData.monitored_hosts.value),
-      status: mon ? (mon.down > 0 ? 'warning' : 'success') : (summaryData ? (summaryData.down > 0 ? 'warning' : 'success') : kpisData.monitored_hosts.status),
+      value: mon ? String(mon.total) : '...',
+      status: mon ? (mon.down > 0 ? 'warning' : 'success') : ('success' as const),
       icon: Server,
       change: mon
-        ? `${mon.healthy} up` + (mon.degraded > 0 ? ` · ${mon.degraded} degraded` : '') + (mon.down > 0 ? ` · ${mon.down} down` : '')
-        : (summaryData ? `${summaryData.external_services} external · ${summaryData.internal_services} internal` : kpisData.monitored_hosts.change),
+        ? `${mon.healthy} up` + (mon.degraded > 0 ? ` \u00b7 ${mon.degraded} degraded` : '') + (mon.down > 0 ? ` \u00b7 ${mon.down} down` : '')
+        : '',
       sparkline: history.monitored_hosts,
       trend: 'stable',
       link: '/services'
     },
+    // ?? Card 3: Platform Health (INTERNAL ONLY) ?????????????
     {
       name: 'Platform Health',
-      value: plat ? mapSummaryLabel(plat.status) : 'Operational',
-      status: plat ? mapSummaryStatus(plat.status) : 'success' as const,
+      value: plat ? mapSummaryLabel(plat.status) : 'Loading...',
+      status: plat ? mapSummaryStatus(plat.status) : ('success' as const),
       icon: Shield,
       change: plat
-        ? `${plat.healthy}/${plat.total} components` + (plat.down > 0 ? ` · ${plat.down} down` : ' · All up')
-        : 'Loading...',
+        ? `${plat.healthy}/${plat.total} components` + (plat.down > 0 ? ` \u00b7 ${plat.down} down` : ' \u00b7 All up')
+        : '',
       sparkline: history.platform_health,
       trend: 'stable',
       link: '/system-health'
     },
+    // ?? Card 4: Active Anomaly Groups (independent) ?????????
     {
       name: 'Active Anomaly Groups',
       value: kpisData.active_anomalies.value,
@@ -240,6 +268,7 @@ export function HomePage() {
       trend: 'down',
       link: '/anomalies'
     },
+    // ?? Card 5: Alerts 24h (independent) ????????????????????
     {
       name: 'Alerts (24h)',
       value: kpisData.alerts_24h.value,
@@ -263,8 +292,9 @@ export function HomePage() {
     console.log('Home - Token:', token ? 'present' : 'missing')
     console.log('Home - Loading:', isLoading)
     console.log('Home - Error:', error)
-    console.log('Home - Data:', kpisData)
-  }, [token, isLoading, error, kpisData])
+    console.log('Home - KPIs:', kpisData)
+    console.log('Home - Summary:', summaryData)
+  }, [token, isLoading, error, kpisData, summaryData])
 
   if (error) {
     console.error('Failed to load KPIs:', error)
@@ -275,9 +305,8 @@ export function HomePage() {
       <div>
         <h1 className="text-2xl sm:text-3xl font-bold text-white mb-1 sm:mb-2">Welcome to Rhinometric</h1>
         <p className="text-text-muted text-sm sm:text-base">AI-Powered Observability & Anomaly Detection Platform</p>
-        {/* Debug info */}
-        {!token && <p className="text-warning text-sm mt-2">⚠️ No authentication token</p>}
-        {error && <p className="text-error text-sm mt-2">❌ Error: {(error as Error).message}</p>}
+        {!token && <p className="text-warning text-sm mt-2">{'\u26a0\ufe0f'} No authentication token</p>}
+        {error && <p className="text-error text-sm mt-2">{'\u274c'} Error: {(error as Error).message}</p>}
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 lg:gap-6">
@@ -308,7 +337,6 @@ export function HomePage() {
                 )}
               </div>
 
-              {/* Mini Sparkline Chart */}
               {kpi.sparkline.length > 0 && (
                 <div className="h-8 sm:h-12 -mx-1 sm:-mx-2 mb-1 sm:mb-2">
                   <ResponsiveContainer width="100%" height="100%">
