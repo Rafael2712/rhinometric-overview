@@ -5,6 +5,7 @@ import { useAuthStore } from '../lib/auth/store'
 import { LineChart, Line, ResponsiveContainer } from 'recharts'
 import { useNavigate } from 'react-router-dom'
 
+// BUILD_MARKER: 20260318_1100 ? forces new Vite content hash
 interface SparklinePoint {
   time: number
   value: number
@@ -287,14 +288,21 @@ export function HomePage() {
     { name: 'Alerts (24h)', value: '...', status: 'success', icon: Bell, change: '', sparkline: [], trend: 'stable', link: '/alerts' },
   ]
 
-  // Debug logging
+  // Debug logging ? BUILD v2026.03.18a
   useEffect(() => {
+    console.log('%c[Home BUILD 2026-03-18a]', 'background:#1e40af;color:#fff;padding:2px 6px;border-radius:3px')
     console.log('Home - Token:', token ? 'present' : 'missing')
     console.log('Home - Loading:', isLoading)
     console.log('Home - Error:', error)
     console.log('Home - KPIs:', kpisData)
     console.log('Home - Summary:', summaryData)
-  }, [token, isLoading, error, kpisData, summaryData])
+    if (mon) {
+      console.log('%cMonitored Services card value = ' + mon.total + ' (source: summaryData.monitored_services.total)', 'color:#10b981;font-weight:bold')
+    }
+    if (plat) {
+      console.log('%cPlatform Health card value = ' + plat.total + ' (source: summaryData.platform_components.total)', 'color:#6366f1;font-weight:bold')
+    }
+  }, [token, isLoading, error, kpisData, summaryData, mon, plat])
 
   if (error) {
     console.error('Failed to load KPIs:', error)
