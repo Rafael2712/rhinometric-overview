@@ -31,6 +31,7 @@ from routers import slo as slo_router
 from routers import system as system_router
 from routers import service_map as service_map_router
 from routers import service_summary as service_summary_router
+from routers import backups as backups_router
 
 app = FastAPI(
     title=settings.API_TITLE,
@@ -150,6 +151,14 @@ async def startup_event():
         logger.info("External service checks table ready")
     except Exception as e:
         logger.warning(f"Could not create external_service_checks table: {e}")
+
+    # Auto-create backup_artifacts table (Phase 1 - Backup & Recovery)
+    try:
+        from models.backup_artifact import BackupArtifact
+        BackupArtifact.__table__.create(bind=engine, checkfirst=True)
+        logger.info("Backup artifacts table ready")
+    except Exception as e:
+        logger.warning(f"Could not create backup_artifacts table: {e}")
 
     # Start background health checker for external services
     try:
@@ -340,6 +349,7 @@ app.include_router(external_services.router, prefix=f"{settings.API_PREFIX}/exte
 app.include_router(service_map_router.router, prefix=f"{settings.API_PREFIX}/service-map", tags=["Service Map"])
 app.include_router(service_summary_router.router, prefix=f"{settings.API_PREFIX}/services", tags=["Service Summary"])
 app.include_router(system_router.router, prefix=f"{settings.API_PREFIX}/system", tags=["System"])  # System admin endpoints  # External Services Connector MVP
+app.include_router(backups_router.router, prefix=f"{settings.API_PREFIX}/backups", tags=["Backups"])
 
 if __name__ == "__main__":
     import uvicorn

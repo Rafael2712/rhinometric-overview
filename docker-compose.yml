@@ -552,6 +552,7 @@ services:
       LOKI_URL: http://loki:3100
       JAEGER_URL: http://jaeger:16686
       DATABASE_URL: postgresql://rhinometric:${POSTGRES_PASSWORD}@postgres:5432/rhinometric
+      RHINOMETRIC_BACKUP_DIR: /app/backups
       ADMIN_USERNAME: admin
       ADMIN_PASSWORD: admin
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
@@ -574,6 +575,7 @@ services:
     volumes:
     - ${HOME}/rhinometric_data_v2.5/console-backend/logs:/app/logs
     - ${HOME}/rhinometric_data_v2.5/console-backend/data:/app/data
+    - ${HOME}/rhinometric_data_v2.5/console-backend/backups:/app/backups
     - ./alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml
     - /usr/local/bin/rhino-lic:/usr/local/bin/rhino-lic:ro
     - /opt/rhinometric/license.key:/opt/rhinometric/license.key:ro

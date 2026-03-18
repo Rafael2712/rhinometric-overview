@@ -25,6 +25,7 @@ import { ServiceMapPage } from './pages/ServiceMap'
 import { SystemHealthPage } from './pages/SystemHealth'
 import { RoadmapPage } from './pages/Roadmap'
 import { AIInsightsPage } from './pages/AIInsights'
+import { BackupRecoveryPage } from './pages/BackupRecovery'
 import { useAuthStore } from './lib/auth/store'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -62,6 +63,7 @@ function App() {
           <Route path="logs" element={<LogsPage />} />
           <Route path="traces" element={<TracesPage />} />
           <Route path="license" element={<LicensePage />} />
+          <Route path="backup-recovery" element={<BackupRecoveryPage />} />
           <Route path="users" element={<UsersPage />} />
           <Route path="settings" element={<AdminRoute><SettingsPage /></AdminRoute>} />
           <Route path="roadmap" element={<RoadmapPage />} />
