@@ -1,7 +1,7 @@
 ﻿import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuthStore } from '../lib/auth/store'
-import { HardDrive, Download, Plus, CheckCircle, XCircle, Lock, FolderOpen, Archive, RefreshCw, AlertTriangle } from 'lucide-react'
+import { HardDrive, Download, Plus, CheckCircle, XCircle, Lock, Archive, RefreshCw, AlertTriangle, Info } from 'lucide-react'
 
 interface BackupArtifact {
   id: string
@@ -12,17 +12,17 @@ interface BackupArtifact {
   storage_path: string
   created_by: string
   error_message: string | null
+  error_type: string | null
   records_exported: number | null
   platform_version: string | null
   created_at: string | null
 }
 
-interface LatestResponse {
-  latest: BackupArtifact | null
-  last_successful: BackupArtifact | null
-  last_failed: BackupArtifact | null
+interface SummaryResponse {
   total_backups: number
-  storage_location: string
+  latest_backup: BackupArtifact | null
+  latest_successful: BackupArtifact | null
+  latest_failed: BackupArtifact | null
 }
 
 interface ListResponse {
@@ -63,16 +63,39 @@ function statusBadge(status: string) {
   }
 }
 
+function errorTypeBadge(errorType: string | null) {
+  if (!errorType) return null
+  const colors: Record<string, string> = {
+    permission_error: 'bg-orange-500/10 text-orange-400',
+    storage_error: 'bg-yellow-500/10 text-yellow-400',
+    integrity_error: 'bg-purple-500/10 text-purple-400',
+    unexpected_error: 'bg-red-500/10 text-red-400',
+  }
+  const colorClass = colors[errorType] || 'bg-gray-500/10 text-gray-400'
+  const labels: Record<string, string> = {
+    permission_error: 'Permission',
+    storage_error: 'Storage',
+    integrity_error: 'Integrity',
+    unexpected_error: 'Error',
+  }
+  return (
+    <span className={`inline-flex items-center text-[10px] px-1.5 py-0.5 rounded font-medium ${colorClass}`}>
+      {labels[errorType] || errorType}
+    </span>
+  )
+}
+
 export function BackupRecoveryPage() {
   const { token, isAdmin } = useAuthStore()
   const queryClient = useQueryClient()
   const canManage = isAdmin()
   const [creating, setCreating] = useState(false)
+  const [expandedError, setExpandedError] = useState<string | null>(null)
 
-  const { data: latestData } = useQuery<LatestResponse>({
-    queryKey: ['backups-latest', token],
+  const { data: summaryData } = useQuery<SummaryResponse>({
+    queryKey: ['backups-summary', token],
     queryFn: async () => {
-      const r = await fetch('/api/backups/latest', { headers: { Authorization: `Bearer ${token}` } })
+      const r = await fetch('/api/backups/summary', { headers: { Authorization: `Bearer ${token}` } })
       if (!r.ok) throw new Error('Failed')
       return r.json()
     },
@@ -83,7 +106,7 @@ export function BackupRecoveryPage() {
   const { data: listData, isLoading } = useQuery<ListResponse>({
     queryKey: ['backups-list', token],
     queryFn: async () => {
-      const r = await fetch('/api/backups?limit=50', { headers: { Authorization: `Bearer ${token}` } })
+      const r = await fetch('/api/backups/history?limit=50', { headers: { Authorization: `Bearer ${token}` } })
       if (!r.ok) throw new Error('Failed')
       return r.json()
     },
@@ -93,7 +116,7 @@ export function BackupRecoveryPage() {
 
   const createMutation = useMutation({
     mutationFn: async () => {
-      const r = await fetch('/api/backups', {
+      const r = await fetch('/api/backups/create', {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
       })
@@ -103,10 +126,13 @@ export function BackupRecoveryPage() {
       }
       return r.json()
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['backups-latest'] })
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['backups-summary'] })
       queryClient.invalidateQueries({ queryKey: ['backups-list'] })
       setCreating(false)
+      if (data?.status === 'failed') {
+        createMutation.reset()
+      }
     },
     onError: () => {
       setCreating(false)
@@ -138,10 +164,9 @@ export function BackupRecoveryPage() {
     }
   }
 
-  const lastOk = latestData?.last_successful
-  const lastFail = latestData?.last_failed
-  const totalBackups = latestData?.total_backups ?? 0
-  const storageLoc = latestData?.storage_location ?? '-'
+  const lastOk = summaryData?.latest_successful
+  const lastFail = summaryData?.latest_failed
+  const totalBackups = summaryData?.total_backups ?? 0
 
   return (
     <div className="space-y-6">
@@ -181,15 +206,27 @@ export function BackupRecoveryPage() {
           <p className="text-red-300 text-sm">Backup failed: {createMutation.error?.message}</p>
         </div>
       )}
-      {createMutation.isSuccess && (
+      {createMutation.isSuccess && createMutation.data?.status === 'completed' && (
         <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-green-500/10 border border-green-500/30">
           <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0" />
           <p className="text-green-300 text-sm">Backup created successfully.</p>
         </div>
       )}
+      {createMutation.isSuccess && createMutation.data?.status === 'failed' && (
+        <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-red-500/10 border border-red-500/30">
+          <AlertTriangle className="w-5 h-5 text-red-400 flex-shrink-0" />
+          <div className="text-red-300 text-sm">
+            <span>Backup failed</span>
+            {createMutation.data?.error_type && (
+              <span className="ml-2">{errorTypeBadge(createMutation.data.error_type)}</span>
+            )}
+            <p className="text-red-400/80 text-xs mt-1">{createMutation.data?.error_message}</p>
+          </div>
+        </div>
+      )}
 
       {/* Summary cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {/* Last Successful */}
         <div className="card p-4">
           <div className="flex items-center gap-2 mb-2">
@@ -207,7 +244,12 @@ export function BackupRecoveryPage() {
             <span className="text-sm text-text-muted">Last Failed</span>
           </div>
           <p className="text-lg font-semibold text-white">{lastFail ? formatDate(lastFail.created_at) : 'None'}</p>
-          {lastFail && <p className="text-xs text-red-400 mt-1">{lastFail.error_message?.slice(0, 80)}</p>}
+          {lastFail && (
+            <div className="mt-1 flex items-center gap-1.5">
+              {errorTypeBadge(lastFail.error_type)}
+              <span className="text-xs text-red-400 truncate">{lastFail.error_message?.slice(0, 60)}</span>
+            </div>
+          )}
         </div>
 
         {/* Total */}
@@ -217,15 +259,6 @@ export function BackupRecoveryPage() {
             <span className="text-sm text-text-muted">Total Backups</span>
           </div>
           <p className="text-lg font-semibold text-white">{totalBackups}</p>
-        </div>
-
-        {/* Storage */}
-        <div className="card p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <FolderOpen className="w-4 h-4 text-primary" />
-            <span className="text-sm text-text-muted">Storage Location</span>
-          </div>
-          <p className="text-lg font-semibold text-white truncate" title={storageLoc}>{storageLoc}</p>
         </div>
       </div>
 
@@ -275,9 +308,23 @@ export function BackupRecoveryPage() {
                       ) : b.status === 'completed' ? (
                         <span className="text-xs text-gray-500">Admin only</span>
                       ) : b.status === 'failed' ? (
-                        <span className="text-xs text-red-400 truncate max-w-[150px] block" title={b.error_message || ''}>
-                          {b.error_message?.slice(0, 40) || 'Error'}
-                        </span>
+                        <div className="flex flex-col gap-1 max-w-[200px]">
+                          <div className="flex items-center gap-1.5">
+                            {errorTypeBadge(b.error_type)}
+                            <button
+                              onClick={() => setExpandedError(expandedError === b.id ? null : b.id)}
+                              className="text-gray-400 hover:text-gray-300"
+                              title="Show details"
+                            >
+                              <Info className="w-3 h-3" />
+                            </button>
+                          </div>
+                          {expandedError === b.id && (
+                            <span className="text-[11px] text-red-400/80 break-words">
+                              {b.error_message || 'Unknown error'}
+                            </span>
+                          )}
+                        </div>
                       ) : (
                         <span className="text-xs text-gray-500">-</span>
                       )}

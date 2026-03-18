@@ -1,4 +1,4 @@
-"""
+﻿"""
 SQLAlchemy model for Backup artifacts.
 Phase 1: Manual backup of external services configuration.
 """
@@ -22,6 +22,7 @@ class BackupArtifact(Base):
     storage_path = Column(Text, nullable=False)
     created_by = Column(String(255), nullable=False)
     error_message = Column(Text, nullable=True)
+    error_type = Column(String(50), nullable=True)  # permission_error, storage_error, integrity_error, unexpected_error
     records_exported = Column(Integer, nullable=True, default=0)
     platform_version = Column(String(50), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -36,6 +37,7 @@ class BackupArtifact(Base):
             "storage_path": self.storage_path,
             "created_by": self.created_by,
             "error_message": self.error_message,
+            "error_type": self.error_type,
             "records_exported": self.records_exported,
             "platform_version": self.platform_version,
             "created_at": self.created_at.isoformat() if self.created_at else None,

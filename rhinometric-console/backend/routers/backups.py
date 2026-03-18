@@ -1,18 +1,12 @@
-"""
-Backup & Recovery router - Phase 1.
-Endpoints for manual backup creation, listing, downloading.
+﻿"""
+Backup router - API endpoints for backup management.
 """
 
-import os
-import logging
-from fastapi import APIRouter, Depends, HTTPException, Query
-from fastapi.responses import FileResponse
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from typing import Optional
 
 from database import get_db
-from routers.auth import get_current_user, require_role
-from models.user import User as UserModel
+from routers.auth import get_current_user
 from services.backup_service import (
     create_backup,
     list_backups,
@@ -21,81 +15,69 @@ from services.backup_service import (
     get_latest_successful,
     get_latest_failed,
     get_backup_by_id,
-    BACKUP_DIR,
 )
 
-logger = logging.getLogger("rhinometric.backups")
-
-router = APIRouter()
+router = APIRouter(tags=["backups"])
 
 
-@router.post("", status_code=201)
-def trigger_backup(
-    current_user: UserModel = Depends(require_role(["OWNER", "ADMIN"])),
+@router.post("/create")
+def create_backup_endpoint(
     db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
 ):
-    """Create a manual backup. ADMIN/OWNER only."""
+    """Create a new backup. Returns artifact (even on failure)."""
     artifact = create_backup(db, created_by=current_user.username)
+    response = artifact.to_dict()
     if artifact.status == "failed":
-        raise HTTPException(status_code=500, detail=f"Backup failed: {artifact.error_message}")
-    return artifact.to_dict()
+        response["_warning"] = "Backup failed - see error_type and error_message"
+    return response
 
 
-@router.get("")
-def get_backups(
-    limit: int = Query(50, ge=1, le=200),
-    offset: int = Query(0, ge=0),
-    current_user: UserModel = Depends(get_current_user),
+@router.get("/history")
+def get_backup_history(
+    limit: int = 50,
+    offset: int = 0,
     db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
 ):
-    """List backup artifacts. Any authenticated user."""
-    items = list_backups(db, limit=limit, offset=offset)
+    """Get paginated backup history."""
+    backups = list_backups(db, limit=limit, offset=offset)
     total = count_backups(db)
     return {
-        "items": [b.to_dict() for b in items],
+        "items": [b.to_dict() for b in backups],
         "total": total,
         "limit": limit,
         "offset": offset,
     }
 
 
-@router.get("/latest")
-def get_latest(
-    current_user: UserModel = Depends(get_current_user),
+@router.get("/summary")
+def get_backup_summary(
     db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
 ):
-    """Summary of the latest backup state."""
-    latest = get_latest_backup(db)
-    latest_ok = get_latest_successful(db)
-    latest_fail = get_latest_failed(db)
+    """Get backup summary stats for dashboard cards."""
     total = count_backups(db)
+    latest = get_latest_backup(db)
+    latest_success = get_latest_successful(db)
+    latest_failed = get_latest_failed(db)
 
     return {
-        "latest": latest.to_dict() if latest else None,
-        "last_successful": latest_ok.to_dict() if latest_ok else None,
-        "last_failed": latest_fail.to_dict() if latest_fail else None,
         "total_backups": total,
-        "storage_location": BACKUP_DIR,
+        "latest_backup": latest.to_dict() if latest else None,
+        "latest_successful": latest_success.to_dict() if latest_success else None,
+        "latest_failed": latest_failed.to_dict() if latest_failed else None,
     }
 
 
-@router.get("/{backup_id}/download")
-def download_backup(
+@router.get("/{backup_id}")
+def get_backup_detail(
     backup_id: str,
-    current_user: UserModel = Depends(require_role(["OWNER", "ADMIN"])),
     db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
 ):
-    """Download a backup ZIP file. ADMIN/OWNER only."""
-    artifact = get_backup_by_id(db, backup_id)
-    if not artifact:
+    """Get details of a specific backup."""
+    backup = get_backup_by_id(db, backup_id)
+    if not backup:
         raise HTTPException(status_code=404, detail="Backup not found")
-    if artifact.status != "completed":
-        raise HTTPException(status_code=400, detail=f"Backup is not downloadable (status: {artifact.status})")
-    if not os.path.isfile(artifact.storage_path):
-        raise HTTPException(status_code=404, detail="Backup file not found on disk")
-
-    return FileResponse(
-        path=artifact.storage_path,
-        filename=artifact.filename,
-        media_type="application/zip",
-    )
+    return backup.to_dict()

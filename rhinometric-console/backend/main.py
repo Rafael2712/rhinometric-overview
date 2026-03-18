@@ -160,6 +160,13 @@ async def startup_event():
     except Exception as e:
         logger.warning(f"Could not create backup_artifacts table: {e}")
 
+    # Initialize backup directory at startup
+    try:
+        from services.backup_service import init_backup_directory
+        init_backup_directory()
+    except Exception as e:
+        logger.warning(f"Could not initialize backup directory: {e}")
+
     # Start background health checker for external services
     try:
         from services.health_checker import start_scheduler
