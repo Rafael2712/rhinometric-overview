@@ -5,7 +5,6 @@ import { useAuthStore } from '../lib/auth/store'
 import { LineChart, Line, ResponsiveContainer } from 'recharts'
 import { useNavigate } from 'react-router-dom'
 
-// BUILD_MARKER: 20260318_1100 ? forces new Vite content hash
 interface SparklinePoint {
   time: number
   value: number
@@ -37,16 +36,8 @@ interface PlatformComponents {
 interface ServiceSummary {
   monitored_services: MonitoredServices
   platform_components: PlatformComponents
-  total_services: number
-  external_services: number
-  internal_services: number
-  healthy: number
-  degraded: number
-  down: number
-  overall_status: string
 }
 
-/** Map backend status to UI badge status key */
 function mapSummaryStatus(overall: string): 'success' | 'warning' | 'error' {
   switch (overall) {
     case 'OPERATIONAL': return 'success'
@@ -55,7 +46,6 @@ function mapSummaryStatus(overall: string): 'success' | 'warning' | 'error' {
   }
 }
 
-/** Map backend status to human-readable label */
 function mapSummaryLabel(overall: string): string {
   switch (overall) {
     case 'OPERATIONAL': return 'Operational'
@@ -64,7 +54,6 @@ function mapSummaryLabel(overall: string): string {
     default:            return overall
   }
 }
-
 
 export function HomePage() {
   const navigate = useNavigate()
@@ -82,8 +71,7 @@ export function HomePage() {
 
   const token = useAuthStore((state) => state.token)
 
-  // Fetch KPIs from backend API (used ONLY for anomalies + alerts)
-  const { data: kpisData, isLoading, error } = useQuery({
+  const { data: kpisData, error } = useQuery({
     queryKey: ['kpis', token],
     queryFn: async () => {
       if (!token) throw new Error('No token available')
@@ -97,11 +85,6 @@ export function HomePage() {
     refetchInterval: 5000,
   })
 
-  // Fetch service summary ? SINGLE SOURCE OF TRUTH for service health.
-  // This endpoint returns ALREADY-SEPARATED data:
-  //   monitored_services  = external/client services ONLY
-  //   platform_components = internal platform services ONLY
-  // We NEVER fall back to KPIs or flat fields for service/platform cards.
   const { data: summaryData } = useQuery<ServiceSummary>({
     queryKey: ['services-summary', token],
     queryFn: async () => {
@@ -116,64 +99,30 @@ export function HomePage() {
     refetchInterval: 5000,
   })
 
-  // ??????????????????????????????????????????????
-  // STRICT separation: derive from sub-objects ONLY
-  // ??????????????????????????????????????????????
-  const mon  = summaryData?.monitored_services   // external-only
-  const plat = summaryData?.platform_components  // internal-only
+  // EXTERNAL services only (for Service Status + Monitored Services cards)
+  const ext = summaryData?.monitored_services ?? null
+  // INTERNAL platform services only (for Platform Health card)
+  const pla = summaryData?.platform_components ?? null
 
-  // DEBUG: log separation to console so we can verify no intersection
-  useEffect(() => {
-    if (summaryData) {
-      const m = summaryData.monitored_services
-      const p = summaryData.platform_components
-      console.group('[Home] Data-source separation audit')
-      console.log('Monitored Services (external):', m)
-      console.log('Platform Components (internal):', p)
-      console.log(`Monitored total=${m.total}, healthy=${m.healthy}, degraded=${m.degraded}, down=${m.down}, status=${m.status}`)
-      console.log(`Platform  total=${p.total}, healthy=${p.healthy}, down=${p.down}, status=${p.status}`)
-      console.log(`Intersection check: monitored_total(${m.total}) + platform_total(${p.total}) = ${m.total + p.total}, grand_total=${summaryData.total_services}`)
-      console.assert(
-        m.total + p.total === summaryData.total_services,
-        'DATA LEAK: monitored + platform !== total_services'
-      )
-      console.groupEnd()
-    }
-  }, [summaryData])
-
-  // Update sparkline history
   useEffect(() => {
     if (kpisData) {
       const now = Date.now()
       setHistory(prev => {
-        const updateSeries = (series: SparklinePoint[], newValue: any) => {
-          const val = typeof newValue === 'string' ? parseFloat(newValue) || 0 : newValue
-          const newSeries = [...series, { time: now, value: val }]
-          return newSeries.slice(-20)
+        const push = (series: SparklinePoint[], v: any) => {
+          const val = typeof v === 'string' ? parseFloat(v) || 0 : v
+          return [...series, { time: now, value: val }].slice(-20)
         }
-
-        // Service status sparkline: % healthy of EXTERNALS ONLY
-        const serviceStatusValue = mon
-          ? (mon.total > 0 ? (mon.healthy / mon.total) * 100 : 100)
-          : 100
-
-        // Platform health sparkline: % healthy of INTERNALS ONLY
-        const platformHealthValue = plat
-          ? (plat.total > 0 ? (plat.healthy / plat.total) * 100 : 100)
-          : 100
-
         return {
-          service_status: updateSeries(prev.service_status, serviceStatusValue),
-          monitored_hosts: updateSeries(prev.monitored_hosts, mon ? mon.total : 0),
-          platform_health: updateSeries(prev.platform_health, platformHealthValue),
-          active_anomalies: updateSeries(prev.active_anomalies, kpisData.active_anomalies.value),
-          alerts_24h: updateSeries(prev.alerts_24h, kpisData.alerts_24h.value)
+          service_status: push(prev.service_status, ext ? (ext.total > 0 ? (ext.healthy / ext.total) * 100 : 100) : 100),
+          monitored_hosts: push(prev.monitored_hosts, ext ? ext.total : 0),
+          platform_health: push(prev.platform_health, pla ? (pla.total > 0 ? (pla.healthy / pla.total) * 100 : 100) : 100),
+          active_anomalies: push(prev.active_anomalies, kpisData.active_anomalies.value),
+          alerts_24h: push(prev.alerts_24h, kpisData.alerts_24h.value)
         }
       })
     }
   }, [kpisData, summaryData])
 
-  // Fetch historical data once on mount
   const { data: historyData } = useQuery({
     queryKey: ['kpis-history', token],
     queryFn: async () => {
@@ -188,14 +137,12 @@ export function HomePage() {
     staleTime: Infinity
   })
 
-  // Initialize history with fetched data
   useEffect(() => {
     if (historyData) {
       const mapPoints = (points: any[]) => points.map(p => ({
         time: p.timestamp * 1000,
         value: p.value
       }))
-
       setHistory({
         service_status: mapPoints(historyData.service_status),
         monitored_hosts: mapPoints(historyData.monitored_hosts),
@@ -206,59 +153,37 @@ export function HomePage() {
     }
   }, [historyData])
 
-  // ??????????????????????????????????????????????
-  // KPI CARDS ? each card uses ONE exclusive data source
-  // ??????????????????????????????????????????????
-  //
-  // Service Status   ? mon  (monitored_services, externals ONLY)
-  // Monitored Svcs   ? mon  (monitored_services, externals ONLY)
-  // Platform Health  ? plat (platform_components, internals ONLY)
-  // Anomaly Groups   ? kpisData.active_anomalies (independent)
-  // Alerts (24h)     ? kpisData.alerts_24h       (independent)
-  //
-  // NO fallback to flat/mixed fields. If summary hasn't loaded ? "Loading?"
-
   const kpis = kpisData ? [
-    // ?? Card 1: Service Status (EXTERNAL ONLY) ??????????????
     {
       name: 'Service Status',
-      value: mon ? mapSummaryLabel(mon.status) : 'Loading...',
-      status: mon ? mapSummaryStatus(mon.status) : ('success' as const),
+      value: ext ? mapSummaryLabel(ext.status) : 'Loading...',
+      status: ext ? mapSummaryStatus(ext.status) : ('success' as const),
       icon: Activity,
-      change: mon
-        ? `${mon.healthy}/${mon.total} healthy` + (mon.down > 0 ? ` \u00b7 ${mon.down} down` : ' \u00b7 All up')
-        : '',
+      change: ext ? `${ext.healthy}/${ext.total} healthy` + (ext.down > 0 ? ` \u00b7 ${ext.down} down` : ' \u00b7 All up') : '',
       sparkline: history.service_status,
       trend: 'up',
       link: '/system-health'
     },
-    // ?? Card 2: Monitored Services (EXTERNAL ONLY) ??????????
     {
       name: 'Monitored Services',
-      value: mon ? String(mon.total) : '...',
-      status: mon ? (mon.down > 0 ? 'warning' : 'success') : ('success' as const),
+      value: ext ? String(ext.total) : '...',
+      status: ext ? (ext.down > 0 ? 'warning' : 'success') : ('success' as const),
       icon: Server,
-      change: mon
-        ? `${mon.healthy} up` + (mon.degraded > 0 ? ` \u00b7 ${mon.degraded} degraded` : '') + (mon.down > 0 ? ` \u00b7 ${mon.down} down` : '')
-        : '',
+      change: ext ? `${ext.healthy} up` + (ext.degraded > 0 ? ` \u00b7 ${ext.degraded} degraded` : '') + (ext.down > 0 ? ` \u00b7 ${ext.down} down` : '') : '',
       sparkline: history.monitored_hosts,
       trend: 'stable',
       link: '/services'
     },
-    // ?? Card 3: Platform Health (INTERNAL ONLY) ?????????????
     {
       name: 'Platform Health',
-      value: plat ? mapSummaryLabel(plat.status) : 'Loading...',
-      status: plat ? mapSummaryStatus(plat.status) : ('success' as const),
+      value: pla ? mapSummaryLabel(pla.status) : 'Loading...',
+      status: pla ? mapSummaryStatus(pla.status) : ('success' as const),
       icon: Shield,
-      change: plat
-        ? `${plat.healthy}/${plat.total} components` + (plat.down > 0 ? ` \u00b7 ${plat.down} down` : ' \u00b7 All up')
-        : '',
+      change: pla ? `${pla.healthy}/${pla.total} components` + (pla.down > 0 ? ` \u00b7 ${pla.down} down` : ' \u00b7 All up') : '',
       sparkline: history.platform_health,
       trend: 'stable',
       link: '/system-health'
     },
-    // ?? Card 4: Active Anomaly Groups (independent) ?????????
     {
       name: 'Active Anomaly Groups',
       value: kpisData.active_anomalies.value,
@@ -269,7 +194,6 @@ export function HomePage() {
       trend: 'down',
       link: '/anomalies'
     },
-    // ?? Card 5: Alerts 24h (independent) ????????????????????
     {
       name: 'Alerts (24h)',
       value: kpisData.alerts_24h.value,
@@ -287,26 +211,6 @@ export function HomePage() {
     { name: 'Active Anomaly Groups', value: '...', status: 'success', icon: AlertTriangle, change: '', sparkline: [], trend: 'stable', link: '/anomalies' },
     { name: 'Alerts (24h)', value: '...', status: 'success', icon: Bell, change: '', sparkline: [], trend: 'stable', link: '/alerts' },
   ]
-
-  // Debug logging ? BUILD v2026.03.18a
-  useEffect(() => {
-    console.log('%c[Home BUILD 2026-03-18a]', 'background:#1e40af;color:#fff;padding:2px 6px;border-radius:3px')
-    console.log('Home - Token:', token ? 'present' : 'missing')
-    console.log('Home - Loading:', isLoading)
-    console.log('Home - Error:', error)
-    console.log('Home - KPIs:', kpisData)
-    console.log('Home - Summary:', summaryData)
-    if (mon) {
-      console.log('%cMonitored Services card value = ' + mon.total + ' (source: summaryData.monitored_services.total)', 'color:#10b981;font-weight:bold')
-    }
-    if (plat) {
-      console.log('%cPlatform Health card value = ' + plat.total + ' (source: summaryData.platform_components.total)', 'color:#6366f1;font-weight:bold')
-    }
-  }, [token, isLoading, error, kpisData, summaryData, mon, plat])
-
-  if (error) {
-    console.error('Failed to load KPIs:', error)
-  }
 
   return (
     <div className="space-y-4 sm:space-y-6">
