@@ -3,6 +3,9 @@ Incidents router — Phase 2.3 Incident Management Engine.
 
 Groups related alert events into operational incidents.
 Provides list, detail, and status-update endpoints.
+
+Task 2: Only customer-facing incidents are exposed.
+Internal platform entity names are excluded from list and stats.
 """
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -10,7 +13,8 @@ from pydantic import BaseModel
 from typing import Optional, List
 from datetime import datetime, timedelta, timezone
 from sqlalchemy.orm import Session
-from sqlalchemy import func as sa_func, case
+from sqlalchemy import func as sa_func, case, and_, or_
+import re
 
 from database import get_db
 from routers.auth import get_current_user
@@ -31,6 +35,76 @@ VALID_STATUSES = {"open", "investigating", "resolved"}
 SEVERITY_RANK = {"critical": 4, "warning": 3, "info": 2}
 
 
+# ── Customer-facing filter — Task 2 ────────────────────────────
+# Incidents whose entity_name matches any of these internal platform
+# services are hidden from list / stats endpoints.
+# ────────────────────────────────────────────────────────────────
+INTERNAL_ENTITY_NAMES: set = {
+    "console-backend",
+    "docker_logs",
+    "rhinometric-audit",
+    "grafana",
+    "loki",
+    "jaeger",
+    "jaeger-all-in-one",
+    "jaeger-query",
+    "jaeger-collector",
+    "alertmanager",
+    "prometheus",
+    "node-exporter",
+    "cadvisor",
+    "ai-anomaly",
+    "ai_anomaly",
+    "node cpu",
+    "node memory",
+    "node disk",
+    "container cpu",
+    "container memory",
+    "network receive",
+    "network transmit",
+    "license validation",
+    "expired licenses",
+}
+
+# Also exclude entity_type == "infrastructure"
+INTERNAL_ENTITY_TYPES: set = {"infrastructure"}
+
+INTERNAL_NAME_PATTERN = re.compile(
+    r"^(rhinometric[-_]|console[-_]|grafana|loki|jaeger|alertmanager"
+    r"|prometheus|cadvisor|node.exporter|ai[-_]anomaly)",
+    re.IGNORECASE,
+)
+
+
+def _is_internal_incident(entity_name: str, entity_type: str) -> bool:
+    """Return True if the incident belongs to internal platform telemetry."""
+    if entity_type and entity_type.lower() in INTERNAL_ENTITY_TYPES:
+        return True
+    name_lower = (entity_name or "").lower()
+    if name_lower in INTERNAL_ENTITY_NAMES:
+        return True
+    if INTERNAL_NAME_PATTERN.search(name_lower):
+        return True
+    return False
+
+
+def _apply_customer_filter(query):
+    """Add SQL WHERE clauses to exclude internal platform incidents."""
+    # Exclude infrastructure entity_type
+    query = query.filter(
+        or_(
+            Incident.entity_type.is_(None),
+            Incident.entity_type != "infrastructure",
+        )
+    )
+    # Exclude exact-match internal entity names (case-insensitive)
+    for name in INTERNAL_ENTITY_NAMES:
+        query = query.filter(
+            sa_func.lower(Incident.entity_name) != name
+        )
+    return query
+
+
 # ── Schemas ─────────────────────────────────────────────────────
 
 class IncidentStatusUpdate(BaseModel):
@@ -49,8 +123,8 @@ class TagsUpdate(BaseModel):
 
 
 def create_timeline_event(db: Session, incident_id, event_type: str,
-                           description: str = None, created_by: str = None,
-                           metadata: dict = None) -> None:
+                                         description: str = None, created_by: str = None,
+                                         metadata: dict = None) -> None:
     """Insert a timeline event for an incident."""
     import uuid as _uuid
     evt = IncidentEvent(
@@ -77,7 +151,7 @@ def _highest_severity(current: str, incoming: str) -> str:
 
 
 def find_or_create_incident(db: Session, entity_type: str, entity_name: str,
-                             severity: str, started_at: datetime) -> "Incident":
+                                           severity: str, started_at: datetime) -> "Incident":
     """Find an existing open/investigating incident for the entity, or create one.
 
     Race-safe: handles concurrent INSERT attempts via savepoint + retry.
@@ -150,7 +224,6 @@ def check_incident_resolution(db: Session, incident_id) -> None:
                                   created_by="system")
             logger.info(f"Auto-resolved incident {incident.id} — all alerts resolved")
 
-
 # ── Endpoints ───────────────────────────────────────────────────
 
 @router.get("")
@@ -164,8 +237,14 @@ async def list_incidents(
     limit: int = Query(50, ge=1, le=500),
     offset: int = Query(0, ge=0),
 ):
-    """List incidents with optional filters."""
+    """List incidents with optional filters.
+
+    Task 2: Internal platform incidents are excluded automatically.
+    """
     query = db.query(Incident)
+
+    # ── Task 2: exclude internal platform incidents ─────────────
+    query = _apply_customer_filter(query)
 
     # Time range filter
     if time_range:
@@ -184,8 +263,15 @@ async def list_incidents(
 
     incidents = query.order_by(Incident.started_at.desc()).offset(offset).limit(limit).all()
 
+    # Post-filter: also exclude incidents matching INTERNAL_NAME_PATTERN
+    # (SQL can't easily do regex, so we do a final pass in Python)
+    filtered_incidents = [
+        inc for inc in incidents
+        if not _is_internal_incident(inc.entity_name, inc.entity_type)
+    ]
+
     # Get alert counts per incident
-    incident_ids = [i.id for i in incidents]
+    incident_ids = [i.id for i in filtered_incidents]
     alert_counts = {}
     if incident_ids:
         counts = db.query(
@@ -197,7 +283,7 @@ async def list_incidents(
         alert_counts = {row[0]: row[1] for row in counts}
 
     results = []
-    for inc in incidents:
+    for inc in filtered_incidents:
         duration = None
         if inc.resolved_at and inc.started_at:
             duration = int((inc.resolved_at - inc.started_at).total_seconds())
@@ -218,7 +304,7 @@ async def list_incidents(
             "tags": inc.tags or [],
         })
 
-    return {"incidents": results, "total": total}
+    return {"incidents": results, "total": len(results)}
 
 
 @router.get("/stats")
@@ -226,21 +312,32 @@ async def incident_stats(
     current_user: UserModel = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Aggregate incident statistics."""
-    total = db.query(sa_func.count(Incident.id)).scalar() or 0
-    open_count = db.query(sa_func.count(Incident.id)).filter(Incident.status == "open").scalar() or 0
-    investigating = db.query(sa_func.count(Incident.id)).filter(Incident.status == "investigating").scalar() or 0
-    resolved = db.query(sa_func.count(Incident.id)).filter(Incident.status == "resolved").scalar() or 0
+    """Aggregate incident statistics.
+
+    Task 2: Only customer-facing incidents are counted.
+    """
+    base_query = _apply_customer_filter(db.query(Incident))
+
+    # Fetch all customer-facing incidents and post-filter for regex patterns
+    all_incidents = base_query.all()
+    customer_incidents = [
+        inc for inc in all_incidents
+        if not _is_internal_incident(inc.entity_name, inc.entity_type)
+    ]
+
+    total = len(customer_incidents)
+    open_count = sum(1 for i in customer_incidents if i.status == "open")
+    investigating = sum(1 for i in customer_incidents if i.status == "investigating")
+    resolved = sum(1 for i in customer_incidents if i.status == "resolved")
 
     avg_res = None
-    resolved_incidents = db.query(Incident).filter(
-        Incident.status == "resolved",
-        Incident.resolved_at.isnot(None),
-    ).all()
-    if resolved_incidents:
-        durations = [(i.resolved_at - i.started_at).total_seconds() for i in resolved_incidents if i.resolved_at and i.started_at]
-        if durations:
-            avg_res = round(sum(durations) / len(durations))
+    durations = [
+        (i.resolved_at - i.started_at).total_seconds()
+        for i in customer_incidents
+        if i.status == "resolved" and i.resolved_at and i.started_at
+    ]
+    if durations:
+        avg_res = round(sum(durations) / len(durations))
 
     return {
         "total": total,

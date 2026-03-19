@@ -226,8 +226,9 @@ export function AIInsightsPage() {
     return (
       <div className="flex flex-col items-center justify-center py-24">
         <Brain className="text-gray-600 mb-4" size={48} />
-        <p className="text-white text-lg font-semibold mb-1">No Services to Analyze</p>
-        <p className="text-gray-400 text-sm">Add external services to get AI-powered insights</p>
+        <p className="text-white text-lg font-semibold mb-1">No customer insights available</p>
+        <p className="text-gray-400 text-sm">This workspace does not currently have customer telemetry or customer anomaly patterns to analyze.</p>
+        <p className="text-gray-500 text-xs mt-2">Connect services and collectors to generate customer insights.</p>
       </div>
     )
   }

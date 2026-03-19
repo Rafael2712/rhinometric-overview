@@ -1,12 +1,14 @@
-/* eslint-disable */ console.info("anomaly-ui-v2.1.1");
-import { AlertTriangle, TrendingUp, Filter, Download, X, GitMerge,
-  Globe, CheckCircle2, Server, Monitor, Layers, MapPin, Shield,
-  Clock, Hash, Activity } from 'lucide-react'
-import { useEffect, useState } from 'react'
+/* eslint-disable */
+import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuthStore } from '../lib/auth/store'
+import {
+  AlertTriangle, CheckCircle2, Shield, Zap,
+  ChevronDown, ChevronUp, Activity, Eye, Filter, BarChart3,
+  RefreshCw, XCircle, Bell
+} from 'lucide-react'
 
+/* ── Types ────────────────────────────────────────────────────── */
 interface AnomalyOccurrence {
   timestamp: string
   current_value: number
@@ -35,605 +37,529 @@ interface AnomalyGroup {
   cluster: string | null
   priority: number
   tags: string[] | null
-  metadata: Record<string, any> | null
+  metadata: Record<string, unknown> | null
 }
 
-function EntityBadge({ entityType, entityName }: { entityType: string; entityName: string }) {
-  const config: Record<string, { icon: typeof Globe; color: string; label: string }> = {
-    service: { icon: Globe, color: 'text-cyan-400 bg-cyan-400/10 border-cyan-400/30', label: 'Service' },
-    infrastructure: { icon: Server, color: 'text-orange-400 bg-orange-400/10 border-orange-400/30', label: 'Infra' },
-    website: { icon: Monitor, color: 'text-green-400 bg-green-400/10 border-green-400/30', label: 'Website' },
-  }
-  const c = config[entityType] || config.infrastructure
-  const Icon = c.icon
-  return (
-    <div className="space-y-0.5">
-      <div className="flex items-center gap-1.5">
-        <Icon size={12} className={c.color.split(' ')[0]} />
-        <span className={`text-xs font-medium ${c.color.split(' ')[0]} truncate max-w-[160px]`} title={entityName}>{entityName}</span>
-      </div>
-      <span className={`inline-flex items-center px-1.5 py-0 rounded text-[10px] font-medium border ${c.color}`}>
-        {c.label}
-      </span>
-    </div>
-  )
+/* ── Helpers ──────────────────────────────────────────────────── */
+function timeAgo(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime()
+  const mins = Math.floor(diff / 60000)
+  if (mins < 1) return 'just now'
+  if (mins < 60) return `${mins}m ago`
+  const hrs = Math.floor(mins / 60)
+  if (hrs < 24) return `${hrs}h ${mins % 60}m ago`
+  const days = Math.floor(hrs / 24)
+  return `${days}d ${hrs % 24}h ago`
 }
 
-function PriorityBadge({ priority, entityType }: { priority: number; entityType: string }) {
-  if (priority === 1 || entityType === 'service') {
-    return (
-      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-500/15 text-blue-400 border border-blue-500/25">
-        <Shield size={9} />
-        SERVICE
-      </span>
-    )
+function formatTs(iso: string): string {
+  return new Date(iso).toLocaleString()
+}
+
+/* ── Entity Badge ─────────────────────────────────────────────── */
+function EntityBadge({ type }: { type: string }) {
+  const map: Record<string, { bg: string; text: string; icon: typeof Shield }> = {
+    service:        { bg: 'bg-blue-500/20',   text: 'text-blue-400',   icon: Zap },
+    website:        { bg: 'bg-purple-500/20',  text: 'text-purple-400', icon: Activity },
+    infrastructure: { bg: 'bg-amber-500/20',  text: 'text-amber-400',  icon: Shield },
   }
+  const cfg = map[type] || { bg: 'bg-gray-500/20', text: 'text-gray-400', icon: Shield }
+  const Icon = cfg.icon
   return (
-    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-gray-500/10 text-gray-500 border border-gray-600/20">
-      INFRA
+    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${cfg.bg} ${cfg.text}`}>
+      <Icon size={12} />
+      {type}
     </span>
   )
 }
 
+/* ── Priority Badge ───────────────────────────────────────────── */
+function PriorityBadge({ priority }: { priority: number }) {
+  const map: Record<number, { bg: string; text: string; label: string }> = {
+    1: { bg: 'bg-red-500/20',    text: 'text-red-400',    label: 'P1 — Critical' },
+    2: { bg: 'bg-amber-500/20',  text: 'text-amber-400',  label: 'P2 — High' },
+    3: { bg: 'bg-sky-500/20',    text: 'text-sky-400',    label: 'P3 — Medium' },
+  }
+  const cfg = map[priority] || { bg: 'bg-gray-500/20', text: 'text-gray-400', label: `P${priority}` }
+  return (
+    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${cfg.bg} ${cfg.text}`}>
+      {cfg.label}
+    </span>
+  )
+}
+
+/* ── Status Badge ─────────────────────────────────────────────── */
 function StatusBadge({ status }: { status: string }) {
-  const config: Record<string, { color: string; label: string }> = {
-    active: { color: 'bg-error/20 text-error border-error/30', label: 'ACTIVE' },
-    acknowledged: { color: 'bg-blue-500/20 text-blue-400 border-blue-500/30', label: 'ACKED' },
-    false_positive: { color: 'bg-gray-500/20 text-gray-400 border-gray-500/30', label: 'FALSE POS' },
-    suppressed: { color: 'bg-amber-500/20 text-amber-400 border-amber-500/30', label: 'SUPPRESSED' },
-    resolved: { color: 'bg-green-500/20 text-green-400 border-green-500/30', label: 'RESOLVED' },
-    alert_created: { color: 'bg-purple-500/20 text-purple-400 border-purple-500/30', label: 'ALERTED' },
+  const map: Record<string, { bg: string; text: string; icon: typeof Activity }> = {
+    active:          { bg: 'bg-red-500/20',    text: 'text-red-400',    icon: AlertTriangle },
+    acknowledged:    { bg: 'bg-blue-500/20',   text: 'text-blue-400',   icon: Eye },
+    false_positive:  { bg: 'bg-gray-500/20',   text: 'text-gray-400',  icon: XCircle },
+    suppressed:      { bg: 'bg-yellow-500/20', text: 'text-yellow-400', icon: Bell },
+    resolved:        { bg: 'bg-green-500/20',  text: 'text-green-400',  icon: CheckCircle2 },
+    alert_created:   { bg: 'bg-purple-500/20', text: 'text-purple-400', icon: Bell },
   }
-  const c = config[status] || config.active
+  const cfg = map[status] || { bg: 'bg-gray-500/20', text: 'text-gray-400', icon: Activity }
+  const Icon = cfg.icon
   return (
-    <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold border ${c.color}`}>
-      {c.label}
+    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${cfg.bg} ${cfg.text}`}>
+      <Icon size={12} />
+      {status.replace('_', ' ')}
     </span>
   )
 }
 
+/* ── Severity Badge ───────────────────────────────────────────── */
+function SeverityBadge({ severity }: { severity: string }) {
+  const map: Record<string, { bg: string; text: string }> = {
+    critical: { bg: 'bg-red-500/20',    text: 'text-red-400' },
+    high:     { bg: 'bg-orange-500/20', text: 'text-orange-400' },
+    medium:   { bg: 'bg-amber-500/20',  text: 'text-amber-400' },
+    low:      { bg: 'bg-sky-500/20',    text: 'text-sky-400' },
+  }
+  const cfg = map[severity] || { bg: 'bg-gray-500/20', text: 'text-gray-400' }
+  return (
+    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${cfg.bg} ${cfg.text}`}>
+      {severity}
+    </span>
+  )
+}
+
+/* ── Main Page ────────────────────────────────────────────────── */
 export function AnomaliesPage() {
-  const [searchParams, setSearchParams] = useSearchParams()
-  const urlMetric = searchParams.get('metric') || ''
-  const urlEntity = searchParams.get('entity') || ''
-  const urlEntityType = searchParams.get('entity_type') || ''
-
-  const [selectedGroup, setSelectedGroup] = useState<AnomalyGroup | null>(null)
-  const [entityTypeFilter, setEntityTypeFilter] = useState<string>(urlEntityType)
-  const [statusFilter, setStatusFilter] = useState<string>('')
-  const [deepLinkHandled, setDeepLinkHandled] = useState(false)
-  const token = useAuthStore((state) => state.token)
-  const navigate = useNavigate()
+  const { token } = useAuthStore()
   const queryClient = useQueryClient()
+  const headers: Record<string, string> = { Authorization: `Bearer ${token}` }
 
-  useEffect(() => {
-    document.title = 'Rhinometric - AI Anomaly Detection'
-  }, [])
+  const [entityTypeFilter, setEntityTypeFilter] = useState<string>('')
+  const [statusFilter, setStatusFilter] = useState<string>('')
+  const [expandedFp, setExpandedFp] = useState<string | null>(null)
 
-  const { data: groupsData, isLoading, error } = useQuery({
-    queryKey: ['anomalies', token, entityTypeFilter, statusFilter],
+  // Fetch anomaly groups
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['anomalies', entityTypeFilter, statusFilter],
     queryFn: async () => {
-      if (!token) throw new Error('No token')
       const params = new URLSearchParams({ page_size: '50' })
       if (entityTypeFilter) params.set('entity_type', entityTypeFilter)
       if (statusFilter) params.set('status', statusFilter)
-      const response = await fetch(`/api/anomalies?${params.toString()}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      })
-      if (response.status === 401) {
-        useAuthStore.getState().logout()
-        navigate('/login')
-        throw new Error('Session expired')
-      }
-      if (response.status === 503) throw new Error('AI_SERVICE_UNAVAILABLE')
-      if (!response.ok) throw new Error('Failed to fetch anomalies')
-      return response.json()
+      const res = await fetch(`/api/anomalies?${params}`, { headers })
+      if (!res.ok) throw new Error('Failed to fetch anomalies')
+      return res.json() as Promise<{ anomaly_groups: AnomalyGroup[]; total: number }>
     },
-    enabled: !!token,
     refetchInterval: 30000,
-    retry: false,
   })
 
-  // ── Deep link: auto-select matching anomaly group from URL params ──
-  useEffect(() => {
-    if (deepLinkHandled || !groupsData?.anomaly_groups?.length) return
-    if (!urlMetric && !urlEntity) return
-
-    const groups: AnomalyGroup[] = groupsData.anomaly_groups
-    const match = groups.find((g: AnomalyGroup) => {
-      const metricMatch = !urlMetric || g.metric_name === urlMetric
-      const entityMatch = !urlEntity || g.entity_name === urlEntity
-      return metricMatch && entityMatch
-    })
-    if (match) {
-      setSelectedGroup(match)
-    }
-    setDeepLinkHandled(true)
-    // Clean URL params after handling (keeps URL clean)
-    if (urlMetric || urlEntity) {
-      setSearchParams({}, { replace: true })
-    }
-  }, [groupsData, urlMetric, urlEntity, deepLinkHandled, setSearchParams])
-
+  // Status mutation
   const statusMutation = useMutation({
     mutationFn: async ({ fingerprint, status }: { fingerprint: string; status: string }) => {
-      const response = await fetch(`/api/anomalies/${fingerprint}/status`, {
+      const res = await fetch(`/api/anomalies/${fingerprint}/status`, {
         method: 'PATCH',
-        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status })
+        headers: { ...headers, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
       })
-      if (response.status === 401) {
-        useAuthStore.getState().logout()
-        navigate('/login')
-        throw new Error('Session expired')
-      }
-      if (!response.ok) throw new Error('Failed to update status')
-      return response.json()
+      if (!res.ok) throw new Error('Failed to update status')
+      return res.json()
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['anomalies'] })
-    }
+    },
   })
 
-  const groups: AnomalyGroup[] = groupsData?.anomaly_groups || []
-  const isAIUnavailable = error && (error as Error).message === 'AI_SERVICE_UNAVAILABLE'
+  // Correlate mutation
+  const correlateMutation = useMutation({
+    mutationFn: async (group: AnomalyGroup) => {
+      const res = await fetch('/api/correlation/correlate', {
+        method: 'POST',
+        headers: { ...headers, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          source_type: 'anomaly',
+          source_id: group.fingerprint,
+          entity_type: group.entity_type,
+          entity_name: group.entity_name,
+          metric_name: group.metric_name,
+          timestamp: group.last_seen,
+          severity: group.severity_current,
+        }),
+      })
+      if (!res.ok) throw new Error('Correlation failed')
+      return res.json()
+    },
+  })
+
+  const groups = data?.anomaly_groups || []
 
   return (
-    <div className="space-y-4 sm:space-y-6">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-2 sm:mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 mb-1 sm:mb-2">
-            <h1 className="text-2xl sm:text-3xl font-bold text-white">AI Anomaly Detection</h1>
-            <span className="inline-flex items-center self-start px-3 py-1 rounded-full text-xs font-medium bg-warning/10 text-warning border border-warning/30" title="Experimental AI algorithms">
-              <span className="mr-1.5">&#x26A0;&#xFE0F;</span>
-              Experimental Beta
-            </span>
-          </div>
-          <p className="text-text-muted text-sm sm:text-base">Monitor and manage detected anomalies across your infrastructure and external services</p>
+          <h1 className="text-2xl font-bold text-white">AI Anomalies</h1>
+          <p className="text-sm text-gray-400 mt-1">
+            Customer-facing anomaly detection — grouped by entity with lifecycle management
+          </p>
         </div>
-        <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
-          <button className="btn flex items-center gap-2 text-sm">
-            <Download size={18} />
-            <span className="hidden sm:inline">Export</span>
-          </button>
+        <div className="flex items-center gap-2 text-xs text-gray-400">
+          <Activity size={14} className="text-green-400" />
+          <span>{data?.total ?? 0} anomaly groups</span>
         </div>
       </div>
 
       {/* Filters */}
-      <div className="card">
-        <div className="flex flex-wrap items-center gap-3 sm:gap-4">
-          <Filter size={18} className="text-gray-400 flex-shrink-0" />
+      <div className="bg-surface rounded-lg border border-gray-700 p-4">
+        <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
           <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-400 hidden sm:inline">Entity:</span>
+            <Filter size={16} className="text-gray-400" />
+            <span className="text-sm font-medium text-gray-300">Filters</span>
+          </div>
+
+          <div className="flex flex-wrap gap-2 flex-1">
             <select
-              className="bg-surface-light border border-gray-700 text-white rounded px-2 sm:px-3 py-1.5 text-sm"
               value={entityTypeFilter}
               onChange={(e) => setEntityTypeFilter(e.target.value)}
+              className="bg-gray-800 border border-gray-600 rounded-md px-3 py-1.5 text-sm text-gray-300 focus:outline-none focus:border-primary"
             >
-              <option value="">All Entities</option>
-              <option value="service">Services</option>
-              <option value="infrastructure">Infrastructure</option>
+              <option value="">All entity types</option>
+              <option value="service">Service</option>
               <option value="website">Website</option>
             </select>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-400 hidden sm:inline">Status:</span>
+
             <select
-              className="bg-surface-light border border-gray-700 text-white rounded px-2 sm:px-3 py-1.5 text-sm"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
+              className="bg-gray-800 border border-gray-600 rounded-md px-3 py-1.5 text-sm text-gray-300 focus:outline-none focus:border-primary"
             >
-              <option value="">All Statuses</option>
+              <option value="">All statuses</option>
               <option value="active">Active</option>
               <option value="acknowledged">Acknowledged</option>
               <option value="resolved">Resolved</option>
               <option value="false_positive">False Positive</option>
               <option value="suppressed">Suppressed</option>
-              <option value="alert_created">Alert Created</option>
-            </select>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-400 hidden sm:inline">Time Range:</span>
-            <select className="bg-surface-light border border-gray-700 text-white rounded px-2 sm:px-3 py-1.5 text-sm">
-              <option>Last 24 hours</option>
-              <option>Last 7 days</option>
-              <option>Last 30 days</option>
             </select>
           </div>
         </div>
       </div>
 
-      {/* AI Service Unavailable */}
-      {isAIUnavailable && (
-        <div className="card bg-warning/10 border-warning/30">
-          <div className="flex items-start gap-3 sm:gap-4">
-            <AlertTriangle className="text-warning mt-1 flex-shrink-0" size={24} />
-            <div className="flex-1 min-w-0">
-              <h3 className="text-warning font-semibold mb-2 text-sm sm:text-base">AI Anomaly Detection Engine Unavailable</h3>
-              <p className="text-warning/80 text-xs sm:text-sm mb-3">The AI Detection Engine is temporarily unavailable.</p>
-              <ul className="list-disc list-inside text-warning/80 text-xs sm:text-sm space-y-1 mb-3">
-                <li>Service is starting up (please wait 30 seconds)</li>
-                <li>Service crashed or stopped (check container logs)</li>
-                <li>Network connectivity issues</li>
-              </ul>
-              <p className="text-warning/80 text-xs sm:text-sm">
-                <strong>Note:</strong> Check that rhinometric-ai-anomaly container is running on port 8085.
-              </p>
-            </div>
+      {/* Error */}
+      {error && (
+        <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 text-red-400 text-sm">
+          {(error as Error).message}
+        </div>
+      )}
+
+      {/* Loading */}
+      {isLoading && (
+        <div className="flex items-center justify-center py-12">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      )}
+
+      {/* Empty state — Task 2 customer-facing wording */}
+      {!isLoading && !error && groups.length === 0 && (
+        <div className="bg-surface rounded-lg border border-gray-700 p-12 text-center">
+          <Shield size={48} className="mx-auto text-gray-600 mb-4" />
+          <h3 className="text-lg font-semibold text-gray-300 mb-2">No customer anomalies detected</h3>
+          <p className="text-sm text-gray-500 max-w-md mx-auto">
+            No customer-facing service anomalies are currently available.
+          </p>
+          <p className="text-xs text-gray-600 mt-3 max-w-md mx-auto">
+            Synthetic checks or telemetry collectors are required to generate customer anomalies.
+          </p>
+        </div>
+      )}
+
+      {/* Anomaly Groups table — desktop */}
+      {!isLoading && groups.length > 0 && (
+        <div className="hidden md:block bg-surface rounded-lg border border-gray-700 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-gray-800/50 text-left text-xs uppercase tracking-wider text-gray-400">
+                  <th className="px-4 py-3">Entity</th>
+                  <th className="px-4 py-3">Metric</th>
+                  <th className="px-4 py-3">Severity</th>
+                  <th className="px-4 py-3">Status</th>
+                  <th className="px-4 py-3">Priority</th>
+                  <th className="px-4 py-3">Occurrences</th>
+                  <th className="px-4 py-3">Last Seen</th>
+                  <th className="px-4 py-3">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-700/50">
+                {groups.map((g) => {
+                  const isExpanded = expandedFp === g.fingerprint
+                  return (
+                    <AnomalyRow
+                      key={g.fingerprint}
+                      group={g}
+                      isExpanded={isExpanded}
+                      onToggle={() => setExpandedFp(isExpanded ? null : g.fingerprint)}
+                      onStatusChange={(status) => statusMutation.mutate({ fingerprint: g.fingerprint, status })}
+                      onCorrelate={() => correlateMutation.mutate(g)}
+                      isMutating={statusMutation.isPending}
+                      isCorrelating={correlateMutation.isPending}
+                      correlationResult={correlateMutation.data}
+                    />
+                  )
+                })}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
 
-      {/* Anomaly Groups Table */}
-      <div className="card p-0 sm:p-0">
-        {isLoading ? (
-          <div className="flex flex-col items-center justify-center py-16 px-4">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mb-4"></div>
-            <p className="text-gray-400 text-sm">Loading anomaly groups...</p>
-          </div>
-        ) : error && !isAIUnavailable ? (
-          <div className="flex flex-col items-center justify-center py-16 px-4">
-            <AlertTriangle className="text-error mb-4" size={48} />
-            <p className="text-white text-lg font-semibold mb-1">
-              {(error as Error).message === 'Session expired' ? 'Session expired' : 'Failed to load anomalies'}
-            </p>
-            <p className="text-sm text-gray-400">
-              {(error as Error).message === 'Session expired'
-                ? 'Redirecting to login...'
-                : (error as Error).message}
-            </p>
-          </div>
-        ) : isAIUnavailable ? (
-          <div className="flex flex-col items-center justify-center py-16 px-4">
-            <AlertTriangle className="text-warning mb-4" size={48} />
-            <p className="text-white text-lg font-semibold mb-1">AI Service Unavailable</p>
-            <p className="text-sm text-gray-400">No anomaly detection is currently active</p>
-          </div>
-        ) : groups.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 px-4">
-            <CheckCircle2 className="text-success mb-4" size={48} />
-            <p className="text-white text-lg font-semibold mb-1">No Anomalies Detected</p>
-            <p className="text-gray-400 text-sm">AI engine is monitoring &mdash; all metrics within expected ranges</p>
-          </div>
-        ) : (
-          <>
-            {/* Desktop table */}
-            <div className="hidden md:block overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-gray-700">
-                    <th className="text-center px-3 py-3 text-sm font-semibold text-gray-400 w-[70px]"></th>
-                    <th className="text-left px-3 py-3 text-sm font-semibold text-gray-400">Entity</th>
-                    <th className="text-left px-3 py-3 text-sm font-semibold text-gray-400">Metric</th>
-                    <th className="text-center px-3 py-3 text-sm font-semibold text-gray-400">Hits</th>
-                    <th className="text-left px-3 py-3 text-sm font-semibold text-gray-400">Severity</th>
-                    <th className="text-left px-3 py-3 text-sm font-semibold text-gray-400">Last Seen</th>
-                    <th className="text-center px-3 py-3 text-sm font-semibold text-gray-400">Status</th>
-                    <th className="text-left px-3 py-3 text-sm font-semibold text-gray-400">Context</th>
-                    <th className="text-center px-3 py-3 text-sm font-semibold text-gray-400">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {groups.map((group) => (
-                    <tr key={group.fingerprint} className="border-b border-gray-700/50 hover:bg-surface-light cursor-pointer transition-colors" onClick={() => setSelectedGroup(group)}>
-                      <td className="px-3 py-3 text-center">
-                        <PriorityBadge priority={group.priority} entityType={group.entity_type} />
-                      </td>
-                      <td className="px-3 py-3">
-                        <EntityBadge entityType={group.entity_type} entityName={group.entity_name} />
-                      </td>
-                      <td className="px-3 py-3">
-                        <code className="text-xs text-primary bg-primary/10 px-2 py-1 rounded block truncate max-w-[180px]" title={group.metric_name}>
-                          {group.metric_name}
-                        </code>
-                      </td>
-                      <td className="px-3 py-3 text-center">
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-primary/15 text-primary border border-primary/25">
-                          <Hash size={10} />
-                          {group.occurrence_count}
-                        </span>
-                      </td>
-                      <td className="px-3 py-3">
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                          group.severity_current === 'critical' || group.severity_current === 'high' ? 'bg-error/20 text-error' :
-                          group.severity_current === 'medium' ? 'bg-warning/20 text-warning' :
-                          'bg-blue-500/20 text-blue-400'
-                        }`}>
-                          {group.severity_current.toUpperCase()}
-                        </span>
-                      </td>
-                      <td className="px-3 py-3 text-xs text-gray-300 whitespace-nowrap">
-                        {new Date(group.last_seen).toLocaleTimeString()}
-                      </td>
-                      <td className="px-3 py-3 text-center">
-                        <StatusBadge status={group.status} />
-                      </td>
-                      <td className="px-3 py-3">
-                        <div className="space-y-1">
-                          {group.environment && group.environment !== 'unknown' && (
-                            <div className="flex items-center gap-1">
-                              <MapPin size={10} className="text-emerald-400" />
-                              <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${
-                                group.environment === 'production' || group.environment === 'produccion'
-                                  ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
-                                  : group.environment === 'staging' || group.environment === 'Staging'
-                                  ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
-                                  : 'bg-gray-500/15 text-gray-400 border border-gray-500/30'
-                              }`}>{group.environment}</span>
-                            </div>
-                          )}
-                          {group.service_group && group.service_group !== 'default' && (
-                            <div className="flex items-center gap-1">
-                              <Layers size={10} className="text-violet-400" />
-                              <span className="text-[10px] text-violet-300 bg-violet-500/10 px-1.5 py-0.5 rounded border border-violet-500/20">{group.service_group}</span>
-                            </div>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-3 py-3">
-                        <div className="flex items-center justify-center gap-2">
-                          <button
-                            onClick={(e) => { e.stopPropagation(); navigate(`/correlations/${group.last_seen}?entity_type=${encodeURIComponent(group.entity_type)}&entity_name=${encodeURIComponent(group.entity_name)}&metric_name=${encodeURIComponent(group.metric_name)}&source=${encodeURIComponent(group.source)}`) }}
-                            className="text-purple-400 hover:bg-purple-500/10 text-xs font-medium px-3 py-1 rounded transition-colors flex items-center gap-1"
-                            title="Full correlation analysis"
-                          >
-                            <GitMerge size={14} />
-                            Correlate
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+      {/* Mobile cards */}
+      {!isLoading && groups.length > 0 && (
+        <div className="md:hidden space-y-3">
+          {groups.map((g) => (
+            <MobileAnomalyCard
+              key={g.fingerprint}
+              group={g}
+              isExpanded={expandedFp === g.fingerprint}
+              onToggle={() => setExpandedFp(expandedFp === g.fingerprint ? null : g.fingerprint)}
+              onStatusChange={(status) => statusMutation.mutate({ fingerprint: g.fingerprint, status })}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
 
-            {/* Mobile card view */}
-            <div className="md:hidden divide-y divide-gray-700/50">
-              {groups.map((group) => (
-                <div key={group.fingerprint} className="p-3 sm:p-4 hover:bg-surface-light cursor-pointer transition-colors active:bg-surface-light" onClick={() => setSelectedGroup(group)}>
-                  <div className="flex items-start justify-between gap-2 mb-1.5">
-                    <div className="flex items-center gap-2">
-                      <EntityBadge entityType={group.entity_type} entityName={group.entity_name} />
-                      <PriorityBadge priority={group.priority} entityType={group.entity_type} />
-                    </div>
-                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium flex-shrink-0 ${
-                      group.severity_current === 'critical' || group.severity_current === 'high' ? 'bg-error/20 text-error' :
-                      group.severity_current === 'medium' ? 'bg-warning/20 text-warning' :
-                      'bg-blue-500/20 text-blue-400'
-                    }`}>
-                      {group.severity_current.toUpperCase()}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <code className="text-xs text-primary bg-primary/10 px-2 py-0.5 rounded truncate">{group.metric_name}</code>
-                    <span className="text-[10px] text-gray-500 bg-gray-700/50 px-1.5 py-0.5 rounded flex-shrink-0">{group.source}</span>
-                    <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded flex-shrink-0">
-                      <Hash size={8} />{group.occurrence_count}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between text-xs mb-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-gray-500">{new Date(group.last_seen).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                      <StatusBadge status={group.status} />
-                    </div>
-                    {group.environment && group.environment !== 'unknown' && (
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded flex-shrink-0 ${
-                        group.environment === 'production' || group.environment === 'produccion'
-                          ? 'bg-emerald-500/15 text-emerald-400'
-                          : 'bg-amber-500/15 text-amber-400'
-                      }`}>{group.environment}</span>
-                    )}
-                  </div>
-                  <div className="flex items-center justify-end text-xs">
-                    <button
-                      onClick={(e) => { e.stopPropagation(); navigate(`/correlations/${group.last_seen}?entity_type=${encodeURIComponent(group.entity_type)}&entity_name=${encodeURIComponent(group.entity_name)}&metric_name=${encodeURIComponent(group.metric_name)}&source=${encodeURIComponent(group.source)}`) }}
-                      className="text-purple-400 text-xs font-medium flex items-center gap-1"
-                    >
-                      <GitMerge size={12} />
-                      Correlate
-                    </button>
-                  </div>
-                </div>
-              ))}
+/* ── Desktop Anomaly Row ──────────────────────────────────────── */
+function AnomalyRow({ group, isExpanded, onToggle, onStatusChange, onCorrelate, isMutating, isCorrelating, correlationResult }: {
+  group: AnomalyGroup
+  isExpanded: boolean
+  onToggle: () => void
+  onStatusChange: (s: string) => void
+  onCorrelate: () => void
+  isMutating: boolean
+  isCorrelating: boolean
+  correlationResult: Record<string, unknown> | null | undefined
+}) {
+  return (
+    <>
+      <tr
+        className="hover:bg-gray-800/30 cursor-pointer transition-colors"
+        onClick={onToggle}
+      >
+        <td className="px-4 py-3">
+          <div className="flex items-center gap-2">
+            {isExpanded ? <ChevronUp size={14} className="text-gray-500" /> : <ChevronDown size={14} className="text-gray-500" />}
+            <div>
+              <div className="text-gray-200 font-medium">{group.entity_name}</div>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <EntityBadge type={group.entity_type} />
+                {group.environment !== 'unknown' && (
+                  <span className="text-xs text-gray-500">{group.environment}</span>
+                )}
+              </div>
             </div>
-          </>
-        )}
+          </div>
+        </td>
+        <td className="px-4 py-3 text-gray-300 font-mono text-xs">{group.metric_name}</td>
+        <td className="px-4 py-3"><SeverityBadge severity={group.severity_current} /></td>
+        <td className="px-4 py-3"><StatusBadge status={group.status} /></td>
+        <td className="px-4 py-3"><PriorityBadge priority={group.priority} /></td>
+        <td className="px-4 py-3">
+          <span className="inline-flex items-center gap-1 text-gray-300">
+            <BarChart3 size={12} className="text-gray-500" />{group.occurrence_count}
+          </span>
+        </td>
+        <td className="px-4 py-3 text-gray-400 text-xs" title={formatTs(group.last_seen)}>{timeAgo(group.last_seen)}</td>
+        <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+          <div className="flex items-center gap-1.5">
+            {group.status === 'active' && (
+              <button
+                onClick={() => onStatusChange('acknowledged')}
+                disabled={isMutating}
+                className="px-2 py-1 rounded text-xs bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 transition-colors disabled:opacity-50"
+              >
+                Ack
+              </button>
+            )}
+            {(group.status === 'active' || group.status === 'acknowledged') && (
+              <button
+                onClick={() => onStatusChange('resolved')}
+                disabled={isMutating}
+                className="px-2 py-1 rounded text-xs bg-green-500/20 text-green-400 hover:bg-green-500/30 transition-colors disabled:opacity-50"
+              >
+                Resolve
+              </button>
+            )}
+          </div>
+        </td>
+      </tr>
+
+      {/* Expanded detail */}
+      {isExpanded && (
+        <tr>
+          <td colSpan={8} className="px-4 py-4 bg-gray-800/20 border-t border-gray-700/50">
+            <div className="space-y-4">
+              {/* Meta row */}
+              <div className="flex flex-wrap items-center gap-3 text-xs text-gray-400">
+                <span>Fingerprint: <span className="font-mono text-gray-300">{group.fingerprint}</span></span>
+                <span>|</span>
+                <span>Source: <span className="text-gray-300">{group.source}</span></span>
+                <span>|</span>
+                <span>Service group: <span className="text-gray-300">{group.service_group}</span></span>
+                <span>|</span>
+                <span>First seen: <span className="text-gray-300">{formatTs(group.first_seen)}</span></span>
+                {group.tags && group.tags.length > 0 && (
+                  <>
+                    <span>|</span>
+                    <span>Tags: {group.tags.map((t) => (
+                      <span key={t} className="inline-block px-1.5 py-0.5 rounded bg-cyan-900/30 text-cyan-400 text-xs mr-1">{t}</span>
+                    ))}</span>
+                  </>
+                )}
+              </div>
+
+              {/* Lifecycle actions */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs text-gray-500 font-medium">Actions:</span>
+                {['active', 'acknowledged', 'false_positive', 'suppressed', 'resolved'].map((s) => (
+                  <button
+                    key={s}
+                    disabled={group.status === s || isMutating}
+                    onClick={() => onStatusChange(s)}
+                    className={`px-2.5 py-1 rounded text-xs font-medium transition-colors disabled:opacity-30 ${
+                      group.status === s
+                        ? 'bg-primary/30 text-primary ring-1 ring-primary/50'
+                        : 'bg-gray-700/40 text-gray-400 hover:bg-gray-700 hover:text-gray-200'
+                    }`}
+                  >
+                    {s.replace('_', ' ')}
+                  </button>
+                ))}
+
+                <div className="ml-auto">
+                  <button
+                    onClick={onCorrelate}
+                    disabled={isCorrelating}
+                    className="flex items-center gap-1.5 px-3 py-1 rounded text-xs bg-purple-500/20 text-purple-400 hover:bg-purple-500/30 disabled:opacity-50 transition-colors"
+                  >
+                    <RefreshCw size={12} className={isCorrelating ? 'animate-spin' : ''} />
+                    Correlate
+                  </button>
+                </div>
+              </div>
+
+              {/* Correlation result */}
+              {correlationResult && (
+                <div className="bg-purple-900/20 border border-purple-500/30 rounded-lg p-3 text-xs text-purple-300">
+                  <pre className="whitespace-pre-wrap">{JSON.stringify(correlationResult, null, 2)}</pre>
+                </div>
+              )}
+
+              {/* Occurrence timeline */}
+              <div>
+                <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+                  Occurrences ({group.occurrence_count})
+                </h4>
+                <div className="overflow-x-auto rounded-md border border-gray-700/50">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="bg-gray-800/30 text-gray-400 uppercase tracking-wider text-left">
+                        <th className="px-3 py-2">Timestamp</th>
+                        <th className="px-3 py-2">Value</th>
+                        <th className="px-3 py-2">Expected</th>
+                        <th className="px-3 py-2">Deviation</th>
+                        <th className="px-3 py-2">Severity</th>
+                        <th className="px-3 py-2">Confidence</th>
+                        <th className="px-3 py-2">Analysis</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-700/30">
+                      {group.occurrences.map((o, i) => (
+                        <tr key={i} className="hover:bg-gray-800/20">
+                          <td className="px-3 py-2 text-gray-300" title={formatTs(o.timestamp)}>{timeAgo(o.timestamp)}</td>
+                          <td className="px-3 py-2 text-gray-200 font-mono">{o.current_value.toFixed(2)}</td>
+                          <td className="px-3 py-2 text-gray-400 font-mono">{o.expected_value.toFixed(2)}</td>
+                          <td className="px-3 py-2">
+                            <span className={o.deviation_percent > 50 ? 'text-red-400' : o.deviation_percent > 20 ? 'text-amber-400' : 'text-gray-300'}>
+                              {o.deviation_percent.toFixed(1)}%
+                            </span>
+                          </td>
+                          <td className="px-3 py-2"><SeverityBadge severity={o.severity} /></td>
+                          <td className="px-3 py-2 text-gray-400">{o.confidence != null ? `${(o.confidence * 100).toFixed(0)}%` : '—'}</td>
+                          <td className="px-3 py-2 text-gray-400 max-w-xs truncate">{o.analysis || '—'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </td>
+        </tr>
+      )}
+    </>
+  )
+}
+
+/* ── Mobile Card ──────────────────────────────────────────────── */
+function MobileAnomalyCard({ group, isExpanded, onToggle, onStatusChange }: {
+  group: AnomalyGroup
+  isExpanded: boolean
+  onToggle: () => void
+  onStatusChange: (s: string) => void
+}) {
+  return (
+    <div className="bg-surface rounded-lg border border-gray-700 overflow-hidden">
+      <div className="p-4 space-y-2 cursor-pointer" onClick={onToggle}>
+        <div className="flex items-center justify-between">
+          <span className="text-gray-200 font-medium text-sm">{group.entity_name}</span>
+          {isExpanded ? <ChevronUp size={14} className="text-gray-500" /> : <ChevronDown size={14} className="text-gray-500" />}
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <EntityBadge type={group.entity_type} />
+          <SeverityBadge severity={group.severity_current} />
+          <StatusBadge status={group.status} />
+        </div>
+        <div className="flex items-center justify-between text-xs text-gray-400">
+          <span className="font-mono">{group.metric_name}</span>
+          <span>{group.occurrence_count} occurrences</span>
+        </div>
+        <div className="text-xs text-gray-500">{timeAgo(group.last_seen)}</div>
       </div>
 
-      {/* Detail Modal */}
-      {selectedGroup && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
-          <div className="bg-surface border border-gray-700 rounded-t-xl sm:rounded-lg shadow-2xl w-full sm:max-w-3xl max-h-[90vh] sm:max-h-[85vh] overflow-y-auto">
-            {/* Header */}
-            <div className="sticky top-0 bg-surface z-10 flex items-center justify-between p-3 sm:p-4 border-b border-gray-700">
-              <div className="min-w-0 flex-1 mr-3">
-                <h2 className="text-lg sm:text-xl font-bold text-white truncate">Anomaly Group Details</h2>
-                <p className="text-xs text-gray-400 truncate font-mono">{selectedGroup.fingerprint}</p>
-              </div>
-              <button onClick={() => setSelectedGroup(null)} className="p-2 bg-error/20 hover:bg-error/30 rounded-lg transition-colors flex-shrink-0" title="Close">
-                <X className="text-white" size={20} />
+      {isExpanded && (
+        <div className="border-t border-gray-700 p-4 space-y-3 bg-gray-800/20">
+          <div className="flex gap-2 flex-wrap">
+            {group.status === 'active' && (
+              <button
+                onClick={() => onStatusChange('acknowledged')}
+                className="px-3 py-1.5 rounded text-xs bg-blue-500/20 text-blue-400 hover:bg-blue-500/30"
+              >
+                Acknowledge
               </button>
-            </div>
+            )}
+            {(group.status === 'active' || group.status === 'acknowledged') && (
+              <button
+                onClick={() => onStatusChange('resolved')}
+                className="px-3 py-1.5 rounded text-xs bg-green-500/20 text-green-400 hover:bg-green-500/30"
+              >
+                Resolve
+              </button>
+            )}
+          </div>
 
-            {/* Content */}
-            <div className="p-3 sm:p-4 space-y-3 sm:space-y-4">
-              {/* Entity & status badge row */}
-              <div className="flex items-center gap-3 flex-wrap">
-                <EntityBadge entityType={selectedGroup.entity_type} entityName={selectedGroup.entity_name} />
-                <span className="text-xs text-gray-400 bg-gray-700/50 px-2 py-1 rounded">Source: {selectedGroup.source}</span>
-                {selectedGroup.environment && selectedGroup.environment !== 'unknown' && (
-                  <span className={`text-xs px-2 py-1 rounded flex items-center gap-1 ${
-                    selectedGroup.environment === 'production' || selectedGroup.environment === 'produccion'
-                      ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
-                      : selectedGroup.environment === 'staging' || selectedGroup.environment === 'Staging'
-                      ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
-                      : 'bg-gray-500/15 text-gray-400 border border-gray-500/30'
-                  }`}>
-                    <MapPin size={12} />
-                    {selectedGroup.environment}
-                  </span>
-                )}
-                {selectedGroup.service_group && selectedGroup.service_group !== 'default' && (
-                  <span className="text-xs text-violet-300 bg-violet-500/10 px-2 py-1 rounded border border-violet-500/20 flex items-center gap-1">
-                    <Layers size={12} />
-                    {selectedGroup.service_group}
-                  </span>
-                )}
-                <StatusBadge status={selectedGroup.status} />
+          <div className="space-y-2">
+            <p className="text-xs text-gray-400 font-medium uppercase">Recent Occurrences</p>
+            {group.occurrences.slice(0, 5).map((o, i) => (
+              <div key={i} className="bg-gray-800/40 rounded p-3 space-y-1">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-gray-300">{timeAgo(o.timestamp)}</span>
+                  <SeverityBadge severity={o.severity} />
+                </div>
+                <div className="text-xs text-gray-400">
+                  Value: <span className="text-gray-200 font-mono">{o.current_value.toFixed(2)}</span>
+                  {' '}vs{' '}
+                  <span className="text-gray-400 font-mono">{o.expected_value.toFixed(2)}</span>
+                  {' '}({o.deviation_percent.toFixed(1)}%)
+                </div>
+                {o.analysis && <p className="text-xs text-gray-500 truncate">{o.analysis}</p>}
               </div>
-
-              {/* Overview grid */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
-                <div className="card bg-surface-light p-2 sm:p-3">
-                  <p className="text-xs text-gray-400 mb-1">Metric</p>
-                  <code className="text-sm text-primary font-mono break-all">{selectedGroup.metric_name}</code>
-                </div>
-                <div className="card bg-surface-light p-2 sm:p-3">
-                  <p className="text-xs text-gray-400 mb-1">Severity</p>
-                  <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
-                    selectedGroup.severity_current === 'critical' || selectedGroup.severity_current === 'high' ? 'bg-error/20 text-error' :
-                    selectedGroup.severity_current === 'medium' ? 'bg-warning/20 text-warning' :
-                    'bg-blue-500/20 text-blue-400'
-                  }`}>
-                    {selectedGroup.severity_current.toUpperCase()}
-                  </span>
-                </div>
-                <div className="card bg-surface-light p-2 sm:p-3">
-                  <p className="text-xs text-gray-400 mb-1">Occurrences</p>
-                  <div className="text-lg font-bold text-primary flex items-center gap-1">
-                    <Hash size={14} />
-                    {selectedGroup.occurrence_count}
-                  </div>
-                </div>
-                <div className="card bg-surface-light p-2 sm:p-3">
-                  <p className="text-xs text-gray-400 mb-1">Time Range</p>
-                  <div className="text-xs text-white">
-                    <div className="flex items-center gap-1">
-                      <Clock size={10} className="text-gray-400" />
-                      {new Date(selectedGroup.first_seen).toLocaleTimeString()}
-                    </div>
-                    <div className="flex items-center gap-1 text-gray-400 mt-0.5">
-                      <Activity size={10} />
-                      {new Date(selectedGroup.last_seen).toLocaleTimeString()}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Occurrence Timeline */}
-              <div className="card p-3 sm:p-4">
-                <h3 className="text-sm sm:text-base font-semibold text-white mb-3 flex items-center gap-2">
-                  <Activity size={16} className="text-primary" />
-                  Occurrence Timeline ({selectedGroup.occurrence_count})
-                </h3>
-                <div className="space-y-2 max-h-[240px] overflow-y-auto">
-                  {selectedGroup.occurrences.map((occ, i) => (
-                    <div key={i} className="flex items-center justify-between py-2 px-3 rounded bg-surface-light/50 border border-gray-700/30">
-                      <div className="flex items-center gap-3">
-                        <span className="text-xs text-gray-400 font-mono whitespace-nowrap">
-                          {new Date(occ.timestamp).toLocaleTimeString()}
-                        </span>
-                        <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium ${
-                          occ.severity === 'critical' || occ.severity === 'high' ? 'bg-error/20 text-error' :
-                          occ.severity === 'medium' ? 'bg-warning/20 text-warning' :
-                          'bg-blue-500/20 text-blue-400'
-                        }`}>
-                          {occ.severity.toUpperCase()}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-4 text-xs">
-                        <span className="text-white font-medium">{occ.current_value.toFixed(1)}</span>
-                        <span className="text-gray-500">/ {occ.expected_value.toFixed(1)}</span>
-                        <span className={`font-semibold ${occ.deviation_percent > 0 ? 'text-error' : 'text-green-400'}`}>
-                          <TrendingUp size={10} className="inline mr-0.5" />
-                          {occ.deviation_percent > 0 ? '+' : ''}{occ.deviation_percent.toFixed(1)}%
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* AI Analysis from latest occurrence */}
-              {selectedGroup.occurrences[0]?.analysis && (
-                <div className="card bg-primary/5 border-primary/20 p-3 sm:p-4">
-                  <h3 className="text-sm sm:text-base font-semibold text-primary mb-2">AI Analysis</h3>
-                  <p className="text-xs sm:text-sm text-gray-300">{selectedGroup.occurrences[0].analysis}</p>
-                </div>
-              )}
-
-              {/* Tags */}
-              {selectedGroup.tags && selectedGroup.tags.length > 0 && (
-                <div className="flex flex-wrap gap-1">
-                  {selectedGroup.tags.map((tag, i) => (
-                    <span key={i} className="text-[10px] px-2 py-0.5 rounded bg-gray-700/50 text-gray-400">{tag}</span>
-                  ))}
-                </div>
-              )}
-
-              {/* Lifecycle Actions */}
-              <div>
-                <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold mb-2">Lifecycle</p>
-                <div className="flex flex-wrap gap-2">
-                  {selectedGroup.status === 'active' && (
-                    <>
-                      <button
-                        className="btn btn-secondary flex-1 min-h-[40px] text-sm flex items-center justify-center gap-2"
-                        onClick={() => { statusMutation.mutate({ fingerprint: selectedGroup.fingerprint, status: 'acknowledged' }); setSelectedGroup({ ...selectedGroup, status: 'acknowledged' }) }}
-                      >
-                        Acknowledge
-                      </button>
-                      <button
-                        className="btn btn-secondary flex-1 min-h-[40px] text-sm flex items-center justify-center gap-2"
-                        onClick={() => { statusMutation.mutate({ fingerprint: selectedGroup.fingerprint, status: 'false_positive' }); setSelectedGroup({ ...selectedGroup, status: 'false_positive' }) }}
-                      >
-                        False Positive
-                      </button>
-                      <button
-                        className="btn btn-secondary flex-1 min-h-[40px] text-sm flex items-center justify-center gap-2"
-                        onClick={() => { statusMutation.mutate({ fingerprint: selectedGroup.fingerprint, status: 'suppressed' }); setSelectedGroup({ ...selectedGroup, status: 'suppressed' }) }}
-                      >
-                        Suppress
-                      </button>
-                    </>
-                  )}
-                  {selectedGroup.status !== 'active' && selectedGroup.status !== 'resolved' && (
-                    <button
-                      className="btn btn-secondary flex-1 min-h-[40px] text-sm flex items-center justify-center gap-2"
-                      onClick={() => { statusMutation.mutate({ fingerprint: selectedGroup.fingerprint, status: 'active' }); setSelectedGroup({ ...selectedGroup, status: 'active' }) }}
-                    >
-                      Reactivate
-                    </button>
-                  )}
-                  {selectedGroup.status !== 'resolved' && (
-                    <button
-                      className="btn btn-secondary flex-1 min-h-[40px] text-sm flex items-center justify-center gap-2 text-green-400"
-                      onClick={() => { statusMutation.mutate({ fingerprint: selectedGroup.fingerprint, status: 'resolved' }); setSelectedGroup({ ...selectedGroup, status: 'resolved' }) }}
-                    >
-                      Resolve
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {/* Correlate */}
-              <div>
-                <button
-                  onClick={() => { setSelectedGroup(null); navigate(`/correlations/${selectedGroup.last_seen}?entity_type=${encodeURIComponent(selectedGroup.entity_type)}&entity_name=${encodeURIComponent(selectedGroup.entity_name)}&metric_name=${encodeURIComponent(selectedGroup.metric_name)}&source=${encodeURIComponent(selectedGroup.source)}`) }}
-                  className="btn w-full min-h-[44px] text-sm flex items-center justify-center gap-2 bg-purple-500/15 text-purple-400 border border-purple-500/25 hover:bg-purple-500/25"
-                >
-                  <GitMerge size={16} />
-                  Full Correlation Analysis
-                </button>
-              </div>
-
-              {/* Footer */}
-              <div className="text-xs text-gray-500 text-center">
-                Anomaly Lifecycle Engine v2.1 &mdash; Deduplication with occurrence tracking
-              </div>
-            </div>
+            ))}
           </div>
         </div>
       )}

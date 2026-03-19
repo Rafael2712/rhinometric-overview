@@ -3,6 +3,7 @@ from pydantic import BaseModel, Field
 from typing import Optional, List, Any, Dict
 import httpx
 import hashlib
+import re
 from datetime import datetime
 import logging
 import time
@@ -13,6 +14,62 @@ from models.user import User as UserModel
 
 router = APIRouter()
 logger = logging.getLogger("anomalies")
+
+
+# ── Customer-facing filter ──────────────────────────────────────
+# Only "service" and "website" entity types are customer-facing.
+# All "infrastructure" entities (node_exporter, cadvisor, internal
+# monitoring) are internal platform telemetry and must be hidden.
+# Additionally, any entity_name / source matching internal platform
+# services is excluded as a safety net.
+# ────────────────────────────────────────────────────────────────
+INTERNAL_SOURCES: set = {
+    "node_exporter",
+    "cadvisor",
+    "internal_monitoring",
+    "legacy",
+}
+
+INTERNAL_ENTITY_NAMES: set = {
+    "console-backend",
+    "docker_logs",
+    "rhinometric-audit",
+    "grafana",
+    "loki",
+    "jaeger",
+    "jaeger-all-in-one",
+    "jaeger-query",
+    "jaeger-collector",
+    "alertmanager",
+    "prometheus",
+    "node-exporter",
+    "cadvisor",
+    "ai-anomaly",
+    "ai_anomaly",
+}
+
+INTERNAL_NAME_PATTERN = re.compile(
+    r"^(rhinometric[-_]|console[-_]|grafana|loki|jaeger|alertmanager"
+    r"|prometheus|cadvisor|node.exporter|ai[-_]anomaly)",
+    re.IGNORECASE,
+)
+
+
+def _is_customer_facing_group(g: dict) -> bool:
+    """Return True only if the anomaly group is customer-facing."""
+    # Infrastructure entity type is always internal
+    if g.get("entity_type") == "infrastructure":
+        return False
+    # Safety-net: check source and entity_name against blocklist
+    source = (g.get("source") or "").lower()
+    entity = (g.get("entity_name") or "").lower()
+    if source in INTERNAL_SOURCES:
+        return False
+    if entity in INTERNAL_ENTITY_NAMES:
+        return False
+    if INTERNAL_NAME_PATTERN.search(entity) or INTERNAL_NAME_PATTERN.search(source):
+        return False
+    return True
 
 
 # -- Phase 2.1: Anomaly Occurrence (single detection event) ------
@@ -318,7 +375,6 @@ def _generate_fingerprint(entity_type: str, entity_name: str, metric_name: str, 
 # In-memory lifecycle status store (Phase 2.1)
 _status_overrides: Dict[str, str] = {}
 VALID_STATUSES = {"active", "acknowledged", "false_positive", "suppressed", "resolved", "alert_created"}
-
 # Auto-resolution: groups with no new occurrences within this window
 # are automatically transitioned to "resolved".
 AUTO_RESOLVE_WINDOW = 1800  # seconds (30 minutes)
@@ -437,10 +493,17 @@ async def get_anomalies(
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=100),
 ):
-    """Get anomaly groups -- deduplicated with occurrence counts and lifecycle status."""
+    """Get anomaly groups -- deduplicated with occurrence counts and lifecycle status.
+
+    Task 2: Only customer-facing anomaly groups are returned.
+    Infrastructure / internal platform telemetry is filtered out.
+    """
     try:
         normalized = await _fetch_and_normalize(time_range, page_size * 3)
         groups = _build_anomaly_groups(normalized)
+
+        # ── Task 2: strip internal platform telemetry ───────────
+        groups = [g for g in groups if _is_customer_facing_group(g)]
 
         if entity_type:
             groups = [g for g in groups if g["entity_type"] == entity_type]
@@ -524,6 +587,9 @@ async def get_occurrences(
         normalized = await _fetch_and_normalize(time_range, 500)
         groups = _build_anomaly_groups(normalized)
 
+        # Task 2: only allow access to customer-facing groups
+        groups = [g for g in groups if _is_customer_facing_group(g)]
+
         for g in groups:
             if g["fingerprint"] == fingerprint:
                 return {
@@ -577,6 +643,9 @@ async def get_anomaly_group(
     try:
         normalized = await _fetch_and_normalize(time_range, 500)
         groups = _build_anomaly_groups(normalized)
+
+        # Task 2: only allow access to customer-facing groups
+        groups = [g for g in groups if _is_customer_facing_group(g)]
 
         for g in groups:
             if g["fingerprint"] == fingerprint:

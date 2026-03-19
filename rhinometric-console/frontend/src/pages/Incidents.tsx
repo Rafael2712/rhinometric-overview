@@ -285,7 +285,7 @@ export function IncidentsPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-white">Incidents</h1>
-          <p className="text-sm text-gray-400 mt-1">Operational incidents grouping related alert events</p>
+          <p className="text-sm text-gray-400 mt-1">Customer-facing operational incidents grouping related alert events</p>
         </div>
         <div className="flex items-center gap-2 text-xs text-gray-400">
           <Activity size={14} className="text-green-400" />
@@ -384,7 +384,14 @@ export function IncidentsPage() {
                 <tr><td colSpan={8} className="px-4 py-8 text-center text-gray-400">Loading...</td></tr>
               )}
               {!listLoading && incidents.length === 0 && (
-                <tr><td colSpan={8} className="px-4 py-8 text-center text-gray-400">No incidents found</td></tr>
+                <tr><td colSpan={8} className="px-4 py-12 text-center">
+                    <div className="flex flex-col items-center">
+                      <Shield size={40} className="text-gray-600 mb-3" />
+                      <p className="text-gray-300 text-base font-semibold mb-1">No customer incidents</p>
+                      <p className="text-gray-500 text-sm">There are currently no incidents affecting customer services.</p>
+                      <p className="text-gray-600 text-xs mt-2">Customer incidents will appear when customer alerts or anomalies are detected.</p>
+                    </div>
+                  </td></tr>
               )}
               {incidents.map((inc) => {
                 const isExpanded = expandedId === inc.id
@@ -408,7 +415,14 @@ export function IncidentsPage() {
       {/* Incidents cards — mobile */}
       <div className="md:hidden space-y-3">
         {listLoading && <p className="text-center text-gray-400 py-8">Loading...</p>}
-        {!listLoading && incidents.length === 0 && <p className="text-center text-gray-400 py-8">No incidents found</p>}
+        {!listLoading && incidents.length === 0 && (
+          <div className="bg-surface rounded-lg border border-gray-700 p-12 text-center">
+            <Shield size={40} className="mx-auto text-gray-600 mb-3" />
+            <p className="text-gray-300 text-base font-semibold mb-1">No customer incidents</p>
+            <p className="text-gray-500 text-sm">There are currently no incidents affecting customer services.</p>
+            <p className="text-gray-600 text-xs mt-2">Customer incidents will appear when customer alerts or anomalies are detected.</p>
+          </div>
+        )}
         {incidents.map((inc) => (
           <MobileIncidentCard
             key={inc.id}
