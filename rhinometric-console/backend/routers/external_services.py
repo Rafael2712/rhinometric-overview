@@ -11,7 +11,8 @@ from sqlalchemy.orm import Session
 from database import get_db
 from routers.auth import get_current_user, require_role
 from models.user import User as UserModel
-from models.external_service import ExternalService, ServiceType, ServiceStatus, MonitoringMode
+from models.external_service import ExternalService, ServiceType, ServiceStatus, MonitoringMode, TelemetryStatus
+from routers.telemetry_ingest import generate_telemetry_token
 from services.capability_helper import derive_capability_from_dict
 from models.external_service_check import ExternalServiceCheck
 from models.external_service_check import ExternalServiceCheck
@@ -117,6 +118,9 @@ class ExternalServiceResponse(BaseModel):
     telemetry_attached: bool = False
     telemetry_source_type: Optional[str] = None
     telemetry_service_key: Optional[str] = None
+    telemetry_token: Optional[str] = None
+    telemetry_status: str = "not_configured"
+    last_telemetry_at: Optional[str] = None
     capability: str = "Synthetic only"
     status: str
     status_message: Optional[str]
@@ -433,6 +437,8 @@ def create_external_service(
         telemetry_attached=payload.telemetry_attached,
         telemetry_source_type=payload.telemetry_source_type,
         telemetry_service_key=payload.telemetry_service_key,
+        telemetry_token=generate_telemetry_token() if payload.monitoring_mode == "telemetry_enabled" else None,
+        telemetry_status=TelemetryStatus.CONFIGURED if payload.monitoring_mode == "telemetry_enabled" else TelemetryStatus.NOT_CONFIGURED,
         status=ServiceStatus.UNKNOWN,
         created_by=current_user.id,
     )
@@ -506,6 +512,15 @@ def update_external_service(
                 status_code=422,
                 detail="When monitoring mode is 'telemetry_enabled', a non-empty telemetry_service_key is required.",
             )
+
+    # Handle telemetry token and status on mode change
+    if effective_mode == "telemetry_enabled":
+        if not svc.telemetry_token:
+            update_data["telemetry_token"] = generate_telemetry_token()
+        if svc.telemetry_status == TelemetryStatus.NOT_CONFIGURED:
+            update_data["telemetry_status"] = TelemetryStatus.CONFIGURED
+    elif effective_mode == "synthetic_only":
+        update_data["telemetry_status"] = TelemetryStatus.NOT_CONFIGURED
 
     # Convert monitoring_mode string to enum
     if "monitoring_mode" in update_data and update_data["monitoring_mode"] is not None:

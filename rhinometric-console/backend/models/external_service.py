@@ -32,6 +32,14 @@ class MonitoringMode(str, enum.Enum):
     TELEMETRY_ENABLED = "telemetry_enabled"
 
 
+class TelemetryStatus(str, enum.Enum):
+    NOT_CONFIGURED = "not_configured"
+    CONFIGURED = "configured"
+    CONNECTED = "connected"
+    RECEIVING_DATA = "receiving_data"
+    ERROR = "error"
+
+
 class ExternalService(Base):
     """
     External Service connector - represents a user-managed service
@@ -78,6 +86,13 @@ class ExternalService(Base):
     telemetry_attached = Column(Boolean, default=False, nullable=False)
     telemetry_source_type = Column(String(50), nullable=True)   # "collector" | None
     telemetry_service_key = Column(String(255), nullable=True)  # key linking to collector
+    telemetry_token = Column(String(128), nullable=True, unique=True, index=True)  # secure ingestion token
+    telemetry_status = Column(
+        SAEnum(TelemetryStatus, name="telemetry_status_enum", create_type=False),
+        default=TelemetryStatus.NOT_CONFIGURED,
+        nullable=False,
+    )
+    last_telemetry_at = Column(DateTime(timezone=True), nullable=True)  # last ingestion timestamp
 
     # Status (updated on each check / test)
     status = Column(
@@ -130,6 +145,9 @@ class ExternalService(Base):
             "telemetry_attached": self.telemetry_attached or False,
             "telemetry_source_type": self.telemetry_source_type,
             "telemetry_service_key": self.telemetry_service_key,
+            "telemetry_token": self.telemetry_token,
+            "telemetry_status": self.telemetry_status.value if self.telemetry_status else "not_configured",
+            "last_telemetry_at": self.last_telemetry_at.isoformat() if self.last_telemetry_at else None,
             "status": self.status.value if self.status else "unknown",
             "status_message": self.status_message,
             "last_check_at": self.last_check_at.isoformat() if self.last_check_at else None,
