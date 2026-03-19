@@ -1,6 +1,6 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Network, Clock, Search, Filter, Download, ExternalLink, AlertCircle } from 'lucide-react'
+import { Network, Clock, Search, Filter, Download, ExternalLink, Inbox } from 'lucide-react'
 import { useAuthStore } from '../lib/auth/store'
 import { openGrafanaExplore } from '../utils/grafana'
 
@@ -28,11 +28,11 @@ export function TracesPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [serviceFilter, setServiceFilter] = useState<string>('all')
   const [minDuration, setMinDuration] = useState<string>('')
-  const [timeRange, setTimeRange] = useState<string>('15m')  // Changed from 1h to 15min for performance
+  const [timeRange, setTimeRange] = useState<string>('15m')
   const [selectedTrace, setSelectedTrace] = useState<Trace | null>(null)
   const [selectedSpan, setSelectedSpan] = useState<Span | null>(null)
 
-  // Fetch available services from Jaeger
+  // Fetch available services (backend already filters internal ones)
   const { data: servicesData } = useQuery({
     queryKey: ['jaeger-services'],
     queryFn: async () => {
@@ -40,10 +40,9 @@ export function TracesPage() {
         headers: { Authorization: `Bearer ${token}` }
       })
       if (!response.ok) return { services: [] }
-      const data = await response.json()
-      return data
+      return response.json()
     },
-    staleTime: 30000, // Cache for 30 seconds
+    staleTime: 30000,
   })
 
   const { data: tracesData, isLoading, error, refetch } = useQuery({
@@ -68,10 +67,9 @@ export function TracesPage() {
       })
 
       if (!response.ok) throw new Error('Failed to fetch traces')
-      const data = await response.json()
-      return data
+      return response.json()
     },
-    enabled: true, // Temporarily changed from !!token
+    enabled: !!token,
     staleTime: 0,
   })
 
@@ -79,7 +77,7 @@ export function TracesPage() {
   const services = ['all', ...(servicesData?.services || [])]
 
   const formatDuration = (microseconds: number): string => {
-    if (microseconds < 1000) return `${microseconds.toFixed(0)}µs`
+    if (microseconds < 1000) return `${microseconds.toFixed(0)}us`
     if (microseconds < 1000000) return `${(microseconds / 1000).toFixed(2)}ms`
     return `${(microseconds / 1000000).toFixed(2)}s`
   }
@@ -93,11 +91,11 @@ export function TracesPage() {
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      {/* Header – stacks on mobile */}
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-white mb-1 sm:mb-2">Distributed Traces</h1>
-          <p className="text-text-muted text-sm sm:text-base">Analyze request flows and performance with Jaeger</p>
+          <p className="text-text-muted text-sm sm:text-base">Analyze request flows and service performance</p>
         </div>
         <button
           onClick={() => {
@@ -120,7 +118,6 @@ export function TracesPage() {
 
       {/* Search and Filters */}
       <div className="card space-y-3 sm:space-y-4">
-        {/* Search Bar */}
         <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
@@ -141,7 +138,6 @@ export function TracesPage() {
           </button>
         </div>
 
-        {/* Filters – wraps naturally */}
         <div className="flex flex-wrap items-center gap-3 sm:gap-4">
           <div className="flex items-center gap-2">
             <Filter size={16} className="text-gray-400 flex-shrink-0" />
@@ -207,25 +203,11 @@ export function TracesPage() {
             </button>
           </div>
         ) : traces.length === 0 ? (
-          <div className="text-center py-12 px-4">
-            <Network className="text-gray-400 mx-auto mb-4" size={48} />
-            <p className="text-white text-lg font-semibold">No Traces Found</p>
-            <p className="text-gray-400 mt-2 text-sm">No distributed traces available in the selected time range</p>
-            <div className="mt-6 p-3 sm:p-4 bg-primary/10 border border-primary/30 rounded-lg max-w-2xl mx-auto text-left">
-              <div className="flex items-start gap-3">
-                <AlertCircle className="text-primary mt-1 flex-shrink-0" size={20} />
-                <div className="text-sm text-gray-300 min-w-0">
-                  <p className="font-semibold text-primary mb-2">About Distributed Tracing</p>
-                  <p className="mb-2 text-xs sm:text-sm">Jaeger collects traces from instrumented applications. If no traces appear:</p>
-                  <ul className="list-disc list-inside space-y-1 text-gray-400 text-xs sm:text-sm">
-                    <li>Ensure services are instrumented with OpenTelemetry</li>
-                    <li>Verify Jaeger is receiving spans on port 14317 (gRPC) or 14318 (HTTP)</li>
-                    <li>Check that services have OTLP exporters configured</li>
-                    <li>Try increasing the time range if traces are sparse</li>
-                  </ul>
-                </div>
-              </div>
-            </div>
+          <div className="text-center py-16 px-4">
+            <Inbox className="text-gray-500 mx-auto mb-4" size={56} />
+            <p className="text-white text-lg font-semibold">No customer traces connected</p>
+            <p className="text-gray-400 mt-2 text-sm">This workspace is not receiving customer distributed traces yet.</p>
+            <p className="text-gray-500 mt-1 text-xs">Deploy a collector to ingest traces for your services.</p>
           </div>
         ) : (
           <div className="space-y-2 sm:space-y-3">
@@ -263,7 +245,7 @@ export function TracesPage() {
                     </div>
                     <div className="flex items-center gap-2 text-xs text-gray-500">
                       <span className="truncate">{rootSpan?.serviceName || 'unknown'}</span>
-                      <span>•</span>
+                      <span>{'\u2022'}</span>
                       <span className="flex-shrink-0">{new Date(rootSpan?.startTime / 1000).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
                     </div>
                   </div>
@@ -296,7 +278,7 @@ export function TracesPage() {
             {/* Modal Content */}
             <div className="flex-1 overflow-y-auto p-3 sm:p-6">
               <div className="space-y-4 sm:space-y-6">
-                {/* Trace Summary – responsive grid */}
+                {/* Trace Summary */}
                 <div className="grid grid-cols-3 gap-2 sm:gap-4">
                   <div className="card p-2 sm:p-4">
                     <p className="text-xs text-gray-400 mb-1">Duration</p>
@@ -350,7 +332,7 @@ export function TracesPage() {
                                   className={`absolute h-full rounded ${getSpanColor(span.duration)}`}
                                   style={{
                                     left: `${startOffset}%`,
-                                    width: `${Math.max(width, 0.5)}%`, // Ensure at least a tiny visible bar
+                                    width: `${Math.max(width, 0.5)}%`,
                                     minWidth: '2px'
                                   }}
                                 ></div>
@@ -366,7 +348,7 @@ export function TracesPage() {
                   </div>
                 </div>
 
-                {/* Span Details Panel – responsive grid */}
+                {/* Span Details Panel */}
                 {selectedSpan && (
                   <div className="card bg-surface-light border-primary/20 p-3 sm:p-4">
                     <div className="flex items-center justify-between mb-3 sm:mb-4">
@@ -436,7 +418,6 @@ export function TracesPage() {
                 <div className="flex gap-2 sm:gap-3">
                   <button
                     onClick={() => {
-                      // Open Grafana Explore directly (v2.5.1 - direct links strategy)
                       const exploreUrl = `?orgId=1&left=${encodeURIComponent(JSON.stringify({
                         datasource: 'jaeger',
                         queries: [{ refId: 'A', query: selectedTrace.traceID }],

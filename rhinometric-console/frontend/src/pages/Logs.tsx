@@ -1,4 +1,4 @@
-import { FileText, Search, Download, RefreshCw, Filter, Clock } from 'lucide-react'
+﻿import { FileText, Search, Download, RefreshCw, Filter, Clock, Inbox } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useAuthStore } from '../lib/auth/store'
@@ -21,7 +21,7 @@ export function LogsPage() {
   const isAdmin = useAuthStore((state) => state.isAdmin)
   const [searchQuery, setSearchQuery] = useState('')
   const [levelFilter, setLevelFilter] = useState<string>('all')
-  const [timeRange, setTimeRange] = useState<string>('15m')  // Changed from 1h to 15min for performance
+  const [timeRange, setTimeRange] = useState<string>('15m')
   const [autoRefresh, setAutoRefresh] = useState(false)
 
   const { data: logsData, isLoading, error, refetch } = useQuery({
@@ -29,19 +29,18 @@ export function LogsPage() {
     queryFn: async () => {
       if (!token) throw new Error('No token available')
 
-      // Build LogQL query - optimized for speed
       let logql = '{job=~".+"}'
       if (levelFilter !== 'all') {
-        logql = `{job=~".+"} |= "${levelFilter}"`  // Use exact match for speed
+        logql = `{job=~".+"} |= "${levelFilter}"`
       }
       if (searchQuery) {
-        logql += ` |= "${searchQuery}"`  // Use exact match instead of regex
+        logql += ` |= "${searchQuery}"`
       }
 
       const params = new URLSearchParams({
         query: logql,
-        limit: '50',  // Reduced limit for faster response
-        start: `${Date.now() - parseTimeRange(timeRange)}000000`, // nanoseconds
+        limit: '50',
+        start: `${Date.now() - parseTimeRange(timeRange)}000000`,
         end: `${Date.now()}000000`,
         direction: 'backward'
       })
@@ -53,7 +52,7 @@ export function LogsPage() {
       if (!response.ok) throw new Error('Failed to fetch logs')
       return response.json()
     },
-    enabled: true, // Temporarily changed from !!token
+    enabled: !!token,
     refetchInterval: autoRefresh ? 5000 : false,
     refetchOnMount: true,
     staleTime: 0,
@@ -97,11 +96,11 @@ export function LogsPage() {
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      {/* Header – stacks on mobile */}
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-white mb-1 sm:mb-2">Log Explorer</h1>
-          <p className="text-text-muted text-sm sm:text-base">Query and analyze logs from Loki</p>
+          <p className="text-text-muted text-sm sm:text-base">Query and analyze service logs</p>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
           <button
@@ -134,7 +133,6 @@ export function LogsPage() {
 
       {/* Search and Filters */}
       <div className="card space-y-3 sm:space-y-4">
-        {/* Search Bar – wraps buttons below on mobile */}
         <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
@@ -158,7 +156,6 @@ export function LogsPage() {
             {isAdmin() && (
             <button
               onClick={() => {
-                // Build LogQL query
                 let logql = '{job=~".+"}'
                 if (levelFilter !== 'all') {
                   logql = `{job=~".+"} |= "${levelFilter}"`
@@ -166,8 +163,6 @@ export function LogsPage() {
                 if (searchQuery) {
                   logql += ` |= "${searchQuery}"`
                 }
-
-                // Open Grafana Explore directly (v2.5.1 - direct links strategy)
                 const exploreUrl = `?orgId=1&left=${encodeURIComponent(JSON.stringify({
                   datasource: 'loki',
                   queries: [{ refId: 'A', expr: logql }],
@@ -185,7 +180,6 @@ export function LogsPage() {
           </div>
         </div>
 
-        {/* Filters – wraps naturally */}
         <div className="flex flex-wrap items-center gap-3 sm:gap-4">
           <div className="flex items-center gap-2">
             <Filter size={16} className="text-gray-400 flex-shrink-0" />
@@ -241,10 +235,11 @@ export function LogsPage() {
             </button>
           </div>
         ) : logs.length === 0 ? (
-          <div className="text-center py-12 px-4">
-            <FileText className="text-gray-400 mx-auto mb-4" size={48} />
-            <p className="text-white text-lg font-semibold">No Logs Found</p>
-            <p className="text-gray-400 mt-2 text-sm">Try adjusting your search filters or time range</p>
+          <div className="text-center py-16 px-4">
+            <Inbox className="text-gray-500 mx-auto mb-4" size={56} />
+            <p className="text-white text-lg font-semibold">No customer logs connected</p>
+            <p className="text-gray-400 mt-2 text-sm">This workspace is not receiving customer service logs yet.</p>
+            <p className="text-gray-500 mt-1 text-xs">Deploy a collector to ingest logs for your services.</p>
           </div>
         ) : (
           <div className="space-y-0 max-h-[600px] overflow-y-auto divide-y divide-gray-700/30">
@@ -255,7 +250,6 @@ export function LogsPage() {
               >
                 {/* Desktop: single row */}
                 <div className="hidden sm:flex items-start gap-3">
-                  {/* Timestamp */}
                   <div className="text-xs text-gray-500 font-mono whitespace-nowrap pt-1">
                     {new Date(log.timestamp).toLocaleTimeString('en-US', {
                       hour12: false,
@@ -264,20 +258,14 @@ export function LogsPage() {
                       second: '2-digit'
                     })}
                   </div>
-
-                  {/* Level Badge */}
                   <div className={`text-xs font-medium px-2 py-0.5 rounded border whitespace-nowrap ${getLevelColor(log.level)}`}>
                     {log.level.toUpperCase()}
                   </div>
-
-                  {/* Labels */}
                   {log.stream.job && (
                     <code className="text-xs text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded whitespace-nowrap">
                       {log.stream.job}
                     </code>
                   )}
-
-                  {/* Message */}
                   <div className="flex-1 text-sm text-gray-300 font-mono break-all">
                     {log.message}
                   </div>
@@ -311,24 +299,6 @@ export function LogsPage() {
             ))}
           </div>
         )}
-      </div>
-
-      {/* Info Banner */}
-      <div className="card bg-primary/5 border-primary/20">
-        <div className="flex items-start gap-3">
-          <FileText className="text-primary mt-1 flex-shrink-0" size={20} />
-          <div className="min-w-0">
-            <h3 className="text-sm font-semibold text-white mb-1">LogQL Queries</h3>
-            <p className="text-xs text-gray-400 break-words">
-              Use LogQL syntax for advanced queries. Examples:
-              <code className="text-primary mx-1">{'{job="varlogs"}'}</code>
-              or <code className="text-primary mx-1">{'|~ "error"'}</code> for regex matching.
-            </p>
-            <p className="text-xs text-gray-500 mt-2">
-              Connected to Loki on port 3100 • {autoRefresh ? 'Auto-refreshing every 5s' : 'Manual refresh'}
-            </p>
-          </div>
-        </div>
       </div>
     </div>
   )
