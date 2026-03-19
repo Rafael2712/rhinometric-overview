@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import React, { useEffect, useState, useCallback } from 'react'
 import {
   Server, AlertCircle, CheckCircle, Activity, Globe, Database, 
   Network, Plus, Trash2, Play, Power, PowerOff, Edit, ArrowLeft,
@@ -90,6 +90,131 @@ function TypeBadge({ type }: { type: string }) {
       <t.Icon className="w-3 h-3" /> {t.label}
     </span>
   )
+}
+
+/* ─── Monitoring Badge ────────────────────────────────────── */
+function MonitoringBadge({ svc }: { svc: ExternalServiceData }) {
+  // Telemetry indicator dot color
+  const dotColor = svc.monitoring_mode === 'synthetic_only'
+    ? 'bg-gray-500'                   // grey = synthetic only
+    : svc.telemetry_attached
+      ? 'bg-green-400'                // green = telemetry attached
+      : 'bg-blue-400';                // blue = configured but not attached
+
+  const label = svc.capability || 'Synthetic only';
+
+  return (
+    <div className="flex items-center gap-2">
+      <span className={`w-2 h-2 rounded-full flex-shrink-0 ${dotColor}`} title={
+        svc.monitoring_mode === 'synthetic_only'
+          ? 'Synthetic only'
+          : svc.telemetry_attached
+            ? 'Telemetry attached'
+            : 'Telemetry configured, not attached'
+      } />
+      <span className="text-xs text-gray-300 whitespace-nowrap">{label}</span>
+    </div>
+  );
+}
+
+/* ─── Monitoring Detail Panel (expanded row) ─────────────────── */
+function MonitoringDetailPanel({ svc }: { svc: ExternalServiceData }) {
+  const isTelemetry = svc.monitoring_mode === 'telemetry_enabled';
+  const signals = [
+    { label: 'Metrics', enabled: svc.metrics_enabled, Icon: BarChart3, color: 'text-blue-400' },
+    { label: 'Logs',    enabled: svc.logs_enabled,    Icon: FileText, color: 'text-yellow-400' },
+    { label: 'Traces',  enabled: svc.traces_enabled,  Icon: Waypoints, color: 'text-purple-400' },
+  ];
+
+  return (
+    <div className="bg-gray-900/60 border-t border-gray-700/30 px-6 py-5">
+      <h4 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
+        <Activity className="w-4 h-4 text-blue-400" />
+        Monitoring Configuration
+      </h4>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Column 1: Monitoring Mode */}
+        <div className="space-y-2">
+          <p className="text-xs uppercase tracking-wider text-gray-500 font-medium">Monitoring Mode</p>
+          <div className="flex items-center gap-2">
+            <Radio className="w-4 h-4 text-gray-400" />
+            <span className="text-sm text-white font-medium">
+              {isTelemetry ? 'Telemetry Enabled' : 'Synthetic Only'}
+            </span>
+          </div>
+        </div>
+
+        {/* Column 2: Synthetic Monitoring */}
+        <div className="space-y-2">
+          <p className="text-xs uppercase tracking-wider text-gray-500 font-medium">Synthetic Monitoring</p>
+          <div className="space-y-1 text-sm">
+            <div className="flex items-center gap-2">
+              <span className={`w-1.5 h-1.5 rounded-full ${svc.synthetic_enabled ? 'bg-green-400' : 'bg-gray-600'}`} />
+              <span className="text-gray-400">Status:</span>
+              <span className="text-white">{svc.synthetic_enabled ? 'Enabled' : 'Disabled'}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-gray-400">Target:</span>
+              <code className="text-gray-300 bg-gray-800/50 px-1.5 py-0.5 rounded text-xs">{targetDisplay(svc)}</code>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-gray-400">Interval:</span>
+              <span className="text-white">{svc.check_interval_seconds}s</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-gray-400">Timeout:</span>
+              <span className="text-white">{svc.timeout_seconds}s</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Column 3: Telemetry Status */}
+        <div className="space-y-2">
+          <p className="text-xs uppercase tracking-wider text-gray-500 font-medium">Telemetry Status</p>
+          {isTelemetry ? (
+            <div className="space-y-2 text-sm">
+              <div className="flex items-center gap-2">
+                <span className={`w-1.5 h-1.5 rounded-full ${svc.telemetry_attached ? 'bg-green-400' : 'bg-yellow-400'}`} />
+                <span className="text-gray-400">Attached:</span>
+                <span className={svc.telemetry_attached ? 'text-green-400' : 'text-yellow-400'}>
+                  {svc.telemetry_attached ? 'Yes' : 'No'}
+                </span>
+              </div>
+              <div className="space-y-1">
+                <p className="text-gray-400 text-xs">Signals enabled:</p>
+                <div className="flex flex-wrap gap-2">
+                  {signals.map(s => (
+                    <span key={s.label} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${s.enabled ? 'bg-gray-700/50 text-white' : 'bg-gray-800/30 text-gray-600 line-through'}`}>
+                      <s.Icon className={`w-3 h-3 ${s.enabled ? s.color : 'text-gray-600'}`} />
+                      {s.label}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              {svc.telemetry_service_key && (
+                <div className="flex items-center gap-2">
+                  <span className="text-gray-400">Service Key:</span>
+                  <code className="text-gray-300 bg-gray-800/50 px-1.5 py-0.5 rounded text-xs">{svc.telemetry_service_key}</code>
+                </div>
+              )}
+              {!svc.telemetry_attached && (
+                <div className="mt-2 flex items-start gap-2 px-3 py-2 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
+                  <Info className="w-4 h-4 text-yellow-400 flex-shrink-0 mt-0.5" />
+                  <p className="text-yellow-300/80 text-xs">Telemetry is configured but no data source is currently connected.</p>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="flex items-start gap-2 px-3 py-2 rounded-lg bg-gray-800/50 border border-gray-700/30">
+              <Info className="w-4 h-4 text-gray-500 flex-shrink-0 mt-0.5" />
+              <p className="text-gray-500 text-xs">This service is monitored using synthetic checks only.</p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function targetDisplay(svc: ExternalServiceData): string {
@@ -244,6 +369,7 @@ export default function Services() {
   const [testing, setTesting] = useState(false)
   const [testResult, setTestResult] = useState<any>(null)
   const [actionLoading, setActionLoading] = useState<number | null>(null)
+  const [expandedServiceId, setExpandedServiceId] = useState<number | null>(null)
 
   // Catalog filter state
   const [filterSearch, setFilterSearch] = useState('')
@@ -1457,6 +1583,7 @@ export default function Services() {
                       <th className="text-left p-4 text-gray-400 font-medium">Catalog Type</th>
                       <th className="text-left p-4 text-gray-400 font-medium">Category</th>
                       <th className="text-left p-4 text-gray-400 font-medium">Target</th>
+                      <th className="text-left p-4 text-gray-400 font-medium">Monitoring</th>
                       <th className="text-left p-4 text-gray-400 font-medium">Status</th>
                       <th className="text-left p-4 text-gray-400 font-medium">Latency</th>
                       <th className="text-left p-4 text-gray-400 font-medium">Last Check</th>
@@ -1465,14 +1592,16 @@ export default function Services() {
                   </thead>
                   <tbody>
                     {filteredServices.length === 0 && hasActiveFilters && (
-                      <tr><td colSpan={9} className="p-8 text-center text-gray-500">
+                      <tr><td colSpan={10} className="p-8 text-center text-gray-500">
                         <Search className="w-8 h-8 mx-auto mb-2 text-gray-600" />
                         <p>No services match the current filters</p>
                         <button onClick={clearFilters} className="text-blue-400 hover:text-blue-300 text-sm mt-1">Clear filters</button>
                       </td></tr>
                     )}
                     {filteredServices.map(svc => (
-                      <tr key={svc.id} className={`border-b border-gray-700/30 hover:bg-gray-700/30 transition-colors ${!svc.enabled ? 'opacity-50' : ''}`}>
+                      <React.Fragment key={svc.id}>
+                      <tr className={`border-b border-gray-700/30 hover:bg-gray-700/30 transition-colors cursor-pointer ${!svc.enabled ? 'opacity-50' : ''}`}
+                        onClick={() => setExpandedServiceId(expandedServiceId === svc.id ? null : svc.id)}>
                         <td className="p-4">
                           <div className="flex items-center gap-3">
                             <div className={`p-2 rounded ${svc.enabled ? 'bg-emerald-400/10' : 'bg-gray-700/50'}`}>
@@ -1501,6 +1630,7 @@ export default function Services() {
                             {targetDisplay(svc)}
                           </code>
                         </td>
+                        <td className="p-4"><MonitoringBadge svc={svc} /></td>
                         <td className="p-4"><StatusBadge status={svc.enabled ? svc.status : 'unknown'} /></td>
                         <td className="p-4 text-gray-300 text-sm">
                           {svc.last_response_time_ms != null ? `${svc.last_response_time_ms.toFixed(0)}ms` : '-'}
@@ -1508,7 +1638,7 @@ export default function Services() {
                         <td className="p-4 text-gray-400 text-sm">
                           {svc.last_check_at ? new Date(svc.last_check_at).toLocaleString() : 'Never'}
                         </td>
-                        <td className="p-4">
+                        <td className="p-4" onClick={e => e.stopPropagation()}>
                           <div className="flex items-center justify-end gap-1">
                             <button onClick={() => canManage && handleTestSaved(svc.id)} disabled={!canManage || actionLoading === svc.id}
                               title={canManage ? "Test connection" : "Admin only"} className={`p-1.5 rounded transition-colors disabled:opacity-50 ${canManage ? 'hover:bg-gray-700/50 text-gray-400 hover:text-green-400' : 'text-gray-600 cursor-not-allowed'}`}>
@@ -1529,6 +1659,14 @@ export default function Services() {
                           </div>
                         </td>
                       </tr>
+                      {expandedServiceId === svc.id && (
+                        <tr className="bg-gray-900/40">
+                          <td colSpan={10} className="p-0">
+                            <MonitoringDetailPanel svc={svc} />
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
                     ))}
                   </tbody>
                 </table>
