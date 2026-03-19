@@ -2,7 +2,7 @@
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuthStore } from '../lib/auth/store'
-import { HardDrive, Download, Plus, CheckCircle, XCircle, Lock, Archive, RefreshCw, AlertTriangle, Info, Eye, RotateCcw, X, Shield, ExternalLink } from 'lucide-react'
+import { HardDrive, Download, Plus, CheckCircle, XCircle, Lock, Archive, RefreshCw, AlertTriangle, Info, Eye, RotateCcw, X, Shield, ExternalLink, Trash2, Database, Clock, Search, Filter } from 'lucide-react'
 
 interface BackupArtifact {
   id: string
@@ -54,7 +54,24 @@ interface RestoreResult {
   restored: { external_services: number; service_dependencies: number }
 }
 
-function formatBytes(bytes: number | null): string {
+interface StorageData {
+  total_bytes: number
+  completed_count: number
+  failed_count: number
+  storage_path: string
+  disk_free_bytes: number | null
+}
+
+interface LastRestoreData {
+  backup_filename?: string
+  restored_by?: string
+  restored_at?: string
+  services_restored?: number
+  dependencies_restored?: number
+  message?: string
+}
+
+function formatBytes(bytes: number | null | undefined): string {
   if (bytes === null || bytes === undefined) return '-'
   if (bytes === 0) return '0 B'
   const k = 1024
@@ -114,6 +131,9 @@ export function BackupRecoveryPage() {
   const [restoreTarget, setRestoreTarget] = useState<{ id: string; filename: string; preview?: PreviewData } | null>(null)
   const [restoreResult, setRestoreResult] = useState<RestoreResult | null>(null)
   const [restoreError, setRestoreError] = useState<string | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; filename: string } | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [statusFilter, setStatusFilter] = useState<string>('all')
 
   const { data: summaryData } = useQuery<SummaryResponse>({
     queryKey: ['backups-summary', token],
@@ -137,6 +157,28 @@ export function BackupRecoveryPage() {
     refetchInterval: 10000,
   })
 
+  const { data: storageData } = useQuery<StorageData>({
+    queryKey: ['backups-storage', token],
+    queryFn: async () => {
+      const r = await fetch('/api/backups/storage', { headers: { Authorization: `Bearer ${token}` } })
+      if (!r.ok) throw new Error('Failed')
+      return r.json()
+    },
+    enabled: !!token,
+    refetchInterval: 30000,
+  })
+
+  const { data: lastRestoreData } = useQuery<LastRestoreData>({
+    queryKey: ['backups-last-restore', token],
+    queryFn: async () => {
+      const r = await fetch('/api/backups/last-restore', { headers: { Authorization: `Bearer ${token}` } })
+      if (!r.ok) throw new Error('Failed')
+      return r.json()
+    },
+    enabled: !!token,
+    refetchInterval: 30000,
+  })
+
   const createMutation = useMutation({
     mutationFn: async () => {
       const r = await fetch('/api/backups/create', { method: 'POST', headers: { Authorization: `Bearer ${token}` } })
@@ -146,6 +188,7 @@ export function BackupRecoveryPage() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['backups-summary'] })
       queryClient.invalidateQueries({ queryKey: ['backups-list'] })
+      queryClient.invalidateQueries({ queryKey: ['backups-storage'] })
       setCreating(false)
       if (data?.status === 'failed') createMutation.reset()
     },
@@ -168,7 +211,7 @@ export function BackupRecoveryPage() {
       setRestoreError(null)
       queryClient.invalidateQueries({ queryKey: ['backups-summary'] })
       queryClient.invalidateQueries({ queryKey: ['backups-list'] })
-      // Sync other pages so restored data is visible immediately
+      queryClient.invalidateQueries({ queryKey: ['backups-last-restore'] })
       queryClient.invalidateQueries({ queryKey: ['services-summary'] })
       queryClient.invalidateQueries({ queryKey: ['kpis'] })
       queryClient.invalidateQueries({ queryKey: ['external-services'] })
@@ -179,6 +222,25 @@ export function BackupRecoveryPage() {
       setRestoreError(err.message)
       setRestoreTarget(null)
     },
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: async (backupId: string) => {
+      const r = await fetch(`/api/backups/${backupId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ confirm: true }),
+      })
+      if (!r.ok) { const err = await r.json().catch(() => ({ detail: 'Delete failed' })); throw new Error(err.detail || 'Delete failed') }
+      return r.json()
+    },
+    onSuccess: () => {
+      setDeleteTarget(null)
+      queryClient.invalidateQueries({ queryKey: ['backups-summary'] })
+      queryClient.invalidateQueries({ queryKey: ['backups-list'] })
+      queryClient.invalidateQueries({ queryKey: ['backups-storage'] })
+    },
+    onError: () => setDeleteTarget(null),
   })
 
   const handleCreate = () => { setCreating(true); createMutation.mutate() }
@@ -222,6 +284,13 @@ export function BackupRecoveryPage() {
   const lastFail = summaryData?.latest_failed
   const totalBackups = summaryData?.total_backups ?? 0
 
+  // Filter and search
+  const filteredItems = (listData?.items ?? []).filter((b) => {
+    if (statusFilter !== 'all' && b.status !== statusFilter) return false
+    if (searchQuery && !b.filename.toLowerCase().includes(searchQuery.toLowerCase())) return false
+    return true
+  })
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -240,7 +309,7 @@ export function BackupRecoveryPage() {
       {!canManage && (
         <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
           <Lock className="w-5 h-5 text-yellow-400 flex-shrink-0" />
-          <p className="text-yellow-300 text-sm"><span className="font-medium">View-only mode.</span> Only administrators can create, restore, or download backups.</p>
+          <p className="text-yellow-300 text-sm"><span className="font-medium">View-only mode.</span> Only administrators can create, restore, delete, or download backups.</p>
         </div>
       )}
 
@@ -295,8 +364,8 @@ export function BackupRecoveryPage() {
         </div>
       )}
 
-      {/* Summary cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      {/* Summary cards row 1 */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="card p-4">
           <div className="flex items-center gap-2 mb-2"><CheckCircle className="w-4 h-4 text-success" /><span className="text-sm text-text-muted">Last Successful</span></div>
           <p className="text-lg font-semibold text-white">{lastOk ? formatDate(lastOk.created_at) : 'Never'}</p>
@@ -311,20 +380,78 @@ export function BackupRecoveryPage() {
           <div className="flex items-center gap-2 mb-2"><Archive className="w-4 h-4 text-primary" /><span className="text-sm text-text-muted">Total Backups</span></div>
           <p className="text-lg font-semibold text-white">{totalBackups}</p>
         </div>
+        <div className="card p-4">
+          <div className="flex items-center gap-2 mb-2"><Database className="w-4 h-4 text-blue-400" /><span className="text-sm text-text-muted">Storage Used</span></div>
+          <p className="text-lg font-semibold text-white">{storageData ? formatBytes(storageData.total_bytes) : '-'}</p>
+          {storageData && storageData.disk_free_bytes !== null && <p className="text-xs text-gray-400 mt-1">{formatBytes(storageData.disk_free_bytes)} free on disk</p>}
+        </div>
+      </div>
+
+      {/* Info panels row */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Retention Policy */}
+        <div className="card p-4">
+          <div className="flex items-center gap-2 mb-3"><Shield className="w-4 h-4 text-yellow-400" /><span className="text-sm font-medium text-white">Retention Policy</span></div>
+          <div className="space-y-2 text-sm">
+            <div className="flex justify-between"><span className="text-gray-400">Mode</span><span className="text-white">Manual retention</span></div>
+            <div className="flex justify-between"><span className="text-gray-400">Storage Path</span><span className="text-white font-mono text-xs">{storageData?.storage_path || '-'}</span></div>
+            <div className="flex justify-between"><span className="text-gray-400">Auto Cleanup</span><span className="text-yellow-400 text-xs">No automatic cleanup configured</span></div>
+          </div>
+        </div>
+
+        {/* Last Restore Audit */}
+        <div className="card p-4">
+          <div className="flex items-center gap-2 mb-3"><Clock className="w-4 h-4 text-purple-400" /><span className="text-sm font-medium text-white">Last Restore</span></div>
+          {lastRestoreData && !lastRestoreData.message ? (
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between"><span className="text-gray-400">Date</span><span className="text-white">{formatDate(lastRestoreData.restored_at || null)}</span></div>
+              <div className="flex justify-between"><span className="text-gray-400">Restored By</span><span className="text-white">{lastRestoreData.restored_by}</span></div>
+              <div className="flex justify-between"><span className="text-gray-400">Backup File</span><span className="text-white font-mono text-xs truncate max-w-[200px]">{lastRestoreData.backup_filename}</span></div>
+              <div className="flex justify-between"><span className="text-gray-400">Records</span><span className="text-white">{lastRestoreData.services_restored} services, {lastRestoreData.dependencies_restored} deps</span></div>
+            </div>
+          ) : (
+            <p className="text-gray-500 text-sm">No restores performed yet</p>
+          )}
+        </div>
       </div>
 
       {/* Backup History Table */}
       <div className="card overflow-hidden">
-        <div className="px-4 py-3 border-b border-gray-700 flex items-center gap-2">
+        <div className="px-4 py-3 border-b border-gray-700 flex items-center gap-3 flex-wrap">
           <HardDrive className="w-4 h-4 text-primary" />
           <h2 className="text-white font-medium">Backup History</h2>
-          <span className="text-xs text-gray-400 ml-auto">{listData?.total ?? 0} total</span>
+          <div className="flex items-center gap-2 ml-auto">
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-500" />
+              <input
+                type="text"
+                placeholder="Search filename..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-8 pr-3 py-1.5 text-xs rounded-md bg-surface-raised border border-border text-white placeholder-gray-500 focus:outline-none focus:border-primary w-48"
+              />
+            </div>
+            <div className="relative">
+              <Filter className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-500" />
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="pl-8 pr-6 py-1.5 text-xs rounded-md bg-surface-raised border border-border text-white appearance-none focus:outline-none focus:border-primary cursor-pointer"
+              >
+                <option value="all">All Status</option>
+                <option value="completed">Completed</option>
+                <option value="failed">Failed</option>
+                <option value="in_progress">In Progress</option>
+              </select>
+            </div>
+            <span className="text-xs text-gray-400">{filteredItems.length} of {listData?.total ?? 0}</span>
+          </div>
         </div>
 
         {isLoading ? (
           <div className="p-8 text-center text-gray-400">Loading...</div>
-        ) : !listData?.items?.length ? (
-          <div className="p-8 text-center text-gray-400">No backups yet. Create your first backup to get started.</div>
+        ) : !filteredItems.length ? (
+          <div className="p-8 text-center text-gray-400">{listData?.items?.length ? 'No backups match your filters.' : 'No backups yet. Create your first backup to get started.'}</div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -332,6 +459,7 @@ export function BackupRecoveryPage() {
                 <tr className="text-left text-gray-400 text-xs uppercase border-b border-gray-700">
                   <th className="px-4 py-3">Date</th>
                   <th className="px-4 py-3">Filename</th>
+                  <th className="px-4 py-3">Type</th>
                   <th className="px-4 py-3">Size</th>
                   <th className="px-4 py-3">Records</th>
                   <th className="px-4 py-3">Status</th>
@@ -340,10 +468,11 @@ export function BackupRecoveryPage() {
                 </tr>
               </thead>
               <tbody>
-                {listData.items.map((b) => (
+                {filteredItems.map((b) => (
                   <tr key={b.id} className="border-b border-gray-700/50 hover:bg-surface-light/30">
                     <td className="px-4 py-3 text-gray-300 whitespace-nowrap">{formatDate(b.created_at)}</td>
                     <td className="px-4 py-3 text-white font-mono text-xs">{b.filename}</td>
+                    <td className="px-4 py-3"><span className="text-xs px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400">{b.backup_type}</span></td>
                     <td className="px-4 py-3 text-gray-300">{formatBytes(b.size_bytes)}</td>
                     <td className="px-4 py-3 text-gray-300">{b.records_exported ?? '-'}</td>
                     <td className="px-4 py-3">{statusBadge(b.status)}</td>
@@ -365,16 +494,24 @@ export function BackupRecoveryPage() {
                                 className="flex items-center gap-1 text-xs text-orange-400 hover:text-orange-300 transition-colors" title="Restore">
                                 <RotateCcw className="w-3 h-3" />Restore
                               </button>
+                              <button onClick={() => setDeleteTarget({ id: b.id, filename: b.filename })}
+                                className="flex items-center gap-1 text-xs text-red-400 hover:text-red-300 transition-colors" title="Delete">
+                                <Trash2 className="w-3 h-3" />
+                              </button>
                             </>
                           )}
                         </div>
                       ) : b.status === 'failed' ? (
-                        <div className="flex flex-col gap-1 max-w-[200px]">
-                          <div className="flex items-center gap-1.5">
-                            {errorTypeBadge(b.error_type)}
-                            <button onClick={() => setExpandedError(expandedError === b.id ? null : b.id)} className="text-gray-400 hover:text-gray-300" title="Show details"><Info className="w-3 h-3" /></button>
-                          </div>
-                          {expandedError === b.id && <span className="text-[11px] text-red-400/80 break-words">{b.error_message || 'Unknown error'}</span>}
+                        <div className="flex items-center gap-1.5">
+                          {errorTypeBadge(b.error_type)}
+                          <button onClick={() => setExpandedError(expandedError === b.id ? null : b.id)} className="text-gray-400 hover:text-gray-300" title="Show details"><Info className="w-3 h-3" /></button>
+                          {canManage && (
+                            <button onClick={() => setDeleteTarget({ id: b.id, filename: b.filename })}
+                              className="flex items-center gap-1 text-xs text-red-400 hover:text-red-300 transition-colors ml-1" title="Delete">
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          )}
+                          {expandedError === b.id && <span className="text-[11px] text-red-400/80 break-words max-w-[200px]">{b.error_message || 'Unknown error'}</span>}
                         </div>
                       ) : <span className="text-xs text-gray-500">-</span>}
                     </td>
@@ -463,6 +600,32 @@ export function BackupRecoveryPage() {
               <button onClick={() => restoreMutation.mutate(restoreTarget.id)} disabled={restoreMutation.isPending}
                 className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-red-600 hover:bg-red-700 text-white transition-colors disabled:opacity-50">
                 {restoreMutation.isPending ? <><RefreshCw className="w-4 h-4 animate-spin" />Restoring...</> : <><RotateCcw className="w-4 h-4" />Restore Now</>}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="bg-surface border border-red-500/30 rounded-xl shadow-2xl w-full max-w-sm mx-4 p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-red-500/20 flex items-center justify-center"><Trash2 className="w-5 h-5 text-red-400" /></div>
+              <div>
+                <h3 className="text-lg font-semibold text-white">Delete Backup</h3>
+                <p className="text-xs text-gray-400">This cannot be undone</p>
+              </div>
+            </div>
+            <p className="text-gray-300 text-sm mb-1">Are you sure you want to delete this backup?</p>
+            <p className="text-gray-400 font-mono text-xs mb-4">{deleteTarget.filename}</p>
+            <p className="text-red-400/70 text-xs mb-4">The backup file will be permanently removed from disk and the record will be deleted from the database.</p>
+            <div className="flex justify-end gap-2">
+              <button onClick={() => setDeleteTarget(null)} disabled={deleteMutation.isPending}
+                className="px-4 py-2 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-gray-700 transition-colors">Cancel</button>
+              <button onClick={() => deleteMutation.mutate(deleteTarget.id)} disabled={deleteMutation.isPending}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-red-600 hover:bg-red-700 text-white transition-colors disabled:opacity-50">
+                {deleteMutation.isPending ? <><RefreshCw className="w-4 h-4 animate-spin" />Deleting...</> : <><Trash2 className="w-4 h-4" />Delete</>}
               </button>
             </div>
           </div>

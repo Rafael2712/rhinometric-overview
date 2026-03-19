@@ -160,6 +160,14 @@ async def startup_event():
     except Exception as e:
         logger.warning(f"Could not create backup_artifacts table: {e}")
 
+    # Auto-create restore_logs table (Phase 3 - Restore Audit)
+    try:
+        from models.restore_log import RestoreLog
+        RestoreLog.__table__.create(bind=engine, checkfirst=True)
+        logger.info("Restore logs table ready")
+    except Exception as e:
+        logger.warning(f"Could not create restore_logs table: {e}")
+
     # Initialize backup directory at startup
     try:
         from services.backup_service import init_backup_directory

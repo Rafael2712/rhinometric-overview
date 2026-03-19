@@ -1,6 +1,5 @@
 ﻿"""
-Backup router - API endpoints for backup management.
-Phase 2: Create, History, Summary, Preview, Restore.
+Backup router - Phase 3: Create, History, Summary, Preview, Restore, Delete, Storage, Audit.
 """
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -20,12 +19,19 @@ from services.backup_service import (
     get_backup_by_id,
     preview_backup,
     restore_backup,
+    delete_backup,
+    get_storage_usage,
+    get_last_restore,
 )
 
 router = APIRouter(tags=["backups"])
 
 
 class RestoreRequest(BaseModel):
+    confirm: bool = False
+
+
+class DeleteRequest(BaseModel):
     confirm: bool = False
 
 
@@ -79,6 +85,25 @@ def get_backup_summary(
     }
 
 
+@router.get("/storage")
+def get_storage_endpoint(
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Get backup storage usage stats."""
+    return get_storage_usage(db)
+
+
+@router.get("/last-restore")
+def get_last_restore_endpoint(
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Get most recent restore audit info."""
+    result = get_last_restore(db)
+    return result or {"message": "No restores performed yet"}
+
+
 @router.get("/{backup_id}/preview")
 def preview_backup_endpoint(
     backup_id: str,
@@ -118,6 +143,29 @@ def restore_backup_endpoint(
         elif e.error_type == "storage_error":
             status_code = 500
         raise HTTPException(status_code=status_code, detail=e.message)
+
+
+@router.delete("/{backup_id}")
+def delete_backup_endpoint(
+    backup_id: str,
+    body: DeleteRequest,
+    db: Session = Depends(get_db),
+    current_user=Depends(require_role(["OWNER", "ADMIN"])),
+):
+    """
+    Delete a backup artifact and file.
+    Requires confirm=true. Admin/Owner only.
+    Only completed or failed backups can be deleted.
+    """
+    if not body.confirm:
+        raise HTTPException(
+            status_code=400,
+            detail="Delete requires explicit confirmation. Send {\"confirm\": true} to proceed.",
+        )
+    try:
+        return delete_backup(db, backup_id)
+    except BackupError as e:
+        raise HTTPException(status_code=400, detail=e.message)
 
 
 @router.get("/{backup_id}")

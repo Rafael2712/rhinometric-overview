@@ -1,6 +1,7 @@
 ﻿"""
-Backup service - Phase 2: Backup, Restore, Preview, Checksum.
-Generates ZIP backups, validates integrity, supports restore with checksum verification.
+Backup service - Phase 3: Management, Delete, Storage, Audit.
+Generates ZIP backups, validates integrity, supports restore with
+checksum verification, delete, storage stats, and restore audit.
 """
 
 import os
@@ -12,10 +13,12 @@ import logging
 from datetime import datetime, timezone
 from pathlib import Path
 from sqlalchemy.orm import Session
+from sqlalchemy import func as sa_func
 
 from models.external_service import ExternalService
 from models.service_dependency import ServiceDependency
 from models.backup_artifact import BackupArtifact
+from models.restore_log import RestoreLog
 
 logger = logging.getLogger("rhinometric.backup_service")
 
@@ -296,6 +299,7 @@ def restore_backup(db: Session, backup_id: str, restored_by: str) -> dict:
     Restore configuration from a completed backup.
     Replaces ExternalService and ServiceDependency tables.
     Validates checksum before restoring.
+    Logs the restore for audit.
     """
     artifact = get_backup_by_id(db, backup_id)
     if not artifact:
@@ -379,6 +383,16 @@ def restore_backup(db: Session, backup_id: str, restored_by: str) -> dict:
         except Exception as e:
             logger.warning(f"Skipped dependency: {e}")
 
+    # Write restore audit log
+    restore_entry = RestoreLog(
+        backup_id=artifact.id,
+        backup_filename=artifact.filename,
+        restored_by=restored_by,
+        services_restored=restored_services,
+        dependencies_restored=restored_deps,
+    )
+    db.add(restore_entry)
+
     try:
         db.commit()
     except Exception as e:
@@ -405,6 +419,76 @@ def restore_backup(db: Session, backup_id: str, restored_by: str) -> dict:
             "service_dependencies": restored_deps,
         },
     }
+
+
+# ---------------------------------------------------------------------------
+# Delete Backup
+# ---------------------------------------------------------------------------
+
+def delete_backup(db: Session, backup_id: str) -> dict:
+    """Delete a backup artifact and its file from disk. Only completed or failed allowed."""
+    artifact = get_backup_by_id(db, backup_id)
+    if not artifact:
+        raise BackupError("Backup not found", error_type="unexpected_error")
+    if artifact.status not in ("completed", "failed"):
+        raise BackupError("Only completed or failed backups can be deleted", error_type="unexpected_error")
+
+    filename = artifact.filename
+    storage_path = artifact.storage_path
+
+    # Remove file from disk (ignore if missing)
+    if storage_path and os.path.isfile(storage_path):
+        try:
+            os.remove(storage_path)
+            logger.info(f"Deleted backup file: {storage_path}")
+        except Exception as e:
+            logger.warning(f"Could not delete backup file {storage_path}: {e}")
+
+    # Remove DB record
+    db.delete(artifact)
+    db.commit()
+    logger.info(f"Deleted backup record: {filename}")
+
+    return {"status": "deleted", "backup_id": str(backup_id), "filename": filename}
+
+
+# ---------------------------------------------------------------------------
+# Storage Usage
+# ---------------------------------------------------------------------------
+
+def get_storage_usage(db: Session) -> dict:
+    """Compute total storage used by backups."""
+    total_bytes = db.query(sa_func.coalesce(sa_func.sum(BackupArtifact.size_bytes), 0)).scalar()
+    completed_count = db.query(BackupArtifact).filter(BackupArtifact.status == "completed").count()
+    failed_count = db.query(BackupArtifact).filter(BackupArtifact.status == "failed").count()
+
+    # Disk free space
+    disk_free = None
+    try:
+        usage = shutil.disk_usage(BACKUP_DIR)
+        disk_free = usage.free
+    except Exception:
+        pass
+
+    return {
+        "total_bytes": int(total_bytes),
+        "completed_count": completed_count,
+        "failed_count": failed_count,
+        "storage_path": BACKUP_DIR,
+        "disk_free_bytes": disk_free,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Restore Audit
+# ---------------------------------------------------------------------------
+
+def get_last_restore(db: Session) -> dict | None:
+    """Get the most recent restore log entry."""
+    entry = db.query(RestoreLog).order_by(RestoreLog.restored_at.desc()).first()
+    if not entry:
+        return None
+    return entry.to_dict()
 
 
 # ---------------------------------------------------------------------------
