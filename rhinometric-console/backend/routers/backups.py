@@ -1,13 +1,16 @@
 ﻿"""
 Backup router - API endpoints for backup management.
+Phase 2: Create, History, Summary, Preview, Restore.
 """
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from database import get_db
-from routers.auth import get_current_user
+from routers.auth import get_current_user, require_role
 from services.backup_service import (
+    BackupError,
     create_backup,
     list_backups,
     count_backups,
@@ -15,9 +18,15 @@ from services.backup_service import (
     get_latest_successful,
     get_latest_failed,
     get_backup_by_id,
+    preview_backup,
+    restore_backup,
 )
 
 router = APIRouter(tags=["backups"])
+
+
+class RestoreRequest(BaseModel):
+    confirm: bool = False
 
 
 @router.post("/create")
@@ -68,6 +77,47 @@ def get_backup_summary(
         "latest_successful": latest_success.to_dict() if latest_success else None,
         "latest_failed": latest_failed.to_dict() if latest_failed else None,
     }
+
+
+@router.get("/{backup_id}/preview")
+def preview_backup_endpoint(
+    backup_id: str,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Preview contents of a backup without restoring."""
+    try:
+        return preview_backup(db, backup_id)
+    except BackupError as e:
+        raise HTTPException(status_code=400, detail=e.message)
+
+
+@router.post("/{backup_id}/restore")
+def restore_backup_endpoint(
+    backup_id: str,
+    body: RestoreRequest,
+    db: Session = Depends(get_db),
+    current_user=Depends(require_role(["OWNER", "ADMIN"])),
+):
+    """
+    Restore configuration from a backup.
+    Requires confirm=true in the request body.
+    Admin/Owner only.
+    """
+    if not body.confirm:
+        raise HTTPException(
+            status_code=400,
+            detail="Restore requires explicit confirmation. Send {\"confirm\": true} to proceed.",
+        )
+    try:
+        return restore_backup(db, backup_id, restored_by=current_user.username)
+    except BackupError as e:
+        status_code = 400
+        if e.error_type == "integrity_error":
+            status_code = 422
+        elif e.error_type == "storage_error":
+            status_code = 500
+        raise HTTPException(status_code=status_code, detail=e.message)
 
 
 @router.get("/{backup_id}")
