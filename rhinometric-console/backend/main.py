@@ -32,6 +32,7 @@ from routers import system as system_router
 from routers import service_map as service_map_router
 from routers import service_summary as service_summary_router
 from routers import backups as backups_router
+from routers import admin_purge as admin_purge_router
 
 app = FastAPI(
     title=settings.API_TITLE,
@@ -365,6 +366,7 @@ app.include_router(service_map_router.router, prefix=f"{settings.API_PREFIX}/ser
 app.include_router(service_summary_router.router, prefix=f"{settings.API_PREFIX}/services", tags=["Service Summary"])
 app.include_router(system_router.router, prefix=f"{settings.API_PREFIX}/system", tags=["System"])  # System admin endpoints  # External Services Connector MVP
 app.include_router(backups_router.router, prefix=f"{settings.API_PREFIX}/backups", tags=["Backups"])
+app.include_router(admin_purge_router.router, prefix=f"{settings.API_PREFIX}/admin/purge", tags=["Admin Purge"])  # Task 4: Manual purge
 
 if __name__ == "__main__":
     import uvicorn

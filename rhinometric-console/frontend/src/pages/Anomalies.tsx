@@ -5,7 +5,7 @@ import { useAuthStore } from '../lib/auth/store'
 import {
   AlertTriangle, CheckCircle2, Shield, Zap,
   ChevronDown, ChevronUp, Activity, Eye, Filter, BarChart3,
-  RefreshCw, XCircle, Bell
+  RefreshCw, XCircle, Bell, Trash2
 } from 'lucide-react'
 import { getSignalAvailability } from '../utils/signalAvailability'
 
@@ -126,10 +126,129 @@ function SeverityBadge({ severity }: { severity: string }) {
 }
 
 /* ── Main Page ────────────────────────────────────────────────── */
+
+/* ── Task 4: Purge Modal ──────────────────────────────────────── */
+function PurgeModal({ module, isOpen, onClose, token }: {
+  module: 'alerts' | 'incidents' | 'anomalies'
+  isOpen: boolean
+  onClose: (purged: boolean) => void
+  token: string | null
+}) {
+  const [days, setDays] = useState(30)
+  const [confirming, setConfirming] = useState(false)
+  const [result, setResult] = useState<{ deleted_count: number; message: string } | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  if (!isOpen) return null
+
+  const handlePurge = async () => {
+    setError(null)
+    setResult(null)
+    try {
+      const res = await fetch(`/api/admin/purge/${module}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ confirm: true, older_than_days: days }),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ detail: res.statusText }))
+        throw new Error(err.detail || 'Purge failed')
+      }
+      const data = await res.json()
+      setResult(data)
+      setConfirming(false)
+    } catch (e: any) {
+      setError(e.message || 'Purge failed')
+      setConfirming(false)
+    }
+  }
+
+  const labels: Record<string, string> = {
+    alerts: 'resolved/suppressed alert events',
+    incidents: 'resolved incidents',
+    anomalies: 'resolved/suppressed anomaly overrides',
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+      <div className="bg-surface border border-gray-700 rounded-xl p-6 w-full max-w-md shadow-2xl">
+        <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+          <Trash2 size={20} className="text-red-400" />
+          Clear {module.charAt(0).toUpperCase() + module.slice(1)} History
+        </h3>
+
+        {result ? (
+          <div className="space-y-4">
+            <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-3 text-green-400 text-sm">
+              {result.message}
+            </div>
+            <button onClick={() => onClose(true)}
+              className="w-full px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg text-sm">
+              Close
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <p className="text-sm text-gray-300">
+              Permanently delete <strong>{labels[module]}</strong> older than:
+            </p>
+            <div className="flex items-center gap-3">
+              <input type="number" min={1} max={365} value={days}
+                onChange={(e) => setDays(Math.max(1, Math.min(365, parseInt(e.target.value) || 30)))}
+                className="w-24 px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white text-sm" />
+              <span className="text-sm text-gray-400">days</span>
+            </div>
+
+            {error && (
+              <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3 text-red-400 text-sm">
+                {error}
+              </div>
+            )}
+
+            {!confirming ? (
+              <div className="flex gap-3">
+                <button onClick={() => onClose(false)}
+                  className="flex-1 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg text-sm">
+                  Cancel
+                </button>
+                <button onClick={() => setConfirming(true)}
+                  className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-lg text-sm">
+                  Purge
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3 text-red-300 text-sm">
+                  ⚠️ This action is irreversible. Are you sure?
+                </div>
+                <div className="flex gap-3">
+                  <button onClick={() => setConfirming(false)}
+                    className="flex-1 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg text-sm">
+                    Cancel
+                  </button>
+                  <button onClick={handlePurge}
+                    className="flex-1 px-4 py-2 bg-red-700 hover:bg-red-600 text-white rounded-lg text-sm font-semibold">
+                    Confirm Purge
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 export function AnomaliesPage() {
   const { token } = useAuthStore()
+  const isAdmin = useAuthStore((state) => state.isAdmin)
   const queryClient = useQueryClient()
   const headers: Record<string, string> = { Authorization: `Bearer ${token}` }
+  const [showPurge, setShowPurge] = useState(false)
 
   const [entityTypeFilter, setEntityTypeFilter] = useState<string>('')
   const [statusFilter, setStatusFilter] = useState<string>('')
@@ -198,11 +317,20 @@ export function AnomaliesPage() {
             Customer-facing anomaly detection — grouped by entity with lifecycle management
           </p>
         </div>
-        <div className="flex items-center gap-2 text-xs text-gray-400">
+        <div className="flex items-center gap-3 text-xs text-gray-400">
           <Activity size={14} className="text-green-400" />
           <span>{data?.total ?? 0} anomaly groups</span>
+          {isAdmin() && (
+            <button onClick={() => setShowPurge(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-red-600/20 hover:bg-red-600/30 text-red-400 border border-red-500/30 rounded-lg text-xs transition-colors ml-2">
+              <Trash2 size={13} />
+              <span>Clear History</span>
+            </button>
+          )}
         </div>
       </div>
+
+      <PurgeModal module="anomalies" isOpen={showPurge} onClose={(purged) => { setShowPurge(false); if (purged) queryClient.invalidateQueries({ queryKey: ['anomalies'] }) }} token={token} />
 
       {/* Filters */}
       <div className="bg-surface rounded-lg border border-gray-700 p-4">

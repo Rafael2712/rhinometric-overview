@@ -1,4 +1,4 @@
-import { Bell, Filter, Download, Clock, AlertTriangle, CheckCircle2, XCircle, VolumeX, UserCheck } from 'lucide-react'
+import { Bell, Filter, Download, Clock, AlertTriangle, CheckCircle2, XCircle, VolumeX, UserCheck, Trash2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuthStore } from '../lib/auth/store'
@@ -38,6 +38,123 @@ interface AckInfo {
   note?: string
 }
 
+
+/* ── Task 4: Purge Modal ──────────────────────────────────────── */
+function PurgeModal({ module, isOpen, onClose, token }: {
+  module: 'alerts' | 'incidents' | 'anomalies'
+  isOpen: boolean
+  onClose: (purged: boolean) => void
+  token: string | null
+}) {
+  const [days, setDays] = useState(30)
+  const [confirming, setConfirming] = useState(false)
+  const [result, setResult] = useState<{ deleted_count: number; message: string } | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  if (!isOpen) return null
+
+  const handlePurge = async () => {
+    setError(null)
+    setResult(null)
+    try {
+      const res = await fetch(`/api/admin/purge/${module}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ confirm: true, older_than_days: days }),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ detail: res.statusText }))
+        throw new Error(err.detail || 'Purge failed')
+      }
+      const data = await res.json()
+      setResult(data)
+      setConfirming(false)
+    } catch (e: any) {
+      setError(e.message || 'Purge failed')
+      setConfirming(false)
+    }
+  }
+
+  const labels: Record<string, string> = {
+    alerts: 'resolved/suppressed alert events',
+    incidents: 'resolved incidents',
+    anomalies: 'resolved/suppressed anomaly overrides',
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+      <div className="bg-surface border border-gray-700 rounded-xl p-6 w-full max-w-md shadow-2xl">
+        <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+          <Trash2 size={20} className="text-red-400" />
+          Clear {module.charAt(0).toUpperCase() + module.slice(1)} History
+        </h3>
+
+        {result ? (
+          <div className="space-y-4">
+            <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-3 text-green-400 text-sm">
+              {result.message}
+            </div>
+            <button onClick={() => onClose(true)}
+              className="w-full px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg text-sm">
+              Close
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <p className="text-sm text-gray-300">
+              Permanently delete <strong>{labels[module]}</strong> older than:
+            </p>
+            <div className="flex items-center gap-3">
+              <input type="number" min={1} max={365} value={days}
+                onChange={(e) => setDays(Math.max(1, Math.min(365, parseInt(e.target.value) || 30)))}
+                className="w-24 px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white text-sm" />
+              <span className="text-sm text-gray-400">days</span>
+            </div>
+
+            {error && (
+              <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3 text-red-400 text-sm">
+                {error}
+              </div>
+            )}
+
+            {!confirming ? (
+              <div className="flex gap-3">
+                <button onClick={() => onClose(false)}
+                  className="flex-1 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg text-sm">
+                  Cancel
+                </button>
+                <button onClick={() => setConfirming(true)}
+                  className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-lg text-sm">
+                  Purge
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3 text-red-300 text-sm">
+                  ⚠️ This action is irreversible. Are you sure?
+                </div>
+                <div className="flex gap-3">
+                  <button onClick={() => setConfirming(false)}
+                    className="flex-1 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg text-sm">
+                    Cancel
+                  </button>
+                  <button onClick={handlePurge}
+                    className="flex-1 px-4 py-2 bg-red-700 hover:bg-red-600 text-white rounded-lg text-sm font-semibold">
+                    Confirm Purge
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 export function AlertsPage() {
   useEffect(() => {
     document.title = 'Rhinometric - Alerts'
@@ -53,6 +170,7 @@ export function AlertsPage() {
   const [silenceLoading, setSilenceLoading] = useState(false)
   const [ackLoading, setAckLoading] = useState(false)
   const [actionMessage, setActionMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
+  const [showPurge, setShowPurge] = useState(false)
 
   // Fetch alerts
   const { data: alertsData, isLoading, error } = useQuery({
@@ -187,6 +305,7 @@ export function AlertsPage() {
 
   return (
     <div className="space-y-4 sm:space-y-6">
+      <PurgeModal module="alerts" isOpen={showPurge} onClose={(purged) => { setShowPurge(false); if (purged) queryClient.invalidateQueries({ queryKey: ['alert-history'] }) }} token={token} />
       {/* Header - stacks on mobile */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-2 sm:mb-6">
         <div>
@@ -199,6 +318,13 @@ export function AlertsPage() {
               <VolumeX size={12} className="inline mr-1" />
               {silencesData.total} silence{silencesData.total > 1 ? 's' : ''}
             </span>
+          )}
+          {isAdmin() && (
+            <button onClick={() => setShowPurge(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-red-600/20 hover:bg-red-600/30 text-red-400 border border-red-500/30 rounded-lg text-sm transition-colors">
+              <Trash2 size={14} />
+              <span className="hidden sm:inline">Clear History</span>
+            </button>
           )}
           <button className="btn btn-secondary flex items-center gap-2 text-sm">
             <Download size={18} />

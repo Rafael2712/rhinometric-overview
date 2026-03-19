@@ -4,7 +4,7 @@ from typing import Optional, List, Any, Dict
 import httpx
 import hashlib
 import re
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 import logging
 import time
 from itertools import groupby as itertools_groupby
@@ -14,6 +14,9 @@ from models.user import User as UserModel
 
 router = APIRouter()
 logger = logging.getLogger("anomalies")
+
+# ── Task 4: Retention ──────────────────────────────────────────
+MAX_RETENTION_DAYS = 30
 
 
 # ── Customer-facing filter ──────────────────────────────────────
@@ -70,6 +73,74 @@ def _is_customer_facing_group(g: dict) -> bool:
     if INTERNAL_NAME_PATTERN.search(entity) or INTERNAL_NAME_PATTERN.search(source):
         return False
     return True
+
+
+def _get_deleted_service_names() -> set:
+    """Return entity_names of disabled (deleted) external services.
+
+    Task 4: anomaly groups tied to such services must be excluded.
+    Uses the existing service registry cache path.
+    """
+    try:
+        from database import SessionLocal
+        from models.external_service import ExternalService
+        db = SessionLocal()
+        rows = db.query(ExternalService.name).filter(
+            ExternalService.enabled == False
+        ).all()
+        db.close()
+        return {r[0].lower() for r in rows}
+    except Exception as e:
+        logger.warning(f"Failed to load deleted services: {e}")
+        return set()
+
+
+def _is_not_deleted_service(g: dict) -> bool:
+    """Return False if the anomaly group belongs to a deleted service.
+
+    Task 4: exclusion of deleted (disabled) services from views.
+    """
+    deleted = _get_deleted_service_names_cached()
+    if not deleted:
+        return True
+    entity = (g.get("entity_name") or "").lower()
+    return entity not in deleted
+
+
+# Cache deleted service names for 60s (same pattern as service registry)
+_deleted_svc_cache: set = set()
+_deleted_svc_ttl: float = 0
+
+
+def _get_deleted_service_names_cached() -> set:
+    global _deleted_svc_cache, _deleted_svc_ttl
+    now = time.time()
+    if now < _deleted_svc_ttl:
+        return _deleted_svc_cache
+    _deleted_svc_cache = _get_deleted_service_names()
+    _deleted_svc_ttl = now + 60
+    return _deleted_svc_cache
+
+
+def _apply_retention_filter(groups: list[dict]) -> list[dict]:
+    """Task 4: 30-day retention for resolved/suppressed/false_positive groups.
+
+    Active / acknowledged / alert_created groups are ALWAYS shown.
+    Resolved / suppressed / false_positive groups older than 30 days are hidden.
+    """
+    cutoff = datetime.now(timezone.utc) - timedelta(days=MAX_RETENTION_DAYS)
+    cutoff_str = cutoff.isoformat()
+
+    retained = []
+    for g in groups:
+        if g["status"] in ("active", "acknowledged", "alert_created"):
+            retained.append(g)
+        else:
+            # Compare last_seen against retention cutoff
+            last_seen = g.get("last_seen", "")
+            if last_seen >= cutoff_str:
+                retained.append(g)
+    return retained
 
 
 # -- Phase 2.1: Anomaly Occurrence (single detection event) ------
@@ -441,7 +512,7 @@ def _build_anomaly_groups(normalized_anomalies: list[dict]) -> list[dict]:
         g["occurrences"].sort(key=lambda o: o["timestamp"], reverse=True)
         g["status"] = _status_overrides.get(g["fingerprint"], "active")
 
-    # ── Auto-resolution pass ──────────────────────────────────────
+    # ── Auto-resolution pass ────────────────────────────────────
     # If a group's last_seen is older than AUTO_RESOLVE_WINDOW and its
     # status is eligible, automatically transition it to "resolved".
     now = datetime.utcnow()
@@ -477,7 +548,6 @@ async def _fetch_and_normalize(time_range: str = "24h", limit: int = 500) -> lis
         raw_anomalies = data.get("anomalies", [])
         return [normalize_anomaly(raw, i) for i, raw in enumerate(raw_anomalies)]
 
-
 # -- API Endpoints ------------------------------------------------
 
 @router.get("")
@@ -497,6 +567,7 @@ async def get_anomalies(
 
     Task 2: Only customer-facing anomaly groups are returned.
     Infrastructure / internal platform telemetry is filtered out.
+    Task 4: 30-day retention; deleted services excluded.
     """
     try:
         normalized = await _fetch_and_normalize(time_range, page_size * 3)
@@ -504,6 +575,12 @@ async def get_anomalies(
 
         # ── Task 2: strip internal platform telemetry ───────────
         groups = [g for g in groups if _is_customer_facing_group(g)]
+
+        # ── Task 4: deleted-service exclusion ───────────────────
+        groups = [g for g in groups if _is_not_deleted_service(g)]
+
+        # ── Task 4: retention policy ────────────────────────────
+        groups = _apply_retention_filter(groups)
 
         if entity_type:
             groups = [g for g in groups if g["entity_type"] == entity_type]
@@ -575,7 +652,6 @@ async def get_anomalies(
         logger.error(f"Error fetching anomaly groups: {e}")
         raise HTTPException(status_code=503, detail=f"AI Anomaly service error: {str(e)}")
 
-
 @router.get("/{fingerprint}/occurrences")
 async def get_occurrences(
     fingerprint: str,
@@ -631,7 +707,6 @@ async def update_anomaly_status(
     _status_overrides[fingerprint] = new_status
     logger.info(f"Anomaly {fingerprint} status -> {new_status} by {current_user.username}")
     return {"fingerprint": fingerprint, "status": new_status, "message": f"Status updated to {new_status}"}
-
 
 @router.get("/{fingerprint}")
 async def get_anomaly_group(

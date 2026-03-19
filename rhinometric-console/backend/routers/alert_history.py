@@ -3,6 +3,8 @@ Phase 2.2 — Alert Event Store: Alert History API.
 
 Provides endpoints to query the persistent alert event history and
 ingest alert lifecycle transitions.
+
+Task 4: 30-day retention policy (query-level), deleted-service exclusion.
 """
 
 import hashlib
@@ -12,9 +14,11 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy.orm import Session
+from sqlalchemy import func as sqlfunc
 
 from database import get_db
 from models.alert_event import AlertEvent
+from models.external_service import ExternalService
 from models.user import User as UserModel
 from routers.auth import get_current_user
 
@@ -22,7 +26,11 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-# ── Helpers ───────────────────────────────────────────────────────
+# ── Constants ───────────────────────────────────────────────────
+MAX_RETENTION_DAYS = 30
+
+
+# ── Helpers ─────────────────────────────────────────────────────
 
 def _alert_fingerprint(alert_name: str, entity_name: str, metric_name: str = "") -> str:
     """Generate deterministic fingerprint for alert-anomaly correlation."""
@@ -46,7 +54,54 @@ def _parse_time_range(time_range: str) -> Optional[datetime]:
     return now - timedelta(seconds=value * multipliers[unit])
 
 
-# ── GET /api/alerts/history ───────────────────────────────────────
+def _get_deleted_service_names(db: Session) -> set:
+    """Return set of entity_names that belong to deleted (disabled) services.
+
+    Task 4: A service is considered 'deleted' when it exists in the
+    external_services table but is disabled.  Alerts tied to such
+    services must be excluded from operational views.
+    """
+    rows = db.query(ExternalService.name).filter(
+        ExternalService.enabled == False
+    ).all()
+    return {r[0] for r in rows}
+
+
+def _apply_retention_and_exclusion(query, db: Session, time_range: str = None):
+    """Apply 30-day retention cap and deleted-service exclusion.
+
+    Retention: resolved alerts older than 30 days are hidden;
+               firing/acknowledged alerts are always shown.
+    Exclusion: alerts whose entity_name matches a disabled service are hidden.
+    """
+    # ── Retention cap ───────────────────────────────────────────
+    retention_cutoff = datetime.now(timezone.utc) - timedelta(days=MAX_RETENTION_DAYS)
+
+    # If user-requested cutoff is within 30d, use that; otherwise cap at 30d
+    user_cutoff = _parse_time_range(time_range) if time_range else None
+    effective_cutoff = max(retention_cutoff, user_cutoff) if user_cutoff else retention_cutoff
+
+    # Always show firing/acknowledged regardless of age; apply cutoff to resolved
+    from sqlalchemy import or_, and_
+    query = query.filter(
+        or_(
+            AlertEvent.status.in_(["firing", "acknowledged"]),
+            AlertEvent.started_at >= effective_cutoff,
+        )
+    )
+
+    # ── Deleted-service exclusion ───────────────────────────────
+    deleted_names = _get_deleted_service_names(db)
+    if deleted_names:
+        for name in deleted_names:
+            query = query.filter(
+                sqlfunc.lower(AlertEvent.entity_name) != name.lower()
+            )
+
+    return query
+
+
+# ── GET /api/alerts/history ─────────────────────────────────────
 
 @router.get("")
 async def get_alert_event_history(
@@ -60,13 +115,14 @@ async def get_alert_event_history(
     limit: int = Query(200, ge=1, le=1000),
     offset: int = Query(0, ge=0),
 ):
-    """Get alert event history from the persistent store, newest first."""
+    """Get alert event history from the persistent store, newest first.
+
+    Task 4: 30-day retention policy applied; deleted services excluded.
+    """
     query = db.query(AlertEvent)
 
-    # Time range filter
-    cutoff = _parse_time_range(time_range) if time_range else None
-    if cutoff:
-        query = query.filter(AlertEvent.started_at >= cutoff)
+    # Task 4: retention + deleted-service exclusion
+    query = _apply_retention_and_exclusion(query, db, time_range)
 
     if entity_type:
         query = query.filter(AlertEvent.entity_type == entity_type)
@@ -112,7 +168,7 @@ async def get_alert_event_history(
     }
 
 
-# ── GET /api/alerts/history/stats ─────────────────────────────────
+# ── GET /api/alerts/history/stats ───────────────────────────────
 
 @router.get("/stats")
 async def get_alert_stats(
@@ -120,13 +176,14 @@ async def get_alert_stats(
     db: Session = Depends(get_db),
     time_range: Optional[str] = Query("24h"),
 ):
-    """Aggregate alert event statistics."""
-    from sqlalchemy import func as sqlfunc
+    """Aggregate alert event statistics.
 
+    Task 4: retention + deleted-service exclusion applied.
+    """
     query = db.query(AlertEvent)
-    cutoff = _parse_time_range(time_range) if time_range else None
-    if cutoff:
-        query = query.filter(AlertEvent.started_at >= cutoff)
+
+    # Task 4: retention + deleted-service exclusion
+    query = _apply_retention_and_exclusion(query, db, time_range)
 
     total = query.count()
     firing = query.filter(AlertEvent.status == "firing").count()

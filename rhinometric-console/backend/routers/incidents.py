@@ -6,6 +6,9 @@ Provides list, detail, and status-update endpoints.
 
 Task 2: Only customer-facing incidents are exposed.
 Internal platform entity names are excluded from list and stats.
+
+Task 4: 30-day retention policy (keep all open/investigating,
+        only last 30 days resolved). Deleted-service exclusion.
 """
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -23,6 +26,7 @@ from models.incident import Incident
 from models.alert_event import AlertEvent
 from models.incident_event import IncidentEvent
 from models.incident_comment import IncidentComment
+from models.external_service import ExternalService
 from logging_config import get_logger
 
 logger = get_logger(__name__)
@@ -33,6 +37,9 @@ router = APIRouter()
 
 VALID_STATUSES = {"open", "investigating", "resolved"}
 SEVERITY_RANK = {"critical": 4, "warning": 3, "info": 2}
+
+# ── Task 4: Retention ──────────────────────────────────────────
+MAX_RETENTION_DAYS = 30
 
 
 # ── Customer-facing filter — Task 2 ────────────────────────────
@@ -105,6 +112,50 @@ def _apply_customer_filter(query):
     return query
 
 
+def _get_deleted_service_names(db: Session) -> set:
+    """Return entity_names of disabled (deleted) external services.
+
+    Task 4: incidents tied to such services must be excluded
+    from operational views.
+    """
+    rows = db.query(ExternalService.name).filter(
+        ExternalService.enabled == False
+    ).all()
+    return {r[0] for r in rows}
+
+
+def _apply_deleted_service_exclusion(query, db: Session):
+    """Exclude incidents whose entity_name matches a disabled service."""
+    deleted_names = _get_deleted_service_names(db)
+    if deleted_names:
+        for name in deleted_names:
+            query = query.filter(
+                sa_func.lower(Incident.entity_name) != name.lower()
+            )
+    return query
+
+
+def _apply_retention(query, time_range: str = None):
+    """Apply 30-day retention policy.
+
+    - Open / investigating incidents are ALWAYS shown (regardless of age).
+    - Resolved incidents older than 30 days are hidden.
+    - User-requested time_range is respected if tighter than 30d.
+    """
+    retention_cutoff = datetime.now(timezone.utc) - timedelta(days=MAX_RETENTION_DAYS)
+
+    user_cutoff = _parse_time_range(time_range) if time_range else None
+    effective_cutoff = max(retention_cutoff, user_cutoff) if user_cutoff else retention_cutoff
+
+    query = query.filter(
+        or_(
+            Incident.status.in_(["open", "investigating"]),
+            Incident.started_at >= effective_cutoff,
+        )
+    )
+    return query
+
+
 # ── Schemas ─────────────────────────────────────────────────────
 
 class IncidentStatusUpdate(BaseModel):
@@ -123,8 +174,9 @@ class TagsUpdate(BaseModel):
 
 
 def create_timeline_event(db: Session, incident_id, event_type: str,
-                                         description: str = None, created_by: str = None,
-                                         metadata: dict = None) -> None:
+                                                   description: str = None,
+                                                   created_by: str = None,
+                                                   metadata: dict = None) -> None:
     """Insert a timeline event for an incident."""
     import uuid as _uuid
     evt = IncidentEvent(
@@ -151,7 +203,7 @@ def _highest_severity(current: str, incoming: str) -> str:
 
 
 def find_or_create_incident(db: Session, entity_type: str, entity_name: str,
-                                           severity: str, started_at: datetime) -> "Incident":
+                                                 severity: str, started_at: datetime) -> "Incident":
     """Find an existing open/investigating incident for the entity, or create one.
 
     Race-safe: handles concurrent INSERT attempts via savepoint + retry.
@@ -240,17 +292,16 @@ async def list_incidents(
     """List incidents with optional filters.
 
     Task 2: Internal platform incidents are excluded automatically.
+    Task 4: 30-day retention; deleted services excluded.
     """
     query = db.query(Incident)
 
     # ── Task 2: exclude internal platform incidents ─────────────
     query = _apply_customer_filter(query)
 
-    # Time range filter
-    if time_range:
-        cutoff = _parse_time_range(time_range)
-        if cutoff:
-            query = query.filter(Incident.started_at >= cutoff)
+    # ── Task 4: retention + deleted-service exclusion ───────────
+    query = _apply_retention(query, time_range)
+    query = _apply_deleted_service_exclusion(query, db)
 
     if status:
         query = query.filter(Incident.status == status)
@@ -315,8 +366,19 @@ async def incident_stats(
     """Aggregate incident statistics.
 
     Task 2: Only customer-facing incidents are counted.
+    Task 4: retention + deleted-service exclusion applied.
     """
     base_query = _apply_customer_filter(db.query(Incident))
+
+    # Task 4: retention + deleted-service exclusion
+    retention_cutoff = datetime.now(timezone.utc) - timedelta(days=MAX_RETENTION_DAYS)
+    base_query = base_query.filter(
+        or_(
+            Incident.status.in_(["open", "investigating"]),
+            Incident.started_at >= retention_cutoff,
+        )
+    )
+    base_query = _apply_deleted_service_exclusion(base_query, db)
 
     # Fetch all customer-facing incidents and post-filter for regex patterns
     all_incidents = base_query.all()
