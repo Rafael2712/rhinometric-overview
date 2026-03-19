@@ -1,7 +1,8 @@
 ﻿import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuthStore } from '../lib/auth/store'
-import { HardDrive, Download, Plus, CheckCircle, XCircle, Lock, Archive, RefreshCw, AlertTriangle, Info, Eye, RotateCcw, X, Shield } from 'lucide-react'
+import { HardDrive, Download, Plus, CheckCircle, XCircle, Lock, Archive, RefreshCw, AlertTriangle, Info, Eye, RotateCcw, X, Shield, ExternalLink } from 'lucide-react'
 
 interface BackupArtifact {
   id: string
@@ -104,6 +105,7 @@ function errorTypeBadge(errorType: string | null) {
 export function BackupRecoveryPage() {
   const { token, isAdmin } = useAuthStore()
   const queryClient = useQueryClient()
+  const navigate = useNavigate()
   const canManage = isAdmin()
   const [creating, setCreating] = useState(false)
   const [expandedError, setExpandedError] = useState<string | null>(null)
@@ -266,13 +268,23 @@ export function BackupRecoveryPage() {
         </div>
       )}
       {restoreResult && (
-        <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-green-500/10 border border-green-500/30">
-          <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0" />
-          <div className="text-green-300 text-sm">
-            <p className="font-medium">Restore completed successfully</p>
-            <p className="text-green-400/70 text-xs mt-0.5">Restored {restoreResult.restored.external_services} services and {restoreResult.restored.service_dependencies} dependencies from {restoreResult.backup_filename}</p>
+        <div className="px-4 py-3 rounded-lg bg-green-500/10 border border-green-500/30">
+          <div className="flex items-center gap-3">
+            <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0" />
+            <div className="text-green-300 text-sm">
+              <p className="font-medium">Restore completed successfully</p>
+              <p className="text-green-400/70 text-xs mt-0.5">Restored {restoreResult.restored.external_services} services and {restoreResult.restored.service_dependencies} dependencies from {restoreResult.backup_filename}</p>
+            </div>
+            <button onClick={() => setRestoreResult(null)} className="ml-auto text-green-400/60 hover:text-green-300"><X className="w-4 h-4" /></button>
           </div>
-          <button onClick={() => setRestoreResult(null)} className="ml-auto text-green-400/60 hover:text-green-300"><X className="w-4 h-4" /></button>
+          <div className="flex items-center gap-2 mt-3 ml-8">
+            <button onClick={() => navigate('/services')} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md bg-green-500/20 text-green-300 hover:bg-green-500/30 border border-green-500/30 transition-colors">
+              <ExternalLink className="w-3.5 h-3.5" />Go to Services
+            </button>
+            <button onClick={() => navigate('/')} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md bg-surface-raised text-text-muted hover:text-text-primary hover:bg-surface-hover border border-border transition-colors">
+              <ExternalLink className="w-3.5 h-3.5" />Go to Home
+            </button>
+          </div>
         </div>
       )}
       {restoreError && (
