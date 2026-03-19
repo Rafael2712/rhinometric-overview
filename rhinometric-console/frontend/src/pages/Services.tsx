@@ -21,6 +21,16 @@ interface ExternalServiceData {
   config: Record<string, any>
   timeout_seconds: number
   check_interval_seconds: number
+  // ── Monitoring-mode & telemetry domain fields ──
+  monitoring_mode: 'synthetic_only' | 'telemetry_enabled'
+  synthetic_enabled: boolean
+  metrics_enabled: boolean
+  logs_enabled: boolean
+  traces_enabled: boolean
+  telemetry_attached: boolean
+  telemetry_source_type: string | null
+  telemetry_service_key: string | null
+  capability: string                        // derived label
   status: 'unknown' | 'up' | 'down' | 'degraded' | 'error'
   status_message: string | null
   last_check_at: string | null

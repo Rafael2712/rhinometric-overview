@@ -27,6 +27,11 @@ class ServiceStatus(str, enum.Enum):
     ERROR = "error"
 
 
+class MonitoringMode(str, enum.Enum):
+    SYNTHETIC_ONLY = "synthetic_only"
+    TELEMETRY_ENABLED = "telemetry_enabled"
+
+
 class ExternalService(Base):
     """
     External Service connector - represents a user-managed service
@@ -58,6 +63,21 @@ class ExternalService(Base):
     # Check settings
     timeout_seconds = Column(Integer, default=10, nullable=False)
     check_interval_seconds = Column(Integer, default=60, nullable=False)
+
+    # ── Monitoring-mode & telemetry flags ──
+    monitoring_mode = Column(
+        SAEnum(MonitoringMode, name="monitoring_mode_enum", create_type=False),
+        default=MonitoringMode.SYNTHETIC_ONLY,
+        nullable=False,
+        index=True,
+    )
+    synthetic_enabled = Column(Boolean, default=True, nullable=False)
+    metrics_enabled = Column(Boolean, default=False, nullable=False)
+    logs_enabled = Column(Boolean, default=False, nullable=False)
+    traces_enabled = Column(Boolean, default=False, nullable=False)
+    telemetry_attached = Column(Boolean, default=False, nullable=False)
+    telemetry_source_type = Column(String(50), nullable=True)   # "collector" | None
+    telemetry_service_key = Column(String(255), nullable=True)  # key linking to collector
 
     # Status (updated on each check / test)
     status = Column(
@@ -102,6 +122,14 @@ class ExternalService(Base):
             "config": cfg,
             "timeout_seconds": self.timeout_seconds,
             "check_interval_seconds": self.check_interval_seconds,
+            "monitoring_mode": self.monitoring_mode.value if self.monitoring_mode else "synthetic_only",
+            "synthetic_enabled": self.synthetic_enabled if self.synthetic_enabled is not None else True,
+            "metrics_enabled": self.metrics_enabled or False,
+            "logs_enabled": self.logs_enabled or False,
+            "traces_enabled": self.traces_enabled or False,
+            "telemetry_attached": self.telemetry_attached or False,
+            "telemetry_source_type": self.telemetry_source_type,
+            "telemetry_service_key": self.telemetry_service_key,
             "status": self.status.value if self.status else "unknown",
             "status_message": self.status_message,
             "last_check_at": self.last_check_at.isoformat() if self.last_check_at else None,

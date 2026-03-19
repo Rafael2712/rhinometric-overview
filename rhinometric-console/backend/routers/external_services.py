@@ -11,7 +11,8 @@ from sqlalchemy.orm import Session
 from database import get_db
 from routers.auth import get_current_user, require_role
 from models.user import User as UserModel
-from models.external_service import ExternalService, ServiceType, ServiceStatus
+from models.external_service import ExternalService, ServiceType, ServiceStatus, MonitoringMode
+from services.capability_helper import derive_capability_from_dict
 from models.external_service_check import ExternalServiceCheck
 from models.external_service_check import ExternalServiceCheck
 from services.connector_service import test_http_connection, test_postgresql_connection
@@ -54,6 +55,16 @@ class ExternalServiceCreate(BaseModel):
     category: Optional[str] = Field(None, max_length=100, description="Logical grouping: payments, authentication, mobile-backend, analytics, etc.")
     tags: Optional[List[str]] = Field(None, description="Array of string labels: ['critical', 'external', 'payments']")
 
+    # ── Monitoring-mode & telemetry (new domain fields) ──
+    monitoring_mode: str = Field(default="synthetic_only", pattern="^(synthetic_only|telemetry_enabled)$")
+    synthetic_enabled: bool = True
+    metrics_enabled: bool = False
+    logs_enabled: bool = False
+    traces_enabled: bool = False
+    telemetry_attached: bool = False
+    telemetry_source_type: Optional[str] = Field(None, max_length=50)
+    telemetry_service_key: Optional[str] = Field(None, max_length=255)
+
 
 class ExternalServiceUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=255)
@@ -67,6 +78,16 @@ class ExternalServiceUpdate(BaseModel):
     catalog_type: Optional[str] = Field(None, max_length=50)
     category: Optional[str] = Field(None, max_length=100)
     tags: Optional[List[str]] = None
+
+    # ── Monitoring-mode & telemetry (new domain fields) ──
+    monitoring_mode: Optional[str] = Field(None, pattern="^(synthetic_only|telemetry_enabled)$")
+    synthetic_enabled: Optional[bool] = None
+    metrics_enabled: Optional[bool] = None
+    logs_enabled: Optional[bool] = None
+    traces_enabled: Optional[bool] = None
+    telemetry_attached: Optional[bool] = None
+    telemetry_source_type: Optional[str] = Field(None, max_length=50)
+    telemetry_service_key: Optional[str] = Field(None, max_length=255)
 
 
 class TestConnectionRequest(BaseModel):
@@ -88,6 +109,15 @@ class ExternalServiceResponse(BaseModel):
     config: Dict[str, Any]
     timeout_seconds: int
     check_interval_seconds: int
+    monitoring_mode: str = "synthetic_only"
+    synthetic_enabled: bool = True
+    metrics_enabled: bool = False
+    logs_enabled: bool = False
+    traces_enabled: bool = False
+    telemetry_attached: bool = False
+    telemetry_source_type: Optional[str] = None
+    telemetry_service_key: Optional[str] = None
+    capability: str = "Synthetic only"
     status: str
     status_message: Optional[str]
     last_check_at: Optional[str]
@@ -149,7 +179,12 @@ def list_external_services(
         .order_by(ExternalService.created_at.desc())
         .all()
     )
-    return [s.to_dict() for s in services]
+    result = []
+    for s in services:
+        d = s.to_dict()
+        d["capability"] = derive_capability_from_dict(d)
+        result.append(d)
+    return result
 
 
 @router.get("/summary")
@@ -334,7 +369,9 @@ def get_external_service(
     svc = db.query(ExternalService).filter(ExternalService.id == service_id).first()
     if not svc:
         raise HTTPException(status_code=404, detail="External service not found")
-    return svc.to_dict()
+    d = svc.to_dict()
+    d["capability"] = derive_capability_from_dict(d)
+    return d
 
 
 @router.post("", response_model=ExternalServiceResponse, status_code=status.HTTP_201_CREATED)
@@ -354,6 +391,15 @@ def create_external_service(
             detail={"error": "Invalid service configuration", "details": val_errors},
         )
 
+    # ── Validation: synthetic_only forces telemetry off ──
+    if payload.monitoring_mode == "synthetic_only":
+        payload.telemetry_attached = False
+        payload.metrics_enabled = False
+        payload.logs_enabled = False
+        payload.traces_enabled = False
+        payload.telemetry_source_type = None
+        payload.telemetry_service_key = None
+
     svc = ExternalService(
         name=payload.name,
         service_type=ServiceType(payload.service_type),
@@ -366,13 +412,23 @@ def create_external_service(
         catalog_type=payload.catalog_type,
         category=payload.category,
         tags=payload.tags,
+        monitoring_mode=MonitoringMode(payload.monitoring_mode),
+        synthetic_enabled=payload.synthetic_enabled,
+        metrics_enabled=payload.metrics_enabled,
+        logs_enabled=payload.logs_enabled,
+        traces_enabled=payload.traces_enabled,
+        telemetry_attached=payload.telemetry_attached,
+        telemetry_source_type=payload.telemetry_source_type,
+        telemetry_service_key=payload.telemetry_service_key,
         status=ServiceStatus.UNKNOWN,
         created_by=current_user.id,
     )
     db.add(svc)
     db.flush()
     logger.info(f"Created external service: {svc.name} ({svc.service_type})")
-    return svc.to_dict()
+    d = svc.to_dict()
+    d["capability"] = derive_capability_from_dict(d)
+    return d
 
 
 @router.put("/{service_id}", response_model=ExternalServiceResponse)
@@ -413,6 +469,18 @@ def update_external_service(
         # Use the merged config (with preserved secrets) going forward
         update_data["config"] = merged_cfg
 
+    # ── Validation: synthetic_only forces telemetry off ──
+    effective_mode = update_data.get("monitoring_mode", svc.monitoring_mode.value if svc.monitoring_mode else "synthetic_only")
+    if effective_mode == "synthetic_only":
+        for tf in ("metrics_enabled", "logs_enabled", "traces_enabled", "telemetry_attached"):
+            update_data[tf] = False
+        update_data["telemetry_source_type"] = None
+        update_data["telemetry_service_key"] = None
+
+    # Convert monitoring_mode string to enum
+    if "monitoring_mode" in update_data and update_data["monitoring_mode"] is not None:
+        update_data["monitoring_mode"] = MonitoringMode(update_data["monitoring_mode"])
+
     for field, value in update_data.items():
         if field == "config" and value is not None:
             # Merge config: keep existing password if not provided
@@ -429,7 +497,9 @@ def update_external_service(
 
     db.flush()
     logger.info(f"Updated external service: {svc.name} (id={svc.id})")
-    return svc.to_dict()
+    d = svc.to_dict()
+    d["capability"] = derive_capability_from_dict(d)
+    return d
 
 
 @router.delete("/{service_id}", status_code=status.HTTP_204_NO_CONTENT)
