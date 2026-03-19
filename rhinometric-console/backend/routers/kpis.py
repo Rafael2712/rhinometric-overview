@@ -8,6 +8,13 @@ from routers.auth import get_current_user
 from models.user import User as UserModel
 from database import SessionLocal
 from models.external_service import ExternalService
+from routers.anomalies import (
+    _fetch_and_normalize,
+    _build_anomaly_groups,
+    _is_customer_facing_group,
+    _is_existing_service,
+    _apply_retention_filter,
+)
 
 router = APIRouter()
 
@@ -146,20 +153,25 @@ async def get_kpis(current_user: UserModel = Depends(get_current_user)):
             except Exception as e:
                 print(f"Error counting external services: {e}")
 
-            # Get ACTIVE anomalies count from AI service (no auth required)
-            # Use active_count instead of total to match Anomalies page
+            # Get ACTIVE anomalies count — same filtered pipeline as
+            # the AI Anomalies page so the numbers always match.
+            # Task 6: reuse anomalies.py filtering (customer-facing,
+            # existence-based service exclusion, retention policy).
             anomalies_count = 0
             anomalies_status = "success"
             anomalies_change = "No issues detected"
             try:
-                anomalies_response = await client.get(f"{settings.AI_ANOMALY_URL}/anomalies?limit=100", timeout=5.0)
-                if anomalies_response.status_code == 200:
-                    anomalies_data = anomalies_response.json()
-                    # Use active_count for consistency with Anomalies page
-                    anomalies_count = anomalies_data.get("active_count", 0)
-                    if anomalies_count > 0:
-                        anomalies_status = "warning"
-                        anomalies_change = f"{anomalies_count} active"
+                normalized = await _fetch_and_normalize("24h", 500)
+                groups = _build_anomaly_groups(normalized)
+                groups = [g for g in groups if _is_customer_facing_group(g)]
+                groups = [g for g in groups if _is_existing_service(g)]
+                groups = _apply_retention_filter(groups)
+                # Count only active groups (same as Anomalies page default)
+                active_groups = [g for g in groups if g.get("status") == "active"]
+                anomalies_count = len(active_groups)
+                if anomalies_count > 0:
+                    anomalies_status = "warning"
+                    anomalies_change = f"{anomalies_count} active"
             except Exception as e:
                 print(f"Error fetching anomalies: {e}")
                 pass  # If AI service unavailable, keep at 0
