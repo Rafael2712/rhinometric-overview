@@ -166,6 +166,12 @@ export function BackupRecoveryPage() {
       setRestoreError(null)
       queryClient.invalidateQueries({ queryKey: ['backups-summary'] })
       queryClient.invalidateQueries({ queryKey: ['backups-list'] })
+      // Sync other pages so restored data is visible immediately
+      queryClient.invalidateQueries({ queryKey: ['services-summary'] })
+      queryClient.invalidateQueries({ queryKey: ['kpis'] })
+      queryClient.invalidateQueries({ queryKey: ['external-services'] })
+      queryClient.invalidateQueries({ queryKey: ['service-map'] })
+      queryClient.invalidateQueries({ queryKey: ['service-map-services'] })
     },
     onError: (err: Error) => {
       setRestoreError(err.message)
