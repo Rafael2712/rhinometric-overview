@@ -2,7 +2,8 @@ import { useEffect, useState, useCallback } from 'react'
 import {
   Server, AlertCircle, CheckCircle, Activity, Globe, Database, 
   Network, Plus, Trash2, Play, Power, PowerOff, Edit, ArrowLeft,
-  RefreshCw, Clock, Lock, Search, Tag, X, Upload, FileText, Download, Layers, Copy
+  RefreshCw, Clock, Lock, Search, Tag, X, Upload, FileText, Download, Layers, Copy,
+  Radio, BarChart3, Waypoints, ToggleLeft, ToggleRight, Info
 } from 'lucide-react'
 import { useAuthStore } from '../lib/auth/store'
 
@@ -231,6 +232,14 @@ export default function Services() {
   const [formTags, setFormTags] = useState<string[]>([])
   const [formTagInput, setFormTagInput] = useState('')
 
+  // ── Monitoring mode & telemetry form state ──
+  const [formMonitoringMode, setFormMonitoringMode] = useState<'synthetic_only' | 'telemetry_enabled'>('synthetic_only')
+  const [formMetricsEnabled, setFormMetricsEnabled] = useState(false)
+  const [formLogsEnabled, setFormLogsEnabled] = useState(false)
+  const [formTracesEnabled, setFormTracesEnabled] = useState(false)
+  const [formTelemetryServiceKey, setFormTelemetryServiceKey] = useState('')
+  const [showTelemetryWarning, setShowTelemetryWarning] = useState(false)
+
   // Test connection state
   const [testing, setTesting] = useState(false)
   const [testResult, setTestResult] = useState<any>(null)
@@ -308,6 +317,9 @@ export default function Services() {
     setFormConfig({}); setFormTimeout(10); setFormInterval(60)
     setEditId(null); setTestResult(null)
     setFormCatalogType(''); setFormCategory(''); setFormTags([]); setFormTagInput('')
+    setFormMonitoringMode('synthetic_only'); setFormMetricsEnabled(false)
+    setFormLogsEnabled(false); setFormTracesEnabled(false)
+    setFormTelemetryServiceKey(''); setShowTelemetryWarning(false)
   }
 
   const openCreate = () => { resetForm(); setView('create') }
@@ -319,6 +331,12 @@ export default function Services() {
     setFormInterval(svc.check_interval_seconds); setTestResult(null)
     setFormCatalogType(svc.catalog_type || ''); setFormCategory(svc.category || '')
     setFormTags(svc.tags && Array.isArray(svc.tags) ? svc.tags : []); setFormTagInput('')
+    setFormMonitoringMode(svc.monitoring_mode || 'synthetic_only')
+    setFormMetricsEnabled(svc.metrics_enabled || false)
+    setFormLogsEnabled(svc.logs_enabled || false)
+    setFormTracesEnabled(svc.traces_enabled || false)
+    setFormTelemetryServiceKey(svc.telemetry_service_key || '')
+    setShowTelemetryWarning(false)
     setView('edit')
   }
 
@@ -347,12 +365,21 @@ export default function Services() {
   }
 
   const handleSave = async () => {
+    const isTelemetry = formMonitoringMode === 'telemetry_enabled'
     const body = {
       name: formName, service_type: formType, environment: formEnv || null,
       description: formDesc || null, config: formConfig,
       timeout_seconds: formTimeout, check_interval_seconds: formInterval, enabled: true,
       catalog_type: formCatalogType || null, category: formCategory || null,
       tags: formTags.length > 0 ? formTags : null,
+      monitoring_mode: formMonitoringMode,
+      synthetic_enabled: true,
+      metrics_enabled: isTelemetry ? formMetricsEnabled : false,
+      logs_enabled: isTelemetry ? formLogsEnabled : false,
+      traces_enabled: isTelemetry ? formTracesEnabled : false,
+      telemetry_attached: isTelemetry,
+      telemetry_source_type: isTelemetry ? 'collector' : null,
+      telemetry_service_key: isTelemetry ? (formTelemetryServiceKey || null) : null,
     }
     try {
       const url = editId ? `/api/external-services/${editId}` : '/api/external-services'
@@ -976,10 +1003,13 @@ export default function Services() {
   }
 
   if (view === 'create' || view === 'edit') {
-    const isValid = formName.trim() && (
+    const baseFieldsValid = formName.trim() && (
       formType === 'http' ? !!formConfig.url :
       formType === 'postgresql' ? !!(formConfig.host && formConfig.database_name && formConfig.username) : false
     )
+    const telemetryValid = formMonitoringMode === 'synthetic_only' ||
+      ((formMetricsEnabled || formLogsEnabled || formTracesEnabled) && formTelemetryServiceKey.trim() !== '')
+    const isValid = baseFieldsValid && telemetryValid
     return (
       <div className="space-y-6 max-w-3xl">
         <div className="flex items-center gap-3">
@@ -1103,6 +1133,126 @@ export default function Services() {
             <p className="text-gray-600 text-xs mt-1.5">Press Enter or comma to add. Click ?? to remove.</p>
           </div>
         </div>
+
+        {/* ── Monitoring Mode ── */}
+        <div className="bg-gray-800/50 rounded-lg border border-gray-700/50 p-6 space-y-4">
+          <h2 className="text-lg font-semibold text-white mb-2 flex items-center gap-2">
+            <Radio className="w-5 h-5 text-blue-400" /> Monitoring Mode
+          </h2>
+          <div className="grid grid-cols-2 gap-4">
+            <button type="button" onClick={() => {
+                if (formMonitoringMode === 'telemetry_enabled' && view === 'edit') {
+                  setShowTelemetryWarning(true)
+                }
+                setFormMonitoringMode('synthetic_only')
+                setFormMetricsEnabled(false); setFormLogsEnabled(false); setFormTracesEnabled(false)
+                setFormTelemetryServiceKey('')
+              }}
+              className={`p-4 rounded-lg border-2 transition-all text-left ${formMonitoringMode === 'synthetic_only' ? 'border-blue-500 bg-blue-500/10' : 'border-gray-700 hover:border-gray-600 bg-gray-800/50'}`}>
+              <p className="text-white font-semibold text-sm">Synthetic monitoring only</p>
+              <p className="text-gray-400 text-xs mt-1">Availability, latency, SSL, health checks</p>
+            </button>
+            <button type="button" onClick={() => {
+                setFormMonitoringMode('telemetry_enabled')
+                setShowTelemetryWarning(false)
+              }}
+              className={`p-4 rounded-lg border-2 transition-all text-left ${formMonitoringMode === 'telemetry_enabled' ? 'border-cyan-500 bg-cyan-500/10' : 'border-gray-700 hover:border-gray-600 bg-gray-800/50'}`}>
+              <p className="text-white font-semibold text-sm">Advanced monitoring (with telemetry)</p>
+              <p className="text-gray-400 text-xs mt-1">Metrics, logs, traces via collector</p>
+            </button>
+          </div>
+
+          {/* Helper text */}
+          <div className={`flex items-start gap-2 px-3 py-2.5 rounded-lg text-sm ${formMonitoringMode === 'synthetic_only' ? 'bg-blue-500/5 border border-blue-500/20' : 'bg-cyan-500/5 border border-cyan-500/20'}`}>
+            <Info className={`w-4 h-4 mt-0.5 flex-shrink-0 ${formMonitoringMode === 'synthetic_only' ? 'text-blue-400' : 'text-cyan-400'}`} />
+            <p className={formMonitoringMode === 'synthetic_only' ? 'text-blue-300' : 'text-cyan-300'}>
+              {formMonitoringMode === 'synthetic_only'
+                ? 'This service will be monitored using synthetic checks only (availability, latency, SSL, health).'
+                : 'This service will receive real telemetry data (metrics, logs, traces) via a collector.'}
+            </p>
+          </div>
+
+          {/* Warning when switching from telemetry to synthetic in edit mode */}
+          {showTelemetryWarning && formMonitoringMode === 'synthetic_only' && (
+            <div className="flex items-start gap-2 px-3 py-2.5 rounded-lg bg-amber-500/10 border border-amber-500/30">
+              <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0 text-amber-400" />
+              <p className="text-amber-300 text-sm">
+                <span className="font-medium">Warning:</span> Telemetry configuration will be disabled. Metrics, logs, and traces collection will stop for this service.
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* ── Telemetry Configuration (only when telemetry_enabled) ── */}
+        {formMonitoringMode === 'telemetry_enabled' && (
+          <div className="bg-gray-800/50 rounded-lg border border-cyan-500/30 p-6 space-y-4">
+            <h2 className="text-lg font-semibold text-white mb-2 flex items-center gap-2">
+              <Waypoints className="w-5 h-5 text-cyan-400" /> Telemetry Configuration
+            </h2>
+            <p className="text-gray-400 text-xs -mt-1">Select which telemetry signals this service should receive. At least one must be enabled.</p>
+
+            {/* Signal toggles */}
+            <div className="grid grid-cols-3 gap-3">
+              {/* Metrics toggle */}
+              <button type="button" onClick={() => setFormMetricsEnabled(!formMetricsEnabled)}
+                className={`p-3 rounded-lg border-2 transition-all text-left ${formMetricsEnabled ? 'border-emerald-500 bg-emerald-500/10' : 'border-gray-700 hover:border-gray-600 bg-gray-800/50'}`}>
+                <div className="flex items-center justify-between mb-1">
+                  <BarChart3 className={`w-5 h-5 ${formMetricsEnabled ? 'text-emerald-400' : 'text-gray-500'}`} />
+                  {formMetricsEnabled ? <ToggleRight className="w-5 h-5 text-emerald-400" /> : <ToggleLeft className="w-5 h-5 text-gray-500" />}
+                </div>
+                <p className={`font-semibold text-sm ${formMetricsEnabled ? 'text-emerald-300' : 'text-gray-400'}`}>Metrics</p>
+                <p className="text-gray-500 text-xs">Prometheus</p>
+              </button>
+
+              {/* Logs toggle */}
+              <button type="button" onClick={() => setFormLogsEnabled(!formLogsEnabled)}
+                className={`p-3 rounded-lg border-2 transition-all text-left ${formLogsEnabled ? 'border-amber-500 bg-amber-500/10' : 'border-gray-700 hover:border-gray-600 bg-gray-800/50'}`}>
+                <div className="flex items-center justify-between mb-1">
+                  <FileText className={`w-5 h-5 ${formLogsEnabled ? 'text-amber-400' : 'text-gray-500'}`} />
+                  {formLogsEnabled ? <ToggleRight className="w-5 h-5 text-amber-400" /> : <ToggleLeft className="w-5 h-5 text-gray-500" />}
+                </div>
+                <p className={`font-semibold text-sm ${formLogsEnabled ? 'text-amber-300' : 'text-gray-400'}`}>Logs</p>
+                <p className="text-gray-500 text-xs">Loki</p>
+              </button>
+
+              {/* Traces toggle */}
+              <button type="button" onClick={() => setFormTracesEnabled(!formTracesEnabled)}
+                className={`p-3 rounded-lg border-2 transition-all text-left ${formTracesEnabled ? 'border-violet-500 bg-violet-500/10' : 'border-gray-700 hover:border-gray-600 bg-gray-800/50'}`}>
+                <div className="flex items-center justify-between mb-1">
+                  <Waypoints className={`w-5 h-5 ${formTracesEnabled ? 'text-violet-400' : 'text-gray-500'}`} />
+                  {formTracesEnabled ? <ToggleRight className="w-5 h-5 text-violet-400" /> : <ToggleLeft className="w-5 h-5 text-gray-500" />}
+                </div>
+                <p className={`font-semibold text-sm ${formTracesEnabled ? 'text-violet-300' : 'text-gray-400'}`}>Traces</p>
+                <p className="text-gray-500 text-xs">OpenTelemetry</p>
+              </button>
+            </div>
+
+            {/* Validation: at least one signal */}
+            {!formMetricsEnabled && !formLogsEnabled && !formTracesEnabled && (
+              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/30">
+                <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
+                <p className="text-red-300 text-sm">At least one telemetry signal must be enabled.</p>
+              </div>
+            )}
+
+            {/* Telemetry Service Key */}
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">Telemetry Service Key *</label>
+              <input type="text" value={formTelemetryServiceKey} onChange={e => setFormTelemetryServiceKey(e.target.value)}
+                placeholder="e.g. my-api-production"
+                className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-3 py-2 text-white placeholder-gray-500 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500" />
+              <p className="text-gray-500 text-xs mt-1.5">Unique identifier used by collectors to associate telemetry with this service.</p>
+            </div>
+
+            {/* Validation: service key required */}
+            {(formMetricsEnabled || formLogsEnabled || formTracesEnabled) && !formTelemetryServiceKey.trim() && (
+              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/30">
+                <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
+                <p className="text-red-300 text-sm">Telemetry Service Key is required when telemetry signals are enabled.</p>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Type-specific fields */}
         <div className="bg-gray-800/50 rounded-lg border border-gray-700/50 p-6">

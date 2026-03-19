@@ -400,6 +400,19 @@ def create_external_service(
         payload.telemetry_source_type = None
         payload.telemetry_service_key = None
 
+    # ── Validation: telemetry_enabled requires at least one signal + service key ──
+    if payload.monitoring_mode == "telemetry_enabled":
+        if not any([payload.metrics_enabled, payload.logs_enabled, payload.traces_enabled]):
+            raise HTTPException(
+                status_code=422,
+                detail="When monitoring mode is 'telemetry_enabled', at least one telemetry signal (metrics, logs, or traces) must be enabled.",
+            )
+        if not payload.telemetry_service_key or not payload.telemetry_service_key.strip():
+            raise HTTPException(
+                status_code=422,
+                detail="When monitoring mode is 'telemetry_enabled', a non-empty telemetry_service_key is required.",
+            )
+
     svc = ExternalService(
         name=payload.name,
         service_type=ServiceType(payload.service_type),
@@ -476,6 +489,23 @@ def update_external_service(
             update_data[tf] = False
         update_data["telemetry_source_type"] = None
         update_data["telemetry_service_key"] = None
+
+    # ── Validation: telemetry_enabled requires at least one signal + service key ──
+    if effective_mode == "telemetry_enabled":
+        eff_metrics = update_data.get("metrics_enabled", svc.metrics_enabled)
+        eff_logs = update_data.get("logs_enabled", svc.logs_enabled)
+        eff_traces = update_data.get("traces_enabled", svc.traces_enabled)
+        if not any([eff_metrics, eff_logs, eff_traces]):
+            raise HTTPException(
+                status_code=422,
+                detail="When monitoring mode is 'telemetry_enabled', at least one telemetry signal (metrics, logs, or traces) must be enabled.",
+            )
+        eff_key = update_data.get("telemetry_service_key", svc.telemetry_service_key)
+        if not eff_key or not str(eff_key).strip():
+            raise HTTPException(
+                status_code=422,
+                detail="When monitoring mode is 'telemetry_enabled', a non-empty telemetry_service_key is required.",
+            )
 
     # Convert monitoring_mode string to enum
     if "monitoring_mode" in update_data and update_data["monitoring_mode"] is not None:
