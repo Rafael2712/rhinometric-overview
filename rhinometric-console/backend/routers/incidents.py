@@ -112,26 +112,39 @@ def _apply_customer_filter(query):
     return query
 
 
-def _get_deleted_service_names(db: Session) -> set:
-    """Return entity_names of disabled (deleted) external services.
+# Entity types that reference external services
+_SERVICE_ENTITY_TYPES = {"service", "external-services"}
 
-    Task 4: incidents tied to such services must be excluded
-    from operational views.
+
+def _get_existing_service_names(db: Session) -> set:
+    """Return the set of service names that currently exist in external_services.
+
+    Task 5 fix: existence-based check instead of enabled-flag check.
     """
-    rows = db.query(ExternalService.name).filter(
-        ExternalService.enabled == False
-    ).all()
-    return {r[0] for r in rows}
+    rows = db.query(ExternalService.name).all()
+    return {r[0].lower() for r in rows}
 
 
 def _apply_deleted_service_exclusion(query, db: Session):
-    """Exclude incidents whose entity_name matches a disabled service."""
-    deleted_names = _get_deleted_service_names(db)
-    if deleted_names:
-        for name in deleted_names:
-            query = query.filter(
-                sa_func.lower(Incident.entity_name) != name.lower()
+    """Exclude incidents whose service no longer exists in external_services.
+
+    Task 5 fix: existence-based.  Service-type incidents are only shown
+    if their entity_name matches an existing external service.
+    Non-service incidents pass through unfiltered.
+    """
+    existing_names = _get_existing_service_names(db)
+    if existing_names:
+        query = query.filter(
+            or_(
+                ~Incident.entity_type.in_(list(_SERVICE_ENTITY_TYPES)),
+                sa_func.lower(Incident.entity_name).in_(existing_names),
             )
+        )
+    else:
+        # No services exist at all → hide ALL service-type incidents
+        query = query.filter(
+            ~Incident.entity_type.in_(list(_SERVICE_ENTITY_TYPES))
+        )
     return query
 
 

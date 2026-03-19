@@ -54,17 +54,20 @@ def _parse_time_range(time_range: str) -> Optional[datetime]:
     return now - timedelta(seconds=value * multipliers[unit])
 
 
-def _get_deleted_service_names(db: Session) -> set:
-    """Return set of entity_names that belong to deleted (disabled) services.
+# Entity types that reference external services
+_SERVICE_ENTITY_TYPES = {"service", "external-services"}
 
-    Task 4: A service is considered 'deleted' when it exists in the
-    external_services table but is disabled.  Alerts tied to such
-    services must be excluded from operational views.
+
+def _get_existing_service_names(db: Session) -> set:
+    """Return the set of service names that currently exist in external_services.
+
+    Task 5 fix: instead of checking enabled == False (which misses
+    fully-deleted rows), we now collect ALL existing names.  Any
+    alert/incident whose entity_type is service-related AND whose
+    entity_name is NOT in this set is treated as orphaned and hidden.
     """
-    rows = db.query(ExternalService.name).filter(
-        ExternalService.enabled == False
-    ).all()
-    return {r[0] for r in rows}
+    rows = db.query(ExternalService.name).all()
+    return {r[0].lower() for r in rows}
 
 
 def _apply_retention_and_exclusion(query, db: Session, time_range: str = None):
@@ -90,13 +93,24 @@ def _apply_retention_and_exclusion(query, db: Session, time_range: str = None):
         )
     )
 
-    # ── Deleted-service exclusion ───────────────────────────────
-    deleted_names = _get_deleted_service_names(db)
-    if deleted_names:
-        for name in deleted_names:
-            query = query.filter(
-                sqlfunc.lower(AlertEvent.entity_name) != name.lower()
+    # ── Deleted-service exclusion (Task 5: existence-based) ─────
+    existing_names = _get_existing_service_names(db)
+    # For service-related alerts: only keep those whose entity_name
+    # still exists in the external_services table.
+    # Non-service alerts (website, infrastructure, etc.) pass through.
+    if existing_names:
+        # Exclude service-type alerts whose name is NOT in existing set
+        query = query.filter(
+            or_(
+                ~AlertEvent.entity_type.in_(list(_SERVICE_ENTITY_TYPES)),
+                sqlfunc.lower(AlertEvent.entity_name).in_(existing_names),
             )
+        )
+    else:
+        # No services exist at all → exclude ALL service-type alerts
+        query = query.filter(
+            ~AlertEvent.entity_type.in_(list(_SERVICE_ENTITY_TYPES))
+        )
 
     return query
 

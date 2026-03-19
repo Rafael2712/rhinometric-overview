@@ -75,51 +75,60 @@ def _is_customer_facing_group(g: dict) -> bool:
     return True
 
 
-def _get_deleted_service_names() -> set:
-    """Return entity_names of disabled (deleted) external services.
+# Entity types that reference external services
+_SERVICE_ENTITY_TYPES = {"service", "external-services"}
 
-    Task 4: anomaly groups tied to such services must be excluded.
-    Uses the existing service registry cache path.
+
+def _get_existing_service_names() -> set:
+    """Return the set of service names that currently exist in external_services.
+
+    Task 5 fix: existence-based check.  Returns ALL names (lowercased).
+    If the table is empty, returns an empty set — meaning every
+    service-type anomaly is orphaned and should be hidden.
     """
     try:
         from database import SessionLocal
         from models.external_service import ExternalService
         db = SessionLocal()
-        rows = db.query(ExternalService.name).filter(
-            ExternalService.enabled == False
-        ).all()
+        rows = db.query(ExternalService.name).all()
         db.close()
         return {r[0].lower() for r in rows}
     except Exception as e:
-        logger.warning(f"Failed to load deleted services: {e}")
+        logger.warning(f"Failed to load existing services: {e}")
         return set()
 
 
-def _is_not_deleted_service(g: dict) -> bool:
-    """Return False if the anomaly group belongs to a deleted service.
+def _is_existing_service(g: dict) -> bool:
+    """Return True only if the anomaly group's service still exists.
 
-    Task 4: exclusion of deleted (disabled) services from views.
+    Task 5 fix: existence-based.  For service-type groups, the
+    entity_name must match an existing external service.
+    Non-service groups (website, infrastructure) always pass.
     """
-    deleted = _get_deleted_service_names_cached()
-    if not deleted:
-        return True
+    entity_type = (g.get("entity_type") or "").lower()
+    if entity_type not in _SERVICE_ENTITY_TYPES:
+        return True  # not a service → always show
+    existing = _get_existing_service_names_cached()
     entity = (g.get("entity_name") or "").lower()
-    return entity not in deleted
+    # If existing is empty (no services in DB) → orphan → hide
+    if not existing:
+        return False
+    return entity in existing
 
 
-# Cache deleted service names for 60s (same pattern as service registry)
-_deleted_svc_cache: set = set()
-_deleted_svc_ttl: float = 0
+# Cache existing service names for 60s (same pattern as service registry)
+_existing_svc_cache: set = set()
+_existing_svc_ttl: float = 0
 
 
-def _get_deleted_service_names_cached() -> set:
-    global _deleted_svc_cache, _deleted_svc_ttl
+def _get_existing_service_names_cached() -> set:
+    global _existing_svc_cache, _existing_svc_ttl
     now = time.time()
-    if now < _deleted_svc_ttl:
-        return _deleted_svc_cache
-    _deleted_svc_cache = _get_deleted_service_names()
-    _deleted_svc_ttl = now + 60
-    return _deleted_svc_cache
+    if now < _existing_svc_ttl:
+        return _existing_svc_cache
+    _existing_svc_cache = _get_existing_service_names()
+    _existing_svc_ttl = now + 60
+    return _existing_svc_cache
 
 
 def _apply_retention_filter(groups: list[dict]) -> list[dict]:
@@ -576,8 +585,8 @@ async def get_anomalies(
         # ── Task 2: strip internal platform telemetry ───────────
         groups = [g for g in groups if _is_customer_facing_group(g)]
 
-        # ── Task 4: deleted-service exclusion ───────────────────
-        groups = [g for g in groups if _is_not_deleted_service(g)]
+        # ── Task 5: existence-based service exclusion ──────────
+        groups = [g for g in groups if _is_existing_service(g)]
 
         # ── Task 4: retention policy ────────────────────────────
         groups = _apply_retention_filter(groups)
