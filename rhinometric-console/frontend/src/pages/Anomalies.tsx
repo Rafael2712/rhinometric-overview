@@ -7,6 +7,7 @@ import {
   ChevronDown, ChevronUp, Activity, Eye, Filter, BarChart3,
   RefreshCw, XCircle, Bell
 } from 'lucide-react'
+import { getSignalAvailability } from '../utils/signalAvailability'
 
 /* ── Types ────────────────────────────────────────────────────── */
 interface AnomalyOccurrence {
@@ -412,6 +413,14 @@ function AnomalyRow({ group, isExpanded, onToggle, onStatusChange, onCorrelate, 
                   </>
                 )}
               </div>
+
+              {/* Monitoring Mode indicator */}
+              {getSignalAvailability(group.entity_type).monitoringMode === 'synthetic' && (
+                <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                  <span className="text-amber-400 text-xs font-medium">📡 Monitoring: Synthetic only</span>
+                  <span className="text-gray-500 text-xs">— Logs and traces are not connected for this service</span>
+                </div>
+              )}
 
               {/* Lifecycle actions */}
               <div className="flex items-center gap-2 flex-wrap">

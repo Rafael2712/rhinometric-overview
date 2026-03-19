@@ -12,6 +12,7 @@ import {
   openExternalLink 
 } from '../utils/externalLinks';
 import { format } from 'date-fns';
+import { getSignalAvailability } from '../utils/signalAvailability';
 // date-fns locale removed - using English defaults
 
 const CORRELATION_VIEW_BUILD = '2026-02-16T12';
@@ -119,6 +120,10 @@ export function CorrelationView() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   
   const hasExternalAccess = user ? canAccessExternalTools(user.roles) : false;
+
+  // Signal availability — what telemetry actually exists for this entity type
+  const currentEntityType = entityType || data?.metadata?.entity_type || '';
+  const signals = getSignalAvailability(currentEntityType);
 
   useEffect(() => {
     document.title = 'Event Correlation - Rhinometric';
@@ -331,7 +336,7 @@ export function CorrelationView() {
             <div className="text-3xl opacity-50">🔗</div>
             <div>
               <div className="text-2xl font-bold text-gray-500">N/A</div>
-              <div className="text-sm text-gray-500">Traces (coming soon)</div>
+              <div className="text-sm text-gray-500">{signals.traces ? 'Traces' : 'Traces — not connected'}</div>
             </div>
           </div>
         </div>
@@ -389,8 +394,26 @@ export function CorrelationView() {
         </div>
       </div>
 
+      {/* Monitoring Mode Banner */}
+      {signals.monitoringMode === 'synthetic' && (
+        <div className="card mb-8 bg-amber-500/5 border-amber-500/20">
+          <div className="flex items-start gap-3">
+            <div className="text-2xl">📡</div>
+            <div className="flex-1">
+              <h3 className="text-amber-400 font-semibold mb-1">Monitoring Mode: Synthetic Only</h3>
+              <p className="text-sm text-gray-400">
+                This service is monitored via automated synthetic checks (HTTP / PostgreSQL).
+                Customer application logs, traces, and real-time telemetry are not currently connected.
+              </p>
+              <p className="text-xs text-gray-500 mt-2">
+                Advanced correlation with customer logs, traces, and real telemetry requires a collector connection.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Quick Actions - External Tools */}
-      {hasExternalAccess && (
       <div className="card mb-8 bg-gray-800/50 border-gray-700">
         <div className="flex items-start gap-3 mb-4">
           <div className="text-2xl">🔗</div>
@@ -469,7 +492,11 @@ export function CorrelationView() {
                 )}
               </div>
               <div className="text-xs text-gray-400">
-                {hasExternalAccess ? 'View detailed metrics' : 'Restricted access'}
+                {!hasExternalAccess
+                  ? 'Restricted access'
+                  : signals.monitoringMode === 'synthetic'
+                    ? 'Synthetic check metrics'
+                    : 'View detailed metrics'}
               </div>
             </div>
           </button>
@@ -499,35 +526,35 @@ export function CorrelationView() {
                 openExternalLink(url);
               }
             }}
-            disabled={!hasExternalAccess}
+            disabled={!hasExternalAccess || !signals.logs}
             className={`p-4 rounded-lg border transition-all flex items-center gap-3 ${
-              hasExternalAccess
+              hasExternalAccess && signals.logs
                 ? 'bg-green-500/10 border-green-500/30 hover:bg-green-500/20 hover:border-green-500/50 cursor-pointer'
                 : 'bg-gray-800 border-gray-700 opacity-50 cursor-not-allowed'
             }`}
-            title={hasExternalAccess ? 'Open logs in Grafana (Loki)' : 'Only available for Administrators'}
+            title={!hasExternalAccess ? 'Only available for Administrators' : !signals.logs ? 'Customer logs are not connected for this service' : 'Open logs in Grafana (Loki)'}
           >
             <div className="text-3xl">📝</div>
             <div className="flex-1 text-left">
               <div className="text-white font-medium flex items-center gap-2">
                 Loki Logs
-                {hasExternalAccess ? (
+                {hasExternalAccess && signals.logs ? (
                   <ExternalLink size={14} className="text-green-400" />
                 ) : (
                   <Lock size={14} className="text-gray-500" />
                 )}
               </div>
               <div className="text-xs text-gray-400">
-                {hasExternalAccess ? 'Explore full logs' : 'Restricted access'}
+                {!hasExternalAccess ? 'Restricted access' : !signals.logs ? 'Customer logs are not connected' : 'Explore full logs'}
               </div>
             </div>
           </button>
 
-          {/* Jaeger Traces – disabled until integration is ready */}
+          {/* Jaeger Traces – disabled: customer traces not connected */}
           <button
             disabled
             className="p-4 rounded-lg border transition-all flex items-center gap-3 bg-gray-800 border-gray-700 opacity-50 cursor-not-allowed"
-            title="Coming soon"
+            title="Customer traces are not connected for this service"
           >
             <div className="text-3xl">🔗</div>
             <div className="flex-1 text-left">
@@ -535,13 +562,12 @@ export function CorrelationView() {
                 Jaeger Traces
                 <Lock size={14} className="text-gray-500" />
               </div>
-              <div className="text-xs text-gray-400">Coming soon</div>
+              <div className="text-xs text-gray-400">{signals.traces ? 'View distributed traces' : 'Customer traces are not connected'}</div>
             </div>
           </button>
         </div>
 
       </div>
-      )}
 
       {/* Data Cards Grid */}
       <div className="space-y-6">

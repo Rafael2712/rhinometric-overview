@@ -5,6 +5,7 @@ import {
   Activity, Zap, ChevronDown, ChevronUp,
   Lightbulb, RefreshCw, ArrowRight
 } from 'lucide-react'
+import { getSignalAvailability } from '../utils/signalAvailability'
 
 interface RiskScore {
   score: number
@@ -359,6 +360,9 @@ export function AIInsightsPage() {
                   <span className="text-white font-medium truncate">{svc.service_name}</span>
                   {svc.service_type && (
                     <span className="text-xs text-gray-500 bg-gray-800 px-1.5 py-0.5 rounded">{svc.service_type}</span>
+                  )}
+                  {getSignalAvailability('service').monitoringMode === 'synthetic' && (
+                    <span className="text-xs text-amber-400/80 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">📡 Synthetic</span>
                   )}
                 </div>
                 {svc.status === 'insufficient_data' ? (
