@@ -3,7 +3,8 @@ import {
   Server, AlertCircle, CheckCircle, Activity, Globe, Database, 
   Network, Plus, Trash2, Play, Power, PowerOff, Edit, ArrowLeft,
   RefreshCw, Clock, Lock, Search, Tag, X, Upload, FileText, Download, Layers, Copy,
-  Radio, BarChart3, Waypoints, ToggleLeft, ToggleRight, Info
+  Radio, BarChart3, Waypoints, ToggleLeft, ToggleRight, Info,
+  Eye, EyeOff, Shield, Terminal
 } from 'lucide-react'
 import { useAuthStore } from '../lib/auth/store'
 
@@ -31,6 +32,9 @@ interface ExternalServiceData {
   telemetry_attached: boolean
   telemetry_source_type: string | null
   telemetry_service_key: string | null
+  telemetry_token: string | null
+  telemetry_status: string | null
+  last_telemetry_at: string | null
   capability: string                        // derived label
   status: 'unknown' | 'up' | 'down' | 'degraded' | 'error'
   status_message: string | null
@@ -117,7 +121,216 @@ function MonitoringBadge({ svc }: { svc: ExternalServiceData }) {
   );
 }
 
-/* ─── Monitoring Detail Panel (expanded row) ─────────────────── */
+/* ─── Telemetry Status Badge ─────────────────────────────── */
+const TELEMETRY_STATUS_CONFIG: Record<string, { color: string; bgColor: string; label: string; helper: string }> = {
+  not_configured: {
+    color: 'text-gray-400',
+    bgColor: 'bg-gray-400/10',
+    label: 'Not Configured',
+    helper: '',
+  },
+  configured: {
+    color: 'text-blue-400',
+    bgColor: 'bg-blue-400/10',
+    label: 'Configured',
+    helper: 'Telemetry is configured, but no collector has sent data yet.',
+  },
+  connected: {
+    color: 'text-green-400',
+    bgColor: 'bg-green-400/10',
+    label: 'Connected',
+    helper: 'Collector connected successfully.',
+  },
+  receiving_data: {
+    color: 'text-green-400',
+    bgColor: 'bg-green-400/10',
+    label: 'Receiving Data',
+    helper: 'Telemetry data is actively being received.',
+  },
+  error: {
+    color: 'text-red-400',
+    bgColor: 'bg-red-400/10',
+    label: 'Error',
+    helper: 'Telemetry connection exists but is currently failing.',
+  },
+};
+
+function TelemetryStatusBadge({ status }: { status: string | null }) {
+  const cfg = TELEMETRY_STATUS_CONFIG[status || 'not_configured'] || TELEMETRY_STATUS_CONFIG.not_configured;
+  return (
+    <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ${cfg.bgColor} ${cfg.color}`}>
+      <span className={`w-1.5 h-1.5 rounded-full ${cfg.color.replace('text-', 'bg-')}`} />
+      {cfg.label}
+    </span>
+  );
+}
+
+/* ─── Telemetry Setup Block ─────────────────────────────── */
+function TelemetrySetupBlock({ svc }: { svc: ExternalServiceData }) {
+  const [showToken, setShowToken] = useState(false);
+  const [copiedField, setCopiedField] = useState<string | null>(null);
+
+  const copyToClipboard = async (value: string, field: string) => {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopiedField(field);
+      setTimeout(() => setCopiedField(null), 2000);
+    } catch {
+      // Fallback
+      const ta = document.createElement('textarea');
+      ta.value = value;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      setCopiedField(field);
+      setTimeout(() => setCopiedField(null), 2000);
+    }
+  };
+
+  const maskedToken = svc.telemetry_token
+    ? svc.telemetry_token.slice(0, 8) + '\u2022'.repeat(24) + svc.telemetry_token.slice(-6)
+    : '';
+
+  const statusCfg = TELEMETRY_STATUS_CONFIG[svc.telemetry_status || 'not_configured'] || TELEMETRY_STATUS_CONFIG.not_configured;
+
+  const signals = [
+    { label: 'Metrics', enabled: svc.metrics_enabled, Icon: BarChart3, color: 'text-blue-400', endpoint: '/api/telemetry/metrics' },
+    { label: 'Logs',    enabled: svc.logs_enabled,    Icon: FileText, color: 'text-yellow-400', endpoint: '/api/telemetry/logs' },
+    { label: 'Traces',  enabled: svc.traces_enabled,  Icon: Waypoints, color: 'text-purple-400', endpoint: '/api/telemetry/traces' },
+  ];
+
+  const lastTelemetry = svc.last_telemetry_at
+    ? new Date(svc.last_telemetry_at).toLocaleString()
+    : null;
+
+  return (
+    <div className="mt-6 space-y-4">
+      {/* Section Header */}
+      <div className="flex items-center gap-2 border-t border-gray-700/30 pt-5">
+        <Shield className="w-4 h-4 text-emerald-400" />
+        <h4 className="text-sm font-semibold text-white">Telemetry Setup</h4>
+        <TelemetryStatusBadge status={svc.telemetry_status} />
+      </div>
+
+      {/* Status Helper Text */}
+      {statusCfg.helper && (
+        <div className={`flex items-start gap-2 px-3 py-2 rounded-lg border ${
+          svc.telemetry_status === 'error'
+            ? 'bg-red-500/10 border-red-500/20'
+            : svc.telemetry_status === 'receiving_data' || svc.telemetry_status === 'connected'
+              ? 'bg-green-500/10 border-green-500/20'
+              : 'bg-blue-500/10 border-blue-500/20'
+        }`}>
+          <Info className={`w-4 h-4 flex-shrink-0 mt-0.5 ${statusCfg.color}`} />
+          <p className={`text-xs ${statusCfg.color.replace('text-', 'text-').replace('-400', '-300/80')}`}>{statusCfg.helper}</p>
+        </div>
+      )}
+
+      {/* Credentials Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Service Key */}
+        <div className="space-y-1.5">
+          <p className="text-xs uppercase tracking-wider text-gray-500 font-medium">Telemetry Service Key</p>
+          <div className="flex items-center gap-2 bg-gray-800/60 rounded-lg px-3 py-2 border border-gray-700/40">
+            <code className="text-sm text-gray-200 font-mono flex-1 truncate">{svc.telemetry_service_key || '—'}</code>
+            {svc.telemetry_service_key && (
+              <button
+                onClick={() => copyToClipboard(svc.telemetry_service_key!, 'key')}
+                className="p-1 rounded hover:bg-gray-700/50 text-gray-400 hover:text-white transition-colors flex-shrink-0"
+                title="Copy Service Key"
+              >
+                {copiedField === 'key' ? <CheckCircle className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5" />}
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Token */}
+        <div className="space-y-1.5">
+          <p className="text-xs uppercase tracking-wider text-gray-500 font-medium">Telemetry Token</p>
+          <div className="flex items-center gap-2 bg-gray-800/60 rounded-lg px-3 py-2 border border-gray-700/40">
+            <code className="text-sm text-gray-200 font-mono flex-1 truncate">
+              {svc.telemetry_token ? (showToken ? svc.telemetry_token : maskedToken) : '—'}
+            </code>
+            {svc.telemetry_token && (
+              <div className="flex items-center gap-1 flex-shrink-0">
+                <button
+                  onClick={() => setShowToken(!showToken)}
+                  className="p-1 rounded hover:bg-gray-700/50 text-gray-400 hover:text-white transition-colors"
+                  title={showToken ? 'Hide token' : 'Show token'}
+                >
+                  {showToken ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                </button>
+                <button
+                  onClick={() => copyToClipboard(svc.telemetry_token!, 'token')}
+                  className="p-1 rounded hover:bg-gray-700/50 text-gray-400 hover:text-white transition-colors"
+                  title="Copy Token"
+                >
+                  {copiedField === 'token' ? <CheckCircle className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5" />}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Signals + Last Telemetry Row */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Enabled Signals */}
+        <div className="space-y-1.5">
+          <p className="text-xs uppercase tracking-wider text-gray-500 font-medium">Enabled Signals</p>
+          <div className="flex flex-wrap gap-2">
+            {signals.map(s => (
+              <span key={s.label} className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium ${s.enabled ? 'bg-gray-700/50 text-white border border-gray-600/40' : 'bg-gray-800/30 text-gray-600 line-through border border-gray-800/30'}`}>
+                <s.Icon className={`w-3 h-3 ${s.enabled ? s.color : 'text-gray-600'}`} />
+                {s.label}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        {/* Last Telemetry */}
+        <div className="space-y-1.5">
+          <p className="text-xs uppercase tracking-wider text-gray-500 font-medium">Last Telemetry Received</p>
+          <div className="flex items-center gap-2">
+            <Clock className="w-3.5 h-3.5 text-gray-500" />
+            <span className={`text-sm ${lastTelemetry ? 'text-gray-200' : 'text-gray-500 italic'}`}>
+              {lastTelemetry || 'No telemetry received yet'}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Onboarding Instructions */}
+      {(svc.telemetry_status === 'configured' || svc.telemetry_status === 'not_configured') && svc.telemetry_token && (
+        <div className="bg-gray-800/40 rounded-lg border border-gray-700/30 p-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <Terminal className="w-4 h-4 text-blue-400" />
+            <h5 className="text-sm font-medium text-white">Next step: connect a collector</h5>
+          </div>
+          <p className="text-xs text-gray-400 leading-relaxed">
+            Configure your collector or application to send telemetry data using the credentials above.
+            Include the <code className="text-blue-300 bg-gray-900/60 px-1 rounded">X-Service-Key</code> and <code className="text-blue-300 bg-gray-900/60 px-1 rounded">X-Telemetry-Token</code> headers in each request.
+          </p>
+          <div className="space-y-1.5">
+            <p className="text-xs text-gray-500 font-medium">Ingestion Endpoints:</p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              {signals.filter(s => s.enabled).map(s => (
+                <div key={s.label} className="flex items-center gap-2 px-2.5 py-1.5 bg-gray-900/50 rounded border border-gray-700/30">
+                  <s.Icon className={`w-3 h-3 ${s.color}`} />
+                  <code className="text-xs text-gray-300 font-mono">{s.endpoint}</code>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ─── Monitoring Detail Panel (expanded row) ───────────── */
 function MonitoringDetailPanel({ svc }: { svc: ExternalServiceData }) {
   const isTelemetry = svc.monitoring_mode === 'telemetry_enabled';
   const signals = [
@@ -169,18 +382,12 @@ function MonitoringDetailPanel({ svc }: { svc: ExternalServiceData }) {
           </div>
         </div>
 
-        {/* Column 3: Telemetry Status */}
+        {/* Column 3: Telemetry Status Summary */}
         <div className="space-y-2">
           <p className="text-xs uppercase tracking-wider text-gray-500 font-medium">Telemetry Status</p>
           {isTelemetry ? (
             <div className="space-y-2 text-sm">
-              <div className="flex items-center gap-2">
-                <span className={`w-1.5 h-1.5 rounded-full ${svc.telemetry_attached ? 'bg-green-400' : 'bg-yellow-400'}`} />
-                <span className="text-gray-400">Attached:</span>
-                <span className={svc.telemetry_attached ? 'text-green-400' : 'text-yellow-400'}>
-                  {svc.telemetry_attached ? 'Yes' : 'No'}
-                </span>
-              </div>
+              <TelemetryStatusBadge status={svc.telemetry_status} />
               <div className="space-y-1">
                 <p className="text-gray-400 text-xs">Signals enabled:</p>
                 <div className="flex flex-wrap gap-2">
@@ -192,18 +399,6 @@ function MonitoringDetailPanel({ svc }: { svc: ExternalServiceData }) {
                   ))}
                 </div>
               </div>
-              {svc.telemetry_service_key && (
-                <div className="flex items-center gap-2">
-                  <span className="text-gray-400">Service Key:</span>
-                  <code className="text-gray-300 bg-gray-800/50 px-1.5 py-0.5 rounded text-xs">{svc.telemetry_service_key}</code>
-                </div>
-              )}
-              {!svc.telemetry_attached && (
-                <div className="mt-2 flex items-start gap-2 px-3 py-2 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
-                  <Info className="w-4 h-4 text-yellow-400 flex-shrink-0 mt-0.5" />
-                  <p className="text-yellow-300/80 text-xs">Telemetry is configured but no data source is currently connected.</p>
-                </div>
-              )}
             </div>
           ) : (
             <div className="flex items-start gap-2 px-3 py-2 rounded-lg bg-gray-800/50 border border-gray-700/30">
@@ -213,6 +408,9 @@ function MonitoringDetailPanel({ svc }: { svc: ExternalServiceData }) {
           )}
         </div>
       </div>
+
+      {/* Telemetry Setup Block — only for telemetry-enabled services */}
+      {isTelemetry && <TelemetrySetupBlock svc={svc} />}
     </div>
   );
 }
