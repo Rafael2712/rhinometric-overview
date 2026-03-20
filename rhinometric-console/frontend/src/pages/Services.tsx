@@ -3,7 +3,7 @@ import {
   Server, AlertCircle, CheckCircle, Activity, Globe, Database, 
   Network, Plus, Trash2, Play, Power, PowerOff, Edit, ArrowLeft,
   RefreshCw, Clock, Lock, Search, Tag, X, Upload, FileText, Download, Layers, Copy,
-  Radio, BarChart3, Waypoints, ToggleLeft, ToggleRight, Info,
+  Radio, BarChart3, Waypoints, ToggleLeft, ToggleRight, Info, AlertTriangle, Zap, HelpCircle, CircleDot, ChevronRight,
   Eye, EyeOff, Shield, Terminal
 } from 'lucide-react'
 import { useAuthStore } from '../lib/auth/store'
@@ -171,6 +171,242 @@ function TelemetryStatusBadge({ status }: { status: string | null }) {
   );
 }
 
+
+/* ─── Telemetry Readiness Card (Task 20, Part 1) ─────────── */
+function TelemetryReadinessCard({ svc }: { svc: ExternalServiceData }) {
+  const statusCfg = TELEMETRY_STATUS_CONFIG[svc.telemetry_status || 'not_configured'] || TELEMETRY_STATUS_CONFIG.not_configured;
+  const lastTelemetry = svc.last_telemetry_at
+    ? new Date(svc.last_telemetry_at).toLocaleString()
+    : null;
+
+  // Derive conservative per-signal state from overall telemetry_status
+  function signalState(enabled: boolean): { label: string; color: string; dotColor: string } {
+    if (!enabled) return { label: 'Disabled', color: 'text-gray-600', dotColor: 'bg-gray-600' };
+    const status = svc.telemetry_status || 'not_configured';
+    if (status === 'receiving_data' || status === 'connected') {
+      return { label: 'Receiving', color: 'text-green-400', dotColor: 'bg-green-400' };
+    }
+    if (status === 'stale') {
+      return { label: 'Stale', color: 'text-orange-400', dotColor: 'bg-orange-400' };
+    }
+    if (status === 'error') {
+      return { label: 'Error', color: 'text-red-400', dotColor: 'bg-red-400' };
+    }
+    return { label: 'Awaiting data', color: 'text-blue-400', dotColor: 'bg-blue-400' };
+  }
+
+  const signals = [
+    { label: 'Metrics', enabled: svc.metrics_enabled, Icon: BarChart3 },
+    { label: 'Logs', enabled: svc.logs_enabled, Icon: FileText },
+    { label: 'Traces', enabled: svc.traces_enabled, Icon: Waypoints },
+  ];
+
+  return (
+    <div className="mt-5 bg-gray-800/40 rounded-lg border border-gray-700/30 p-4 space-y-4">
+      <div className="flex items-center gap-2">
+        <Zap className="w-4 h-4 text-emerald-400" />
+        <h4 className="text-sm font-semibold text-white">Telemetry Readiness</h4>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* Collector Status */}
+        <div className="space-y-1.5">
+          <p className="text-xs uppercase tracking-wider text-gray-500 font-medium">Collector Status</p>
+          <div className="flex items-center gap-2">
+            <span className={`w-2 h-2 rounded-full ${statusCfg.color.replace('text-', 'bg-')}`} />
+            <span className={`text-sm font-medium ${statusCfg.color}`}>{statusCfg.label}</span>
+          </div>
+        </div>
+
+        {/* Last Telemetry */}
+        <div className="space-y-1.5">
+          <p className="text-xs uppercase tracking-wider text-gray-500 font-medium">Last Data Received</p>
+          <div className="flex items-center gap-2">
+            <Clock className={`w-3.5 h-3.5 ${lastTelemetry ? 'text-green-400' : 'text-gray-500'}`} />
+            <span className={`text-sm ${lastTelemetry ? 'text-gray-200' : 'text-gray-500 italic'}`}>
+              {lastTelemetry || 'No telemetry received yet'}
+            </span>
+          </div>
+        </div>
+
+        {/* Signal Readiness */}
+        <div className="space-y-1.5">
+          <p className="text-xs uppercase tracking-wider text-gray-500 font-medium">Signal Readiness</p>
+          <div className="space-y-1.5">
+            {signals.map(s => {
+              const state = signalState(s.enabled);
+              return (
+                <div key={s.label} className="flex items-center gap-2">
+                  <span className={`w-1.5 h-1.5 rounded-full ${state.dotColor}`} />
+                  <s.Icon className={`w-3 h-3 ${state.color}`} />
+                  <span className={`text-xs ${state.color}`}>{s.label}</span>
+                  <span className={`text-xs ml-auto ${state.color} opacity-70`}>{state.label}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Setup Checklist (Task 20, Part 2) ──────────────────── */
+function SetupChecklist({ svc }: { svc: ExternalServiceData }) {
+  const status = svc.telemetry_status || 'not_configured';
+
+  const steps = [
+    {
+      label: 'Service created',
+      done: true,
+    },
+    {
+      label: 'Telemetry mode enabled',
+      done: svc.monitoring_mode === 'telemetry_enabled',
+    },
+    {
+      label: 'Service key generated',
+      done: !!svc.telemetry_service_key,
+    },
+    {
+      label: 'Token generated',
+      done: !!svc.telemetry_token,
+    },
+    {
+      label: 'Collector command copied / .env downloaded',
+      done: status === 'connected' || status === 'receiving_data' || status === 'stale' || status === 'error',
+    },
+    {
+      label: 'Collector connected',
+      done: status === 'connected' || status === 'receiving_data' || status === 'stale',
+    },
+    {
+      label: 'Data received',
+      done: status === 'receiving_data' || (!!svc.last_telemetry_at),
+    },
+  ];
+
+  return (
+    <div className="mt-4 bg-gray-800/40 rounded-lg border border-gray-700/30 p-4 space-y-3">
+      <div className="flex items-center gap-2">
+        <CircleDot className="w-4 h-4 text-blue-400" />
+        <h4 className="text-sm font-semibold text-white">Setup Checklist</h4>
+        <span className="text-xs text-gray-500 ml-auto">
+          {steps.filter(s => s.done).length}/{steps.length} complete
+        </span>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5">
+        {steps.map((step, i) => (
+          <div key={i} className="flex items-center gap-2 py-0.5">
+            {step.done ? (
+              <CheckCircle className="w-3.5 h-3.5 text-green-400 flex-shrink-0" />
+            ) : (
+              <div className="w-3.5 h-3.5 rounded-full border border-gray-600 flex-shrink-0" />
+            )}
+            <span className={`text-xs ${step.done ? 'text-gray-300' : 'text-gray-500'}`}>
+              {step.label}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ─── Troubleshooting Block (Task 20, Part 4) ────────────── */
+function TroubleshootingBlock({ svc }: { svc: ExternalServiceData }) {
+  const status = svc.telemetry_status || 'not_configured';
+  const messages: Record<string, { icon: string; color: string; bgColor: string; borderColor: string; text: string }> = {
+    not_configured: {
+      icon: 'info',
+      color: 'text-gray-400',
+      bgColor: 'bg-gray-500/10',
+      borderColor: 'border-gray-500/20',
+      text: 'Enable telemetry for this service to attach a collector.',
+    },
+    configured: {
+      icon: 'info',
+      color: 'text-blue-400',
+      bgColor: 'bg-blue-500/10',
+      borderColor: 'border-blue-500/20',
+      text: 'Collector not connected yet. Run the collector with the configuration above.',
+    },
+    connected: {
+      icon: 'check',
+      color: 'text-green-400',
+      bgColor: 'bg-green-500/10',
+      borderColor: 'border-green-500/20',
+      text: 'Telemetry is arriving correctly.',
+    },
+    receiving_data: {
+      icon: 'check',
+      color: 'text-green-400',
+      bgColor: 'bg-green-500/10',
+      borderColor: 'border-green-500/20',
+      text: 'Telemetry is arriving correctly.',
+    },
+    stale: {
+      icon: 'warn',
+      color: 'text-orange-400',
+      bgColor: 'bg-orange-500/10',
+      borderColor: 'border-orange-500/20',
+      text: 'Telemetry stopped arriving. Check whether the collector is still running and can reach the API.',
+    },
+    error: {
+      icon: 'error',
+      color: 'text-red-400',
+      bgColor: 'bg-red-500/10',
+      borderColor: 'border-red-500/20',
+      text: 'Telemetry delivery is failing. Verify token, service key, connectivity, and enabled signals.',
+    },
+  };
+
+  const msg = messages[status] || messages.not_configured;
+
+  return (
+    <div className="mt-4 bg-gray-800/40 rounded-lg border border-gray-700/30 p-4 space-y-3">
+      <div className="flex items-center gap-2">
+        <HelpCircle className="w-4 h-4 text-gray-400" />
+        <h4 className="text-sm font-semibold text-white">Troubleshooting</h4>
+      </div>
+      <div className={`flex items-start gap-2 px-3 py-2.5 rounded-lg border ${msg.bgColor} ${msg.borderColor}`}>
+        {msg.icon === 'check' ? (
+          <CheckCircle className={`w-4 h-4 flex-shrink-0 mt-0.5 ${msg.color}`} />
+        ) : msg.icon === 'warn' ? (
+          <AlertTriangle className={`w-4 h-4 flex-shrink-0 mt-0.5 ${msg.color}`} />
+        ) : msg.icon === 'error' ? (
+          <AlertCircle className={`w-4 h-4 flex-shrink-0 mt-0.5 ${msg.color}`} />
+        ) : (
+          <Info className={`w-4 h-4 flex-shrink-0 mt-0.5 ${msg.color}`} />
+        )}
+        <p className={`text-xs leading-relaxed ${msg.color}`}>{msg.text}</p>
+      </div>
+      {(status === 'stale' || status === 'error' || status === 'configured') && (
+        <div className="text-xs text-gray-500 space-y-1 pl-1">
+          <p className="font-medium text-gray-400 mb-1">Common checks:</p>
+          <div className="flex items-start gap-1.5">
+            <ChevronRight className="w-3 h-3 mt-0.5 text-gray-600 flex-shrink-0" />
+            <span>Verify the collector container is running: <code className="text-gray-400 bg-gray-900/50 px-1 rounded text-[10px]">docker ps</code></span>
+          </div>
+          <div className="flex items-start gap-1.5">
+            <ChevronRight className="w-3 h-3 mt-0.5 text-gray-600 flex-shrink-0" />
+            <span>Check collector logs: <code className="text-gray-400 bg-gray-900/50 px-1 rounded text-[10px]">docker logs &lt;container&gt;</code></span>
+          </div>
+          <div className="flex items-start gap-1.5">
+            <ChevronRight className="w-3 h-3 mt-0.5 text-gray-600 flex-shrink-0" />
+            <span>Confirm RHYNO_API_URL, RHYNO_SERVICE_KEY, and RHYNO_TELEMETRY_TOKEN are correct.</span>
+          </div>
+          <div className="flex items-start gap-1.5">
+            <ChevronRight className="w-3 h-3 mt-0.5 text-gray-600 flex-shrink-0" />
+            <span>Ensure the collector can reach the API endpoint from its network.</span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
 /* ─── Telemetry Setup Block ─────────────────────────────── */
 function TelemetrySetupBlock({ svc }: { svc: ExternalServiceData }) {
   const [showToken, setShowToken] = useState(false);
@@ -217,6 +453,19 @@ function TelemetrySetupBlock({ svc }: { svc: ExternalServiceData }) {
         <Shield className="w-4 h-4 text-emerald-400" />
         <h4 className="text-sm font-semibold text-white">Telemetry Setup</h4>
         <TelemetryStatusBadge status={svc.telemetry_status} />
+      </div>
+
+      {/* Explanation text (Task 20, Part 3) */}
+      <p className="text-xs text-gray-400 leading-relaxed">
+        Run this collector on the customer side to send real metrics, logs, and traces for this service.
+      </p>
+
+      {/* Deployment warning (Task 20, Part 3) */}
+      <div className="flex items-start gap-2 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/20">
+        <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5 text-amber-400" />
+        <p className="text-xs text-amber-300/80">
+          The collector is not deployed by Rhinometric automatically. It must run in the customer environment.
+        </p>
       </div>
 
       {/* Status Helper Text */}
@@ -323,7 +572,7 @@ function TelemetrySetupBlock({ svc }: { svc: ExternalServiceData }) {
             <p className="text-xs uppercase tracking-wider text-gray-500 font-medium">Collector Image</p>
             <div className="flex items-center gap-2 bg-gray-900/50 rounded-lg px-3 py-2 border border-gray-700/30">
               <Layers className="w-3.5 h-3.5 text-gray-400" />
-              <code className="text-sm text-gray-200 font-mono">rhinometric-collector:v1</code>
+              <code className="text-sm text-gray-200 font-mono">rhinometric-collector:v1.1.0</code>
             </div>
           </div>
 
@@ -362,7 +611,7 @@ function TelemetrySetupBlock({ svc }: { svc: ExternalServiceData }) {
                     `  -e RHYNO_API_URL=${window.location.origin}/api \\`,
                     `  -e RHYNO_SERVICE_KEY=${svc.telemetry_service_key || ''} \\`,
                     `  -e RHYNO_TELEMETRY_TOKEN=${svc.telemetry_token || ''} \\`,
-                    '  rhinometric-collector:v1',
+                    '  rhinometric-collector:v1.1.0',
                   ].join('\n');
                   copyToClipboard(cmd, 'docker');
                 }}
@@ -377,7 +626,7 @@ function TelemetrySetupBlock({ svc }: { svc: ExternalServiceData }) {
   -e RHYNO_API_URL=${window.location.origin}/api \\
   -e RHYNO_SERVICE_KEY=${svc.telemetry_service_key || '...'} \\
   -e RHYNO_TELEMETRY_TOKEN=${svc.telemetry_token || '...'} \\
-  rhinometric-collector:v1`}
+  rhinometric-collector:v1.1.0`}
             </pre>
           </div>
 
@@ -509,8 +758,17 @@ function MonitoringDetailPanel({ svc }: { svc: ExternalServiceData }) {
         </div>
       </div>
 
+      {/* Telemetry Readiness Card (Task 20, Part 1) */}
+      {isTelemetry && <TelemetryReadinessCard svc={svc} />}
+
+      {/* Setup Checklist (Task 20, Part 2) */}
+      {isTelemetry && <SetupChecklist svc={svc} />}
+
       {/* Telemetry Setup Block — only for telemetry-enabled services */}
       {isTelemetry && <TelemetrySetupBlock svc={svc} />}
+
+      {/* Troubleshooting (Task 20, Part 4) */}
+      {isTelemetry && <TroubleshootingBlock svc={svc} />}
     </div>
   );
 }
