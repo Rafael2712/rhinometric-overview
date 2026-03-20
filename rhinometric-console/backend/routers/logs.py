@@ -37,6 +37,33 @@ INTERNAL_PATTERN = re.compile(
     re.IGNORECASE,
 )
 
+# Loki-level exclusion regex — used to inject job!~"..." into the
+# LogQL stream selector BEFORE Loki applies its limit.  This ensures
+# the "limit" parameter counts only customer-visible entries.
+_LOKI_INTERNAL_RE = (
+    "console-backend|docker_logs|rhinometric-audit|varlogs"
+    "|grafana|loki|jaeger|alertmanager|prometheus"
+    "|node-exporter|cadvisor|ai-anomaly|ai_anomaly"
+    "|rhinometric[-_].*|console[-_].*"
+)
+
+
+def _inject_internal_exclusion(query: str) -> str:
+    """Add ``job!~"<internal>"`` to the LogQL stream selector.
+
+    Without this, Loki applies the *limit* to ALL streams (including
+    high-volume internal ones).  The post-query ``_is_internal_stream``
+    filter then removes them, potentially leaving zero results even
+    though customer logs exist.
+    """
+    idx = query.find("}")
+    if idx == -1:
+        return query                       # not a valid selector
+    # Determine separator – empty selector "{}" vs non-empty "{job=~…}"
+    before = query[1:idx].strip()
+    sep = ", " if before else ""
+    return query[:idx] + sep + f'job!~"{_LOKI_INTERNAL_RE}"' + query[idx:]
+
 
 def _is_internal_stream(stream_labels: dict) -> bool:
     """Return True if the stream belongs to internal platform telemetry."""
@@ -69,7 +96,7 @@ async def get_logs(
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
             params = {
-                "query": query,
+                "query": _inject_internal_exclusion(query),
                 "limit": limit,
                 "start": start,
                 "end": end,

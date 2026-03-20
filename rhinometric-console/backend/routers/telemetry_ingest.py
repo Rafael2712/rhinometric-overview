@@ -198,6 +198,7 @@ async def _forward_logs(svc: ExternalService, payload: LogsPayload):
         entries.append([ts_ns, f"[{log.level.upper()}] {log.message}"])
 
     labels = {
+        "job": svc.telemetry_service_key or svc.name,
         "service": svc.name,
         "service_key": svc.telemetry_service_key or "",
         "environment": svc.environment or "unknown",
