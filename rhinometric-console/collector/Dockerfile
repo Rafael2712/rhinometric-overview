@@ -2,11 +2,10 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install dependencies
-RUN pip install --no-cache-dir requests
+RUN pip install --no-cache-dir requests psutil pyyaml
 
-# Copy collector script
-COPY collector.py .
+COPY config.py sender.py metrics.py logs.py traces.py utils.py main.py ./
 
-# Run collector
-CMD ["python3", "-u", "collector.py"]
+ENV PYTHONUNBUFFERED=1
+
+CMD ["python", "main.py"]

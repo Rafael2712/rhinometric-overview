@@ -1,73 +1,83 @@
-# Rhinometric Minimal Telemetry Collector
+# Rhinometric Collector v1
 
-A lightweight Docker-based collector that sends synthetic **metrics**, **logs**, and **traces** to the Rhinometric telemetry ingestion API every 10 seconds.
+Production-ready telemetry agent for Rhinometric Console.
 
-> **Purpose:** This is a testing/validation tool — not a production agent.
+## Architecture
 
-## Required Environment Variables
+```
+collector/
+├── main.py           # Entry point — main loop, signal handling
+├── config.py         # Dual config: env vars + optional YAML
+├── sender.py         # HTTP client with retry/backoff
+├── metrics.py        # Real system metrics via psutil
+├── logs.py           # Captures collector's own log output
+├── traces.py         # Real traces with measured durations
+└── utils.py          # ID generation, time helpers, logging setup
+```
 
-| Variable           | Description                                      | Default                       |
-|--------------------|--------------------------------------------------|-------------------------------|
-| `SERVICE_KEY`      | The `telemetry_service_key` of your service      | *(required)*                  |
-| `TELEMETRY_TOKEN`  | The `rtk_*` token generated on service creation  | *(required)*                  |
-| `BASE_URL`         | Rhinometric API base URL                         | `http://localhost:80/api`     |
-| `INTERVAL`         | Seconds between collection cycles                | `10`                          |
+### Data Flow
 
-## Quick Start
+```
+┌──────────┐  collect   ┌──────────┐  POST /api/telemetry/*  ┌─────────────────┐
+│  psutil  │ ──────────▶│  sender  │ ────────────────────────▶│  Rhinometric    │
+│  logs    │            │  (retry) │                          │  Backend        │
+│  traces  │            └──────────┘                          └─────────────────┘
+└──────────┘
+```
 
-### 1. Build the image
+Each cycle:
+1. **Metrics** — CPU %, memory %, disk %, process uptime (via psutil)
+2. **Logs** — Collector's own buffered log records (real events)
+3. **Traces** — Parent span for the cycle + child spans per signal send
+
+## Configuration
+
+### Environment Variables (recommended for Docker)
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `RHYNO_API_URL` | Yes | — | Rhinometric API base URL |
+| `RHYNO_SERVICE_KEY` | Yes | — | Service key from Rhinometric |
+| `RHYNO_TELEMETRY_TOKEN` | Yes | — | Telemetry token |
+| `COLLECT_INTERVAL` | No | `15` | Seconds between cycles |
+| `ENABLE_METRICS` | No | `true` | Collect system metrics |
+| `ENABLE_LOGS` | No | `true` | Capture agent logs |
+| `ENABLE_TRACES` | No | `true` | Generate traces |
+| `RHYNO_ENVIRONMENT` | No | `production` | Environment tag |
+
+### YAML (optional)
+
+Place `config.yaml` next to `main.py` or set `RHYNO_CONFIG_FILE`.
+Environment variables always override YAML values.
+
+## Running
+
+### Docker (recommended)
 
 ```bash
-cd collector
+# Build
 docker build -t rhinometric-collector .
-```
 
-### 2. Run the collector
+# Run with env file
+docker run --rm --env-file .env rhinometric-collector
 
-```bash
+# Run on Rhinometric network (for internal URLs)
 docker run --rm \
-  -e SERVICE_KEY="your-service-key" \
-  -e TELEMETRY_TOKEN="rtk_your-token-here" \
-  -e BASE_URL="http://your-host/api" \
-  -e INTERVAL=10 \
-  --name rhinometric-collector \
+  --env-file .env \
+  --network rhinometric_rhinometric_network \
   rhinometric-collector
 ```
 
-### 3. Run on the same Docker network
-
-If running alongside the Rhinometric stack:
+### Python (direct)
 
 ```bash
-docker run --rm \
-  --network rhinometric_default \
-  -e SERVICE_KEY="your-service-key" \
-  -e TELEMETRY_TOKEN="rtk_your-token-here" \
-  -e BASE_URL="http://rhinometric-nginx:80/api" \
-  -e INTERVAL=10 \
-  --name rhinometric-collector \
-  rhinometric-collector
+pip install requests psutil pyyaml
+export RHYNO_API_URL=http://localhost/api
+export RHYNO_SERVICE_KEY=my-key
+export RHYNO_TELEMETRY_TOKEN=rtk_...
+python main.py
 ```
 
-## What It Sends
+## Signals
 
-Each cycle sends:
-
-- **5 metrics** — heartbeat, HTTP request count, latency, CPU, memory
-- **3 log entries** — randomized info/warn/error messages
-- **2 trace spans** — parent HTTP span + child DB span
-
-## Expected Behavior
-
-After starting the collector:
-
-1. Service `telemetry_status` transitions: `configured` → `connected` → `receiving_data`
-2. `telemetry_attached` becomes `true`
-3. `last_telemetry_at` updates every cycle
-4. Telemetry Setup panel in the UI shows live status
-
-## Stopping
-
-```bash
-docker stop rhinometric-collector
-```
+The collector shuts down cleanly on SIGINT (Ctrl+C) or SIGTERM.
