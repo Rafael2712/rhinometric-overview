@@ -728,6 +728,13 @@ def analyze_all_services(db: Session, hours: int = 24) -> Dict:
                 "service_name": svc.name,
                 "status": "insufficient_data",
                 "risk_score": None,
+                "monitoring_mode": svc.monitoring_mode.value if svc.monitoring_mode else "synthetic_only",
+                "telemetry_status": svc.telemetry_status.value if svc.telemetry_status else "not_configured",
+                "telemetry_attached": svc.telemetry_attached or False,
+                "metrics_enabled": svc.metrics_enabled or False,
+                "logs_enabled": svc.logs_enabled or False,
+                "traces_enabled": svc.traces_enabled or False,
+                "synthetic_enabled": svc.synthetic_enabled if svc.synthetic_enabled is not None else True,
             })
             continue
 
@@ -756,6 +763,13 @@ def analyze_all_services(db: Session, hours: int = 24) -> Dict:
             "anomaly_count": analysis.get("anomalies", {}).get("count", 0),
             "failure_pattern": analysis.get("failure_patterns", {}).get("pattern", "none"),
             "top_recommendation": analysis.get("recommendations", [{}])[0] if analysis.get("recommendations") else None,
+            "monitoring_mode": svc.monitoring_mode.value if svc.monitoring_mode else "synthetic_only",
+            "telemetry_status": svc.telemetry_status.value if svc.telemetry_status else "not_configured",
+            "telemetry_attached": svc.telemetry_attached or False,
+            "metrics_enabled": svc.metrics_enabled or False,
+            "logs_enabled": svc.logs_enabled or False,
+            "traces_enabled": svc.traces_enabled or False,
+            "synthetic_enabled": svc.synthetic_enabled if svc.synthetic_enabled is not None else True,
         })
 
     # Sort by risk score descending

@@ -12,7 +12,8 @@ import {
   openExternalLink 
 } from '../utils/externalLinks';
 import { format } from 'date-fns';
-import { getSignalAvailability } from '../utils/signalAvailability';
+import { useQuery } from '@tanstack/react-query';
+import { getSignalAvailability, getTelemetryLabel, getTelemetryStatusStyle } from '../utils/signalAvailability';
 // date-fns locale removed - using English defaults
 
 const CORRELATION_VIEW_BUILD = '2026-02-16T12';
@@ -116,14 +117,47 @@ export function CorrelationView() {
   const metricName = searchParams.get('metric_name') || '';
   const source = searchParams.get('source') || '';
   const { loading, error, data, correlate } = useCorrelation();
-  const { user } = useAuthStore();
+  const { user, token } = useAuthStore();
   const [isRefreshing, setIsRefreshing] = useState(false);
   
   const hasExternalAccess = user ? canAccessExternalTools(user.roles) : false;
 
   // Signal availability — what telemetry actually exists for this entity type
   const currentEntityType = entityType || data?.metadata?.entity_type || '';
-  const signals = getSignalAvailability(currentEntityType);
+  const staticSignals = getSignalAvailability(currentEntityType);
+
+  // Fetch service telemetry state for per-service override
+  const currentEntityName = entityName || data?.metadata?.entity_name || '';
+  const { data: servicesListData } = useQuery({
+    queryKey: ['services-for-correlation'],
+    queryFn: async () => {
+      if (!token) return [];
+      const res = await fetch('/api/external-services', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!res.ok) return [];
+      const json = await res.json();
+      return json.services || json || [];
+    },
+    staleTime: 30000,
+    enabled: !!token,
+  });
+
+  // Find the matching service telemetry state
+  const matchedSvc = Array.isArray(servicesListData)
+    ? servicesListData.find((s: any) => (s.name || '').toLowerCase() === currentEntityName.toLowerCase())
+    : null;
+
+  const signals = matchedSvc && matchedSvc.monitoring_mode === 'telemetry_enabled'
+    ? {
+        ...staticSignals,
+        realMetrics: matchedSvc.metrics_enabled || false,
+        logs: matchedSvc.logs_enabled || false,
+        traces: matchedSvc.traces_enabled || false,
+        monitoringMode: 'telemetry_enabled' as const,
+        monitoringLabel: getTelemetryLabel(matchedSvc.telemetry_status || 'not_configured'),
+      }
+    : staticSignals;
 
   useEffect(() => {
     document.title = 'Event Correlation - Rhinometric';
@@ -395,6 +429,23 @@ export function CorrelationView() {
       </div>
 
       {/* Monitoring Mode Banner */}
+      {signals.monitoringMode === 'telemetry_enabled' && matchedSvc && (
+        <div className={`card mb-8 ${getTelemetryStatusStyle(matchedSvc.telemetry_status || 'configured').bg} border ${getTelemetryStatusStyle(matchedSvc.telemetry_status || 'configured').border}`}>
+          <div className="flex items-start gap-3">
+            <div className="text-2xl">📡</div>
+            <div className="flex-1">
+              <h3 className={`font-semibold mb-1 ${getTelemetryStatusStyle(matchedSvc.telemetry_status || 'configured').color}`}>
+                {getTelemetryLabel(matchedSvc.telemetry_status || 'configured')}
+              </h3>
+              <p className="text-sm text-gray-400">
+                This service has telemetry enabled.
+                {matchedSvc.metrics_enabled && ' Metrics'}{matchedSvc.logs_enabled && ' Logs'}{matchedSvc.traces_enabled && ' Traces'} signals are configured.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {signals.monitoringMode === 'synthetic' && (
         <div className="card mb-8 bg-amber-500/5 border-amber-500/20">
           <div className="flex items-start gap-3">
@@ -403,10 +454,10 @@ export function CorrelationView() {
               <h3 className="text-amber-400 font-semibold mb-1">Monitoring Mode: Synthetic Only</h3>
               <p className="text-sm text-gray-400">
                 This service is monitored via automated synthetic checks (HTTP / PostgreSQL).
-                Customer application logs, traces, and real-time telemetry are not currently connected.
+                Telemetry is not configured for this service.
               </p>
               <p className="text-xs text-gray-500 mt-2">
-                Advanced correlation with customer logs, traces, and real telemetry requires a collector connection.
+                Enable telemetry and deploy a collector to correlate with application logs, traces, and real metrics.
               </p>
             </div>
           </div>
@@ -496,6 +547,8 @@ export function CorrelationView() {
                   ? 'Restricted access'
                   : signals.monitoringMode === 'synthetic'
                     ? 'Synthetic check metrics'
+                    : signals.monitoringMode === 'telemetry_enabled'
+                    ? 'Telemetry metrics'
                     : 'View detailed metrics'}
               </div>
             </div>

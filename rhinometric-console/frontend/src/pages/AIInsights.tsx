@@ -5,7 +5,7 @@ import {
   Activity, Zap, ChevronDown, ChevronUp,
   Lightbulb, RefreshCw, ArrowRight
 } from 'lucide-react'
-import { getSignalAvailability } from '../utils/signalAvailability'
+import { getTelemetryLabel, getTelemetryStatusStyle } from '../utils/signalAvailability'
 
 interface RiskScore {
   score: number
@@ -35,6 +35,13 @@ interface ServiceSummary {
   anomaly_count?: number
   failure_pattern?: string
   top_recommendation?: { title: string; severity: string; action: string; category: string } | null
+  monitoring_mode?: string
+  telemetry_status?: string
+  telemetry_attached?: boolean
+  metrics_enabled?: boolean
+  logs_enabled?: boolean
+  traces_enabled?: boolean
+  synthetic_enabled?: boolean
 }
 
 interface AISummary {
@@ -361,9 +368,16 @@ export function AIInsightsPage() {
                   {svc.service_type && (
                     <span className="text-xs text-gray-500 bg-gray-800 px-1.5 py-0.5 rounded">{svc.service_type}</span>
                   )}
-                  {getSignalAvailability('service').monitoringMode === 'synthetic' && (
-                    <span className="text-xs text-amber-400/80 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">📡 Synthetic</span>
-                  )}
+                  {(() => {
+                    const mm = svc.monitoring_mode || 'synthetic_only'
+                    const ts = svc.telemetry_status || 'not_configured'
+                    if (mm === 'synthetic_only') {
+                      return <span className="text-xs text-amber-400/80 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">📡 Synthetic</span>
+                    }
+                    const style = getTelemetryStatusStyle(ts)
+                    const label = getTelemetryLabel(ts)
+                    return <span className={`text-xs ${style.color} ${style.bg} px-1.5 py-0.5 rounded border ${style.border}`}>📡 {label}</span>
+                  })()}
                 </div>
                 {svc.status === 'insufficient_data' ? (
                   <span className="text-xs text-gray-500">Insufficient data for analysis</span>

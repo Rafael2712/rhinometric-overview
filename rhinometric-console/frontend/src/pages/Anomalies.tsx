@@ -7,7 +7,7 @@ import {
   ChevronDown, ChevronUp, Activity, Eye, Filter, BarChart3,
   RefreshCw, XCircle, Bell, Trash2
 } from 'lucide-react'
-import { getSignalAvailability } from '../utils/signalAvailability'
+import { getTelemetryLabel, getTelemetryStatusStyle } from '../utils/signalAvailability'
 
 /* ── Types ────────────────────────────────────────────────────── */
 interface AnomalyOccurrence {
@@ -254,6 +254,29 @@ export function AnomaliesPage() {
   const [statusFilter, setStatusFilter] = useState<string>('')
   const [expandedFp, setExpandedFp] = useState<string | null>(null)
 
+  // Fetch services for telemetry state lookup
+  const { data: servicesData } = useQuery({
+    queryKey: ['services-telemetry-state'],
+    queryFn: async () => {
+      const res = await fetch('/api/external-services', { headers })
+      if (!res.ok) return []
+      const json = await res.json()
+      return json.services || json || []
+    },
+    staleTime: 30000,
+  })
+
+  // Build a map: service_name (lowercase) -> telemetry state
+  const svcTelemetryMap: Record<string, { monitoring_mode: string; telemetry_status: string }> = {}
+  if (Array.isArray(servicesData)) {
+    for (const s of servicesData) {
+      svcTelemetryMap[(s.name || '').toLowerCase()] = {
+        monitoring_mode: s.monitoring_mode || 'synthetic_only',
+        telemetry_status: s.telemetry_status || 'not_configured',
+      }
+    }
+  }
+
   // Fetch anomaly groups
   const { data, isLoading, error } = useQuery({
     queryKey: ['anomalies', entityTypeFilter, statusFilter],
@@ -426,6 +449,7 @@ export function AnomaliesPage() {
                       isMutating={statusMutation.isPending}
                       isCorrelating={correlateMutation.isPending}
                       correlationResult={correlateMutation.data}
+                      svcTelemetryMap={svcTelemetryMap}
                     />
                   )
                 })}
@@ -454,7 +478,7 @@ export function AnomaliesPage() {
 }
 
 /* ── Desktop Anomaly Row ──────────────────────────────────────── */
-function AnomalyRow({ group, isExpanded, onToggle, onStatusChange, onCorrelate, isMutating, isCorrelating, correlationResult }: {
+function AnomalyRow({ group, isExpanded, onToggle, onStatusChange, onCorrelate, isMutating, isCorrelating, correlationResult, svcTelemetryMap }: {
   group: AnomalyGroup
   isExpanded: boolean
   onToggle: () => void
@@ -463,6 +487,7 @@ function AnomalyRow({ group, isExpanded, onToggle, onStatusChange, onCorrelate, 
   isMutating: boolean
   isCorrelating: boolean
   correlationResult: Record<string, unknown> | null | undefined
+  svcTelemetryMap: Record<string, { monitoring_mode: string; telemetry_status: string }>
 }) {
   return (
     <>
@@ -542,13 +567,25 @@ function AnomalyRow({ group, isExpanded, onToggle, onStatusChange, onCorrelate, 
                 )}
               </div>
 
-              {/* Monitoring Mode indicator */}
-              {getSignalAvailability(group.entity_type).monitoringMode === 'synthetic' && (
-                <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/20">
-                  <span className="text-amber-400 text-xs font-medium">📡 Monitoring: Synthetic only</span>
-                  <span className="text-gray-500 text-xs">— Logs and traces are not connected for this service</span>
-                </div>
-              )}
+              {/* Monitoring Mode indicator — reads real telemetry state */}
+              {(() => {
+                const svcState = svcTelemetryMap[(group.entity_name || '').toLowerCase()]
+                if (!svcState || svcState.monitoring_mode === 'synthetic_only') {
+                  return (
+                    <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                      <span className="text-amber-400 text-xs font-medium">📡 Monitoring: Synthetic only</span>
+                      <span className="text-gray-500 text-xs">— Telemetry not configured for this service</span>
+                    </div>
+                  )
+                }
+                const style = getTelemetryStatusStyle(svcState.telemetry_status)
+                const label = getTelemetryLabel(svcState.telemetry_status)
+                return (
+                  <div className={`flex items-center gap-2 px-3 py-2 rounded-lg ${style.bg} border ${style.border}`}>
+                    <span className={`text-xs font-medium ${style.color}`}>📡 {label}</span>
+                  </div>
+                )
+              })()}
 
               {/* Lifecycle actions */}
               <div className="flex items-center gap-2 flex-wrap">

@@ -124,6 +124,9 @@ def _compute_slo_for_service(db: Session, svc: ExternalService, cutoff: datetime
             "slo_status": "no_data",
             "total_checks": 0,
             "successful_checks": 0,
+            "data_source": "synthetic",
+            "monitoring_mode": svc.monitoring_mode.value if svc.monitoring_mode else "synthetic_only",
+            "telemetry_status": svc.telemetry_status.value if svc.telemetry_status else "not_configured",
         }
 
     successful = sum(1 for c in checks if c.status == "up")
@@ -163,6 +166,9 @@ def _compute_slo_for_service(db: Session, svc: ExternalService, cutoff: datetime
         "slo_status": status,
         "total_checks": total_checks,
         "successful_checks": successful,
+        "data_source": "synthetic",
+        "monitoring_mode": svc.monitoring_mode.value if svc.monitoring_mode else "synthetic_only",
+        "telemetry_status": svc.telemetry_status.value if svc.telemetry_status else "not_configured",
     }
 
 

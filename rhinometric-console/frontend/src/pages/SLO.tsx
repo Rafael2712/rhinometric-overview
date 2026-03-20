@@ -44,6 +44,14 @@ function TypeBadge({ type }: { type: string }) {
   return <span className={`px-2 py-0.5 rounded text-xs font-medium uppercase ${color}`}>{type}</span>
 }
 
+function DataSourceBadge({ monitoringMode }: { source?: string; monitoringMode?: string }) {
+  const isTelemetry = monitoringMode === 'telemetry_enabled'
+  if (isTelemetry) {
+    return <span className="px-2 py-0.5 rounded text-xs font-medium text-green-400 bg-green-900/30">Telemetry + Synthetic</span>
+  }
+  return <span className="px-2 py-0.5 rounded text-xs font-medium text-amber-400 bg-amber-900/30">Synthetic only</span>
+}
+
 function StatCard({ title, value, sub, color }: { title: string; value: string | number; sub?: string; color: string }) {
   return (
     <div className="bg-gray-800/50 border border-gray-700/50 rounded-xl p-5">
@@ -191,11 +199,12 @@ function ServiceRow({ svc, token, timeRange }: { svc: any; token: string; timeRa
         <td className="px-4 py-3 text-sm text-gray-300">{svc.alert_count}</td>
         <td className="px-4 py-3 text-sm text-gray-300">{svc.slo_target_pct}%</td>
         <td className="px-4 py-3 text-sm"><BudgetBar pct={svc.error_budget_remaining_pct} /></td>
+        <td className="px-4 py-3 text-sm"><DataSourceBadge source={svc.data_source} monitoringMode={svc.monitoring_mode} /></td>
         <td className="px-4 py-3 text-sm"><StatusBadge status={svc.slo_status} /></td>
       </tr>
       {expanded && (
         <tr>
-          <td colSpan={11} className="p-0">
+          <td colSpan={12} className="p-0">
             <ServiceDetailPanel serviceId={svc.service_id} token={token} timeRange={timeRange} />
           </td>
         </tr>
@@ -322,6 +331,7 @@ export function SLOPage() {
                 <th className="px-4 py-3">Alerts</th>
                 <th className="px-4 py-3">SLO Target</th>
                 <th className="px-4 py-3">Budget</th>
+                <th className="px-4 py-3">Source</th>
                 <th className="px-4 py-3">Status</th>
               </tr>
             </thead>
