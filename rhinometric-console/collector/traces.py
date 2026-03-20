@@ -69,7 +69,7 @@ class CycleTracer:
     Manages traces for one collection cycle.
 
     Usage:
-        tracer = CycleTracer(cfg)
+        tracer = CycleTracer(cfg, cycle)
         with tracer.child("send_metrics") as span:
             ... do work ...
             if failed: span.set_error("reason")

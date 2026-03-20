@@ -19,7 +19,7 @@ from config import CollectorConfig
 
 logger = logging.getLogger("rhyno.collector.logs")
 
-# ── In-memory ring buffer handler ──────────────────────────────────
+# ── In-memory ring buffer handler ────────────────────────────────
 
 _MAX_BUFFER = 200  # cap to avoid unbounded growth between cycles
 

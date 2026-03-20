@@ -2,8 +2,10 @@
 Rhinometric Collector — Real System Metrics
 
 Collects actual host metrics via psutil:
-  - CPU usage (percent)
+  - CPU usage (percent, core count)
   - Memory usage (percent, used bytes, total bytes)
+  - Disk usage (percent)
+  - Network I/O (bytes sent/received)
   - Process uptime (seconds)
 """
 
@@ -35,7 +37,7 @@ def collect_metrics(cfg: CollectorConfig) -> List[Dict]:
 
     samples: List[Dict] = []
 
-    # ── CPU ────────────────────────────────────────────────────
+    # ── CPU ──────────────────────────────────────────────────
     try:
         cpu_pct = psutil.cpu_percent(interval=0.5)
         samples.append({
@@ -52,7 +54,7 @@ def collect_metrics(cfg: CollectorConfig) -> List[Dict]:
     except Exception as exc:
         logger.warning(f"Failed to collect CPU metrics: {exc}")
 
-    # ── Memory ─────────────────────────────────────────────────
+    # ── Memory ───────────────────────────────────────────────
     try:
         mem = psutil.virtual_memory()
         samples.append({
@@ -73,7 +75,7 @@ def collect_metrics(cfg: CollectorConfig) -> List[Dict]:
     except Exception as exc:
         logger.warning(f"Failed to collect memory metrics: {exc}")
 
-    # ── Disk ───────────────────────────────────────────────────
+    # ── Disk ─────────────────────────────────────────────────
     try:
         disk = psutil.disk_usage("/")
         samples.append({
@@ -84,7 +86,23 @@ def collect_metrics(cfg: CollectorConfig) -> List[Dict]:
     except Exception as exc:
         logger.warning(f"Failed to collect disk metrics: {exc}")
 
-    # ── Process uptime ─────────────────────────────────────────
+    # ── Network I/O ──────────────────────────────────────────
+    try:
+        net = psutil.net_io_counters()
+        samples.append({
+            "name": "system_net_bytes_sent",
+            "value": float(net.bytes_sent),
+            "labels": {**labels, "unit": "bytes"},
+        })
+        samples.append({
+            "name": "system_net_bytes_recv",
+            "value": float(net.bytes_recv),
+            "labels": {**labels, "unit": "bytes"},
+        })
+    except Exception as exc:
+        logger.warning(f"Failed to collect network metrics: {exc}")
+
+    # ── Process uptime ───────────────────────────────────────
     uptime_s = round(time.monotonic() - _start_time, 1)
     samples.append({
         "name": "collector_uptime_seconds",
