@@ -147,6 +147,12 @@ const TELEMETRY_STATUS_CONFIG: Record<string, { color: string; bgColor: string; 
     label: 'Receiving Data',
     helper: 'Collector connected successfully.',
   },
+  stale: {
+    color: 'text-orange-400',
+    bgColor: 'bg-orange-400/10',
+    label: 'Stale',
+    helper: 'No telemetry data received in the last 10 minutes. Check your collector.',
+  },
   error: {
     color: 'text-red-400',
     bgColor: 'bg-red-400/10',
@@ -218,9 +224,11 @@ function TelemetrySetupBlock({ svc }: { svc: ExternalServiceData }) {
         <div className={`flex items-start gap-2 px-3 py-2 rounded-lg border ${
           svc.telemetry_status === 'error'
             ? 'bg-red-500/10 border-red-500/20'
-            : svc.telemetry_status === 'receiving_data' || svc.telemetry_status === 'connected'
-              ? 'bg-green-500/10 border-green-500/20'
-              : 'bg-blue-500/10 border-blue-500/20'
+            : svc.telemetry_status === 'stale'
+              ? 'bg-orange-500/10 border-orange-500/20'
+              : svc.telemetry_status === 'receiving_data' || svc.telemetry_status === 'connected'
+                ? 'bg-green-500/10 border-green-500/20'
+                : 'bg-blue-500/10 border-blue-500/20'
         }`}>
           <Info className={`w-4 h-4 flex-shrink-0 mt-0.5 ${statusCfg.color}`} />
           <p className={`text-xs ${statusCfg.color.replace('text-', 'text-').replace('-400', '-300/80')}`}>{statusCfg.helper}</p>

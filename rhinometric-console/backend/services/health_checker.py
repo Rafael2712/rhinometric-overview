@@ -24,7 +24,7 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import Optional, Dict, Tuple
 
 from database import SessionLocal
-from models.external_service import ExternalService, ServiceType, ServiceStatus
+from models.external_service import ExternalService, ServiceType, ServiceStatus, MonitoringMode, TelemetryStatus
 from models.external_service_check import ExternalServiceCheck
 from services.connector_service import test_http_connection, test_postgresql_connection
 from metrics import (
@@ -51,6 +51,9 @@ _CLEANUP_INTERVAL = 86400  # 24 hours in seconds
 
 # How often the scheduler loop wakes up (seconds)
 POLL_INTERVAL = 15
+
+# Telemetry stale threshold (minutes with no data)
+STALE_MINUTES = 10
 
 # Thread pool for blocking I/O (HTTP requests, PG connections)
 _executor = ThreadPoolExecutor(max_workers=4, thread_name_prefix="health-check")
@@ -371,6 +374,40 @@ async def _check_one(svc_id: int, svc_name: str, svc_type: str, config: dict, ti
                 logger.debug(f"[SSL] Error checking {svc_name}: {e}")
 
 
+
+
+# ── Telemetry stale detection ───────────────────────────────────
+
+def _check_stale_telemetry():
+    """Mark services as STALE if no telemetry received in STALE_MINUTES."""
+    try:
+        db = SessionLocal()
+        now = datetime.now(timezone.utc)
+        threshold = now - timedelta(minutes=STALE_MINUTES)
+
+        stale_candidates = (
+            db.query(ExternalService)
+            .filter(
+                ExternalService.monitoring_mode == MonitoringMode.TELEMETRY_ENABLED,
+                ExternalService.telemetry_status == TelemetryStatus.RECEIVING_DATA,
+                ExternalService.last_telemetry_at != None,
+                ExternalService.last_telemetry_at < threshold,
+            )
+            .all()
+        )
+
+        for svc in stale_candidates:
+            svc.telemetry_status = TelemetryStatus.STALE
+            logger.info(f"[Stale] Service '{svc.name}' (id={svc.id}) marked STALE — last data at {svc.last_telemetry_at}")
+
+        if stale_candidates:
+            db.commit()
+            logger.info(f"[Stale] Marked {len(stale_candidates)} service(s) as STALE")
+
+        db.close()
+    except Exception as e:
+        logger.warning(f"[Stale] Detection error: {e}")
+
 async def _scheduler_loop():
     """Main loop: poll DB, dispatch checks for due services."""
     global _running
@@ -426,6 +463,12 @@ async def _scheduler_loop():
                     logger.info("[HealthCheck] Retention cleanup: removed %d old checks in %ss", deleted, dur)
         except Exception as _cleanup_err:
             logger.warning("[HealthCheck] Retention cleanup error: %s", _cleanup_err)
+
+        # -- Telemetry stale detection --
+        try:
+            _check_stale_telemetry()
+        except Exception as _stale_err:
+            logger.warning("[HealthCheck] Stale detection error: %s", _stale_err)
 
         await asyncio.sleep(POLL_INTERVAL)
 

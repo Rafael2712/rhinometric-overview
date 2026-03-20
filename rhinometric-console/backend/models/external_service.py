@@ -37,6 +37,7 @@ class TelemetryStatus(str, enum.Enum):
     CONFIGURED = "configured"
     CONNECTED = "connected"
     RECEIVING_DATA = "receiving_data"
+    STALE = "stale"
     ERROR = "error"
 
 

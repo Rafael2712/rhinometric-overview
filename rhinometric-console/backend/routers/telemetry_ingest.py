@@ -134,7 +134,7 @@ def _resolve_service(
         changed = True
         logger.info(f"Telemetry attached for service {svc.name} (id={svc.id})")
 
-    if svc.telemetry_status == TelemetryStatus.CONNECTED:
+    if svc.telemetry_status in (TelemetryStatus.CONNECTED, TelemetryStatus.STALE, TelemetryStatus.ERROR):
         svc.telemetry_status = TelemetryStatus.RECEIVING_DATA
         changed = True
 
@@ -225,20 +225,24 @@ async def _forward_logs(svc: ExternalService, payload: LogsPayload):
 
 
 async def _forward_traces(svc: ExternalService, payload: TracesPayload):
-    """Convert to OTLP JSON and push to Jaeger's OTLP HTTP endpoint."""
-    resource_spans = []
-    scope_spans_map: Dict[str, list] = {}
+    """Convert to OTLP JSON and push to Jaeger's OTLP HTTP endpoint.
 
+    CRITICAL: Always override service_name with the DB service name
+    to prevent arbitrary names and ensure trace isolation.
+    """
+    # Use the DB service name as the canonical service name
+    canonical_name = svc.telemetry_service_key or svc.name
+    service_id = svc.id
+
+    scope_spans: list = []
     for span in payload.spans:
-        svc_name = span.service_name
-        if svc_name not in scope_spans_map:
-            scope_spans_map[svc_name] = []
-
         attrs = []
         for k, v in (span.attributes or {}).items():
             attrs.append({"key": k, "value": {"stringValue": str(v)}})
-        # Add service metadata
+
+        # Inject Rhinometric identity attributes
         attrs.append({"key": "rhinometric.service_key", "value": {"stringValue": svc.telemetry_service_key or ""}})
+        attrs.append({"key": "rhinometric.service_id", "value": {"intValue": service_id}})
         attrs.append({"key": "rhinometric.environment", "value": {"stringValue": svc.environment or "unknown"}})
 
         otlp_span = {
@@ -254,23 +258,24 @@ async def _forward_traces(svc: ExternalService, payload: TracesPayload):
         if span.parent_span_id:
             otlp_span["parentSpanId"] = span.parent_span_id
 
-        scope_spans_map[svc_name].append(otlp_span)
+        scope_spans.append(otlp_span)
 
-    for svc_name, spans_list in scope_spans_map.items():
-        resource_spans.append({
+    # Single resource block with the canonical service name
+    otlp_payload = {
+        "resourceSpans": [{
             "resource": {
                 "attributes": [
-                    {"key": "service.name", "value": {"stringValue": svc_name}},
-                    {"key": "rhinometric.service_id", "value": {"intValue": svc.id}},
+                    {"key": "service.name", "value": {"stringValue": canonical_name}},
+                    {"key": "rhinometric.service_id", "value": {"intValue": service_id}},
+                    {"key": "rhinometric.service_key", "value": {"stringValue": svc.telemetry_service_key or ""}},
                 ]
             },
             "scopeSpans": [{
                 "scope": {"name": "rhinometric.telemetry_ingest"},
-                "spans": spans_list,
+                "spans": scope_spans,
             }],
-        })
-
-    otlp_payload = {"resourceSpans": resource_spans}
+        }]
+    }
 
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
