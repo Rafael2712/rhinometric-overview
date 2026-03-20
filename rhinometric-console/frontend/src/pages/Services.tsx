@@ -133,7 +133,7 @@ const TELEMETRY_STATUS_CONFIG: Record<string, { color: string; bgColor: string; 
     color: 'text-blue-400',
     bgColor: 'bg-blue-400/10',
     label: 'Configured',
-    helper: 'Telemetry is configured, but no collector has sent data yet.',
+    helper: 'Collector not connected yet. Run the collector with the configuration below.',
   },
   connected: {
     color: 'text-green-400',
@@ -145,13 +145,13 @@ const TELEMETRY_STATUS_CONFIG: Record<string, { color: string; bgColor: string; 
     color: 'text-green-400',
     bgColor: 'bg-green-400/10',
     label: 'Receiving Data',
-    helper: 'Telemetry data is actively being received.',
+    helper: 'Collector connected successfully.',
   },
   error: {
     color: 'text-red-400',
     bgColor: 'bg-red-400/10',
     label: 'Error',
-    helper: 'Telemetry connection exists but is currently failing.',
+    helper: 'Collector configuration exists, but telemetry delivery is failing.',
   },
 };
 
@@ -302,18 +302,110 @@ function TelemetrySetupBlock({ svc }: { svc: ExternalServiceData }) {
         </div>
       </div>
 
-      {/* Onboarding Instructions */}
-      {(svc.telemetry_status === 'configured' || svc.telemetry_status === 'not_configured') && svc.telemetry_token && (
-        <div className="bg-gray-800/40 rounded-lg border border-gray-700/30 p-4 space-y-3">
+            {/* ── Collector Setup ────────────────────────────────── */}
+      {svc.telemetry_token && (
+        <div className="bg-gray-800/40 rounded-lg border border-gray-700/30 p-4 space-y-4">
           <div className="flex items-center gap-2">
             <Terminal className="w-4 h-4 text-blue-400" />
-            <h5 className="text-sm font-medium text-white">Next step: connect a collector</h5>
+            <h5 className="text-sm font-semibold text-white">Collector Setup</h5>
           </div>
-          <p className="text-xs text-gray-400 leading-relaxed">
-            Configure your collector or application to send telemetry data using the credentials above.
-            Include the <code className="text-blue-300 bg-gray-900/60 px-1 rounded">X-Service-Key</code> and <code className="text-blue-300 bg-gray-900/60 px-1 rounded">X-Telemetry-Token</code> headers in each request.
-          </p>
+
+          {/* Collector Image */}
           <div className="space-y-1.5">
+            <p className="text-xs uppercase tracking-wider text-gray-500 font-medium">Collector Image</p>
+            <div className="flex items-center gap-2 bg-gray-900/50 rounded-lg px-3 py-2 border border-gray-700/30">
+              <Layers className="w-3.5 h-3.5 text-gray-400" />
+              <code className="text-sm text-gray-200 font-mono">rhinometric-collector:v1</code>
+            </div>
+          </div>
+
+          {/* Environment Variables */}
+          <div className="space-y-1.5">
+            <p className="text-xs uppercase tracking-wider text-gray-500 font-medium">Required Environment Variables</p>
+            <div className="space-y-2">
+              {[
+                { name: 'RHYNO_API_URL', value: `${window.location.origin}/api`, field: 'env_api' },
+                { name: 'RHYNO_SERVICE_KEY', value: svc.telemetry_service_key || '', field: 'env_key' },
+                { name: 'RHYNO_TELEMETRY_TOKEN', value: svc.telemetry_token || '', field: 'env_token' },
+              ].map(env => (
+                <div key={env.name} className="flex items-center gap-2 bg-gray-900/50 rounded-lg px-3 py-2 border border-gray-700/30">
+                  <code className="text-xs text-gray-500 font-mono w-48 flex-shrink-0">{env.name}</code>
+                  <code className="text-xs text-gray-200 font-mono flex-1 truncate">{env.value}</code>
+                  <button
+                    onClick={() => copyToClipboard(env.value, env.field)}
+                    className="p-1 rounded hover:bg-gray-700/50 text-gray-400 hover:text-white transition-colors flex-shrink-0"
+                    title={`Copy ${env.name}`}
+                  >
+                    {copiedField === env.field ? <CheckCircle className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5" />}
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Docker Run Command */}
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <p className="text-xs uppercase tracking-wider text-gray-500 font-medium">Docker Run Command</p>
+              <button
+                onClick={() => {
+                  const cmd = [
+                    'docker run --rm \\',
+                    `  -e RHYNO_API_URL=${window.location.origin}/api \\`,
+                    `  -e RHYNO_SERVICE_KEY=${svc.telemetry_service_key || ''} \\`,
+                    `  -e RHYNO_TELEMETRY_TOKEN=${svc.telemetry_token || ''} \\`,
+                    '  rhinometric-collector:v1',
+                  ].join('\n');
+                  copyToClipboard(cmd, 'docker');
+                }}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 border border-blue-500/20 transition-colors"
+              >
+                {copiedField === 'docker' ? <CheckCircle className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3" />}
+                {copiedField === 'docker' ? 'Copied!' : 'Copy Docker Command'}
+              </button>
+            </div>
+            <pre className="bg-gray-900/70 rounded-lg px-4 py-3 border border-gray-700/30 text-xs text-gray-200 font-mono overflow-x-auto whitespace-pre leading-relaxed">
+{`docker run --rm \\
+  -e RHYNO_API_URL=${window.location.origin}/api \\
+  -e RHYNO_SERVICE_KEY=${svc.telemetry_service_key || '...'} \\
+  -e RHYNO_TELEMETRY_TOKEN=${svc.telemetry_token || '...'} \\
+  rhinometric-collector:v1`}
+            </pre>
+          </div>
+
+          {/* Download .env Template */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 pt-1">
+            <button
+              onClick={() => {
+                const content = [
+                  `RHYNO_API_URL=${window.location.origin}/api`,
+                  `RHYNO_SERVICE_KEY=${svc.telemetry_service_key || ''}`,
+                  `RHYNO_TELEMETRY_TOKEN=${svc.telemetry_token || ''}`,
+                  'COLLECT_INTERVAL=15',
+                  'ENABLE_METRICS=true',
+                  'ENABLE_LOGS=true',
+                  'ENABLE_TRACES=true',
+                ].join('\n');
+                const blob = new Blob([content], { type: 'text/plain' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${svc.telemetry_service_key || 'collector'}.env`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+              }}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-700/50 text-gray-300 hover:bg-gray-600/50 hover:text-white border border-gray-600/30 transition-colors"
+            >
+              <Download className="w-3.5 h-3.5" />
+              Download .env Template
+            </button>
+            <p className="text-xs text-gray-500">Pre-filled with this service's credentials</p>
+          </div>
+
+          {/* Ingestion Endpoints */}
+          <div className="space-y-1.5 pt-1">
             <p className="text-xs text-gray-500 font-medium">Ingestion Endpoints:</p>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               {signals.filter(s => s.enabled).map(s => (
