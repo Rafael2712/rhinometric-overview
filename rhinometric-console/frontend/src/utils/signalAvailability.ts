@@ -129,29 +129,3 @@ export function getSignalAvailability(entityType: string): SignalAvailability {
   }
 }
 
-/**
- * Returns a user-facing reason why a signal is unavailable for a given
- * entity type, or null if the signal IS available.
- *
- * For per-service accuracy, prefer checking svc.logs_enabled / svc.traces_enabled directly.
- */
-export function getSignalDisabledReason(
-  signal: 'metrics' | 'logs' | 'traces',
-  entityType: string,
-): string | null {
-  const avail = getSignalAvailability(entityType);
-  switch (signal) {
-    case 'metrics':
-      return null;
-    case 'logs':
-      if (!avail.logs)
-        return 'Customer logs are not connected for this service';
-      return null;
-    case 'traces':
-      if (!avail.traces)
-        return 'Customer traces are not connected for this service';
-      return null;
-    default:
-      return null;
-  }
-}

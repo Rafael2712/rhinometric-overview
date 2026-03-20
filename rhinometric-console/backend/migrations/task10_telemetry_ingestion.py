@@ -15,7 +15,7 @@ def migrate():
         if not result.fetchone():
             conn.execute(text(
                 "CREATE TYPE telemetry_status_enum AS ENUM "
-                "('NOT_CONFIGURED', 'CONFIGURED', 'CONNECTED', 'RECEIVING_DATA', 'ERROR')"
+                "('NOT_CONFIGURED', 'CONFIGURED', 'CONNECTED', 'RECEIVING_DATA', 'STALE', 'ERROR')"
             ))
             print("  Created telemetry_status_enum")
         else:
