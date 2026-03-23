@@ -1,0 +1,43 @@
+# ──────────────────────────────────────────────────────────────
+# Rhinometric Collector — YAML Configuration
+# ──────────────────────────────────────────────────────────────
+# Place as config.yaml next to main.py, or set RHYNO_CONFIG_FILE.
+# Environment variables ALWAYS override YAML values.
+# Precedence: ENV > YAML > defaults
+# ──────────────────────────────────────────────────────────────
+
+# REQUIRED — Rhinometric API base URL
+api_url: "http://your-rhinometric-host/api"
+
+# REQUIRED — Service key from Rhinometric Console
+service_key: "your-service-key"
+
+# REQUIRED — Telemetry token from Rhinometric Console
+telemetry_token: "your-telemetry-token"
+
+# Collection interval in seconds (minimum: 5, default: 15)
+collect_interval: 15
+
+# Toggle individual signals
+enable_metrics: true
+enable_logs: true
+enable_traces: true
+
+# Log verbosity: DEBUG, INFO, WARNING, ERROR
+log_level: "INFO"
+
+# Environment tag attached to all telemetry
+environment: "production"
+
+# ── File-based log ingestion (v1.2.0) ────────────────────────
+# List of external log files to tail and send to Rhinometric.
+# Omit or leave empty to only send internal collector logs.
+# log_sources:
+#   - /var/log/app.log
+#   - /var/log/syslog
+
+# Maximum lines to read per file per collection cycle
+# log_max_lines: 50
+
+# Minimum seconds between file reads
+# log_poll_interval: 5
