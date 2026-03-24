@@ -31,6 +31,7 @@ from routers import slo as slo_router
 from routers import system as system_router
 from routers import service_map as service_map_router
 from routers import service_summary as service_summary_router
+from routers import services_grouped as services_grouped_router
 from routers import backups as backups_router
 from routers import admin_purge as admin_purge_router
 from routers import telemetry_ingest as telemetry_ingest_router
@@ -365,6 +366,7 @@ app.include_router(correlation.router, prefix=f"{settings.API_PREFIX}/correlatio
 app.include_router(external_services.router, prefix=f"{settings.API_PREFIX}/external-services", tags=["External Services"])
 app.include_router(service_map_router.router, prefix=f"{settings.API_PREFIX}/service-map", tags=["Service Map"])
 app.include_router(service_summary_router.router, prefix=f"{settings.API_PREFIX}/services", tags=["Service Summary"])
+app.include_router(services_grouped_router.router, prefix=f"{settings.API_PREFIX}/services", tags=["Services Grouped"])  # Task 22
 app.include_router(system_router.router, prefix=f"{settings.API_PREFIX}/system", tags=["System"])  # System admin endpoints  # External Services Connector MVP
 app.include_router(backups_router.router, prefix=f"{settings.API_PREFIX}/backups", tags=["Backups"])
 app.include_router(admin_purge_router.router, prefix=f"{settings.API_PREFIX}/admin/purge", tags=["Admin Purge"])  # Task 4: Manual purge

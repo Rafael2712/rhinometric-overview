@@ -267,6 +267,7 @@ def process_bulk_http(
                 catalog_type=svc_data.get("catalog_type"),
                 category=svc_data.get("category"),
                 tags=svc_data.get("tags"),
+                group_name=svc_data.get("group_name", "Default"),
                 status=ServiceStatus.UNKNOWN,
                 created_by=current_user_id,
             )

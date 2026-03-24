@@ -56,6 +56,9 @@ class ExternalServiceCreate(BaseModel):
     category: Optional[str] = Field(None, max_length=100, description="Logical grouping: payments, authentication, mobile-backend, analytics, etc.")
     tags: Optional[List[str]] = Field(None, description="Array of string labels: ['critical', 'external', 'payments']")
 
+    # Task 22: Service grouping
+    group_name: Optional[str] = Field("Default", max_length=100, description="Service group name")
+
     # ── Monitoring-mode & telemetry (new domain fields) ──
     monitoring_mode: str = Field(default="synthetic_only", pattern="^(synthetic_only|telemetry_enabled)$")
     synthetic_enabled: bool = True
@@ -79,6 +82,9 @@ class ExternalServiceUpdate(BaseModel):
     catalog_type: Optional[str] = Field(None, max_length=50)
     category: Optional[str] = Field(None, max_length=100)
     tags: Optional[List[str]] = None
+
+    # Task 22: Service grouping
+    group_name: Optional[str] = Field(None, max_length=100)
 
     # ── Monitoring-mode & telemetry (new domain fields) ──
     monitoring_mode: Optional[str] = Field(None, pattern="^(synthetic_only|telemetry_enabled)$")
@@ -106,6 +112,7 @@ class ExternalServiceResponse(BaseModel):
     catalog_type: Optional[str] = None
     category: Optional[str] = None
     tags: Optional[List[str]] = None
+    group_name: Optional[str] = "Default"
     enabled: bool
     config: Dict[str, Any]
     timeout_seconds: int
@@ -429,6 +436,7 @@ def create_external_service(
         catalog_type=payload.catalog_type,
         category=payload.category,
         tags=payload.tags,
+        group_name=payload.group_name,
         monitoring_mode=MonitoringMode(payload.monitoring_mode),
         synthetic_enabled=payload.synthetic_enabled,
         metrics_enabled=payload.metrics_enabled,

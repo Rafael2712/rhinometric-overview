@@ -3,7 +3,7 @@ import {
   Server, AlertCircle, CheckCircle, Activity, Globe, Database, 
   Network, Plus, Trash2, Play, Power, PowerOff, Edit, ArrowLeft,
   RefreshCw, Clock, Lock, Search, Tag, X, Upload, FileText, Download, Layers, Copy,
-  Radio, BarChart3, Waypoints, ToggleLeft, ToggleRight, Info, AlertTriangle, Zap, HelpCircle, CircleDot, ChevronRight,
+  Radio, BarChart3, Waypoints, ToggleLeft, ToggleRight, Info, AlertTriangle, Zap, HelpCircle, CircleDot, ChevronRight, ChevronDown, FolderOpen, Folder,
   Eye, EyeOff, Shield, Terminal
 } from 'lucide-react'
 import { useAuthStore } from '../lib/auth/store'
@@ -19,6 +19,7 @@ interface ExternalServiceData {
   catalog_type: string | null
   category: string | null
   tags: string[]
+  group_name: string | null
   enabled: boolean
   config: Record<string, any>
   timeout_seconds: number
@@ -60,8 +61,76 @@ interface PlatformData {
 
 interface ExtSummary { total: number; enabled: number; up: number; down: number; degraded: number; unknown: number }
 
+
+/* ─── Grouped View Types (Task 22) ──────────────────────────── */
+interface GroupedServiceItem {
+  id: number
+  name: string
+  service_type: string
+  catalog_type: string | null
+  category: string | null
+  group_name: string
+  environment: string | null
+  enabled: boolean
+  status: string
+  status_message: string | null
+  latency: number | null
+  telemetry_status: string | null
+  last_check: string | null
+  monitoring_mode: string
+  telemetry_attached: boolean
+  metrics_enabled: boolean
+  logs_enabled: boolean
+  traces_enabled: boolean
+}
+
+interface ServiceGroup {
+  group_name: string
+  status: string
+  total: number
+  up: number
+  down: number
+  services: GroupedServiceItem[]
+}
+
+/* ─── Catalog Type Visual Meta (Task 22) ─────────────────── */
+const CATALOG_META: Record<string, { label: string; color: string; bg: string }> = {
+  REST_API:         { label: 'API',        color: 'text-blue-400',    bg: 'bg-blue-400/10' },
+  DATABASE:         { label: 'Database',   color: 'text-orange-400',  bg: 'bg-orange-400/10' },
+  QUEUE:            { label: 'Queue',      color: 'text-yellow-400',  bg: 'bg-yellow-400/10' },
+  MICROSERVICE:     { label: 'Service',    color: 'text-violet-400',  bg: 'bg-violet-400/10' },
+  EXTERNAL_SERVICE: { label: 'External',   color: 'text-teal-400',    bg: 'bg-teal-400/10' },
+  WEB_APP:          { label: 'Web App',    color: 'text-pink-400',    bg: 'bg-pink-400/10' },
+  INTERNAL_SERVICE: { label: 'Internal',   color: 'text-cyan-400',    bg: 'bg-cyan-400/10' },
+}
+
+function CatalogBadge({ type }: { type: string | null }) {
+  const m = CATALOG_META[type || ''] || { label: type || 'Other', color: 'text-gray-400', bg: 'bg-gray-400/10' }
+  return (
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide ${m.bg} ${m.color}`}>
+      {m.label}
+    </span>
+  )
+}
+
+/* ─── Group Health Badge (Task 22) ──────────────────────────── */
+function GroupHealthBadge({ status }: { status: string }) {
+  const cfg: Record<string, { bg: string; text: string; ring: string; label: string }> = {
+    healthy:  { bg: 'bg-green-500/10',  text: 'text-green-400',  ring: 'ring-green-500/20',  label: 'Healthy' },
+    degraded: { bg: 'bg-yellow-500/10', text: 'text-yellow-400', ring: 'ring-yellow-500/20', label: 'Degraded' },
+    down:     { bg: 'bg-red-500/10',    text: 'text-red-400',    ring: 'ring-red-500/20',    label: 'Down' },
+  }
+  const s = cfg[status] || cfg.down
+  return (
+    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ring-1 ${s.bg} ${s.text} ${s.ring}`}>
+      <span className={`w-1.5 h-1.5 rounded-full ${s.text.replace('text-', 'bg-')}`} />
+      {s.label}
+    </span>
+  )
+}
+
 type Tab = 'external' | 'platform'
-type View = 'list' | 'create' | 'edit' | 'bulk-http'
+type View = 'list' | 'grouped' | 'create' | 'edit' | 'bulk-http'
 
 /* ─── Helpers ────────────────────────────────────────────────── */
 
@@ -908,6 +977,7 @@ export default function Services() {
   const [editId, setEditId] = useState<number | null>(null)
 
   // Catalog metadata form state
+  const [formGroupName, setFormGroupName] = useState('Default')
   const [formCatalogType, setFormCatalogType] = useState('')
   const [formCategory, setFormCategory] = useState('')
   const [formTags, setFormTags] = useState<string[]>([])
@@ -927,10 +997,16 @@ export default function Services() {
   const [actionLoading, setActionLoading] = useState<number | null>(null)
   const [expandedServiceId, setExpandedServiceId] = useState<number | null>(null)
 
+  // ── Grouped view state (Task 22) ──
+  const [groupedData, setGroupedData] = useState<ServiceGroup[]>([])
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
+  const [groupViewMode, setGroupViewMode] = useState<'list' | 'grouped'>('grouped')
+
   // Catalog filter state
   const [filterSearch, setFilterSearch] = useState('')
   const [filterCatalogType, setFilterCatalogType] = useState('')
   const [filterCategory, setFilterCategory] = useState('')
+  const [filterGroupName, setFilterGroupName] = useState('')
 
   // Bulk Import state
   const [showImportModal, setShowImportModal] = useState(false)
@@ -947,6 +1023,7 @@ export default function Services() {
   const [bulkTimeout, setBulkTimeout] = useState(10)
   const [bulkInterval, setBulkInterval] = useState(60)
   const [bulkEnabled, setBulkEnabled] = useState(true)
+  const [bulkGroupName, setBulkGroupName] = useState('Default')
   const [bulkCatalogType, setBulkCatalogType] = useState('REST_API')
   const [bulkCategory, setBulkCategory] = useState('')
   const [bulkTags, setBulkTags] = useState<string[]>([])
@@ -982,23 +1059,37 @@ export default function Services() {
     } catch (e) { console.error('platform fetch error', e) }
   }, [token])
 
+  const fetchGrouped = useCallback(async () => {
+    try {
+      const res = await fetch('/api/services/grouped', { headers: apiHeaders })
+      if (res.ok) {
+        const data: ServiceGroup[] = await res.json()
+        setGroupedData(data)
+        // Auto-expand all groups on first load
+        if (expandedGroups.size === 0 && data.length > 0) {
+          setExpandedGroups(new Set(data.map(g => g.group_name)))
+        }
+      }
+    } catch (e) { console.error('grouped fetch error', e) }
+  }, [token])
+
   useEffect(() => {
     const load = async () => {
       setIsLoading(true)
-      await Promise.all([fetchExternal(), fetchPlatform()])
+      await Promise.all([fetchExternal(), fetchPlatform(), fetchGrouped()])
       setIsLoading(false)
     }
     load()
-    const iv = setInterval(() => { fetchExternal(); fetchPlatform() }, 30000)
+    const iv = setInterval(() => { fetchExternal(); fetchPlatform(); fetchGrouped() }, 30000)
     return () => clearInterval(iv)
-  }, [fetchExternal, fetchPlatform])
+  }, [fetchExternal, fetchPlatform, fetchGrouped])
 
   // ── Form actions ───────────────────────────────────────────────
   const resetForm = () => {
     setFormType('http'); setFormName(''); setFormEnv(''); setFormDesc('')
     setFormConfig({}); setFormTimeout(10); setFormInterval(60)
     setEditId(null); setTestResult(null)
-    setFormCatalogType(''); setFormCategory(''); setFormTags([]); setFormTagInput('')
+    setFormGroupName('Default'); setFormCatalogType(''); setFormCategory(''); setFormTags([]); setFormTagInput('')
     setFormMonitoringMode('synthetic_only'); setFormMetricsEnabled(false)
     setFormLogsEnabled(false); setFormTracesEnabled(false)
     setFormTelemetryServiceKey(''); setShowTelemetryWarning(false)
@@ -1011,7 +1102,7 @@ export default function Services() {
     setFormEnv(svc.environment || ''); setFormDesc(svc.description || '')
     setFormConfig(svc.config || {}); setFormTimeout(svc.timeout_seconds)
     setFormInterval(svc.check_interval_seconds); setTestResult(null)
-    setFormCatalogType(svc.catalog_type || ''); setFormCategory(svc.category || '')
+    setFormGroupName(svc.group_name || 'Default'); setFormCatalogType(svc.catalog_type || ''); setFormCategory(svc.category || '')
     setFormTags(svc.tags && Array.isArray(svc.tags) ? svc.tags : []); setFormTagInput('')
     setFormMonitoringMode(svc.monitoring_mode || 'synthetic_only')
     setFormMetricsEnabled(svc.metrics_enabled || false)
@@ -1110,17 +1201,31 @@ export default function Services() {
   // Catalog metadata: unique values for filter dropdowns
   const catalogTypes = [...new Set(extServices.map(s => s.catalog_type).filter(Boolean))] as string[]
   const categories = [...new Set(extServices.map(s => s.category).filter(Boolean))] as string[]
-  const hasActiveFilters = !!(filterSearch || filterCatalogType || filterCategory)
+  const groupNames = [...new Set(extServices.map(s => s.group_name).filter(Boolean))] as string[]
+  const hasActiveFilters = !!(filterSearch || filterCatalogType || filterCategory || filterGroupName)
 
   // Client-side filtering
   const filteredServices = extServices.filter(svc => {
     if (filterSearch && !svc.name.toLowerCase().includes(filterSearch.toLowerCase())) return false
     if (filterCatalogType && svc.catalog_type !== filterCatalogType) return false
     if (filterCategory && svc.category !== filterCategory) return false
+    if (filterGroupName && svc.group_name !== filterGroupName) return false
     return true
   })
 
-  const clearFilters = () => { setFilterSearch(''); setFilterCatalogType(''); setFilterCategory('') }
+  const clearFilters = () => { setFilterSearch(''); setFilterCatalogType(''); setFilterCategory(''); setFilterGroupName('') }
+
+  // ── Grouped view helpers (Task 22) ──
+  const toggleGroup = (name: string) => {
+    setExpandedGroups(prev => {
+      const next = new Set(prev)
+      if (next.has(name)) next.delete(name)
+      else next.add(name)
+      return next
+    })
+  }
+  const expandAllGroups = () => setExpandedGroups(new Set(groupedData.map(g => g.group_name)))
+  const collapseAllGroups = () => setExpandedGroups(new Set())
 
   // ── Import handlers ──────────────────────────────────────
   const resetImport = () => {
@@ -1149,7 +1254,7 @@ export default function Services() {
 
   const resetBulkHttp = () => {
     setBulkBaseUrl(''); setBulkMethod('GET'); setBulkEnv(''); setBulkTimeout(10); setBulkInterval(60)
-    setBulkEnabled(true); setBulkCatalogType('REST_API'); setBulkCategory(''); setBulkTags([]); setBulkTagInput('')
+    setBulkEnabled(true); setBulkGroupName('Default'); setBulkCatalogType('REST_API'); setBulkCategory(''); setBulkTags([]); setBulkTagInput('')
     setBulkAuthType(''); setBulkAuthValue('')
     setBulkItems([{name: '', path: ''}]); setBulkPasteMode(false); setBulkPasteText('')
     setBulkStep('form'); setBulkPreview(null); setBulkResult(null); setBulkLoading(false)
@@ -1195,6 +1300,7 @@ export default function Services() {
       timeout_seconds: bulkTimeout,
       check_interval_seconds: bulkInterval,
       enabled: bulkEnabled,
+      group_name: bulkGroupName || 'Default',
       catalog_type: bulkCatalogType || 'REST_API',
       category: bulkCategory || undefined,
       tags: bulkTags.length > 0 ? bulkTags : undefined,
@@ -1764,6 +1870,12 @@ export default function Services() {
           <p className="text-gray-500 text-xs -mt-1">Optional metadata for organizing and filtering services.</p>
           <div className="grid grid-cols-2 gap-4">
             <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">Group Name</label>
+              <input type="text" value={formGroupName} onChange={e => setFormGroupName(e.target.value)}
+                placeholder="Default" className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-3 py-2 text-white placeholder-gray-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-sm" />
+              <p className="text-gray-500 text-xs mt-1">Group for organizing services (e.g., Payments, Infrastructure)</p>
+            </div>
+            <div>
               <label className="block text-sm font-medium text-gray-300 mb-1">Catalog Type</label>
               <select value={formCatalogType} onChange={e => setFormCatalogType(e.target.value)}
                 className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-3 py-2 text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
@@ -2003,6 +2115,17 @@ export default function Services() {
         </div>
         {activeTab === 'external' && (
           <div className="flex items-center gap-3">
+            {/* View mode toggle (Task 22) */}
+            <div className="flex items-center bg-gray-800/60 rounded-lg p-0.5">
+              <button onClick={() => setGroupViewMode('grouped')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${groupViewMode === 'grouped' ? 'bg-gray-700 text-white shadow-sm' : 'text-gray-400 hover:text-gray-200'}`}>
+                <FolderOpen className="w-3.5 h-3.5" /> Grouped
+              </button>
+              <button onClick={() => setGroupViewMode('list')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${groupViewMode === 'list' ? 'bg-gray-700 text-white shadow-sm' : 'text-gray-400 hover:text-gray-200'}`}>
+                <Layers className="w-3.5 h-3.5" /> Flat List
+              </button>
+            </div>
             <button onClick={openImportModal}
               className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-gray-600 text-gray-300 hover:text-white hover:border-gray-500 font-medium transition-colors">
               <Upload className="w-4 h-4" /> Import
@@ -2098,6 +2221,15 @@ export default function Services() {
                   <option value="">All Categories</option>
                   {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
                 </select>
+                {/* Group filter (Task 22) */}
+                <select
+                  value={filterGroupName}
+                  onChange={e => setFilterGroupName(e.target.value)}
+                  className="px-3 py-2 bg-gray-900/50 border border-gray-700 rounded-lg text-sm text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                >
+                  <option value="">All Groups</option>
+                  {groupNames.map(gn => <option key={gn} value={gn}>{gn}</option>)}
+                </select>
                 {/* Clear button */}
                 {hasActiveFilters && (
                   <button onClick={clearFilters} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-gray-700/50 transition-colors">
@@ -2111,7 +2243,108 @@ export default function Services() {
             </div>
           )}
 
-          {extServices.length === 0 ? (
+          {/* ── GROUPED VIEW (Task 22) ─────────────────────── */}
+          {groupViewMode === 'grouped' && groupedData.length > 0 && (
+            <div className="space-y-4">
+              {/* Group controls */}
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-gray-400">
+                  {groupedData.length} group{groupedData.length !== 1 ? 's' : ''} &middot; {groupedData.reduce((a, g) => a + g.total, 0)} services
+                </p>
+                <div className="flex items-center gap-2">
+                  <button onClick={expandAllGroups} className="text-xs text-gray-400 hover:text-white transition-colors">Expand all</button>
+                  <span className="text-gray-600">|</span>
+                  <button onClick={collapseAllGroups} className="text-xs text-gray-400 hover:text-white transition-colors">Collapse all</button>
+                </div>
+              </div>
+
+              {/* Group Cards */}
+              {groupedData.map(group => {
+                const isExpanded = expandedGroups.has(group.group_name)
+                return (
+                  <div key={group.group_name} className="bg-gray-800/50 rounded-lg border border-gray-700/50 overflow-hidden">
+                    {/* Group Header */}
+                    <button
+                      className="w-full flex items-center justify-between p-4 hover:bg-gray-700/30 transition-colors"
+                      onClick={() => toggleGroup(group.group_name)}
+                    >
+                      <div className="flex items-center gap-3">
+                        {isExpanded
+                          ? <ChevronDown className="w-5 h-5 text-gray-400" />
+                          : <ChevronRight className="w-5 h-5 text-gray-400" />}
+                        {isExpanded
+                          ? <FolderOpen className="w-5 h-5 text-emerald-400" />
+                          : <Folder className="w-5 h-5 text-gray-400" />}
+                        <div className="text-left">
+                          <h3 className="text-white font-semibold text-sm">{group.group_name}</h3>
+                          <p className="text-gray-500 text-xs mt-0.5">
+                            {group.total} service{group.total !== 1 ? 's' : ''}
+                            {group.up > 0 && <span className="text-green-400 ml-2">{group.up} up</span>}
+                            {group.down > 0 && <span className="text-red-400 ml-2">{group.down} down</span>}
+                            {group.total - group.up - group.down > 0 && <span className="text-yellow-400 ml-2">{group.total - group.up - group.down} other</span>}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <GroupHealthBadge status={group.status} />
+                        {/* Health bar */}
+                        <div className="w-24 h-2 bg-gray-700 rounded-full overflow-hidden flex">
+                          {group.up > 0 && <div className="bg-green-500 h-full" style={{ width: `${(group.up / group.total) * 100}%` }} />}
+                          {group.total - group.up - group.down > 0 && <div className="bg-yellow-500 h-full" style={{ width: `${((group.total - group.up - group.down) / group.total) * 100}%` }} />}
+                          {group.down > 0 && <div className="bg-red-500 h-full" style={{ width: `${(group.down / group.total) * 100}%` }} />}
+                        </div>
+                      </div>
+                    </button>
+
+                    {/* Expanded Service List */}
+                    {isExpanded && (
+                      <div className="border-t border-gray-700/30">
+                        <table className="w-full">
+                          <thead>
+                            <tr className="border-b border-gray-700/30">
+                              <th className="text-left px-4 py-2.5 text-gray-500 font-medium text-xs uppercase tracking-wider">Service</th>
+                              <th className="text-left px-4 py-2.5 text-gray-500 font-medium text-xs uppercase tracking-wider">Type</th>
+                              <th className="text-left px-4 py-2.5 text-gray-500 font-medium text-xs uppercase tracking-wider">Category</th>
+                              <th className="text-left px-4 py-2.5 text-gray-500 font-medium text-xs uppercase tracking-wider">Environment</th>
+                              <th className="text-left px-4 py-2.5 text-gray-500 font-medium text-xs uppercase tracking-wider">Status</th>
+                              <th className="text-left px-4 py-2.5 text-gray-500 font-medium text-xs uppercase tracking-wider">Latency</th>
+                              <th className="text-left px-4 py-2.5 text-gray-500 font-medium text-xs uppercase tracking-wider">Telemetry</th>
+                              <th className="text-left px-4 py-2.5 text-gray-500 font-medium text-xs uppercase tracking-wider">Last Check</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {group.services.map(svc => (
+                              <tr key={svc.id} className="border-b border-gray-700/20 hover:bg-gray-700/20 transition-colors">
+                                <td className="px-4 py-3">
+                                  <div className="flex items-center gap-2.5">
+                                    <div className={`p-1.5 rounded ${svc.enabled ? 'bg-emerald-400/10' : 'bg-gray-700/50'}`}>
+                                      {svc.service_type === 'http'
+                                        ? <Network className="w-3.5 h-3.5 text-violet-400" />
+                                        : <Database className="w-3.5 h-3.5 text-orange-400" />}
+                                    </div>
+                                    <span className="text-white text-sm font-medium">{svc.name}</span>
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3"><CatalogBadge type={svc.catalog_type} /></td>
+                                <td className="px-4 py-3 text-sm text-gray-400">{svc.category || <span className="text-gray-600">&ndash;</span>}</td>
+                                <td className="px-4 py-3 text-sm text-gray-400">{svc.environment || <span className="text-gray-600">&ndash;</span>}</td>
+                                <td className="px-4 py-3"><StatusBadge status={svc.enabled ? svc.status : 'unknown'} /></td>
+                                <td className="px-4 py-3 text-sm text-gray-300">{svc.latency != null && svc.latency > 0 ? `${svc.latency.toFixed(0)}ms` : '-'}</td>
+                                <td className="px-4 py-3"><TelemetryStatusBadge status={svc.telemetry_status} /></td>
+                                <td className="px-4 py-3 text-sm text-gray-400">{svc.last_check ? new Date(svc.last_check).toLocaleString() : 'Never'}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+
+          {groupViewMode === 'list' && (extServices.length === 0 ? (
             <div className="bg-gray-800/50 rounded-lg border border-gray-700/50 p-16 text-center">
               <Globe className="w-16 h-16 text-gray-600 mx-auto mb-4" />
               <h3 className="text-xl font-semibold text-gray-300 mb-2">No external services connected</h3>
@@ -2228,7 +2461,7 @@ export default function Services() {
                 </table>
               </div>
             </div>
-          )}
+          ))}
         </>
       )}
 
