@@ -74,6 +74,10 @@ FIELD_ALIASES: Dict[str, str] = {
     "auth_type":                "auth_type",
     "authvalue":                "auth_value",
     "auth_value":               "auth_value",
+    # group_name
+    "group_name":              "group_name",
+    "group":                   "group_name",
+    "groupname":               "group_name",
 }
 
 
@@ -569,6 +573,7 @@ def process_import(
                 tags=svc_data.get("tags"),
                 status=ServiceStatus.UNKNOWN,
                 created_by=current_user_id,
+                group_name=svc_data.get("group_name", "Default"),
             )
             db.add(svc)
             db.flush()  # Get the ID

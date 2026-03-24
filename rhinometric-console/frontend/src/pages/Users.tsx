@@ -627,6 +627,43 @@ export function UsersPage() {
       )}
 
 
+      
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && deleteTarget && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4 shadow-xl">
+            <div className="flex items-center mb-4">
+              <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center mr-3">
+                <AlertTriangle className="h-5 w-5 text-red-600" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900">Eliminar Usuario</h3>
+            </div>
+            <p className="text-gray-600 mb-2">
+              \u00bfEst\u00e1 seguro que desea eliminar al usuario <strong>{deleteTarget.username}</strong>?
+            </p>
+            <p className="text-sm text-gray-500 mb-6">
+              El usuario ser\u00e1 desactivado y no podr\u00e1 iniciar sesi\u00f3n. Esta acci\u00f3n puede ser revertida por un administrador.
+            </p>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => { setShowDeleteModal(false); setDeleteTarget(null) }}
+                className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+                disabled={deleteLoading}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={confirmDelete}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
+                disabled={deleteLoading}
+              >
+                {deleteLoading ? 'Eliminando...' : 'Eliminar Usuario'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Reset Password Modal */}
       {showResetPasswordModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">

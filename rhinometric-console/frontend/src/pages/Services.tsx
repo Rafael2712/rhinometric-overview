@@ -1422,7 +1422,7 @@ export default function Services() {
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div>
-            <h1 className="text-2xl font-bold text-white">Multiple APIs</h1>
+            <h1 className="text-2xl font-bold text-white">Bulk HTTP</h1>
             <p className="text-gray-400 text-sm">Create multiple HTTP services in one operation</p>
           </div>
         </div>
@@ -2128,11 +2128,11 @@ export default function Services() {
             </div>
             <button onClick={openImportModal}
               className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-gray-600 text-gray-300 hover:text-white hover:border-gray-500 font-medium transition-colors">
-              <Upload className="w-4 h-4" /> Import
+              <Upload className="w-4 h-4" /> Import CSV/JSON
             </button>
             <button onClick={openBulkHttp}
               className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-emerald-600/50 text-emerald-400 hover:text-emerald-300 hover:border-emerald-500/60 font-medium transition-colors">
-              <Layers className="w-4 h-4" /> Multiple APIs
+              <Layers className="w-4 h-4" /> Bulk HTTP
             </button>
             <button onClick={openCreate}
               className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-blue-600 text-white hover:bg-blue-500 font-medium transition-colors shadow-lg shadow-blue-600/20">
@@ -2173,7 +2173,7 @@ export default function Services() {
               { label: 'Total', value: extSummary.total, Icon: Globe, color: 'text-emerald-400', bg: 'bg-emerald-400/10' },
               { label: 'Healthy', value: extSummary.up, Icon: CheckCircle, color: 'text-green-400', bg: 'bg-green-400/10' },
               { label: 'Down', value: extSummary.down, Icon: AlertCircle, color: 'text-red-400', bg: 'bg-red-400/10' },
-              { label: 'Unknown', value: extSummary.unknown + extSummary.degraded, Icon: Clock, color: 'text-yellow-400', bg: 'bg-yellow-400/10' },
+              { label: 'Unknown', value: extSummary.unknown, Icon: Clock, color: 'text-yellow-400', bg: 'bg-yellow-400/10' },
             ].map(c => (
               <div key={c.label} className="bg-gray-800/50 rounded-lg p-4 border border-gray-700/50">
                 <div className="flex items-center gap-3">
