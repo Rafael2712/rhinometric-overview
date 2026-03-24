@@ -208,7 +208,7 @@ def get_external_services_summary(
     total = len(all_svc)
     enabled = sum(1 for s in all_svc if s.enabled)
     up = sum(1 for s in all_svc if s.status == ServiceStatus.UP and s.enabled)
-    down = sum(1 for s in all_svc if s.status == ServiceStatus.DOWN and s.enabled)
+    down = sum(1 for s in all_svc if s.status in (ServiceStatus.DOWN, ServiceStatus.ERROR) and s.enabled)
     degraded = sum(1 for s in all_svc if s.status == ServiceStatus.DEGRADED and s.enabled)
     unknown = sum(1 for s in all_svc if s.status == ServiceStatus.UNKNOWN and s.enabled)
     return {
