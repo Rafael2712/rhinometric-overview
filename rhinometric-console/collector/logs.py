@@ -104,15 +104,18 @@ def detect_level(line: str) -> str:
     Detect log level from a raw line by keyword matching.
 
     Scans for common level keywords (case-insensitive).
-    Returns: "error", "warning", "info" (default).
+    Returns one of the backend-accepted levels: "error", "warn", "info", "debug", "fatal".
     """
     upper = line.upper()
-    for keyword in ("ERROR", "FATAL", "CRITICAL", "EXCEPTION", "PANIC"):
+    for keyword in ("FATAL", "PANIC"):
+        if keyword in upper:
+            return "fatal"
+    for keyword in ("ERROR", "CRITICAL", "EXCEPTION"):
         if keyword in upper:
             return "error"
     for keyword in ("WARN", "WARNING"):
         if keyword in upper:
-            return "warning"
+            return "warn"
     if "DEBUG" in upper:
         return "debug"
     return "info"
