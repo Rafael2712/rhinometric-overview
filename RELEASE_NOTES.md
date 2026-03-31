@@ -33,6 +33,17 @@ Version 2.7.0 represents a major platform expansion from monitoring into full se
 - **Notification Templates**: Rich templates with severity badges, metric snapshots, and action links.
 - **Backend API**: Standardized JSON error responses across all 20 routers.
 
+### Logs Explorer (New)
+
+- **Structured Log Parsing**: Backend automatically classifies five log formats (HTTP access, error log, collector cycle, collector signal, application) and extracts structured fields including HTTP method, status code, path, client IP, and duration.
+- **Multi-Dimensional Filtering**: Seven server-side filters (search, service, level, source type, HTTP method, status code, path) combinable in any combination.
+- **Status Code Range Filters**: Filter by exact code (404) or range (4xx, 5xx) for rapid HTTP error triage.
+- **Enriched API Endpoint**: New `/api/logs/enriched` returns parsed entries with normalized severity levels (debug, info, warn, error, fatal) and dynamic filter options.
+- **Schema Documentation Endpoint**: New `/api/logs/fields` provides complete field schema with descriptions and presence conditions.
+- **Professional UX**: Redesigned frontend with level-colored badges, HTTP inline display (method + status + path), three-tab detail panel (Parsed Fields, Raw Message, Stream Labels), keyboard navigation, and CSV/JSON export.
+- **Internal Platform Isolation**: Automatically excludes internal infrastructure logs, showing only customer-monitored service data.
+- **Loki Query Safety**: Empty selectors are safely handled with positive matchers to prevent full-scan timeouts.
+
 ### Bug Fixes
 
 - Fixed duplicate email notifications during simultaneous anomaly group resolution within the same cooldown window.

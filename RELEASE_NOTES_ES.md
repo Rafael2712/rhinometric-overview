@@ -33,6 +33,17 @@ La versión 2.7.0 representa una expansión importante de la plataforma, pasando
 - **Plantillas de Notificación**: Plantillas enriquecidas con insignias de severidad, snapshots de métricas y enlaces de acción.
 - **Backend API**: Respuestas de error JSON estandarizadas en los 20 routers.
 
+### Explorador de Logs (Nuevo)
+
+- **Parsing Estructurado de Logs**: El backend clasifica automaticamente cinco formatos de log (acceso HTTP, log de errores, ciclo del collector, senal del collector, aplicacion) y extrae campos estructurados incluyendo metodo HTTP, codigo de estado, ruta, IP del cliente y duracion.
+- **Filtrado Multi-Dimensional**: Siete filtros del lado del servidor (busqueda, servicio, nivel, tipo de fuente, metodo HTTP, codigo de estado, ruta) combinables en cualquier combinacion.
+- **Filtros de Rango de Codigo de Estado**: Filtrar por codigo exacto (404) o rango (4xx, 5xx) para triaje rapido de errores HTTP.
+- **Endpoint Enriquecido**: Nuevo `/api/logs/enriched` devuelve entradas parseadas con niveles de severidad normalizados (debug, info, warn, error, fatal) y opciones de filtro dinamicas.
+- **Endpoint de Documentacion de Esquema**: Nuevo `/api/logs/fields` proporciona esquema completo de campos con descripciones y condiciones de presencia.
+- **UX Profesional**: Frontend rediseñado con badges de nivel coloreados, visualizacion HTTP inline (metodo + estado + ruta), panel de detalle con tres pestañas (Campos Parseados, Mensaje Raw, Labels de Stream), navegacion por teclado y exportacion CSV/JSON.
+- **Aislamiento de Plataforma Interna**: Excluye automaticamente logs de infraestructura interna, mostrando solo datos de servicios monitorizados del cliente.
+- **Seguridad de Consultas Loki**: Los selectores vacios se manejan de forma segura con matchers positivos para prevenir timeouts de escaneo completo.
+
 ### Correcciones
 
 - Corregidas notificaciones de email duplicadas durante resolución simultánea de grupos de anomalías dentro de la misma ventana de cooldown.
