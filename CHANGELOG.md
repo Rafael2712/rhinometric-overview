@@ -8,6 +8,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 
+## [v2.7.0-logs] Logs Module — Diagnosis, Parsing, Filters and UX Restructure - 2025-07-14
+
+### Fixed
+- **Customer service logs invisible** — Overly broad `INTERNAL_PATTERN` regex (`^rhinometric[-_]`) was excluding legitimate customer services (e.g., `rhinometric-web-produccion`). Narrowed to explicit infrastructure component list.
+- **Loki empty query timeout** — Empty selector `{}` caused full-scan timeout. Added `job=~".+"` positive matcher when selector body is empty.
+
+### Added — Backend (`logs.py`, 419 lines — complete rewrite)
+- **Log parsing engine** — 5 regex patterns extracting structured fields from raw log text: access_log, error_log, collector_cycle, collector_signal, application.
+- **Level normalization** — Maps vendor-specific severities (WARNING, crit, emerg, etc.) to canonical set: debug|info|warn|error|fatal.
+- **`GET /api/logs/enriched`** — New endpoint with server-side filters: `level`, `source_type`, `service`, `method`, `status_code` (exact + range 4xx/5xx), `path_contains`, `search`.
+- **`GET /api/logs/fields`** — Schema documentation endpoint returning all stream labels and parsed fields with descriptions and conditions.
+- **Smart query rewriting** — Service filter rewrites LogQL selector; free-text search pushed to Loki with `|~ "(?i)..."`.
+- **Two-tier exclusion** — Python-side `_is_internal_stream()` checks job/service/container labels against set + regex; Loki-side `job!~"..."` for pre-filtering.
+
+### Changed — Frontend (`Logs.tsx`, 846 lines — complete rewrite)
+- **FilterBar** — Search input, time range (15min–7 days), limit selector (100–2000), 6 advanced filters with responsive 2/3/6-column grid.
+- **LogRow** — Structured display with level badges (color-coded icons), timestamp, source type tag, HTTP inline info (method + status code + path).
+- **DetailPanel** — Three-tab detail view: Parsed Fields, Raw Message (with copy), Stream Labels.
+- **StatsBar** — Live statistics with total/filtered counts and active filter badges.
+- **EmptyState** — Three states (no-data, filtered-empty with clear button, error).
+- **Keyboard navigation** — Arrow keys, Enter to toggle detail, Escape to close.
+- **Data export** — CSV and JSON download with timestamped filenames.
+- Switched from `@heroicons/react` (not installed) to `lucide-react` (consistent with platform).
+- Auth via `useAuthStore` + direct `fetch` with Bearer token (consistent with Traces.tsx).
+
+### Documentation
+- Added `docs/logs/LOGS_MODULE_IMPLEMENTATION_REPORT.md` — Complete 9-section implementation report.
+
+### Build
+- Frontend bundle: `index-CFhg_YA7.js` (1.29 MB)
+- Backend deployed to container: 419 lines, 3 endpoints
+
+---
+
 
 ## [v2.6.0] Performance validation for 100 hosts - 2026-02-17
 
