@@ -94,15 +94,22 @@ def _get_service_type_cache() -> Dict[str, str]:
 
 def _classify_service_type(stream_labels: dict) -> str:
     """Derive service_type from stream labels using DB cache + heuristics."""
+    # Priority 0 (MANDATORY): collector keyword wins over any DB mapping
+    _skey = stream_labels.get("service_key", "")
+    _job  = stream_labels.get("job", "")
+    _sname = stream_labels.get("service_name", "")
+    if any("collector" in (v or "").lower() for v in (_skey, _job, _sname)):
+        return "collector"
+
     cache = _get_service_type_cache()
 
     # 1. Try service_key lookup in DB cache
-    service_key = stream_labels.get("service_key", "")
+    service_key = _skey
     if service_key and service_key in cache:
         return cache[service_key]
 
     # 2. Try job as service_key
-    job = stream_labels.get("job", "")
+    job = _job
     if job and job in cache:
         return cache[job]
 
@@ -373,6 +380,7 @@ async def get_logs_enriched(
     status_code: Optional[str] = Query(None, description="Filter by HTTP status code or range (e.g. 404, 4xx, 5xx)"),
     path_contains: Optional[str] = Query(None, description="Filter by path substring"),
     search: Optional[str] = Query(None, description="Free text search in message body"),
+    service_type: Optional[str] = Query(None, description="Filter by service_type: http_api|web_app|database_postgres|collector|unknown"),
     current_user: UserModel = Depends(get_current_user),
 ):
     """
@@ -395,7 +403,7 @@ async def get_logs_enriched(
         enriched_query = _inject_internal_exclusion(base_query, short=True)
 
         async with httpx.AsyncClient(timeout=30.0) as client:
-            has_filters = any([level, source_type, method, status_code, path_contains])
+            has_filters = any([level, source_type, service_type, method, status_code, path_contains])
             fetch_limit = limit * 4 if has_filters else limit
 
             params = {
@@ -455,6 +463,9 @@ async def get_logs_enriched(
         if path_contains:
             path_lower = path_contains.lower()
             all_entries = [e for e in all_entries if path_lower in (e["fields"].get("path", "") or "").lower() or path_lower in (e["fields"].get("full_path", "") or "").lower()]
+
+        if service_type:
+            all_entries = [e for e in all_entries if e.get("service_type") == service_type]
 
         # Sort and limit
         reverse = direction == "backward"

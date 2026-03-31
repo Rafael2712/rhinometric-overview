@@ -141,12 +141,13 @@ function statusCodeClass(code: number): string {
  * ============================================================== */
 
 function FilterBar({
-  search, setSearch, service, setService, level, setLevel,
+  search, setSearch, serviceType, setServiceType, service, setService, level, setLevel,
   sourceType, setSourceType, method, setMethod, statusCode, setStatusCode,
   pathContains, setPathContains, timeRange, setTimeRange, limit, setLimit,
   availableFilters, activeFilterCount, onClearAll, onRefresh, isLoading,
 }: {
   search: string; setSearch: (v: string) => void;
+  serviceType: string; setServiceType: (v: string) => void;
   service: string; setService: (v: string) => void;
   level: string; setLevel: (v: string) => void;
   sourceType: string; setSourceType: (v: string) => void;
@@ -236,7 +237,18 @@ function FilterBar({
 
       {/* Row 2: Advanced filters */}
       {showAdvanced && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 p-3 rounded-lg bg-surface-light/30 border border-white/5">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-2 p-3 rounded-lg bg-surface-light/30 border border-white/5">
+          {/* Service Type */}
+          <div>
+            <label className="text-[10px] uppercase tracking-wider text-gray-500 mb-1 block">Tipo servicio</label>
+            <select value={serviceType} onChange={(e) => setServiceType(e.target.value)} className="input w-full text-sm">
+              <option value="">Todos</option>
+              {(availableFilters?.service_types ?? []).map(st => (
+                <option key={st} value={st}>{SERVICE_TYPE_LABELS[st] ?? st}</option>
+              ))}
+            </select>
+          </div>
+
           {/* Service */}
           <div>
             <label className="text-[10px] uppercase tracking-wider text-gray-500 mb-1 block">Servicio</label>
@@ -639,6 +651,7 @@ export function LogsPage() {
   const [method, setMethod] = useState('');
   const [statusCode, setStatusCode] = useState('');
   const [pathContains, setPathContains] = useState('');
+  const [serviceType, setServiceType] = useState('');
   const [timeRange, setTimeRange] = useState(3 * 60 * 60);
   const [limit, setLimit] = useState(500);
 
@@ -664,6 +677,7 @@ export function LogsPage() {
   /* --- Active filter count --- */
   const activeFilterCount = useMemo(() => {
     let n = 0;
+    if (serviceType) n++;
     if (service) n++;
     if (level) n++;
     if (sourceType) n++;
@@ -672,10 +686,11 @@ export function LogsPage() {
     if (debouncedPath) n++;
     if (debouncedSearch) n++;
     return n;
-  }, [service, level, sourceType, method, statusCode, debouncedPath, debouncedSearch]);
+  }, [serviceType, service, level, sourceType, method, statusCode, debouncedPath, debouncedSearch]);
 
   const clearAllFilters = useCallback(() => {
     setSearch('');
+    setServiceType('');
     setService('');
     setLevel('');
     setSourceType('');
@@ -695,6 +710,7 @@ export function LogsPage() {
       limit: String(limit),
       direction: 'backward',
     };
+    if (serviceType) params.service_type = serviceType;
     if (service) params.service = service;
     if (level) params.level = level;
     if (sourceType) params.source_type = sourceType;
@@ -703,7 +719,7 @@ export function LogsPage() {
     if (debouncedPath) params.path_contains = debouncedPath;
     if (debouncedSearch) params.search = debouncedSearch;
     return params;
-  }, [timeRange, limit, service, level, sourceType, method, statusCode, debouncedPath, debouncedSearch]);
+  }, [timeRange, limit, serviceType, service, level, sourceType, method, statusCode, debouncedPath, debouncedSearch]);
 
   /* --- Data fetching --- */
   const { data, isLoading, isError, refetch } = useQuery<EnrichedResponse>({
@@ -726,6 +742,14 @@ export function LogsPage() {
   const total = data?.data?.total ?? 0;
   const totalBeforeFilters = data?.data?.total_before_filters ?? 0;
   const availableFilters = data?.data?.filters ?? null;
+
+  /* --- Hierarchical: reset service when type changes --- */
+  useEffect(() => {
+    if (service && availableFilters?.services && !availableFilters.services.includes(service)) {
+      setService('');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [serviceType, availableFilters?.services]);
 
   /* --- Keyboard navigation --- */
   useEffect(() => {
@@ -793,6 +817,7 @@ export function LogsPage() {
       <div className="card p-4">
         <FilterBar
           search={search} setSearch={setSearch}
+          serviceType={serviceType} setServiceType={setServiceType}
           service={service} setService={setService}
           level={level} setLevel={setLevel}
           sourceType={sourceType} setSourceType={setSourceType}
