@@ -8,6 +8,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 
+
+## [v2.7.1-logs] Logs Module — service_type Classification - 2026-03-31
+
+### Added — Backend (`logs.py`, 540 lines)
+- **`service_type` classification** — Each log entry now includes a `service_type` field derived from DB lookup (cached 5 min TTL) + heuristic regex fallback.
+- **Taxonomy**: `http_api`, `web_app`, `database_postgres`, `collector`, `unknown`.
+- **DB cache**: Reads `external_services.catalog_type` and `service_type` columns; maps WEB_APP→web_app, REST_API→http_api, POSTGRESQL→database_postgres.
+- **Heuristic fallback**: Compiled regex patterns on `job`/`service_name` labels when DB has no match.
+- **`/api/logs/enriched`** filters now include `service_types` array.
+- **`/api/logs/fields`** returns `enriched_fields.service_type` schema documentation.
+
+### Added — Frontend (`Logs.tsx`, 872 lines)
+- **service_type badge** in LogRow — color-coded pill (cyan=HTTP API, green=Web App, purple=PostgreSQL, orange=Collector).
+- **"Tipo Servicio" FieldCard** in detail panel parsed tab.
+- Constants: `SERVICE_TYPE_LABELS`, `SERVICE_TYPE_COLORS` for consistent UI rendering.
+
+### Risk
+- Zero breaking changes. Read-only DB access. Logs module only. No other modules touched.
 ## [v2.7.0-logs] Logs Module — Diagnosis, Parsing, Filters and UX Restructure - 2025-07-14
 
 ### Fixed

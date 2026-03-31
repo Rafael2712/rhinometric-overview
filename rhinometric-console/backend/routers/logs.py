@@ -1,4 +1,6 @@
 import re
+import time
+import logging
 from fastapi import APIRouter, Depends, HTTPException, Query
 from typing import Optional, List, Dict, Any
 import httpx
@@ -6,8 +8,117 @@ from datetime import datetime
 from config import settings
 from routers.auth import get_current_user
 from models.user import User as UserModel
+from database import get_db
+from models.external_service import ExternalService
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+# ---------------------------------------------------------------------------
+# Service type taxonomy
+# ---------------------------------------------------------------------------
+SERVICE_TYPE_VALUES = {"http_api", "web_app", "database_postgres", "collector", "unknown"}
+
+# Map DB catalog_type -> our taxonomy
+_CATALOG_TYPE_MAP: Dict[str, str] = {
+    "WEB_APP": "web_app",
+    "REST_API": "http_api",
+    "EXTERNAL_SERVICE": "http_api",
+    "DATABASE": "database_postgres",
+}
+
+# Map DB service_type (enum) -> our taxonomy (fallback)
+_DB_SERVICE_TYPE_MAP: Dict[str, str] = {
+    "HTTP": "http_api",
+    "POSTGRESQL": "database_postgres",
+}
+
+# Heuristic patterns for job names when DB lookup fails
+_JOB_HEURISTICS: List[tuple] = [
+    (re.compile(r"collector", re.IGNORECASE), "collector"),
+    (re.compile(r"postgres|pg[-_]", re.IGNORECASE), "database_postgres"),
+    (re.compile(r"web[-_]|frontend|www|site", re.IGNORECASE), "web_app"),
+    (re.compile(r"api[-_]|backend|rest[-_]|http[-_]", re.IGNORECASE), "http_api"),
+]
+
+# Cache: service_key -> service_type (refreshed periodically)
+_service_type_cache: Dict[str, str] = {}
+_cache_ts: float = 0.0
+_CACHE_TTL: float = 300.0  # 5 minutes
+
+
+def _refresh_service_type_cache() -> None:
+    """Load service_key -> service_type mapping from external_services table."""
+    global _service_type_cache, _cache_ts
+    try:
+        db = next(get_db())
+        try:
+            rows = (
+                db.query(
+                    ExternalService.telemetry_service_key,
+                    ExternalService.catalog_type,
+                    ExternalService.service_type,
+                )
+                .filter(
+                    ExternalService.telemetry_service_key.isnot(None),
+                    ExternalService.telemetry_service_key != "",
+                )
+                .all()
+            )
+            new_cache: Dict[str, str] = {}
+            for skey, cat_type, svc_type in rows:
+                # Priority: catalog_type > service_type > unknown
+                resolved = "unknown"
+                if cat_type and cat_type in _CATALOG_TYPE_MAP:
+                    resolved = _CATALOG_TYPE_MAP[cat_type]
+                elif svc_type and svc_type.value in _DB_SERVICE_TYPE_MAP:
+                    resolved = _DB_SERVICE_TYPE_MAP[svc_type.value]
+                new_cache[skey] = resolved
+            _service_type_cache = new_cache
+            _cache_ts = time.time()
+            logger.debug("service_type cache refreshed: %d entries", len(new_cache))
+        finally:
+            db.close()
+    except Exception as e:
+        logger.warning("Failed to refresh service_type cache: %s", e)
+
+
+def _get_service_type_cache() -> Dict[str, str]:
+    """Return the cached mapping, refreshing if stale."""
+    global _cache_ts
+    if time.time() - _cache_ts > _CACHE_TTL:
+        _refresh_service_type_cache()
+    return _service_type_cache
+
+
+def _classify_service_type(stream_labels: dict) -> str:
+    """Derive service_type from stream labels using DB cache + heuristics."""
+    cache = _get_service_type_cache()
+
+    # 1. Try service_key lookup in DB cache
+    service_key = stream_labels.get("service_key", "")
+    if service_key and service_key in cache:
+        return cache[service_key]
+
+    # 2. Try job as service_key
+    job = stream_labels.get("job", "")
+    if job and job in cache:
+        return cache[job]
+
+    # 3. Heuristic patterns on job name
+    for pattern, stype in _JOB_HEURISTICS:
+        if pattern.search(job):
+            return stype
+
+    # 4. Check service_name for hints
+    service_name = stream_labels.get("service_name", "")
+    for pattern, stype in _JOB_HEURISTICS:
+        if service_name and pattern.search(service_name):
+            return stype
+
+    return "unknown"
+
 
 # ---------------------------------------------------------------------------
 # Internal-platform service blocklist
@@ -200,6 +311,7 @@ def _enrich_log_entry(ts: str, message: str, stream_labels: dict) -> Dict[str, A
         "message": message,
         "level": normalized_level,
         "source_type": parsed.get("source_type", "application"),
+        "service_type": _classify_service_type(stream_labels),
         "fields": parsed,
         "stream": stream_labels,
     }
@@ -358,6 +470,7 @@ async def get_logs_enriched(
         })
         all_methods = sorted({e["fields"].get("method", "") for e in all_entries if e["fields"].get("method")})
         all_status_codes = sorted({str(e["fields"].get("status_code", "")) for e in all_entries if e["fields"].get("status_code")})
+        all_service_types = sorted({e.get("service_type", "unknown") for e in all_entries})
 
         return {
             "status": "success",
@@ -369,6 +482,7 @@ async def get_logs_enriched(
                     "levels": all_levels,
                     "source_types": all_source_types,
                     "services": all_services,
+                    "service_types": all_service_types,
                     "methods": all_methods,
                     "status_codes": all_status_codes,
                 },
@@ -399,6 +513,13 @@ async def get_log_fields(
                 "service_name": {"description": "Human-readable service name", "always_present": True},
                 "environment": {"description": "Deployment environment", "always_present": True},
                 "source": {"description": "Ingestion source", "always_present": True},
+            },
+            "enriched_fields": {
+                "service_type": {
+                    "description": "Service classification: http_api|web_app|database_postgres|collector|unknown",
+                    "always_present": True,
+                    "values": ["http_api", "web_app", "database_postgres", "collector", "unknown"],
+                },
             },
             "parsed_fields": {
                 "level": {"description": "Normalized severity: debug|info|warn|error|fatal", "always_present": True},

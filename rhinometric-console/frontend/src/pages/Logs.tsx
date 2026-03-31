@@ -16,6 +16,7 @@ interface LogEntry {
   message: string;
   level: string;
   source_type: string;
+  service_type: string;
   fields: Record<string, any>;
   stream: Record<string, string>;
 }
@@ -24,6 +25,7 @@ interface FiltersData {
   levels: string[];
   source_types: string[];
   services: string[];
+  service_types: string[];
   methods: string[];
   status_codes: string[];
 }
@@ -70,6 +72,22 @@ const SOURCE_TYPE_LABELS: Record<string, string> = {
   collector_cycle: 'Collector Cycle',
   collector_signal: 'Collector Signal',
   application: 'Application',
+};
+
+const SERVICE_TYPE_LABELS: Record<string, string> = {
+  http_api: 'HTTP API',
+  web_app: 'Web App',
+  database_postgres: 'PostgreSQL',
+  collector: 'Collector',
+  unknown: 'Unknown',
+};
+
+const SERVICE_TYPE_COLORS: Record<string, string> = {
+  http_api: 'text-cyan-400 bg-cyan-500/20',
+  web_app: 'text-green-400 bg-green-500/20',
+  database_postgres: 'text-purple-400 bg-purple-500/20',
+  collector: 'text-orange-400 bg-orange-500/20',
+  unknown: 'text-gray-400 bg-gray-500/20',
 };
 
 const STATUS_CODE_GROUPS = [
@@ -346,6 +364,13 @@ function LogRow({ entry, isSelected, onClick, searchTerm }: {
         {SOURCE_TYPE_LABELS[entry.source_type] ?? entry.source_type}
       </span>
 
+      {/* Service type */}
+      {entry.service_type && entry.service_type !== 'unknown' && (
+        <span className={`text-[10px] px-1.5 py-0.5 rounded min-w-[60px] text-center truncate hidden lg:inline-block ${SERVICE_TYPE_COLORS[entry.service_type] || 'text-gray-400 bg-gray-500/20'}`}>
+          {SERVICE_TYPE_LABELS[entry.service_type] || entry.service_type}
+        </span>
+      )}
+
       {/* Service */}
       <span className="text-[11px] text-cyan-400 truncate min-w-[100px] max-w-[160px] hidden md:inline-block" title={serviceName}>
         {serviceName}
@@ -447,6 +472,7 @@ function DetailPanel({ entry, onClose }: { entry: LogEntry; onClose: () => void 
             {/* Summary cards */}
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               <FieldCard label="Tipo" value={SOURCE_TYPE_LABELS[entry.source_type] ?? entry.source_type} />
+              <FieldCard label="Tipo Servicio" value={SERVICE_TYPE_LABELS[entry.service_type] || entry.service_type || 'unknown'} />
               <FieldCard label="Level" value={entry.level.toUpperCase()} color={lc.color} />
               {entry.fields.method && <FieldCard label="Metodo" value={entry.fields.method} color="text-emerald-400" />}
               {entry.fields.status_code != null && <FieldCard label="Status" value={String(entry.fields.status_code)} color={statusCodeClass(Number(entry.fields.status_code))} />}
