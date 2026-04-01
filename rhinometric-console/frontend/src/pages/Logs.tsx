@@ -46,13 +46,9 @@ interface EnrichedResponse {
 
 const TIME_RANGES = [
   { label: '15 min', value: 15 * 60 },
-  { label: '30 min', value: 30 * 60 },
   { label: '1 hora', value: 60 * 60 },
-  { label: '3 horas', value: 3 * 60 * 60 },
   { label: '6 horas', value: 6 * 60 * 60 },
-  { label: '12 horas', value: 12 * 60 * 60 },
   { label: '24 horas', value: 24 * 60 * 60 },
-  { label: '3 dias', value: 3 * 24 * 60 * 60 },
   { label: '7 dias', value: 7 * 24 * 60 * 60 },
 ];
 
@@ -64,6 +60,7 @@ const LEVEL_CONFIG: Record<string, LevelCfg> = {
   warn:  { icon: AlertTriangle, color: 'text-yellow-400', bg: 'bg-yellow-500/20', label: 'WARN' },
   error: { icon: XCircle, color: 'text-red-400', bg: 'bg-red-500/20', label: 'ERROR' },
   fatal: { icon: Flame, color: 'text-red-300', bg: 'bg-red-700/30', label: 'FATAL' },
+  unknown: { icon: Info, color: 'text-gray-500', bg: 'bg-gray-600/20', label: 'UNKNOWN' },
 };
 
 const SOURCE_TYPE_LABELS: Record<string, string> = {
@@ -97,7 +94,16 @@ const STATUS_CODE_GROUPS = [
   { label: '5xx Server Err', value: '5xx' },
 ];
 
-const LIMIT_OPTIONS = [100, 200, 500, 1000, 2000];
+const LIMIT_OPTIONS = [50, 100, 250];
+
+const SEVERITY_OPTIONS = [
+  { value: 'fatal', label: 'Fatal' },
+  { value: 'error', label: 'Error' },
+  { value: 'warn', label: 'Warn' },
+  { value: 'info', label: 'Info' },
+  { value: 'debug', label: 'Debug' },
+  { value: 'unknown', label: 'Unknown' },
+];
 
 /* ============================================================== *
  *  HELPERS
@@ -235,90 +241,95 @@ function FilterBar({
         </button>
       </div>
 
-      {/* Row 2: Advanced filters */}
+      {/* Row 2: Quick filters — always visible when panel is open */}
       {showAdvanced && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-2 p-3 rounded-lg bg-surface-light/30 border border-white/5">
-          {/* Service Type */}
-          <div>
-            <label className="text-[10px] uppercase tracking-wider text-gray-500 mb-1 block">Tipo servicio</label>
-            <select value={serviceType} onChange={(e) => setServiceType(e.target.value)} className="input w-full text-sm">
-              <option value="">Todos</option>
-              {(availableFilters?.service_types ?? []).map(st => (
-                <option key={st} value={st}>{SERVICE_TYPE_LABELS[st] ?? st}</option>
-              ))}
-            </select>
+        <>
+          <div className="grid grid-cols-3 gap-2 p-3 rounded-lg bg-surface-light/30 border border-white/5">
+            {/* Service Type */}
+            <div>
+              <label className="text-[10px] uppercase tracking-wider text-gray-500 mb-1 block">Tipo servicio</label>
+              <select value={serviceType} onChange={(e) => setServiceType(e.target.value)} className="input w-full text-sm">
+                <option value="">Todos</option>
+                {(availableFilters?.service_types ?? []).map(st => (
+                  <option key={st} value={st}>{SERVICE_TYPE_LABELS[st] ?? st}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Service */}
+            <div>
+              <label className="text-[10px] uppercase tracking-wider text-gray-500 mb-1 block">Servicio</label>
+              <select value={service} onChange={(e) => setService(e.target.value)} className="input w-full text-sm">
+                <option value="">Todos</option>
+                {(availableFilters?.services ?? []).map(s => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Severity — canonical list */}
+            <div>
+              <label className="text-[10px] uppercase tracking-wider text-gray-500 mb-1 block">Severidad</label>
+              <select value={level} onChange={(e) => setLevel(e.target.value)} className="input w-full text-sm">
+                <option value="">Todas</option>
+                {SEVERITY_OPTIONS.map(s => (
+                  <option key={s.value} value={s.value}>{s.label}</option>
+                ))}
+              </select>
+            </div>
           </div>
 
-          {/* Service */}
-          <div>
-            <label className="text-[10px] uppercase tracking-wider text-gray-500 mb-1 block">Servicio</label>
-            <select value={service} onChange={(e) => setService(e.target.value)} className="input w-full text-sm">
-              <option value="">Todos</option>
-              {(availableFilters?.services ?? []).map(s => (
-                <option key={s} value={s}>{s}</option>
-              ))}
-            </select>
-          </div>
+          {/* Row 3: Advanced filters */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 p-3 rounded-lg bg-surface-light/20 border border-white/5">
+            {/* Source type */}
+            <div>
+              <label className="text-[10px] uppercase tracking-wider text-gray-500 mb-1 block">Tipo evento</label>
+              <select value={sourceType} onChange={(e) => setSourceType(e.target.value)} className="input w-full text-sm">
+                <option value="">Todos</option>
+                {(availableFilters?.source_types ?? []).map(t => (
+                  <option key={t} value={t}>{SOURCE_TYPE_LABELS[t] ?? t}</option>
+                ))}
+              </select>
+            </div>
 
-          {/* Level */}
-          <div>
-            <label className="text-[10px] uppercase tracking-wider text-gray-500 mb-1 block">Severidad</label>
-            <select value={level} onChange={(e) => setLevel(e.target.value)} className="input w-full text-sm">
-              <option value="">Todas</option>
-              {(availableFilters?.levels ?? []).map(l => (
-                <option key={l} value={l}>{LEVEL_CONFIG[l]?.label ?? l.toUpperCase()}</option>
-              ))}
-            </select>
-          </div>
+            {/* HTTP Status */}
+            <div>
+              <label className="text-[10px] uppercase tracking-wider text-gray-500 mb-1 block">HTTP status</label>
+              <select value={statusCode} onChange={(e) => setStatusCode(e.target.value)} className="input w-full text-sm">
+                <option value="">Todos</option>
+                {STATUS_CODE_GROUPS.map(g => (
+                  <option key={g.value} value={g.value}>{g.label}</option>
+                ))}
+                {(availableFilters?.status_codes ?? []).map(sc => (
+                  <option key={sc} value={sc}>{sc}</option>
+                ))}
+              </select>
+            </div>
 
-          {/* Source type */}
-          <div>
-            <label className="text-[10px] uppercase tracking-wider text-gray-500 mb-1 block">Tipo</label>
-            <select value={sourceType} onChange={(e) => setSourceType(e.target.value)} className="input w-full text-sm">
-              <option value="">Todos</option>
-              {(availableFilters?.source_types ?? []).map(t => (
-                <option key={t} value={t}>{SOURCE_TYPE_LABELS[t] ?? t}</option>
-              ))}
-            </select>
-          </div>
+            {/* HTTP Method */}
+            <div>
+              <label className="text-[10px] uppercase tracking-wider text-gray-500 mb-1 block">Metodo HTTP</label>
+              <select value={method} onChange={(e) => setMethod(e.target.value)} className="input w-full text-sm">
+                <option value="">Todos</option>
+                {(availableFilters?.methods ?? []).map(m => (
+                  <option key={m} value={m}>{m}</option>
+                ))}
+              </select>
+            </div>
 
-          {/* HTTP Method */}
-          <div>
-            <label className="text-[10px] uppercase tracking-wider text-gray-500 mb-1 block">Metodo</label>
-            <select value={method} onChange={(e) => setMethod(e.target.value)} className="input w-full text-sm">
-              <option value="">Todos</option>
-              {(availableFilters?.methods ?? []).map(m => (
-                <option key={m} value={m}>{m}</option>
-              ))}
-            </select>
+            {/* Path contains */}
+            <div>
+              <label className="text-[10px] uppercase tracking-wider text-gray-500 mb-1 block">Path</label>
+              <input
+                type="text"
+                value={pathContains}
+                onChange={(e) => setPathContains(e.target.value)}
+                placeholder="/api/..."
+                className="input w-full text-sm"
+              />
+            </div>
           </div>
-
-          {/* Status code */}
-          <div>
-            <label className="text-[10px] uppercase tracking-wider text-gray-500 mb-1 block">Status</label>
-            <select value={statusCode} onChange={(e) => setStatusCode(e.target.value)} className="input w-full text-sm">
-              <option value="">Todos</option>
-              {STATUS_CODE_GROUPS.map(g => (
-                <option key={g.value} value={g.value}>{g.label}</option>
-              ))}
-              {(availableFilters?.status_codes ?? []).map(sc => (
-                <option key={sc} value={sc}>{sc}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Path contains */}
-          <div>
-            <label className="text-[10px] uppercase tracking-wider text-gray-500 mb-1 block">Path</label>
-            <input
-              type="text"
-              value={pathContains}
-              onChange={(e) => setPathContains(e.target.value)}
-              placeholder="/api/..."
-              className="input w-full text-sm"
-            />
-          </div>
-        </div>
+        </>
       )}
     </div>
   );
@@ -652,8 +663,8 @@ export function LogsPage() {
   const [statusCode, setStatusCode] = useState('');
   const [pathContains, setPathContains] = useState('');
   const [serviceType, setServiceType] = useState('');
-  const [timeRange, setTimeRange] = useState(3 * 60 * 60);
-  const [limit, setLimit] = useState(500);
+  const [timeRange, setTimeRange] = useState(60 * 60);
+  const [limit, setLimit] = useState(100);
 
   /* --- UI state --- */
   const [selectedEntry, setSelectedEntry] = useState<LogEntry | null>(null);
