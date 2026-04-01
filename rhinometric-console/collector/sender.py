@@ -19,7 +19,7 @@ from utils import mask_url
 
 logger = logging.getLogger("rhyno.collector.sender")
 
-# ── Session factory ──────────────────────────────────────────────
+# ── Session factory ─────────────────────────────────────────────
 
 _session: Optional[requests.Session] = None
 
@@ -70,7 +70,7 @@ def preflight_check(cfg: CollectorConfig) -> bool:
         return False
 
 
-# ── Generic POST ─────────────────────────────────────────────────
+# ── Generic POST ────────────────────────────────────────────────
 
 def send_telemetry(
     cfg: CollectorConfig,
@@ -121,7 +121,7 @@ def send_telemetry(
         return False
 
 
-# ── Typed wrappers ───────────────────────────────────────────────
+# ── Typed wrappers ──────────────────────────────────────────────
 
 def send_metrics(cfg: CollectorConfig, metrics: List[Dict]) -> bool:
     return send_telemetry(cfg, "metrics", {"metrics": metrics})

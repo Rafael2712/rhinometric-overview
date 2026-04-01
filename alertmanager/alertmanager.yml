@@ -21,7 +21,7 @@ route:
   - match:
       rhinometric_source: ai-anomaly
       severity: critical
-    receiver: blackhole
+    receiver: ai-anomaly-alerts
     group_by:
     - alertname
     - metric

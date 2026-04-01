@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """
-Rhinometric Collector v1.1 — Main Entry Point
+Rhinometric Collector v1.2 — Main Entry Point
 
 Production-ready telemetry agent that collects real system metrics,
-captures its own logs, and generates real traces for each cycle.
+captures its own logs, tails external log files, and generates real
+traces for each cycle.
 
 Usage:
     python main.py                                # env-var config
@@ -25,7 +26,7 @@ from traces import CycleTracer
 
 logger = logging.getLogger("rhyno.collector.main")
 
-# ── Graceful shutdown ────────────────────────────────────────────
+# ── Graceful shutdown ───────────────────────────────────────────
 
 _running = True
 
@@ -40,7 +41,7 @@ sig.signal(sig.SIGINT, _shutdown)
 sig.signal(sig.SIGTERM, _shutdown)
 
 
-# ── Startup banner ───────────────────────────────────────────────
+# ── Startup banner ──────────────────────────────────────────────
 
 def _print_banner(cfg: CollectorConfig) -> None:
     """Print a clear startup summary with masked sensitive values."""
@@ -64,11 +65,21 @@ def _print_banner(cfg: CollectorConfig) -> None:
     print(f"║  Interval     : {str(cfg.collect_interval) + 's':<40s}║")
     print(f"║  Signals      : {', '.join(signals):<40s}║")
     print(f"║  Log Level    : {cfg.log_level.upper():<40s}║")
+
+    # Task 21: Show file log sources in banner
+    if cfg.log_sources:
+        print(f"║  Log Sources  : {str(len(cfg.log_sources)) + ' file(s)':<40s}║")
+        for src in cfg.log_sources:
+            display = src if len(src) <= 38 else "…" + src[-(38-1):]
+            print(f"║    → {display:<52s}║")
+    else:
+        print(f"║  Log Sources  : {'internal only':<40s}║")
+
     print("╚══════════════════════════════════════════════════════════╝")
     print()
 
 
-# ── Main loop ────────────────────────────────────────────────────
+# ── Main loop ───────────────────────────────────────────────────
 
 def run(cfg: CollectorConfig) -> None:
     cycle = 0
@@ -116,7 +127,7 @@ def run(cfg: CollectorConfig) -> None:
                     span.set_error(str(exc))
                     logger.error(f"Metrics collection failed: {exc}")
 
-        # ── Logs ─────────────────────────────────────────────
+        # ── Logs (internal + file sources) ───────────────────
         if cfg.enable_logs:
             signals_total += 1
             with tracer.child("send_logs") as span:
@@ -176,7 +187,7 @@ def run(cfg: CollectorConfig) -> None:
     logger.info("Collector stopped cleanly.")
 
 
-# ── Entry point ──────────────────────────────────────────────────
+# ── Entry point ─────────────────────────────────────────────────
 
 def main() -> None:
     # Pre-load config to get log_level before setting up logging

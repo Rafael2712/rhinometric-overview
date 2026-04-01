@@ -9,6 +9,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [v2.7.2] Platform Stability & Collector Packaging — 2026-04-01
+
+### Fixed — Auth Hydration (`store.ts`, `App.tsx`, `main.tsx`)
+- **Zustand v5 persist hydration race** — After inactivity, returning to the app caused spurious 401 bursts on all protected endpoints. Root cause: Zustand v5 `persist` middleware rehydrates asynchronously; `ProtectedRoute` read `isAuthenticated=false` before localStorage was restored, triggering redirect to `/login` and fetch calls with `null` token.
+- **Hydration gate** — Added `useHasHydrated()` hook using `persist.onFinishHydration()`. `App()` now blocks all route rendering until auth store is fully hydrated.
+- **React Query retry filter** — `QueryClient` now skips retry on HTTP 401/403 errors, preventing error multiplication during auth failures.
+
+### Changed — Logs UX (`Logs.tsx`)
+- **Filter layout** — Reorganized from flat 7-column grid into two tiers: Quick filters (service type, service, severity) and Advanced filters (event type, HTTP status, HTTP method, path).
+- **Severity dropdown** — Now uses canonical `SEVERITY_OPTIONS` constant (fatal, error, warn, info, debug, unknown) instead of only showing levels present in current data.
+- **`LEVEL_CONFIG`** — Added `unknown` entry with gray styling for unrecognized severity levels.
+- **Time ranges** — Reduced from 9 to 5 options (15min, 1h, 6h, 24h, 7d). Default changed from 3h to 1h.
+- **Limit options** — Reduced from `[100, 200, 500, 1000, 2000]` to `[50, 100, 250]`. Default changed from 500 to 100.
+
+### Changed — Collector v1.1.0 (`collector/`)
+- **Production packaging** — Complete rewrite of collector for customer delivery with fail-fast config validation, startup banner with masked tokens, preflight connectivity check, per-cycle signal-level results, and Docker image metadata (labels + healthcheck).
+- **Config system** — ENV override precedence, `.env.example` with all variables documented, `config.yaml.example` for file-based config.
+- **Signal control** — `ENABLE_METRICS`, `ENABLE_LOGS`, `ENABLE_TRACES` flags with per-signal reporting in cycle output.
+- **Dockerfile** — Multi-stage build with healthcheck, proper labels, non-root user.
+- **README** — Complete documentation with Quick Start, Troubleshooting, Architecture, docker-compose examples.
+
+### Risk
+- Auth fix: minimal — 3 files, additive only, no hook reordering
+- Logs UX: frontend-only constants/layout, no backend changes
+- Collector: self-contained package, no platform code affected
+
+---
+
 ## [v2.7.1-logs] Logs Module — service_type Classification - 2026-03-31
 
 ### Added — Backend (`logs.py`, 540 lines)
@@ -202,10 +230,13 @@ This release focuses on production readiness, SSL preparation, and critical bug 
 
 ## Version History
 
+- **2.7.2** (2026-04-01) - Platform stability (auth hydration fix) + Logs UX + Collector v1.1.0
+- **2.7.1-logs** (2026-03-31) - Logs service_type classification
+- **2.7.0-logs** (2026-03-15) - Logs module complete rewrite
+- **2.6.0** (2026-02-17) - Performance validation for 100 hosts
+- **2.5.2-alerts** (2026-02-16) - Alerting & notifications
 - **2.5.1** (2026-02-09) - Infrastructure stabilization & SSL preparation
 - **2.5.0** (2025-11-10) - Initial production release
-- **2.4.x** - Beta releases
-- **2.3.x** - Alpha releases
 
 ---
 

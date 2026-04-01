@@ -1,25 +1,31 @@
 """
-Rhinometric Collector — Real Log Capture
+Rhinometric Collector — Log Capture & File Ingestion
 
-Captures the collector agent's own internal log output and sends it
-as structured telemetry logs.  This is NOT fake data — every entry
-represents a real event that occurred inside the collector process.
+Two log sources merged into one pipeline:
 
-Architecture:
-  A custom logging.Handler buffers log records produced by the
-  collector.  Each collection cycle drains the buffer and ships the
-  entries to the backend.
+1. **Internal buffer** — A custom logging.Handler captures the collector's
+   own log output (startup messages, cycle results, errors).  These are
+   real operational events, not synthetic data.
+
+2. **File tailing** (Task 21) — Reads new lines from external log files
+   listed in LOG_SOURCES (e.g. /var/log/app.log).  Uses offset-based
+   tailing with rotation/truncation detection.
+
+Both sources are merged by `collect_logs()` and shipped in one payload.
 """
 
+import os
 import logging
 import threading
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from config import CollectorConfig
 
 logger = logging.getLogger("rhyno.collector.logs")
 
-# ── In-memory ring buffer handler ────────────────────────────────
+# ═══════════════════════════════════════════════════════════════
+#  Part 1 — Internal log buffer (unchanged from v1.1.0)
+# ═══════════════════════════════════════════════════════════════
 
 _MAX_BUFFER = 200  # cap to avoid unbounded growth between cycles
 
@@ -44,7 +50,7 @@ class _BufferHandler(logging.Handler):
             return records
 
 
-_buffer_handler: _BufferHandler | None = None
+_buffer_handler: Optional[_BufferHandler] = None
 
 
 def install_log_capture() -> None:
@@ -65,12 +71,8 @@ def _level_str(record: logging.LogRecord) -> str:
     return mapping.get(lvl, lvl)
 
 
-def collect_logs(cfg: CollectorConfig) -> List[Dict]:
-    """
-    Drain buffered log records and return them in backend format.
-
-    Each log: { "message": str, "level": str, "labels": dict }
-    """
+def _drain_internal_logs(cfg: CollectorConfig) -> List[Dict]:
+    """Drain buffered internal log records and return them in backend format."""
     if _buffer_handler is None:
         return []
 
@@ -90,6 +92,173 @@ def collect_logs(cfg: CollectorConfig) -> List[Dict]:
                 "environment": cfg.environment,
             },
         })
-
-    logger.debug(f"Drained {len(entries)} log entries for shipment")
     return entries
+
+
+# ═══════════════════════════════════════════════════════════════
+#  Part 2 — File-based log tailing  (Task 21 — NEW)
+# ═══════════════════════════════════════════════════════════════
+
+def detect_level(line: str) -> str:
+    """
+    Detect log level from a raw line by keyword matching.
+
+    Scans for common level keywords (case-insensitive).
+    Returns one of the backend-accepted levels: "error", "warn", "info", "debug", "fatal".
+    """
+    upper = line.upper()
+    for keyword in ("FATAL", "PANIC"):
+        if keyword in upper:
+            return "fatal"
+    for keyword in ("ERROR", "CRITICAL", "EXCEPTION"):
+        if keyword in upper:
+            return "error"
+    for keyword in ("WARN", "WARNING"):
+        if keyword in upper:
+            return "warn"
+    if "DEBUG" in upper:
+        return "debug"
+    return "info"
+
+
+class FileTailer:
+    """
+    Offset-based file tailer with rotation and truncation detection.
+
+    Tracks:
+      - offset: byte position of last read
+      - inode:  file identity (detects log rotation / replacement)
+
+    Safety:
+      - Missing files are silently skipped (logged once per cycle)
+      - Truncated files reset offset to 0
+      - Reads are capped at `max_lines` per cycle to avoid memory spikes
+      - Uses readline() loop (not iterator) to keep fh.tell() working
+    """
+
+    def __init__(self, path: str, max_lines: int = 50):
+        self.path = path
+        self.max_lines = max_lines
+        self._offset: int = 0
+        self._inode: Optional[int] = None
+
+    def read_new_lines(self) -> List[str]:
+        """
+        Read new lines appended since the last call.
+
+        Returns a list of stripped non-empty lines (up to max_lines).
+        Updates internal offset for next call.
+        """
+        try:
+            stat = os.stat(self.path)
+        except FileNotFoundError:
+            logger.info(f"file:{self.path} → file not found, skipping")
+            return []
+        except OSError as exc:
+            logger.warning(f"file:{self.path} → stat error: {exc}")
+            return []
+
+        current_inode = getattr(stat, "st_ino", 0)
+
+        # Rotation detection: inode changed → new file
+        if self._inode is not None and current_inode != 0 and current_inode != self._inode:
+            logger.info(f"file:{self.path} → inode changed (rotation detected), resetting offset")
+            self._offset = 0
+
+        # Truncation detection: file shrunk
+        if stat.st_size < self._offset:
+            logger.info(f"file:{self.path} → file truncated ({stat.st_size} < {self._offset}), resetting offset")
+            self._offset = 0
+
+        self._inode = current_inode
+
+        # Nothing new to read
+        if stat.st_size == self._offset:
+            return []
+
+        lines: List[str] = []
+        try:
+            with open(self.path, "r", encoding="utf-8", errors="replace") as fh:
+                fh.seek(self._offset)
+                while len(lines) < self.max_lines:
+                    raw = fh.readline()
+                    if not raw:          # EOF
+                        break
+                    line = raw.rstrip("\n\r")
+                    if line:
+                        lines.append(line)
+                self._offset = fh.tell()
+        except OSError as exc:
+            logger.warning(f"file:{self.path} → read error: {exc}")
+
+        return lines
+
+
+# ── Module-level tailer registry ─────────────────────────────────
+_tailers: Dict[str, FileTailer] = {}
+
+
+def _get_tailer(path: str, max_lines: int) -> FileTailer:
+    """Get or create a FileTailer for the given path."""
+    if path not in _tailers:
+        _tailers[path] = FileTailer(path, max_lines=max_lines)
+    return _tailers[path]
+
+
+def collect_file_logs(cfg: CollectorConfig) -> List[Dict]:
+    """
+    Read new lines from all configured LOG_SOURCES and return them
+    in backend log format.
+
+    Each entry: { "message": str, "level": str, "labels": dict }
+    """
+    if not cfg.log_sources:
+        return []
+
+    entries: List[Dict] = []
+
+    for file_path in cfg.log_sources:
+        tailer = _get_tailer(file_path, cfg.log_max_lines)
+        new_lines = tailer.read_new_lines()
+
+        for line in new_lines:
+            level = detect_level(line)
+            entries.append({
+                "message": line,
+                "level": level,
+                "labels": {
+                    "service_key": cfg.service_key,
+                    "source": "file",
+                    "file_path": file_path,
+                    "environment": cfg.environment,
+                },
+            })
+
+    if entries:
+        logger.debug(f"Collected {len(entries)} file log entries from {len(cfg.log_sources)} source(s)")
+
+    return entries
+
+
+# ═══════════════════════════════════════════════════════════════
+#  Part 3 — Merged collector  (updated for Task 21)
+# ═══════════════════════════════════════════════════════════════
+
+def collect_logs(cfg: CollectorConfig) -> List[Dict]:
+    """
+    Drain all log sources and return a merged list:
+      - Internal collector logs (from _BufferHandler)
+      - File-based logs (from LOG_SOURCES)
+
+    Backward compatible: if LOG_SOURCES is empty, only internal
+    logs are returned (identical to v1.1.0 behavior).
+    """
+    internal = _drain_internal_logs(cfg)
+    file_logs = collect_file_logs(cfg)
+
+    merged = internal + file_logs
+
+    if merged:
+        logger.debug(f"Total log entries: {len(merged)} (internal={len(internal)}, file={len(file_logs)})")
+
+    return merged

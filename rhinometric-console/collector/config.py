@@ -9,7 +9,7 @@ import os
 import sys
 import logging
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import List, Optional
 
 logger = logging.getLogger("rhyno.collector.config")
 
@@ -29,6 +29,11 @@ class CollectorConfig:
     log_level: str = "INFO"
     environment: str = "production"
     hostname: str = field(default_factory=lambda: _get_hostname())
+
+    # ── Task 21: File-based log ingestion ────────────────────
+    log_sources: List[str] = field(default_factory=list)
+    log_max_lines: int = 50
+    log_poll_interval: int = 5
 
     def validate(self) -> None:
         """Validate required config. Exits with clear error if invalid."""
@@ -54,6 +59,11 @@ class CollectorConfig:
         if not any([self.enable_metrics, self.enable_logs, self.enable_traces]):
             errors.append("At least one signal must be enabled (ENABLE_METRICS, ENABLE_LOGS, or ENABLE_TRACES)")
 
+        # Validate LOG_SOURCES paths
+        for src in self.log_sources:
+            if not os.path.isabs(src):
+                errors.append(f"LOG_SOURCES path must be absolute: {src}")
+
         if errors:
             print("\n╔══════════════════════════════════════════════════════════╗")
             print("║  Rhinometric Collector — Configuration Error            ║")
@@ -77,6 +87,30 @@ def _get_hostname() -> str:
 def _parse_bool(val: str) -> bool:
     """Parse boolean from string: true/1/yes/on → True."""
     return val.strip().lower() in ("1", "true", "yes", "on")
+
+
+def _parse_log_sources(raw: str) -> List[str]:
+    """
+    Parse LOG_SOURCES env var into a list of absolute file paths.
+
+    Format: comma-separated, each entry optionally prefixed with "file:".
+    Examples:
+        "file:/var/log/app.log,file:/var/log/syslog"
+        "/var/log/app.log,/var/log/syslog"
+    """
+    if not raw or not raw.strip():
+        return []
+    paths: List[str] = []
+    for entry in raw.split(","):
+        entry = entry.strip()
+        if not entry:
+            continue
+        # Strip optional "file:" prefix
+        if entry.startswith("file:"):
+            entry = entry[5:]
+        if entry:
+            paths.append(entry)
+    return paths
 
 
 def load_config() -> CollectorConfig:
@@ -109,6 +143,17 @@ def load_config() -> CollectorConfig:
                 cfg.enable_logs = bool(data["enable_logs"])
             if "enable_traces" in data:
                 cfg.enable_traces = bool(data["enable_traces"])
+            # Task 21: YAML file log sources
+            if "log_sources" in data:
+                sources = data["log_sources"]
+                if isinstance(sources, list):
+                    cfg.log_sources = [str(s) for s in sources]
+                elif isinstance(sources, str):
+                    cfg.log_sources = _parse_log_sources(sources)
+            if "log_max_lines" in data:
+                cfg.log_max_lines = int(data["log_max_lines"])
+            if "log_poll_interval" in data:
+                cfg.log_poll_interval = int(data["log_poll_interval"])
             logger.info(f"Loaded YAML config from {yaml_path}")
         except ImportError:
             logger.warning("PyYAML not installed — skipping YAML config")
@@ -129,6 +174,12 @@ def load_config() -> CollectorConfig:
         cfg.enable_logs = _parse_bool(os.environ["ENABLE_LOGS"])
     if "ENABLE_TRACES" in os.environ:
         cfg.enable_traces = _parse_bool(os.environ["ENABLE_TRACES"])
+
+    # ── Task 21: File log source overrides ───────────────────
+    if "LOG_SOURCES" in os.environ:
+        cfg.log_sources = _parse_log_sources(os.environ["LOG_SOURCES"])
+    cfg.log_max_lines = int(os.environ.get("LOG_MAX_LINES", str(cfg.log_max_lines)))
+    cfg.log_poll_interval = int(os.environ.get("LOG_POLL_INTERVAL", str(cfg.log_poll_interval)))
 
     # ── Step 3: Validate ─────────────────────────────────────
     cfg.validate()

@@ -2,7 +2,7 @@ FROM python:3.11-slim
 
 LABEL maintainer="Rhinometric <support@rhinometric.com>"
 LABEL description="Rhinometric Telemetry Collector"
-LABEL version="1.1.0"
+LABEL version="1.2.0"
 
 WORKDIR /app
 

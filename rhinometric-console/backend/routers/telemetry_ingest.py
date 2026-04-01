@@ -134,7 +134,7 @@ def _resolve_service(
         changed = True
         logger.info(f"Telemetry attached for service {svc.name} (id={svc.id})")
 
-    if svc.telemetry_status in (TelemetryStatus.CONNECTED, TelemetryStatus.STALE, TelemetryStatus.ERROR):
+    if svc.telemetry_status in (TelemetryStatus.CONFIGURED, TelemetryStatus.CONNECTED, TelemetryStatus.STALE, TelemetryStatus.ERROR):
         svc.telemetry_status = TelemetryStatus.RECEIVING_DATA
         changed = True
 
