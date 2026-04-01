@@ -46,10 +46,10 @@ interface EnrichedResponse {
 
 const TIME_RANGES = [
   { label: '15 min', value: 15 * 60 },
-  { label: '1 hora', value: 60 * 60 },
-  { label: '6 horas', value: 6 * 60 * 60 },
-  { label: '24 horas', value: 24 * 60 * 60 },
-  { label: '7 dias', value: 7 * 24 * 60 * 60 },
+  { label: '1 hour', value: 60 * 60 },
+  { label: '6 hours', value: 6 * 60 * 60 },
+  { label: '24 hours', value: 24 * 60 * 60 },
+  { label: '7 days', value: 7 * 24 * 60 * 60 },
 ];
 
 type LevelCfg = { icon: any; color: string; bg: string; label: string };
@@ -113,7 +113,7 @@ function formatTimestamp(nanos: string): string {
   try {
     const ms = parseInt(nanos) / 1e6;
     const d = new Date(ms);
-    return d.toLocaleString('es-ES', {
+    return d.toLocaleString('en-US', {
       day: '2-digit', month: '2-digit', year: '2-digit',
       hour: '2-digit', minute: '2-digit', second: '2-digit',
     });
@@ -126,7 +126,7 @@ function formatTimestampShort(nanos: string): string {
   try {
     const ms = parseInt(nanos) / 1e6;
     const d = new Date(ms);
-    return d.toLocaleTimeString('es-ES', {
+    return d.toLocaleTimeString('en-US', {
       hour: '2-digit', minute: '2-digit', second: '2-digit',
     });
   } catch {
@@ -181,7 +181,7 @@ function FilterBar({
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar en logs..."
+            placeholder="Search logs..."
             className="input pl-10 w-full"
           />
           {search && (
@@ -209,7 +209,7 @@ function FilterBar({
           className="input w-28"
         >
           {LIMIT_OPTIONS.map(l => (
-            <option key={l} value={l}>{l} lineas</option>
+            <option key={l} value={l}>{l} lines</option>
           ))}
         </select>
 
@@ -219,7 +219,7 @@ function FilterBar({
           className={`btn ${showAdvanced ? 'btn-primary' : 'btn-secondary'} flex items-center gap-1.5 relative`}
         >
           <SlidersHorizontal className="w-4 h-4" />
-          <span className="hidden sm:inline">Filtros</span>
+          <span className="hidden sm:inline">Filters</span>
           {activeFilterCount > 0 && (
             <span className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-primary rounded-full text-[10px] font-bold text-white flex items-center justify-center">
               {activeFilterCount}
@@ -231,7 +231,7 @@ function FilterBar({
         {activeFilterCount > 0 && (
           <button onClick={onClearAll} className="btn btn-secondary text-red-400 hover:text-red-300 flex items-center gap-1.5">
             <X className="w-4 h-4" />
-            <span className="hidden sm:inline">Limpiar</span>
+            <span className="hidden sm:inline">Clear</span>
           </button>
         )}
 
@@ -247,9 +247,9 @@ function FilterBar({
           <div className="grid grid-cols-3 gap-2 p-3 rounded-lg bg-surface-light/30 border border-white/5">
             {/* Service Type */}
             <div>
-              <label className="text-[10px] uppercase tracking-wider text-gray-500 mb-1 block">Tipo servicio</label>
+              <label className="text-[10px] uppercase tracking-wider text-gray-500 mb-1 block">Service Type</label>
               <select value={serviceType} onChange={(e) => setServiceType(e.target.value)} className="input w-full text-sm">
-                <option value="">Todos</option>
+                <option value="">All</option>
                 {(availableFilters?.service_types ?? []).map(st => (
                   <option key={st} value={st}>{SERVICE_TYPE_LABELS[st] ?? st}</option>
                 ))}
@@ -258,9 +258,9 @@ function FilterBar({
 
             {/* Service */}
             <div>
-              <label className="text-[10px] uppercase tracking-wider text-gray-500 mb-1 block">Servicio</label>
+              <label className="text-[10px] uppercase tracking-wider text-gray-500 mb-1 block">Service</label>
               <select value={service} onChange={(e) => setService(e.target.value)} className="input w-full text-sm">
-                <option value="">Todos</option>
+                <option value="">All</option>
                 {(availableFilters?.services ?? []).map(s => (
                   <option key={s} value={s}>{s}</option>
                 ))}
@@ -269,9 +269,9 @@ function FilterBar({
 
             {/* Severity — canonical list */}
             <div>
-              <label className="text-[10px] uppercase tracking-wider text-gray-500 mb-1 block">Severidad</label>
+              <label className="text-[10px] uppercase tracking-wider text-gray-500 mb-1 block">Severity</label>
               <select value={level} onChange={(e) => setLevel(e.target.value)} className="input w-full text-sm">
-                <option value="">Todas</option>
+                <option value="">All</option>
                 {SEVERITY_OPTIONS.map(s => (
                   <option key={s.value} value={s.value}>{s.label}</option>
                 ))}
@@ -283,9 +283,9 @@ function FilterBar({
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 p-3 rounded-lg bg-surface-light/20 border border-white/5">
             {/* Source type */}
             <div>
-              <label className="text-[10px] uppercase tracking-wider text-gray-500 mb-1 block">Tipo evento</label>
+              <label className="text-[10px] uppercase tracking-wider text-gray-500 mb-1 block">Event Type</label>
               <select value={sourceType} onChange={(e) => setSourceType(e.target.value)} className="input w-full text-sm">
-                <option value="">Todos</option>
+                <option value="">All</option>
                 {(availableFilters?.source_types ?? []).map(t => (
                   <option key={t} value={t}>{SOURCE_TYPE_LABELS[t] ?? t}</option>
                 ))}
@@ -296,7 +296,7 @@ function FilterBar({
             <div>
               <label className="text-[10px] uppercase tracking-wider text-gray-500 mb-1 block">HTTP status</label>
               <select value={statusCode} onChange={(e) => setStatusCode(e.target.value)} className="input w-full text-sm">
-                <option value="">Todos</option>
+                <option value="">All</option>
                 {STATUS_CODE_GROUPS.map(g => (
                   <option key={g.value} value={g.value}>{g.label}</option>
                 ))}
@@ -308,9 +308,9 @@ function FilterBar({
 
             {/* HTTP Method */}
             <div>
-              <label className="text-[10px] uppercase tracking-wider text-gray-500 mb-1 block">Metodo HTTP</label>
+              <label className="text-[10px] uppercase tracking-wider text-gray-500 mb-1 block">HTTP Method</label>
               <select value={method} onChange={(e) => setMethod(e.target.value)} className="input w-full text-sm">
-                <option value="">Todos</option>
+                <option value="">All</option>
                 {(availableFilters?.methods ?? []).map(m => (
                   <option key={m} value={m}>{m}</option>
                 ))}
@@ -438,8 +438,8 @@ function DetailPanel({ entry, onClose }: { entry: LogEntry; onClose: () => void 
   };
 
   const tabs = [
-    { id: 'parsed' as const, label: 'Campos' },
-    { id: 'raw' as const, label: 'Mensaje raw' },
+    { id: 'parsed' as const, label: 'Fields' },
+    { id: 'raw' as const, label: 'Raw Message' },
     { id: 'stream' as const, label: 'Stream labels' },
   ];
 
@@ -463,7 +463,7 @@ function DetailPanel({ entry, onClose }: { entry: LogEntry; onClose: () => void 
           <button
             onClick={() => copyToClipboard(JSON.stringify(entry, null, 2))}
             className="btn btn-secondary p-1.5"
-            title="Copiar JSON"
+            title="Copy JSON"
           >
             <Copy className="w-4 h-4" />
           </button>
@@ -494,16 +494,16 @@ function DetailPanel({ entry, onClose }: { entry: LogEntry; onClose: () => void 
           <div className="space-y-3">
             {/* Summary cards */}
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              <FieldCard label="Tipo" value={SOURCE_TYPE_LABELS[entry.source_type] ?? entry.source_type} />
-              <FieldCard label="Tipo Servicio" value={SERVICE_TYPE_LABELS[entry.service_type] || entry.service_type || 'unknown'} />
+              <FieldCard label="Type" value={SOURCE_TYPE_LABELS[entry.source_type] ?? entry.source_type} />
+              <FieldCard label="Service Type" value={SERVICE_TYPE_LABELS[entry.service_type] || entry.service_type || 'unknown'} />
               <FieldCard label="Level" value={entry.level.toUpperCase()} color={lc.color} />
-              {entry.fields.method && <FieldCard label="Metodo" value={entry.fields.method} color="text-emerald-400" />}
+              {entry.fields.method && <FieldCard label="Method" value={entry.fields.method} color="text-emerald-400" />}
               {entry.fields.status_code != null && <FieldCard label="Status" value={String(entry.fields.status_code)} color={statusCodeClass(Number(entry.fields.status_code))} />}
               {entry.fields.path && <FieldCard label="Path" value={entry.fields.path} mono />}
               {entry.fields.full_path && entry.fields.full_path !== entry.fields.path && <FieldCard label="Full path" value={entry.fields.full_path} mono />}
               {entry.fields.client_ip && <FieldCard label="IP" value={entry.fields.client_ip} mono />}
               {entry.fields.response_bytes && <FieldCard label="Bytes" value={entry.fields.response_bytes} />}
-              {entry.fields.duration_ms != null && <FieldCard label="Duracion" value={`${entry.fields.duration_ms}ms`} />}
+              {entry.fields.duration_ms != null && <FieldCard label="Duration" value={`${entry.fields.duration_ms}ms`} />}
               {entry.fields.signal && <FieldCard label="Signal" value={entry.fields.signal} />}
               {entry.fields.cycle_num != null && <FieldCard label="Cycle" value={`#${entry.fields.cycle_num}`} />}
               {entry.fields.ok_count != null && <FieldCard label="OK/Total" value={`${entry.fields.ok_count}/${entry.fields.total_signals}`} />}
@@ -514,7 +514,7 @@ function DetailPanel({ entry, onClose }: { entry: LogEntry; onClose: () => void 
 
             {/* All fields JSON */}
             <div className="mt-4">
-              <h4 className="text-[10px] uppercase tracking-wider text-gray-500 mb-2">Todos los campos parseados</h4>
+              <h4 className="text-[10px] uppercase tracking-wider text-gray-500 mb-2">All parsed fields</h4>
               <pre className="text-xs text-gray-300 bg-black/30 rounded-lg p-3 overflow-x-auto font-mono">
                 {JSON.stringify(entry.fields, null, 2)}
               </pre>
@@ -530,7 +530,7 @@ function DetailPanel({ entry, onClose }: { entry: LogEntry; onClose: () => void 
                 className="btn btn-secondary text-xs flex items-center gap-1"
               >
                 <Copy className="w-3.5 h-3.5" />
-                Copiar
+                Copy
               </button>
             </div>
             <pre className="text-xs text-gray-200 bg-black/30 rounded-lg p-4 overflow-x-auto font-mono whitespace-pre-wrap break-all leading-5">
@@ -578,9 +578,9 @@ function StatsBar({ total, totalBeforeFilters, filters, isLoading, lastRefresh }
         <span className="text-xs text-gray-400">
           <span className="text-gray-200 font-semibold">{total}</span>
           {totalBeforeFilters > 0 && totalBeforeFilters !== total && (
-            <span> de {totalBeforeFilters}</span>
+            <span> of {totalBeforeFilters}</span>
           )}
-          {' '}lineas
+          {' '}lines
         </span>
 
         {filters && (
@@ -599,17 +599,17 @@ function StatsBar({ total, totalBeforeFilters, filters, isLoading, lastRefresh }
         {filters && filters.services.length > 0 && (
           <div className="flex items-center gap-1 text-[10px] text-gray-400">
             <Server className="w-3 h-3" />
-            <span>{filters.services.length} servicio{filters.services.length > 1 ? 's' : ''}</span>
+            <span>{filters.services.length} service{filters.services.length > 1 ? 's' : ''}</span>
           </div>
         )}
       </div>
 
       <div className="flex items-center gap-2 text-[10px] text-gray-500">
-        {isLoading && <span className="text-primary animate-pulse">Cargando...</span>}
+        {isLoading && <span className="text-primary animate-pulse">Loading...</span>}
         {lastRefresh && (
           <span className="flex items-center gap-1">
             <Clock className="w-3 h-3" />
-            {lastRefresh.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+            {lastRefresh.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
           </span>
         )}
       </div>
@@ -626,8 +626,8 @@ function EmptyState({ hasFilters, isError }: { hasFilters: boolean; isError?: bo
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
         <XCircle className="w-12 h-12 text-red-400/50 mb-4" />
-        <h3 className="text-lg font-medium text-gray-200 mb-1">Error al consultar logs</h3>
-        <p className="text-sm text-gray-400">No se pudo conectar con el servicio de logs. Verifica la conexion.</p>
+        <h3 className="text-lg font-medium text-gray-200 mb-1">Error querying logs</h3>
+        <p className="text-sm text-gray-400">Could not connect to the log service. Check the connection.</p>
       </div>
     );
   }
@@ -636,12 +636,12 @@ function EmptyState({ hasFilters, isError }: { hasFilters: boolean; isError?: bo
     <div className="flex flex-col items-center justify-center py-20 text-center">
       <FileText className="w-12 h-12 text-gray-600 mb-4" />
       <h3 className="text-lg font-medium text-gray-200 mb-1">
-        {hasFilters ? 'Sin resultados para estos filtros' : 'No hay logs en este periodo'}
+        {hasFilters ? 'No results for these filters' : 'No logs in this time range'}
       </h3>
       <p className="text-sm text-gray-400 max-w-md">
         {hasFilters
-          ? 'Intenta ampliar el rango de tiempo o ajustar los filtros aplicados.'
-          : 'No se encontraron logs de servicios del cliente en el periodo seleccionado. Verifica que los servicios esten enviando datos.'}
+          ? 'Try expanding the time range or adjusting the applied filters.'
+          : 'No service logs found in the selected time range. Verify that services are sending data.'}
       </p>
     </div>
   );
@@ -800,7 +800,7 @@ export function LogsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-white">Log Explorer</h1>
-          <p className="text-sm text-gray-400 mt-0.5">Consulta y analiza logs de tus servicios</p>
+          <p className="text-sm text-gray-400 mt-0.5">Query and analyze logs from your services</p>
         </div>
         <div className="flex items-center gap-2">
           {/* Auto-refresh toggle */}
@@ -819,7 +819,7 @@ export function LogsPage() {
             className="btn btn-secondary text-xs flex items-center gap-1.5"
           >
             <Download className="w-3.5 h-3.5" />
-            Exportar
+            Export
           </button>
         </div>
       </div>
@@ -860,12 +860,12 @@ export function LogsPage() {
         <div className={`card p-0 overflow-hidden flex-1 min-w-0 ${selectedEntry ? 'max-w-[60%]' : ''}`}>
           {/* Column headers */}
           <div className="flex items-center gap-2 px-3 py-2 border-b border-white/5 bg-surface-light/20 text-[10px] uppercase tracking-wider text-gray-500">
-            <span className="min-w-[70px]">Hora</span>
+            <span className="min-w-[70px]">Time</span>
             <span className="min-w-[52px] text-center">Level</span>
-            <span className="min-w-[80px] text-center hidden lg:inline-block">Tipo</span>
-            <span className="min-w-[100px] hidden md:inline-block">Servicio</span>
+            <span className="min-w-[80px] text-center hidden lg:inline-block">Type</span>
+            <span className="min-w-[100px] hidden md:inline-block">Service</span>
             <span className="min-w-[180px] hidden xl:block">HTTP</span>
-            <span className="flex-1">Mensaje</span>
+            <span className="flex-1">Message</span>
           </div>
 
           {/* Log entries */}

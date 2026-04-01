@@ -45,7 +45,7 @@ function App() {
   if (!hasHydrated) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="animate-pulse text-gray-400 text-sm">Cargando sesión…</div>
+        <div className="animate-pulse text-gray-400 text-sm">Loading session…</div>
       </div>
     )
   }
