@@ -26,7 +26,7 @@ import { SystemHealthPage } from './pages/SystemHealth'
 import { RoadmapPage } from './pages/Roadmap'
 import { AIInsightsPage } from './pages/AIInsights'
 import { BackupRecoveryPage } from './pages/BackupRecovery'
-import { useAuthStore } from './lib/auth/store'
+import { useAuthStore, useHasHydrated } from './lib/auth/store'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuthStore()
@@ -39,6 +39,17 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
 }
 
 function App() {
+  const hasHydrated = useHasHydrated()
+
+  // Block all rendering (routes + fetches) until Zustand persist has restored auth state
+  if (!hasHydrated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="animate-pulse text-gray-400 text-sm">Cargando sesión…</div>
+      </div>
+    )
+  }
+
   return (
     <BrowserRouter>
       <Routes>

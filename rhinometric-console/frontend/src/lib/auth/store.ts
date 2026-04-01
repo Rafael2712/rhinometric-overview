@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { useState, useEffect } from 'react'
 import { persist } from 'zustand/middleware'
 
 interface User {
@@ -98,3 +99,15 @@ export const useAuthStore = create<AuthState>()(
     }
   )
 )
+
+// Hydration gate – blocks renders/fetches until persist has restored state from localStorage
+export const useHasHydrated = (): boolean => {
+  const [hydrated, setHydrated] = useState(useAuthStore.persist.hasHydrated())
+  useEffect(() => {
+    const unsub = useAuthStore.persist.onFinishHydration(() => setHydrated(true))
+    // Safety: in case hydration finished between useState init and this effect
+    if (useAuthStore.persist.hasHydrated()) setHydrated(true)
+    return unsub
+  }, [])
+  return hydrated
+}
