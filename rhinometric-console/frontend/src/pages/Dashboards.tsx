@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ExternalLink, Folder, Tag, Eye, Globe, Server } from 'lucide-react'
+import { Folder, Tag, Eye, Globe } from 'lucide-react'
 import { useAuthStore } from '../lib/auth/store'
-import { openGrafanaDashboard } from '../utils/grafana'
 
 interface Dashboard {
   uid: string
@@ -19,6 +18,9 @@ interface Dashboard {
   folderUrl?: string
 }
 
+/** Tags that mark infrastructure / internal dashboards — hidden from catalog */
+const EXCLUDED_TAGS = ['docker', 'backend', 'stack', 'system']
+
 // Strip leading numbering like "01 - ", "02 - ", etc.
 const cleanTitle = (title: string) => title.replace(/^\d+\s*-\s*/, '')
 
@@ -33,7 +35,6 @@ export function DashboardsPage() {
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const token = useAuthStore((state) => state.token)
-  const isAdmin = useAuthStore((state) => state.isAdmin)
 
   useEffect(() => {
     fetchDashboards()
@@ -56,27 +57,20 @@ export function DashboardsPage() {
     }
   }
 
-  const openInGrafana = (dashboard: Dashboard, e: React.MouseEvent) => {
-    e.stopPropagation()
-    openGrafanaDashboard(dashboard.uid, { kiosk: 'tv' })
-  }
-
   const viewInConsole = (dashboard: Dashboard) => {
     navigate(`/dashboards/${dashboard.uid}/view`)
   }
 
-  const filteredDashboards = dashboards.filter(dashboard =>
+  // Only show external-services dashboards; exclude infra tags
+  const clientDashboards = dashboards.filter(d =>
+    d.tags.includes('external-services') &&
+    !d.tags.some(t => EXCLUDED_TAGS.includes(t.toLowerCase()))
+  )
+
+  const filteredDashboards = clientDashboards.filter(dashboard =>
     cleanTitle(dashboard.title).toLowerCase().includes(searchTerm.toLowerCase()) ||
     dashboard.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase())) ||
     (dashboard.folderTitle && dashboard.folderTitle.toLowerCase().includes(searchTerm.toLowerCase()))
-  )
-
-  // Separate into platform (internal) and external services dashboards
-  const externalDashboards = filteredDashboards.filter(d =>
-    d.tags.includes('external-services')
-  )
-  const platformDashboards = filteredDashboards.filter(d =>
-    !d.tags.includes('external-services')
   )
 
   const renderDashboardCard = (dashboard: Dashboard) => (
@@ -125,44 +119,9 @@ export function DashboardsPage() {
           <Eye className="w-4 h-4" />
           View in Console
         </button>
-        {isAdmin() && (
-          <button
-            onClick={(e) => openInGrafana(dashboard, e)}
-            className="btn-outline text-sm font-medium flex items-center justify-center gap-1 px-3"
-            title="Edit in Grafana"
-          >
-            <ExternalLink className="w-4 h-4" />
-            Grafana
-          </button>
-        )}
       </div>
     </div>
   )
-
-  const renderSection = (
-    title: string,
-    icon: React.ReactNode,
-    description: string,
-    items: Dashboard[]
-  ) => {
-    if (items.length === 0) return null
-    return (
-      <div className="space-y-4">
-        <div className="flex items-center gap-3">
-          <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10 text-primary">
-            {icon}
-          </div>
-          <div>
-            <h2 className="text-xl font-bold text-white">{title}</h2>
-            <p className="text-text-muted text-sm">{description}</p>
-          </div>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {items.map(renderDashboardCard)}
-        </div>
-      </div>
-    )
-  }
 
   if (loading) {
     return (
@@ -170,7 +129,7 @@ export function DashboardsPage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-white">Dashboards</h1>
-            <p className="text-text-muted mt-2">Grafana dashboards collection</p>
+            <p className="text-text-muted mt-2">Service monitoring dashboards</p>
           </div>
         </div>
         <div className="flex items-center justify-center h-64">
@@ -186,7 +145,7 @@ export function DashboardsPage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-white">Dashboards</h1>
-            <p className="text-text-muted mt-2">Grafana dashboards collection</p>
+            <p className="text-text-muted mt-2">Service monitoring dashboards</p>
           </div>
         </div>
         <div className="card bg-error/10 border-error">
@@ -203,36 +162,40 @@ export function DashboardsPage() {
         <div>
           <h1 className="text-3xl font-bold text-white">Dashboards</h1>
           <p className="text-text-muted mt-2">
-            {filteredDashboards.length} of {dashboards.length} dashboards
+            {filteredDashboards.length} dashboard{filteredDashboards.length !== 1 ? 's' : ''}
           </p>
         </div>
       </div>
 
       {/* Search */}
-      <div className="card">
-        <input
-          type="text"
-          placeholder="Search dashboards by name, tags, or folder..."
-          className="input w-full"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-        />
-      </div>
-
-      {/* Platform Dashboards Section */}
-      {renderSection(
-        'Platform',
-        <Server className="w-5 h-5" />,
-        'Infrastructure, backend and system monitoring',
-        platformDashboards
+      {clientDashboards.length > 3 && (
+        <div className="card">
+          <input
+            type="text"
+            placeholder="Search dashboards by name, tags, or folder..."
+            className="input w-full"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
       )}
 
-      {/* External Services Section */}
-      {renderSection(
-        'External Services',
-        <Globe className="w-5 h-5" />,
-        'Health, performance and SLA tracking for external endpoints',
-        externalDashboards
+      {/* External Services Dashboards */}
+      {filteredDashboards.length > 0 && (
+        <div className="space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10 text-primary">
+              <Globe className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-white">External Services</h2>
+              <p className="text-text-muted text-sm">Health, performance and SLA tracking for external endpoints</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredDashboards.map(renderDashboardCard)}
+          </div>
+        </div>
       )}
 
       {filteredDashboards.length === 0 && (

@@ -56,8 +56,8 @@ const REFRESH_INTERVALS: RefreshInterval[] = [
   { label: '30m', value: 1800000 },
 ];
 
-// Default: 15s refresh
-const DEFAULT_REFRESH = REFRESH_INTERVALS[0]; // Off by default
+// Default: 30s auto-refresh (ensures Grafana template vars reload on open)
+const DEFAULT_REFRESH = REFRESH_INTERVALS[4]; // 30s — ensure fresh data on load
 
 // Strip leading numbering like "01 - "
 const cleanTitle = (title: string) => title.replace(/^\d+\s*-\s*/, '');
