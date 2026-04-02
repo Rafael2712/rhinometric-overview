@@ -113,25 +113,25 @@ db_query_duration_seconds = Histogram(
 external_service_up = Gauge(
     'external_service_up',
     'External service reachability (1=up, 0=down)',
-    ['service_name', 'service_type']
+    ['service_name', 'service_type', 'group_name']
 )
 
 external_service_latency_ms = Gauge(
     'external_service_latency_ms',
     'External service last response time in milliseconds',
-    ['service_name', 'service_type']
+    ['service_name', 'service_type', 'group_name']
 )
 
 external_service_checks_total = Counter(
     'external_service_checks_total',
     'Total external service health checks performed',
-    ['service_name', 'service_type', 'result']
+    ['service_name', 'service_type', 'group_name', 'result']
 )
 
 external_service_latency_histogram = Histogram(
     'external_service_latency_seconds',
     'External service response time distribution',
-    ['service_name', 'service_type'],
+    ['service_name', 'service_type', 'group_name'],
     buckets=(0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.0, 5.0, 10.0, 30.0)
 )
 
@@ -139,42 +139,42 @@ external_service_latency_histogram = Histogram(
 external_service_incidents_total = Counter(
     'external_service_incidents_total',
     'Total incidents (UP to DOWN transitions) per service',
-    ['service_name', 'service_type']
+    ['service_name', 'service_type', 'group_name']
 )
 
 # Consecutive failures gauge
 external_service_consecutive_failures = Gauge(
     'external_service_consecutive_failures',
     'Number of consecutive failed checks for a service',
-    ['service_name', 'service_type']
+    ['service_name', 'service_type', 'group_name']
 )
 
 # Last successful check timestamp (epoch seconds)
 external_service_last_success_timestamp = Gauge(
     'external_service_last_success_timestamp',
     'Unix timestamp of the last successful check',
-    ['service_name', 'service_type']
+    ['service_name', 'service_type', 'group_name']
 )
 
 # Last check timestamp (epoch seconds) - staleness detection
 external_service_last_check_timestamp = Gauge(
     'external_service_last_check_timestamp',
     'Unix timestamp of the last health check (any result)',
-    ['service_name', 'service_type']
+    ['service_name', 'service_type', 'group_name']
 )
 
 # SSL certificate expiry days
 external_service_ssl_expiry_days = Gauge(
     'external_service_ssl_expiry_days',
     'Days until SSL certificate expires (HTTPS only)',
-    ['service_name']
+    ['service_name', 'group_name']
 )
 
 # Health score (0-100)
 external_service_health_score = Gauge(
     'external_service_health_score',
     'Composite health score (0-100) combining uptime, latency, stability',
-    ['service_name', 'service_type']
+    ['service_name', 'service_type', 'group_name']
 )
 
 # ==============================================================================

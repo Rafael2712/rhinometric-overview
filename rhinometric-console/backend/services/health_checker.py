@@ -144,7 +144,7 @@ def _check_ssl_expiry(url: str) -> Optional[float]:
             return None
 
 
-def _get_ssl_expiry_cached(url: str, service_name: str) -> Optional[float]:
+def _get_ssl_expiry_cached(url: str, service_name: str, group_name: str = "default") -> Optional[float]:
     """Get SSL expiry days with caching (re-check every SSL_CHECK_INTERVAL)."""
     now_epoch = datetime.now(timezone.utc).timestamp()
 
@@ -157,7 +157,7 @@ def _get_ssl_expiry_cached(url: str, service_name: str) -> Optional[float]:
     if days is not None:
         _ssl_cache[url] = (days, now_epoch)
         try:
-            external_service_ssl_expiry_days.labels(service_name=service_name).set(days)
+            external_service_ssl_expiry_days.labels(service_name=service_name, group_name=group_name).set(days)
         except Exception:
             pass
         logger.info(f"[SSL] {service_name}: certificate expires in {days:.0f} days")
@@ -166,7 +166,7 @@ def _get_ssl_expiry_cached(url: str, service_name: str) -> Optional[float]:
 
 # ── Health Score Calculator ──────────────────────────────────────
 
-def _compute_health_score(service_id: int, service_name: str, service_type: str) -> float:
+def _compute_health_score(service_id: int, service_name: str, service_type: str, group_name: str = "default") -> float:
     """
     Compute a 0-100 health score based on:
       - Uptime ratio (50% weight): % of recent checks that succeeded
@@ -206,7 +206,7 @@ def _compute_health_score(service_id: int, service_name: str, service_type: str)
 
     try:
         external_service_health_score.labels(
-            service_name=service_name, service_type=service_type
+            service_name=service_name, service_type=service_type, group_name=group_name
         ).set(score)
     except Exception:
         pass
@@ -248,7 +248,7 @@ def _check_service(svc_id: int, svc_type: str, config: dict, timeout: int) -> di
                 "response_time_ms": 0, "status_code": None}
 
 
-async def _check_one(svc_id: int, svc_name: str, svc_type: str, config: dict, timeout: int):
+async def _check_one(svc_id: int, svc_name: str, svc_type: str, config: dict, timeout: int, group_name: str = "default"):
     """Run a check in the thread pool, update DB, insert history, update all metrics."""
     loop = asyncio.get_event_loop()
     result = await loop.run_in_executor(_executor, _check_service, svc_id, svc_type, config, timeout)
@@ -264,7 +264,7 @@ async def _check_one(svc_id: int, svc_name: str, svc_type: str, config: dict, ti
     if prev in ("up", "degraded") and check_status == "down":
         try:
             external_service_incidents_total.labels(
-                service_name=svc_name, service_type=svc_type
+                service_name=svc_name, service_type=svc_type, group_name=group_name
             ).inc()
         except Exception:
             pass
@@ -280,7 +280,7 @@ async def _check_one(svc_id: int, svc_name: str, svc_type: str, config: dict, ti
     consec = _consecutive_failures[svc_id]
     try:
         external_service_consecutive_failures.labels(
-            service_name=svc_name, service_type=svc_type
+            service_name=svc_name, service_type=svc_type, group_name=group_name
         ).set(consec)
     except Exception:
         pass
@@ -315,7 +315,7 @@ async def _check_one(svc_id: int, svc_name: str, svc_type: str, config: dict, ti
             db.add(check_record)
 
             db.commit()
-            logger.info(f"[HealthCheck] {svc_name} ({svc_type}) -> {check_status} ({latency:.0f}ms) [score={_compute_health_score(svc_id, svc_name, svc_type):.0f}]")
+            logger.info(f"[HealthCheck] {svc_name} ({svc_type}) -> {check_status} ({latency:.0f}ms) [score={_compute_health_score(svc_id, svc_name, svc_type, group_name):.0f}]")
 
             # Persist health checker state to DB (survives restarts)
             try:
@@ -337,28 +337,28 @@ async def _check_one(svc_id: int, svc_name: str, svc_type: str, config: dict, ti
     # ── Phase 4+6: Update all Prometheus metrics (outside DB session) ──
     try:
         is_up = 1 if check_status == "up" else 0
-        external_service_up.labels(service_name=svc_name, service_type=svc_type).set(is_up)
-        external_service_latency_ms.labels(service_name=svc_name, service_type=svc_type).set(latency)
+        external_service_up.labels(service_name=svc_name, service_type=svc_type, group_name=group_name).set(is_up)
+        external_service_latency_ms.labels(service_name=svc_name, service_type=svc_type, group_name=group_name).set(latency)
 
         # Histogram for percentiles (in seconds)
         external_service_latency_histogram.labels(
-            service_name=svc_name, service_type=svc_type
+            service_name=svc_name, service_type=svc_type, group_name=group_name
         ).observe(latency / 1000.0)
 
         check_result = "success" if is_success else "failure"
         external_service_checks_total.labels(
-            service_name=svc_name, service_type=svc_type, result=check_result
+            service_name=svc_name, service_type=svc_type, group_name=group_name, result=check_result
         ).inc()
 
         # Last check timestamp
         external_service_last_check_timestamp.labels(
-            service_name=svc_name, service_type=svc_type
+            service_name=svc_name, service_type=svc_type, group_name=group_name
         ).set(now_epoch)
 
         # Last success timestamp
         if is_success:
             external_service_last_success_timestamp.labels(
-                service_name=svc_name, service_type=svc_type
+                service_name=svc_name, service_type=svc_type, group_name=group_name
             ).set(now_epoch)
 
     except Exception as e:
@@ -369,7 +369,7 @@ async def _check_one(svc_id: int, svc_name: str, svc_type: str, config: dict, ti
         url = config.get("url", "")
         if url.startswith("https://"):
             try:
-                await loop.run_in_executor(_executor, _get_ssl_expiry_cached, url, svc_name)
+                await loop.run_in_executor(_executor, _get_ssl_expiry_cached, url, svc_name, group_name)
             except Exception as e:
                 logger.debug(f"[SSL] Error checking {svc_name}: {e}")
 
@@ -443,6 +443,7 @@ async def _scheduler_loop():
                         svc.service_type.value if hasattr(svc.service_type, 'value') else str(svc.service_type),
                         dict(svc.config) if svc.config else {},
                         svc.timeout_seconds or 10,
+                        group_name=svc.group_name or "default",
                     ))
                 await asyncio.gather(*tasks, return_exceptions=True)
 
