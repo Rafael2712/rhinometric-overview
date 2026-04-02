@@ -1,0 +1,1356 @@
+{
+  "dashboard": {
+    "annotations": {
+      "list": []
+    },
+    "editable": true,
+    "fiscalYearStartMonth": 0,
+    "liveNow": false,
+    "panels": [
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "decimals": 3,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "red",
+                  "value": null
+                },
+                {
+                  "color": "orange",
+                  "value": 95
+                },
+                {
+                  "color": "yellow",
+                  "value": 99
+                },
+                {
+                  "color": "green",
+                  "value": 99.9
+                }
+              ]
+            },
+            "unit": "percent"
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 5,
+          "w": 4,
+          "x": 0,
+          "y": 0
+        },
+        "id": 1,
+        "options": {
+          "colorMode": "background",
+          "graphMode": "none",
+          "justifyMode": "auto",
+          "orientation": "auto",
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "textMode": "value"
+        },
+        "targets": [
+          {
+            "expr": "avg(avg_over_time(external_service_up[$__range])) * 100",
+            "instant": true,
+            "legendFormat": "SLA",
+            "refId": "A"
+          }
+        ],
+        "title": "Fleet SLA %",
+        "type": "stat"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "decimals": 0,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "orange",
+                  "value": 1
+                },
+                {
+                  "color": "red",
+                  "value": 3
+                }
+              ]
+            }
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 5,
+          "w": 4,
+          "x": 4,
+          "y": 0
+        },
+        "id": 2,
+        "options": {
+          "colorMode": "background",
+          "graphMode": "none",
+          "justifyMode": "auto",
+          "orientation": "auto",
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "textMode": "value"
+        },
+        "targets": [
+          {
+            "expr": "count((avg_over_time(external_service_up[$__range]) * 100) < 99.9) OR on() vector(0)",
+            "instant": true,
+            "legendFormat": "Below SLA",
+            "refId": "A"
+          }
+        ],
+        "title": "Services Below 99.9% SLA",
+        "type": "stat"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "decimals": 1,
+            "max": 100,
+            "min": 0,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "red",
+                  "value": null
+                },
+                {
+                  "color": "orange",
+                  "value": 50
+                },
+                {
+                  "color": "yellow",
+                  "value": 75
+                },
+                {
+                  "color": "green",
+                  "value": 90
+                }
+              ]
+            },
+            "unit": "percent"
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 5,
+          "w": 4,
+          "x": 8,
+          "y": 0
+        },
+        "id": 3,
+        "options": {
+          "orientation": "auto",
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "showThresholdLabels": false,
+          "showThresholdMarkers": true
+        },
+        "targets": [
+          {
+            "expr": "avg(external_service_health_score)",
+            "instant": true,
+            "legendFormat": "Health",
+            "refId": "A"
+          }
+        ],
+        "title": "Average Reliability Score",
+        "type": "gauge"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "decimals": 0,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "yellow",
+                  "value": 10
+                },
+                {
+                  "color": "orange",
+                  "value": 50
+                },
+                {
+                  "color": "red",
+                  "value": 100
+                }
+              ]
+            }
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 5,
+          "w": 4,
+          "x": 12,
+          "y": 0
+        },
+        "id": 4,
+        "options": {
+          "colorMode": "background",
+          "graphMode": "none",
+          "justifyMode": "auto",
+          "orientation": "auto",
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "textMode": "value"
+        },
+        "targets": [
+          {
+            "expr": "sum(increase(external_service_incidents_total[30d])) OR on() vector(0)",
+            "instant": true,
+            "legendFormat": "Incidents",
+            "refId": "A"
+          }
+        ],
+        "title": "Total Incidents (30d)",
+        "type": "stat"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "decimals": 0,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "orange",
+                  "value": 1
+                },
+                {
+                  "color": "red",
+                  "value": 3
+                }
+              ]
+            }
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 5,
+          "w": 4,
+          "x": 16,
+          "y": 0
+        },
+        "id": 5,
+        "options": {
+          "colorMode": "background",
+          "graphMode": "none",
+          "justifyMode": "auto",
+          "orientation": "auto",
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "textMode": "value"
+        },
+        "targets": [
+          {
+            "expr": "count(external_service_ssl_expiry_days < 30) OR on() vector(0)",
+            "instant": true,
+            "legendFormat": "At Risk",
+            "refId": "A"
+          }
+        ],
+        "title": "Certificates Expiring <30d",
+        "type": "stat"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "fieldConfig": {
+          "defaults": {},
+          "overrides": [
+            {
+              "matcher": {
+                "id": "byName",
+                "options": "service_name"
+              },
+              "properties": [
+                {
+                  "id": "displayName",
+                  "value": "Service"
+                },
+                {
+                  "id": "custom.width",
+                  "value": 280
+                }
+              ]
+            },
+            {
+              "matcher": {
+                "id": "byName",
+                "options": "Value"
+              },
+              "properties": [
+                {
+                  "id": "displayName",
+                  "value": "SLA %"
+                },
+                {
+                  "id": "unit",
+                  "value": "percent"
+                },
+                {
+                  "id": "decimals",
+                  "value": 4
+                },
+                {
+                  "id": "thresholds",
+                  "value": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "color": "red",
+                        "value": null
+                      },
+                      {
+                        "color": "orange",
+                        "value": 95
+                      },
+                      {
+                        "color": "yellow",
+                        "value": 99
+                      },
+                      {
+                        "color": "green",
+                        "value": 99.9
+                      }
+                    ]
+                  }
+                },
+                {
+                  "id": "custom.cellOptions",
+                  "value": {
+                    "type": "color-background"
+                  }
+                }
+              ]
+            },
+            {
+              "matcher": {
+                "id": "byName",
+                "options": "Time"
+              },
+              "properties": [
+                {
+                  "id": "custom.hidden",
+                  "value": true
+                }
+              ]
+            },
+            {
+              "matcher": {
+                "id": "byName",
+                "options": "__name__"
+              },
+              "properties": [
+                {
+                  "id": "custom.hidden",
+                  "value": true
+                }
+              ]
+            },
+            {
+              "matcher": {
+                "id": "byName",
+                "options": "instance"
+              },
+              "properties": [
+                {
+                  "id": "custom.hidden",
+                  "value": true
+                }
+              ]
+            },
+            {
+              "matcher": {
+                "id": "byName",
+                "options": "job"
+              },
+              "properties": [
+                {
+                  "id": "custom.hidden",
+                  "value": true
+                }
+              ]
+            },
+            {
+              "matcher": {
+                "id": "byName",
+                "options": "service_type"
+              },
+              "properties": [
+                {
+                  "id": "displayName",
+                  "value": "Type"
+                }
+              ]
+            }
+          ]
+        },
+        "gridPos": {
+          "h": 9,
+          "w": 12,
+          "x": 0,
+          "y": 5
+        },
+        "id": 6,
+        "options": {
+          "cellHeight": "sm",
+          "footer": {
+            "show": false
+          },
+          "showHeader": true,
+          "sortBy": [
+            {
+              "desc": false,
+              "displayName": "SLA %"
+            }
+          ]
+        },
+        "targets": [
+          {
+            "expr": "avg_over_time(external_service_up[$__range]) * 100",
+            "format": "table",
+            "instant": true,
+            "legendFormat": "",
+            "refId": "A"
+          }
+        ],
+        "title": "Per-Service SLA %",
+        "transformations": [
+          {
+            "id": "sortBy",
+            "options": {
+              "fields": {},
+              "sort": [
+                {
+                  "desc": false,
+                  "field": "Value"
+                }
+              ]
+            }
+          }
+        ],
+        "type": "table"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "fieldConfig": {
+          "defaults": {},
+          "overrides": [
+            {
+              "matcher": {
+                "id": "byName",
+                "options": "service_name"
+              },
+              "properties": [
+                {
+                  "id": "displayName",
+                  "value": "Service"
+                },
+                {
+                  "id": "custom.width",
+                  "value": 280
+                }
+              ]
+            },
+            {
+              "matcher": {
+                "id": "byName",
+                "options": "Value"
+              },
+              "properties": [
+                {
+                  "id": "displayName",
+                  "value": "SLA %"
+                },
+                {
+                  "id": "unit",
+                  "value": "percent"
+                },
+                {
+                  "id": "decimals",
+                  "value": 4
+                },
+                {
+                  "id": "thresholds",
+                  "value": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "color": "red",
+                        "value": null
+                      },
+                      {
+                        "color": "orange",
+                        "value": 95
+                      },
+                      {
+                        "color": "yellow",
+                        "value": 99
+                      }
+                    ]
+                  }
+                },
+                {
+                  "id": "custom.cellOptions",
+                  "value": {
+                    "type": "color-background"
+                  }
+                }
+              ]
+            },
+            {
+              "matcher": {
+                "id": "byName",
+                "options": "Time"
+              },
+              "properties": [
+                {
+                  "id": "custom.hidden",
+                  "value": true
+                }
+              ]
+            },
+            {
+              "matcher": {
+                "id": "byName",
+                "options": "__name__"
+              },
+              "properties": [
+                {
+                  "id": "custom.hidden",
+                  "value": true
+                }
+              ]
+            },
+            {
+              "matcher": {
+                "id": "byName",
+                "options": "instance"
+              },
+              "properties": [
+                {
+                  "id": "custom.hidden",
+                  "value": true
+                }
+              ]
+            },
+            {
+              "matcher": {
+                "id": "byName",
+                "options": "job"
+              },
+              "properties": [
+                {
+                  "id": "custom.hidden",
+                  "value": true
+                }
+              ]
+            },
+            {
+              "matcher": {
+                "id": "byName",
+                "options": "service_type"
+              },
+              "properties": [
+                {
+                  "id": "displayName",
+                  "value": "Type"
+                }
+              ]
+            }
+          ]
+        },
+        "gridPos": {
+          "h": 9,
+          "w": 12,
+          "x": 12,
+          "y": 5
+        },
+        "id": 7,
+        "options": {
+          "cellHeight": "sm",
+          "footer": {
+            "show": false
+          },
+          "showHeader": true,
+          "sortBy": [
+            {
+              "desc": false,
+              "displayName": "SLA %"
+            }
+          ]
+        },
+        "targets": [
+          {
+            "expr": "(avg_over_time(external_service_up[$__range]) * 100) < 99.9",
+            "format": "table",
+            "instant": true,
+            "legendFormat": "",
+            "refId": "A"
+          }
+        ],
+        "title": "Services Below 99.9% SLA",
+        "transformations": [
+          {
+            "id": "sortBy",
+            "options": {
+              "fields": {},
+              "sort": [
+                {
+                  "desc": false,
+                  "field": "Value"
+                }
+              ]
+            }
+          }
+        ],
+        "type": "table"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "custom": {
+              "axisCenteredZero": false,
+              "axisLabel": "SLA %",
+              "drawStyle": "line",
+              "fillOpacity": 20,
+              "gradientMode": "scheme",
+              "lineInterpolation": "smooth",
+              "lineWidth": 2,
+              "pointSize": 5,
+              "showPoints": "auto",
+              "spanNulls": true,
+              "thresholdsStyle": {
+                "mode": "line"
+              }
+            },
+            "decimals": 2,
+            "max": 100,
+            "min": 90,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "red",
+                  "value": null
+                },
+                {
+                  "color": "green",
+                  "value": 99.9
+                }
+              ]
+            },
+            "unit": "percent"
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 14
+        },
+        "id": 8,
+        "options": {
+          "legend": {
+            "displayMode": "list",
+            "placement": "bottom"
+          },
+          "tooltip": {
+            "mode": "single",
+            "sort": "none"
+          }
+        },
+        "targets": [
+          {
+            "expr": "avg(avg_over_time(external_service_up[1d])) * 100",
+            "legendFormat": "Fleet SLA %",
+            "refId": "A"
+          }
+        ],
+        "title": "SLA Trend (Fleet)",
+        "type": "timeseries"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "custom": {
+              "axisCenteredZero": false,
+              "axisLabel": "Incidents",
+              "drawStyle": "bars",
+              "fillOpacity": 60,
+              "gradientMode": "none",
+              "lineWidth": 1,
+              "pointSize": 5,
+              "showPoints": "never",
+              "spanNulls": false
+            },
+            "decimals": 0,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "red",
+                  "value": 5
+                }
+              ]
+            }
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 14
+        },
+        "id": 9,
+        "options": {
+          "legend": {
+            "displayMode": "list",
+            "placement": "bottom"
+          },
+          "tooltip": {
+            "mode": "single",
+            "sort": "none"
+          }
+        },
+        "targets": [
+          {
+            "expr": "sum(increase(external_service_incidents_total[1d]))",
+            "legendFormat": "Incidents",
+            "refId": "A"
+          }
+        ],
+        "title": "Incidents per Day",
+        "type": "timeseries"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "fieldConfig": {
+          "defaults": {},
+          "overrides": [
+            {
+              "matcher": {
+                "id": "byName",
+                "options": "service_name"
+              },
+              "properties": [
+                {
+                  "id": "displayName",
+                  "value": "Service"
+                },
+                {
+                  "id": "custom.width",
+                  "value": 280
+                }
+              ]
+            },
+            {
+              "matcher": {
+                "id": "byName",
+                "options": "Value"
+              },
+              "properties": [
+                {
+                  "id": "displayName",
+                  "value": "Days Until Expiry"
+                },
+                {
+                  "id": "unit",
+                  "value": "d"
+                },
+                {
+                  "id": "decimals",
+                  "value": 0
+                },
+                {
+                  "id": "thresholds",
+                  "value": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "color": "red",
+                        "value": null
+                      },
+                      {
+                        "color": "orange",
+                        "value": 14
+                      },
+                      {
+                        "color": "yellow",
+                        "value": 30
+                      },
+                      {
+                        "color": "green",
+                        "value": 60
+                      }
+                    ]
+                  }
+                },
+                {
+                  "id": "custom.cellOptions",
+                  "value": {
+                    "type": "color-background"
+                  }
+                }
+              ]
+            },
+            {
+              "matcher": {
+                "id": "byName",
+                "options": "Time"
+              },
+              "properties": [
+                {
+                  "id": "custom.hidden",
+                  "value": true
+                }
+              ]
+            },
+            {
+              "matcher": {
+                "id": "byName",
+                "options": "__name__"
+              },
+              "properties": [
+                {
+                  "id": "custom.hidden",
+                  "value": true
+                }
+              ]
+            },
+            {
+              "matcher": {
+                "id": "byName",
+                "options": "instance"
+              },
+              "properties": [
+                {
+                  "id": "custom.hidden",
+                  "value": true
+                }
+              ]
+            },
+            {
+              "matcher": {
+                "id": "byName",
+                "options": "job"
+              },
+              "properties": [
+                {
+                  "id": "custom.hidden",
+                  "value": true
+                }
+              ]
+            },
+            {
+              "matcher": {
+                "id": "byName",
+                "options": "service_type"
+              },
+              "properties": [
+                {
+                  "id": "displayName",
+                  "value": "Type"
+                }
+              ]
+            }
+          ]
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 22
+        },
+        "id": 10,
+        "options": {
+          "cellHeight": "sm",
+          "footer": {
+            "show": false
+          },
+          "showHeader": true,
+          "sortBy": [
+            {
+              "desc": false,
+              "displayName": "Days Until Expiry"
+            }
+          ]
+        },
+        "targets": [
+          {
+            "expr": "sort(external_service_ssl_expiry_days)",
+            "format": "table",
+            "instant": true,
+            "legendFormat": "",
+            "refId": "A"
+          }
+        ],
+        "title": "SSL Expiry Calendar",
+        "transformations": [
+          {
+            "id": "sortBy",
+            "options": {
+              "fields": {},
+              "sort": [
+                {
+                  "desc": false,
+                  "field": "Value"
+                }
+              ]
+            }
+          }
+        ],
+        "type": "table"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "fieldConfig": {
+          "defaults": {},
+          "overrides": [
+            {
+              "matcher": {
+                "id": "byName",
+                "options": "service_name"
+              },
+              "properties": [
+                {
+                  "id": "displayName",
+                  "value": "Service"
+                },
+                {
+                  "id": "custom.width",
+                  "value": 280
+                }
+              ]
+            },
+            {
+              "matcher": {
+                "id": "byName",
+                "options": "Value"
+              },
+              "properties": [
+                {
+                  "id": "displayName",
+                  "value": "Seconds Since Last Check"
+                },
+                {
+                  "id": "unit",
+                  "value": "s"
+                },
+                {
+                  "id": "decimals",
+                  "value": 0
+                },
+                {
+                  "id": "thresholds",
+                  "value": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "color": "green",
+                        "value": null
+                      },
+                      {
+                        "color": "yellow",
+                        "value": 120
+                      },
+                      {
+                        "color": "orange",
+                        "value": 300
+                      },
+                      {
+                        "color": "red",
+                        "value": 600
+                      }
+                    ]
+                  }
+                },
+                {
+                  "id": "custom.cellOptions",
+                  "value": {
+                    "type": "color-background"
+                  }
+                }
+              ]
+            },
+            {
+              "matcher": {
+                "id": "byName",
+                "options": "Time"
+              },
+              "properties": [
+                {
+                  "id": "custom.hidden",
+                  "value": true
+                }
+              ]
+            },
+            {
+              "matcher": {
+                "id": "byName",
+                "options": "__name__"
+              },
+              "properties": [
+                {
+                  "id": "custom.hidden",
+                  "value": true
+                }
+              ]
+            },
+            {
+              "matcher": {
+                "id": "byName",
+                "options": "instance"
+              },
+              "properties": [
+                {
+                  "id": "custom.hidden",
+                  "value": true
+                }
+              ]
+            },
+            {
+              "matcher": {
+                "id": "byName",
+                "options": "job"
+              },
+              "properties": [
+                {
+                  "id": "custom.hidden",
+                  "value": true
+                }
+              ]
+            },
+            {
+              "matcher": {
+                "id": "byName",
+                "options": "service_type"
+              },
+              "properties": [
+                {
+                  "id": "displayName",
+                  "value": "Type"
+                }
+              ]
+            }
+          ]
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 22
+        },
+        "id": 11,
+        "options": {
+          "cellHeight": "sm",
+          "footer": {
+            "show": false
+          },
+          "showHeader": true,
+          "sortBy": [
+            {
+              "desc": true,
+              "displayName": "Seconds Since Last Check"
+            }
+          ]
+        },
+        "targets": [
+          {
+            "expr": "sort_desc(time() - external_service_last_check_timestamp)",
+            "format": "table",
+            "instant": true,
+            "legendFormat": "",
+            "refId": "A"
+          }
+        ],
+        "title": "Last Check Staleness Risk",
+        "transformations": [
+          {
+            "id": "sortBy",
+            "options": {
+              "fields": {},
+              "sort": [
+                {
+                  "desc": true,
+                  "field": "Value"
+                }
+              ]
+            }
+          }
+        ],
+        "type": "table"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "custom": {
+              "axisCenteredZero": false,
+              "axisLabel": "Services",
+              "fillOpacity": 80,
+              "gradientMode": "none",
+              "lineWidth": 1
+            }
+          },
+          "overrides": [
+            {
+              "matcher": {
+                "id": "byName",
+                "options": "<95%"
+              },
+              "properties": [
+                {
+                  "id": "color",
+                  "value": {
+                    "fixedColor": "red",
+                    "mode": "fixed"
+                  }
+                }
+              ]
+            },
+            {
+              "matcher": {
+                "id": "byName",
+                "options": "95\u201399%"
+              },
+              "properties": [
+                {
+                  "id": "color",
+                  "value": {
+                    "fixedColor": "orange",
+                    "mode": "fixed"
+                  }
+                }
+              ]
+            },
+            {
+              "matcher": {
+                "id": "byName",
+                "options": "99\u201399.9%"
+              },
+              "properties": [
+                {
+                  "id": "color",
+                  "value": {
+                    "fixedColor": "yellow",
+                    "mode": "fixed"
+                  }
+                }
+              ]
+            },
+            {
+              "matcher": {
+                "id": "byName",
+                "options": "99.9%+"
+              },
+              "properties": [
+                {
+                  "id": "color",
+                  "value": {
+                    "fixedColor": "green",
+                    "mode": "fixed"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 24,
+          "x": 0,
+          "y": 30
+        },
+        "id": 12,
+        "options": {
+          "barWidth": 0.8,
+          "groupWidth": 0.7,
+          "legend": {
+            "displayMode": "list",
+            "placement": "bottom"
+          },
+          "orientation": "horizontal",
+          "showValue": "always",
+          "stacking": "none",
+          "tooltip": {
+            "mode": "single",
+            "sort": "none"
+          },
+          "xTickLabelRotation": 0
+        },
+        "targets": [
+          {
+            "expr": "count((avg_over_time(external_service_up[$__range]) * 100) < 95) OR on() vector(0)",
+            "instant": true,
+            "legendFormat": "<95%",
+            "refId": "A"
+          },
+          {
+            "expr": "count((avg_over_time(external_service_up[$__range]) * 100) >= 95 and (avg_over_time(external_service_up[$__range]) * 100) < 99) OR on() vector(0)",
+            "instant": true,
+            "legendFormat": "95\u201399%",
+            "refId": "B"
+          },
+          {
+            "expr": "count((avg_over_time(external_service_up[$__range]) * 100) >= 99 and (avg_over_time(external_service_up[$__range]) * 100) < 99.9) OR on() vector(0)",
+            "instant": true,
+            "legendFormat": "99\u201399.9%",
+            "refId": "C"
+          },
+          {
+            "expr": "count((avg_over_time(external_service_up[$__range]) * 100) >= 99.9) OR on() vector(0)",
+            "instant": true,
+            "legendFormat": "99.9%+",
+            "refId": "D"
+          }
+        ],
+        "title": "Uptime Distribution",
+        "type": "barchart"
+      }
+    ],
+    "refresh": "5m",
+    "schemaVersion": 38,
+    "tags": [
+      "external-services",
+      "sla",
+      "reliability",
+      "rhinometric"
+    ],
+    "templating": {
+      "list": []
+    },
+    "time": {
+      "from": "now-30d",
+      "to": "now"
+    },
+    "timepicker": {},
+    "timezone": "browser",
+    "title": "External Services SLA & Reliability",
+    "uid": "ext-svc-sla"
+  },
+  "folderUid": "ffeb5cpxpx0xse",
+  "overwrite": true
+}
