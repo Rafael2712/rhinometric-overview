@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Folder, Tag, Eye, Globe } from 'lucide-react'
 import { useAuthStore } from '../lib/auth/store'
+import { DashboardSelector } from '../components/DashboardSelector'
+import { loadSelection, saveSelection } from '../config/dashboardLibrary'
 
 interface Dashboard {
   uid: string
@@ -36,6 +38,14 @@ export function DashboardsPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const token = useAuthStore((state) => state.token)
 
+  // ── Dashboard selection state (Phase 1) ─────────────────────
+  const [activeDashboards, setActiveDashboards] = useState<string[]>(loadSelection)
+
+  const handleSelectionChange = (uids: string[]) => {
+    setActiveDashboards(uids)
+    saveSelection(uids)
+  }
+
   useEffect(() => {
     fetchDashboards()
   }, [])
@@ -67,11 +77,19 @@ export function DashboardsPage() {
     !d.tags.some(t => EXCLUDED_TAGS.includes(t.toLowerCase()))
   )
 
-  const filteredDashboards = clientDashboards.filter(dashboard =>
+  // ── Phase 1 filter: only render user-selected dashboards ────
+  const selectedDashboards = clientDashboards.filter(d =>
+    activeDashboards.includes(d.uid)
+  )
+
+  const filteredDashboards = selectedDashboards.filter(dashboard =>
     cleanTitle(dashboard.title).toLowerCase().includes(searchTerm.toLowerCase()) ||
     dashboard.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase())) ||
     (dashboard.folderTitle && dashboard.folderTitle.toLowerCase().includes(searchTerm.toLowerCase()))
   )
+
+  // Count of dashboards hidden by selector (not by search)
+  const hiddenCount = clientDashboards.length - selectedDashboards.length
 
   const renderDashboardCard = (dashboard: Dashboard) => (
     <div
@@ -163,12 +181,19 @@ export function DashboardsPage() {
           <h1 className="text-3xl font-bold text-white">Dashboards</h1>
           <p className="text-text-muted mt-2">
             {filteredDashboards.length} dashboard{filteredDashboards.length !== 1 ? 's' : ''}
+            {hiddenCount > 0 && (
+              <span className="text-text-muted/70"> · {hiddenCount} hidden</span>
+            )}
           </p>
         </div>
+        <DashboardSelector
+          activeDashboards={activeDashboards}
+          onChange={handleSelectionChange}
+        />
       </div>
 
       {/* Search */}
-      {clientDashboards.length > 3 && (
+      {selectedDashboards.length > 3 && (
         <div className="card">
           <input
             type="text"
@@ -198,9 +223,27 @@ export function DashboardsPage() {
         </div>
       )}
 
-      {filteredDashboards.length === 0 && (
+      {/* Empty state: user has dashboards selected but search yields nothing */}
+      {filteredDashboards.length === 0 && selectedDashboards.length > 0 && (
         <div className="card text-center py-12">
           <p className="text-text-muted">No dashboards found matching your search.</p>
+        </div>
+      )}
+
+      {/* Empty state: no dashboards selected at all */}
+      {selectedDashboards.length === 0 && (
+        <div className="card text-center py-16 space-y-4">
+          <div className="flex justify-center">
+            <div className="w-16 h-16 rounded-full bg-surface-light/50 flex items-center justify-center">
+              <Globe className="w-8 h-8 text-text-muted" />
+            </div>
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold text-white">No dashboards selected</h3>
+            <p className="text-text-muted text-sm mt-1">
+              Use the <strong>Manage Dashboards</strong> button to choose which dashboards to display.
+            </p>
+          </div>
         </div>
       )}
     </div>

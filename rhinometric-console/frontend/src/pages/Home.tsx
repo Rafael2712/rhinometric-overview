@@ -23,6 +23,7 @@ interface ExternalService {
   last_response_time_ms: number | null; enabled: boolean
 }
 
+/* Reserved for upcoming feature
 function mapSummaryStatus(s: string): 'success' | 'warning' | 'error' {
   if (s === 'OPERATIONAL') return 'success'
   if (s === 'CRITICAL') return 'error'
@@ -34,6 +35,7 @@ function mapSummaryLabel(s: string): string {
   if (s === 'CRITICAL') return 'Critical'
   return s
 }
+*/
 
 export function HomePage() {
   const navigate = useNavigate()
@@ -82,7 +84,7 @@ export function HomePage() {
   })
 
   const ext = summaryData?.monitored_services ?? null
-  const pla = summaryData?.platform_components ?? null
+  // const pla = summaryData?.platform_components ?? null  // Reserved for upcoming feature
 
   // Sparkline for monitored services
   useEffect(() => {
