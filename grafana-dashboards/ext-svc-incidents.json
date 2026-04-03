@@ -2,14 +2,65 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
+  "id": 15,
+  "links": [
+    {
+      "asDropdown": false,
+      "icon": "external link",
+      "includeVars": false,
+      "keepTime": true,
+      "tags": [],
+      "targetBlank": false,
+      "title": "\u2190 Fleet Overview",
+      "tooltip": "",
+      "type": "link",
+      "url": "/d/ext-svc-overview"
+    },
+    {
+      "asDropdown": false,
+      "icon": "external link",
+      "includeVars": true,
+      "keepTime": true,
+      "tags": [],
+      "targetBlank": false,
+      "title": "Group View",
+      "tooltip": "",
+      "type": "link",
+      "url": "/d/ext-svc-group"
+    },
+    {
+      "asDropdown": false,
+      "icon": "external link",
+      "includeVars": false,
+      "keepTime": true,
+      "tags": [],
+      "targetBlank": false,
+      "title": "SLA & Reliability",
+      "tooltip": "",
+      "type": "link",
+      "url": "/d/ext-svc-sla"
+    }
+  ],
   "panels": [
     {
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
       },
+      "description": "Number of services not responding right now.",
       "fieldConfig": {
         "defaults": {
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "color": "green",
+                  "text": "None \u2705"
+                }
+              },
+              "type": "value"
+            }
+          ],
           "noValue": "0",
           "thresholds": {
             "mode": "absolute",
@@ -65,8 +116,20 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
+      "description": "Number of services with degraded health score.",
       "fieldConfig": {
         "defaults": {
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "color": "green",
+                  "text": "None \u2705"
+                }
+              },
+              "type": "value"
+            }
+          ],
           "noValue": "0",
           "thresholds": {
             "mode": "absolute",
@@ -126,8 +189,20 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
+      "description": "Number of services with consecutive check failures.",
       "fieldConfig": {
         "defaults": {
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "color": "green",
+                  "text": "None \u2705"
+                }
+              },
+              "type": "value"
+            }
+          ],
           "noValue": "0",
           "thresholds": {
             "mode": "absolute",
@@ -187,9 +262,21 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
+      "description": "Total incidents detected in the last 24 hours.",
       "fieldConfig": {
         "defaults": {
           "decimals": 0,
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "color": "green",
+                  "text": "None \u2705"
+                }
+              },
+              "type": "value"
+            }
+          ],
           "noValue": "0",
           "thresholds": {
             "mode": "absolute",
@@ -249,11 +336,13 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
+      "description": "Services with consecutive failures. Empty = all passing.",
       "fieldConfig": {
         "defaults": {
           "custom": {
             "align": "auto"
-          }
+          },
+          "noValue": "No active failures \u2705"
         },
         "overrides": [
           {
@@ -283,6 +372,24 @@
                     }
                   ]
                 }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "service_name"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "targetBlank": false,
+                    "title": "View Service Details \u2192",
+                    "url": "/d/ext-svc-detail?var-service_name=${__value.text}&${__url_time_range}"
+                  }
+                ]
               }
             ]
           }
@@ -365,11 +472,13 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
+      "description": "Services currently not responding. Empty = all reachable.",
       "fieldConfig": {
         "defaults": {
           "custom": {
             "align": "auto"
-          }
+          },
+          "noValue": "All services UP \u2705"
         },
         "overrides": [
           {
@@ -397,6 +506,24 @@
                 "value": {
                   "type": "color-text"
                 }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "service_name"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "targetBlank": false,
+                    "title": "View Service Details \u2192",
+                    "url": "/d/ext-svc-detail?var-service_name=${__value.text}&${__url_time_range}"
+                  }
+                ]
               }
             ]
           }
@@ -461,11 +588,13 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
+      "description": "Services with health below 75. Empty = all healthy.",
       "fieldConfig": {
         "defaults": {
           "custom": {
             "align": "auto"
-          }
+          },
+          "noValue": "All services healthy \u2705"
         },
         "overrides": [
           {
@@ -503,6 +632,24 @@
                     }
                   ]
                 }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "service_name"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "targetBlank": false,
+                    "title": "View Service Details \u2192",
+                    "url": "/d/ext-svc-detail?var-service_name=${__value.text}&${__url_time_range}"
+                  }
+                ]
               }
             ]
           }
@@ -585,11 +732,13 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
+      "description": "Services not checked in >5 min. Empty = all monitored regularly.",
       "fieldConfig": {
         "defaults": {
           "custom": {
             "align": "auto"
-          }
+          },
+          "noValue": "All checks current \u2705"
         },
         "overrides": [
           {
@@ -627,6 +776,24 @@
                     }
                   ]
                 }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "service_name"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "targetBlank": false,
+                    "title": "View Service Details \u2192",
+                    "url": "/d/ext-svc-detail?var-service_name=${__value.text}&${__url_time_range}"
+                  }
+                ]
               }
             ]
           }
@@ -709,6 +876,7 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
+      "description": "Hourly incident count over the selected time range.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -766,6 +934,7 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
+      "description": "Total consecutive failures across all services over time.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -818,9 +987,17 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
+      "description": "Bottom 10 services by health score.",
       "fieldConfig": {
         "defaults": {
           "decimals": 1,
+          "links": [
+            {
+              "targetBlank": false,
+              "title": "View Service Details \u2192",
+              "url": "/d/ext-svc-detail?var-service_name=${__field.labels.service_name}&${__url_time_range}"
+            }
+          ],
           "max": 100,
           "min": 0,
           "thresholds": {
@@ -843,7 +1020,8 @@
                 "value": 90
               }
             ]
-          }
+          },
+          "unit": "percent"
         },
         "overrides": []
       },
@@ -888,11 +1066,13 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
+      "description": "SSL certificates expiring within 30 days. Empty = all valid.",
       "fieldConfig": {
         "defaults": {
           "custom": {
             "align": "auto"
-          }
+          },
+          "noValue": "No certificates at risk \u2705"
         },
         "overrides": [
           {
@@ -934,6 +1114,24 @@
                     }
                   ]
                 }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "service_name"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "targetBlank": false,
+                    "title": "View Service Details \u2192",
+                    "url": "/d/ext-svc-detail?var-service_name=${__value.text}&${__url_time_range}"
+                  }
+                ]
               }
             ]
           }
@@ -1066,5 +1264,6 @@
   },
   "timezone": "browser",
   "title": "External Services Alerts & Incidents",
-  "uid": "ext-svc-incidents"
+  "uid": "ext-svc-incidents",
+  "version": 2
 }
