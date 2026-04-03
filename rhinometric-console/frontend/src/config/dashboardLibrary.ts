@@ -47,6 +47,27 @@ export const DASHBOARD_LIBRARY: DashboardEntry[] = [
     tier: 3,
     icon: 'alert-triangle',
   },
+  {
+    uid: 'ext-svc-failures',
+    name: 'Failure Analysis',
+    description: 'Top failing services, failure rates, spike detection and consecutive failure trends.',
+    tier: 2,
+    icon: 'x-circle',
+  },
+  {
+    uid: 'ext-svc-latency',
+    name: 'Latency Deep Dive',
+    description: 'P50/P95/P99 percentiles, latency distribution, spike detection and service comparison.',
+    tier: 2,
+    icon: 'timer',
+  },
+  {
+    uid: 'ext-svc-ranking',
+    name: 'Performance Ranking',
+    description: 'Composite ranking by health, uptime, latency and failures — top and bottom performers.',
+    tier: 2,
+    icon: 'trophy',
+  },
 ];
 
 const STORAGE_KEY = 'dashboard_selection';
