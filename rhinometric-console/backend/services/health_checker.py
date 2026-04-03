@@ -80,6 +80,88 @@ _ssl_cache: Dict[str, Tuple[float, float]] = {}
 SSL_CHECK_INTERVAL = 3600  # Re-check SSL every hour
 
 
+# ── Stale metric label cleanup ──────────────────────────────────
+# Tracks (service_name, service_type, group_name) tuples that have been emitted.
+# On each scheduler iteration, label sets for deleted/disabled services are removed.
+_known_metric_labels: set = set()
+
+
+def _cleanup_stale_metrics(active_services):
+    """
+    Remove prometheus_client label sets for services no longer in the DB.
+    
+    This is called each scheduler iteration with the current list of enabled
+    services. Any previously-tracked label tuple not in the active set is
+    removed from all external_service_* metrics, preventing stale data
+    from being exposed on /metrics.
+    """
+    global _known_metric_labels
+
+    # Build active label tuples from current DB services
+    active_labels = set()
+    for svc in active_services:
+        svc_type = svc.service_type.value if hasattr(svc.service_type, 'value') else str(svc.service_type)
+        group = svc.group_name or "default"
+        active_labels.add((svc.name, svc_type, group))
+
+    # Find orphaned label sets (previously known but no longer active)
+    orphaned = _known_metric_labels - active_labels
+    if orphaned:
+        logger.info(f"[MetricCleanup] Removing stale metrics for {len(orphaned)} deleted service(s): "
+                     f"{[o[0] for o in orphaned]}")
+
+        for svc_name, svc_type, group_name in orphaned:
+            for metric_obj in [
+                external_service_up,
+                external_service_latency_ms,
+                external_service_consecutive_failures,
+                external_service_last_success_timestamp,
+                external_service_last_check_timestamp,
+                external_service_ssl_expiry_days,
+                external_service_health_score,
+            ]:
+                try:
+                    metric_obj.remove(svc_name, svc_type, group_name)
+                except KeyError:
+                    pass  # Label combo never existed for this metric
+                except Exception as e:
+                    logger.debug(f"[MetricCleanup] Could not remove {metric_obj._name} "
+                                 f"for {svc_name}: {e}")
+
+            # Counter with result label (success/failure)
+            for result_val in ["success", "failure"]:
+                try:
+                    external_service_checks_total.remove(svc_name, svc_type, group_name, result_val)
+                except KeyError:
+                    pass
+                except Exception as e:
+                    logger.debug(f"[MetricCleanup] Could not remove checks_total "
+                                 f"for {svc_name}/{result_val}: {e}")
+
+            # Histogram
+            try:
+                external_service_latency_histogram.remove(svc_name, svc_type, group_name)
+            except KeyError:
+                pass
+            except Exception as e:
+                logger.debug(f"[MetricCleanup] Could not remove histogram for {svc_name}: {e}")
+
+            # Incidents counter
+            try:
+                external_service_incidents_total.remove(svc_name, svc_type, group_name)
+            except KeyError:
+                pass
+            except Exception as e:
+                logger.debug(f"[MetricCleanup] Could not remove incidents for {svc_name}: {e}")
+
+        logger.info(f"[MetricCleanup] Cleanup complete — removed labels for: "
+                     f"{[o[0] for o in orphaned]}")
+
+    # Update tracked set to current active
+    _known_metric_labels = active_labels
+
+
+
 # ── SSL Certificate Checker ─────────────────────────────────────
 
 def _check_ssl_expiry(url: str) -> Optional[float]:
@@ -420,6 +502,12 @@ async def _scheduler_loop():
 
             # Get all enabled services
             services = db.query(ExternalService).filter(ExternalService.enabled == True).all()
+
+            # ── Cleanup stale metric labels for deleted services ──
+            try:
+                _cleanup_stale_metrics(services)
+            except Exception as _cleanup_metrics_err:
+                logger.warning("[HealthCheck] Metric cleanup error: %s", _cleanup_metrics_err)
 
             due = []
             for svc in services:
