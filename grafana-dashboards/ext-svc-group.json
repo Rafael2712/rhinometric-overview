@@ -360,7 +360,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "avg(avg_over_time(external_service_up{group_name=\"$group_name\", service_type=~\"$service_type\"}[$__range])) * 100",
+          "expr": "avg(avg_over_time(external_service_up{group_name=\"$group_name\", service_type=~\"$service_type\"}[$__range])) * 100 and on(service_name, service_type, group_name) external_service_up",
           "format": "table",
           "instant": true,
           "range": false,
@@ -1310,12 +1310,14 @@
           "type": "prometheus",
           "uid": "prometheus"
         },
+        "definition": "label_values(external_service_up, group_name)",
         "includeAll": false,
         "label": "Group",
         "multi": false,
         "name": "group_name",
-        "query": "label_values(external_service_up, group_name)",
-        "refresh": 2,
+        "query": "query_result(group by (group_name) (external_service_up))",
+        "refresh": 1,
+        "regex": "/group_name=\"([^\"]+)\"/",
         "sort": 1,
         "type": "query"
       },
@@ -1325,12 +1327,14 @@
           "type": "prometheus",
           "uid": "prometheus"
         },
+        "definition": "label_values(external_service_up, service_type)",
         "includeAll": true,
         "label": "Service Type",
         "multi": true,
         "name": "service_type",
-        "query": "label_values(external_service_up{group_name=\"$group_name\"}, service_type)",
-        "refresh": 2,
+        "query": "query_result(group by (service_type) (external_service_up))",
+        "refresh": 1,
+        "regex": "/service_type=\"([^\"]+)\"/",
         "sort": 1,
         "type": "query"
       }
@@ -1343,5 +1347,5 @@
   "timezone": "browser",
   "title": "External Services Group View",
   "uid": "ext-svc-group",
-  "version": 2
+  "version": 4
 }

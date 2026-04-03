@@ -4,7 +4,6 @@
   },
   "editable": true,
   "fiscalYearStartMonth": 0,
-  "id": 12,
   "links": [
     {
       "asDropdown": false,
@@ -106,7 +105,7 @@
       },
       "targets": [
         {
-          "expr": "avg(avg_over_time(external_service_up[$__range])) * 100",
+          "expr": "avg(avg_over_time(external_service_up[$__range])) * 100 and on(service_name, service_type, group_name) external_service_up",
           "instant": true,
           "legendFormat": "SLA",
           "refId": "A"
@@ -182,7 +181,7 @@
       },
       "targets": [
         {
-          "expr": "count((avg_over_time(external_service_up[$__range]) * 100) < 99.9) OR on() vector(0)",
+          "expr": "count((avg_over_time(external_service_up[$__range]) * 100) < 99.9) OR on() vector(0) and on(service_name, service_type, group_name) external_service_up",
           "instant": true,
           "legendFormat": "Below SLA",
           "refId": "A"
@@ -596,7 +595,7 @@
       },
       "targets": [
         {
-          "expr": "avg_over_time(external_service_up[$__range]) * 100",
+          "expr": "avg_over_time(external_service_up[$__range]) * 100 and on(service_name, service_type, group_name) external_service_up",
           "format": "table",
           "instant": true,
           "legendFormat": "",
@@ -795,7 +794,7 @@
       },
       "targets": [
         {
-          "expr": "(avg_over_time(external_service_up[$__range]) * 100) < 99.9",
+          "expr": "(avg_over_time(external_service_up[$__range]) * 100) < 99.9 and on(service_name, service_type, group_name) external_service_up",
           "format": "table",
           "instant": true,
           "legendFormat": "",
@@ -1472,25 +1471,25 @@
       },
       "targets": [
         {
-          "expr": "count((avg_over_time(external_service_up[$__range]) * 100) < 95) OR on() vector(0)",
+          "expr": "count((avg_over_time(external_service_up[$__range]) * 100) < 95) OR on() vector(0) and on(service_name, service_type, group_name) external_service_up",
           "instant": true,
           "legendFormat": "<95%",
           "refId": "A"
         },
         {
-          "expr": "count((avg_over_time(external_service_up[$__range]) * 100) >= 95 and (avg_over_time(external_service_up[$__range]) * 100) < 99) OR on() vector(0)",
+          "expr": "count((avg_over_time(external_service_up[$__range]) * 100) >= 95 and (avg_over_time(external_service_up[$__range]) * 100) < 99) OR on() vector(0) and on(service_name, service_type, group_name) external_service_up",
           "instant": true,
           "legendFormat": "95\u201399%",
           "refId": "B"
         },
         {
-          "expr": "count((avg_over_time(external_service_up[$__range]) * 100) >= 99 and (avg_over_time(external_service_up[$__range]) * 100) < 99.9) OR on() vector(0)",
+          "expr": "count((avg_over_time(external_service_up[$__range]) * 100) >= 99 and (avg_over_time(external_service_up[$__range]) * 100) < 99.9) OR on() vector(0) and on(service_name, service_type, group_name) external_service_up",
           "instant": true,
           "legendFormat": "99\u201399.9%",
           "refId": "C"
         },
         {
-          "expr": "count((avg_over_time(external_service_up[$__range]) * 100) >= 99.9) OR on() vector(0)",
+          "expr": "count((avg_over_time(external_service_up[$__range]) * 100) >= 99.9) OR on() vector(0) and on(service_name, service_type, group_name) external_service_up",
           "instant": true,
           "legendFormat": "99.9%+",
           "refId": "D"
@@ -1518,6 +1517,5 @@
   "timepicker": {},
   "timezone": "browser",
   "title": "External Services SLA & Reliability",
-  "uid": "ext-svc-sla",
-  "version": 2
+  "uid": "ext-svc-sla"
 }

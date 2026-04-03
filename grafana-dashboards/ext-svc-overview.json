@@ -4,7 +4,6 @@
   },
   "editable": true,
   "fiscalYearStartMonth": 0,
-  "id": 10,
   "links": [
     {
       "asDropdown": false,
@@ -373,7 +372,7 @@
       },
       "targets": [
         {
-          "expr": "avg(avg_over_time(external_service_up[$__range])) * 100",
+          "expr": "avg(avg_over_time(external_service_up[$__range])) * 100 and on(service_name, service_type, group_name) external_service_up",
           "instant": true,
           "legendFormat": "Uptime",
           "refId": "A"
@@ -1128,6 +1127,5 @@
   "timepicker": {},
   "timezone": "browser",
   "title": "External Services Overview",
-  "uid": "ext-svc-overview",
-  "version": 3
+  "uid": "ext-svc-overview"
 }

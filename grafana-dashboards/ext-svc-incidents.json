@@ -920,9 +920,9 @@
             "uid": "prometheus"
           },
           "expr": "sum(increase(external_service_incidents_total{group_name=~\"$group_name\", service_type=~\"$service_type\"}[1h]))",
-          "instant": false,
+          "instant": true,
           "legendFormat": "incidents",
-          "range": true,
+          "range": false,
           "refId": "A"
         }
       ],
@@ -1228,12 +1228,14 @@
           "type": "prometheus",
           "uid": "prometheus"
         },
+        "definition": "label_values(external_service_up, group_name)",
         "includeAll": true,
         "label": "Group",
         "multi": true,
         "name": "group_name",
-        "query": "label_values(external_service_up, group_name)",
-        "refresh": 2,
+        "query": "query_result(group by (group_name) (external_service_up))",
+        "refresh": 1,
+        "regex": "/group_name=\"([^\"]+)\"/",
         "sort": 1,
         "type": "query"
       },
@@ -1247,12 +1249,14 @@
           "type": "prometheus",
           "uid": "prometheus"
         },
+        "definition": "label_values(external_service_up, service_type)",
         "includeAll": true,
         "label": "Service Type",
         "multi": true,
         "name": "service_type",
-        "query": "label_values(external_service_up, service_type)",
-        "refresh": 2,
+        "query": "query_result(group by (service_type) (external_service_up))",
+        "refresh": 1,
+        "regex": "/service_type=\"([^\"]+)\"/",
         "sort": 1,
         "type": "query"
       }
@@ -1265,5 +1269,5 @@
   "timezone": "browser",
   "title": "External Services Alerts & Incidents",
   "uid": "ext-svc-incidents",
-  "version": 2
+  "version": 4
 }
