@@ -1,65 +1,21 @@
 {
   "editable": true,
+  "id": 18,
   "links": [
     {
-      "asDropdown": false,
-      "icon": "external link",
-      "includeVars": false,
-      "keepTime": true,
-      "tags": [],
       "targetBlank": false,
-      "title": "\u2190 Fleet Overview",
-      "tooltip": "",
-      "type": "link",
-      "url": "/d/ext-svc-overview"
+      "title": "Fleet Overview \u2192",
+      "url": "/d/ext-svc-overview?${__url_time_range}"
     },
     {
-      "asDropdown": false,
-      "icon": "external link",
-      "includeVars": false,
-      "keepTime": true,
-      "tags": [],
       "targetBlank": false,
-      "title": "SLA & Reliability",
-      "tooltip": "",
-      "type": "link",
-      "url": "/d/ext-svc-sla"
+      "title": "Service Detail \u2192",
+      "url": "/d/ext-svc-detail?${__url_time_range}"
     },
     {
-      "asDropdown": false,
-      "icon": "external link",
-      "includeVars": false,
-      "keepTime": true,
-      "tags": [],
       "targetBlank": false,
-      "title": "Alerts & Incidents",
-      "tooltip": "",
-      "type": "link",
-      "url": "/d/ext-svc-incidents"
-    },
-    {
-      "asDropdown": false,
-      "icon": "external link",
-      "includeVars": false,
-      "keepTime": true,
-      "tags": [],
-      "targetBlank": false,
-      "title": "Failure Analysis",
-      "tooltip": "",
-      "type": "link",
-      "url": "/d/ext-svc-failures"
-    },
-    {
-      "asDropdown": false,
-      "icon": "external link",
-      "includeVars": false,
-      "keepTime": true,
-      "tags": [],
-      "targetBlank": false,
-      "title": "Latency Deep Dive",
-      "tooltip": "",
-      "type": "link",
-      "url": "/d/ext-svc-latency"
+      "title": "Latency Deep Dive \u2192",
+      "url": "/d/ext-svc-latency?${__url_time_range}"
     }
   ],
   "panels": [
@@ -128,7 +84,7 @@
           "refId": "A"
         }
       ],
-      "title": "Fleet Average Health",
+      "title": "Health Score",
       "type": "gauge"
     },
     {
@@ -196,7 +152,7 @@
           "refId": "A"
         }
       ],
-      "title": "Fleet Average Uptime",
+      "title": "Uptime %",
       "type": "gauge"
     },
     {
@@ -262,7 +218,7 @@
           "refId": "A"
         }
       ],
-      "title": "Fleet Average Latency",
+      "title": "Avg Latency (ms)",
       "type": "stat"
     },
     {
@@ -329,7 +285,7 @@
           "links": [
             {
               "targetBlank": false,
-              "title": "View Service Details \u2192",
+              "title": "View Service Detail \u2192",
               "url": "/d/ext-svc-detail?var-service_name=${__field.labels.service_name}&${__url_time_range}"
             }
           ],
@@ -404,11 +360,11 @@
           "links": [
             {
               "targetBlank": false,
-              "title": "View Service Details \u2192",
+              "title": "View Service Detail \u2192",
               "url": "/d/ext-svc-detail?var-service_name=${__field.labels.service_name}&${__url_time_range}"
             }
           ],
-          "noValue": "No data",
+          "noValue": "All services healthy \u2713",
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -479,7 +435,7 @@
           "links": [
             {
               "targetBlank": false,
-              "title": "View Service Details \u2192",
+              "title": "View Service Detail \u2192",
               "url": "/d/ext-svc-detail?var-service_name=${__field.labels.service_name}&${__url_time_range}"
             }
           ],
@@ -540,7 +496,7 @@
           "refId": "A"
         }
       ],
-      "title": "Ranking by Latency (Fastest \u2192 Slowest)",
+      "title": "Ranking by Latency (ms)",
       "type": "bargauge"
     },
     {
@@ -554,11 +510,11 @@
           "links": [
             {
               "targetBlank": false,
-              "title": "View Service Details \u2192",
+              "title": "View Service Detail \u2192",
               "url": "/d/ext-svc-detail?var-service_name=${__field.labels.service_name}&${__url_time_range}"
             }
           ],
-          "noValue": "N/A",
+          "noValue": "No data",
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -626,6 +582,13 @@
       "description": "Multi-metric performance summary: health, uptime, latency, failures. Use as a composite ranking view.",
       "fieldConfig": {
         "defaults": {
+          "links": [
+            {
+              "targetBlank": false,
+              "title": "View Service Detail \u2192",
+              "url": "/d/ext-svc-detail?var-service_name=${__field.labels.service_name}&${__url_time_range}"
+            }
+          ],
           "noValue": "No services",
           "thresholds": {
             "mode": "absolute",
@@ -854,7 +817,7 @@
           "links": [
             {
               "targetBlank": false,
-              "title": "View Service Details \u2192",
+              "title": "View Service Detail \u2192",
               "url": "/d/ext-svc-detail?var-service_name=${__field.labels.service_name}&${__url_time_range}"
             }
           ],
@@ -933,5 +896,6 @@
   },
   "timezone": "browser",
   "title": "External Services Performance Ranking",
-  "uid": "ext-svc-ranking"
+  "uid": "ext-svc-ranking",
+  "version": 3
 }

@@ -5,40 +5,19 @@
   "id": 15,
   "links": [
     {
-      "asDropdown": false,
-      "icon": "external link",
-      "includeVars": false,
-      "keepTime": true,
-      "tags": [],
       "targetBlank": false,
-      "title": "\u2190 Fleet Overview",
-      "tooltip": "",
-      "type": "link",
-      "url": "/d/ext-svc-overview"
+      "title": "Fleet Overview \u2192",
+      "url": "/d/ext-svc-overview?${__url_time_range}"
     },
     {
-      "asDropdown": false,
-      "icon": "external link",
-      "includeVars": true,
-      "keepTime": true,
-      "tags": [],
       "targetBlank": false,
-      "title": "Group View",
-      "tooltip": "",
-      "type": "link",
-      "url": "/d/ext-svc-group"
+      "title": "Service Detail \u2192",
+      "url": "/d/ext-svc-detail?${__url_time_range}"
     },
     {
-      "asDropdown": false,
-      "icon": "external link",
-      "includeVars": false,
-      "keepTime": true,
-      "tags": [],
       "targetBlank": false,
-      "title": "SLA & Reliability",
-      "tooltip": "",
-      "type": "link",
-      "url": "/d/ext-svc-sla"
+      "title": "Failure Analysis \u2192",
+      "url": "/d/ext-svc-failures?${__url_time_range}"
     }
   ],
   "panels": [
@@ -116,7 +95,7 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "Number of services with degraded health score.",
+      "description": "Services with health score below 75",
       "fieldConfig": {
         "defaults": {
           "mappings": [
@@ -181,7 +160,7 @@
           "refId": "A"
         }
       ],
-      "title": "Services With Health < 75",
+      "title": "Degraded Services",
       "type": "stat"
     },
     {
@@ -286,7 +265,7 @@
                 "value": null
               },
               {
-                "color": "orange",
+                "color": "yellow",
                 "value": 1
               },
               {
@@ -342,7 +321,14 @@
           "custom": {
             "align": "auto"
           },
-          "noValue": "No active failures \u2705"
+          "links": [
+            {
+              "targetBlank": false,
+              "title": "View Service Detail \u2192",
+              "url": "/d/ext-svc-detail?var-service_name=${__field.labels.service_name}&${__url_time_range}"
+            }
+          ],
+          "noValue": "No active failures \u2713"
         },
         "overrides": [
           {
@@ -478,7 +464,14 @@
           "custom": {
             "align": "auto"
           },
-          "noValue": "All services UP \u2705"
+          "links": [
+            {
+              "targetBlank": false,
+              "title": "View Service Detail \u2192",
+              "url": "/d/ext-svc-detail?var-service_name=${__field.labels.service_name}&${__url_time_range}"
+            }
+          ],
+          "noValue": "All services UP \u2713"
         },
         "overrides": [
           {
@@ -594,7 +587,14 @@
           "custom": {
             "align": "auto"
           },
-          "noValue": "All services healthy \u2705"
+          "links": [
+            {
+              "targetBlank": false,
+              "title": "View Service Detail \u2192",
+              "url": "/d/ext-svc-detail?var-service_name=${__field.labels.service_name}&${__url_time_range}"
+            }
+          ],
+          "noValue": "No degraded services \u2713"
         },
         "overrides": [
           {
@@ -738,7 +738,14 @@
           "custom": {
             "align": "auto"
           },
-          "noValue": "All checks current \u2705"
+          "links": [
+            {
+              "targetBlank": false,
+              "title": "View Service Detail \u2192",
+              "url": "/d/ext-svc-detail?var-service_name=${__field.labels.service_name}&${__url_time_range}"
+            }
+          ],
+          "noValue": "All checks current \u2713"
         },
         "overrides": [
           {
@@ -831,7 +838,7 @@
           "refId": "A"
         }
       ],
-      "title": "Stale Checks (> 5 min since last check)",
+      "title": "Stale Checks (>5 min)",
       "transformations": [
         {
           "id": "organize",
@@ -876,14 +883,14 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "Hourly incident count over the selected time range.",
+      "description": "Incident count per interval across filtered services",
       "fieldConfig": {
         "defaults": {
           "color": {
             "fixedColor": "red",
             "mode": "fixed"
           },
-          "noValue": "0",
+          "noValue": "No incidents detected",
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -934,7 +941,7 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "Total consecutive failures across all services over time.",
+      "description": "Sum of consecutive failures across all services over time",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -947,7 +954,7 @@
             "showPoints": "never",
             "spanNulls": false
           },
-          "noValue": "0"
+          "noValue": "No failures"
         },
         "overrides": []
       },
@@ -994,12 +1001,13 @@
           "links": [
             {
               "targetBlank": false,
-              "title": "View Service Details \u2192",
+              "title": "View Service Detail \u2192",
               "url": "/d/ext-svc-detail?var-service_name=${__field.labels.service_name}&${__url_time_range}"
             }
           ],
           "max": 100,
           "min": 0,
+          "noValue": "All services healthy \u2713",
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -1072,7 +1080,14 @@
           "custom": {
             "align": "auto"
           },
-          "noValue": "No certificates at risk \u2705"
+          "links": [
+            {
+              "targetBlank": false,
+              "title": "View Service Detail \u2192",
+              "url": "/d/ext-svc-detail?var-service_name=${__field.labels.service_name}&${__url_time_range}"
+            }
+          ],
+          "noValue": "No certificates at risk \u2713"
         },
         "overrides": [
           {
@@ -1169,7 +1184,7 @@
           "refId": "A"
         }
       ],
-      "title": "SSL Certificates Expiring < 30 Days",
+      "title": "SSL Certificates at Risk",
       "transformations": [
         {
           "id": "organize",
@@ -1269,5 +1284,5 @@
   "timezone": "browser",
   "title": "External Services Alerts & Incidents",
   "uid": "ext-svc-incidents",
-  "version": 4
+  "version": 5
 }

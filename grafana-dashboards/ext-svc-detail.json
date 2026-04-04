@@ -7,40 +7,24 @@
   "id": 11,
   "links": [
     {
-      "asDropdown": false,
-      "icon": "external link",
-      "includeVars": false,
-      "keepTime": true,
-      "tags": [],
       "targetBlank": false,
-      "title": "\u2190 Fleet Overview",
-      "tooltip": "",
-      "type": "link",
-      "url": "/d/ext-svc-overview"
+      "title": "Fleet Overview \u2192",
+      "url": "/d/ext-svc-overview?${__url_time_range}"
     },
     {
-      "asDropdown": false,
-      "icon": "external link",
-      "includeVars": false,
-      "keepTime": true,
-      "tags": [],
       "targetBlank": false,
-      "title": "SLA & Reliability",
-      "tooltip": "",
-      "type": "link",
-      "url": "/d/ext-svc-sla"
+      "title": "Failure Analysis \u2192",
+      "url": "/d/ext-svc-failures?${__url_time_range}"
     },
     {
-      "asDropdown": false,
-      "icon": "external link",
-      "includeVars": false,
-      "keepTime": true,
-      "tags": [],
       "targetBlank": false,
-      "title": "Alerts & Incidents",
-      "tooltip": "",
-      "type": "link",
-      "url": "/d/ext-svc-incidents"
+      "title": "Latency Deep Dive \u2192",
+      "url": "/d/ext-svc-latency?${__url_time_range}"
+    },
+    {
+      "targetBlank": false,
+      "title": "Alerts & Incidents \u2192",
+      "url": "/d/ext-svc-incidents?${__url_time_range}"
     }
   ],
   "liveNow": false,
@@ -63,7 +47,12 @@
                   "color": "red",
                   "index": 0,
                   "text": "DOWN"
-                },
+                }
+              },
+              "type": "value"
+            },
+            {
+              "options": {
                 "1": {
                   "color": "green",
                   "index": 1,
@@ -116,6 +105,7 @@
           "expr": "external_service_up{service_name=\"$service_name\"}",
           "instant": true,
           "legendFormat": "Status",
+          "range": false,
           "refId": "A"
         }
       ],
@@ -186,6 +176,7 @@
           "expr": "external_service_health_score{service_name=\"$service_name\"}",
           "instant": true,
           "legendFormat": "Health",
+          "range": false,
           "refId": "A"
         }
       ],
@@ -256,6 +247,7 @@
           "expr": "avg_over_time(external_service_up{service_name=\"$service_name\"}[$__range]) * 100 and on(service_name, service_type, group_name) external_service_up",
           "instant": true,
           "legendFormat": "Uptime",
+          "range": false,
           "refId": "A"
         }
       ],
@@ -326,10 +318,11 @@
           "expr": "external_service_latency_ms{service_name=\"$service_name\"}",
           "instant": true,
           "legendFormat": "Latency",
+          "range": false,
           "refId": "A"
         }
       ],
-      "title": "Current Latency",
+      "title": "Latency (ms)",
       "type": "stat"
     },
     {
@@ -401,6 +394,7 @@
           "expr": "external_service_consecutive_failures{service_name=\"$service_name\"}",
           "instant": true,
           "legendFormat": "Failures",
+          "range": false,
           "refId": "A"
         }
       ],
@@ -471,10 +465,11 @@
           "expr": "external_service_ssl_expiry_days{service_name=\"$service_name\"}",
           "instant": true,
           "legendFormat": "SSL Days",
+          "range": false,
           "refId": "A"
         }
       ],
-      "title": "SSL Certificate Expiry",
+      "title": "SSL Expiry (days)",
       "type": "stat"
     },
     {
@@ -541,6 +536,7 @@
           "expr": "time() - external_service_last_check_timestamp{service_name=\"$service_name\"}",
           "instant": true,
           "legendFormat": "Age",
+          "range": false,
           "refId": "A"
         }
       ],
@@ -611,6 +607,7 @@
           "expr": "time() - external_service_last_success_timestamp{service_name=\"$service_name\"}",
           "instant": true,
           "legendFormat": "Age",
+          "range": false,
           "refId": "A"
         }
       ],
@@ -649,12 +646,12 @@
                 "value": null
               },
               {
-                "color": "orange",
+                "color": "yellow",
                 "value": 1
               },
               {
                 "color": "red",
-                "value": 3
+                "value": 5
               }
             ]
           }
@@ -687,6 +684,7 @@
           "expr": "increase(external_service_incidents_total{service_name=\"$service_name\"}[24h])",
           "instant": true,
           "legendFormat": "Incidents",
+          "range": false,
           "refId": "A"
         }
       ],
@@ -698,7 +696,7 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "Response latency over time for the selected service.",
+      "description": "Current latency over time for the selected service",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -718,6 +716,27 @@
             },
             "showPoints": "auto",
             "spanNulls": false
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 500
+              },
+              {
+                "color": "orange",
+                "value": 1000
+              },
+              {
+                "color": "red",
+                "value": 2000
+              }
+            ]
           },
           "unit": "ms"
         },
@@ -755,7 +774,7 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "P50, P90, and P99 latency percentiles over time.",
+      "description": "P50, P95, P99 latency percentiles from histogram buckets",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -905,7 +924,7 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "Rate of successful vs failed health checks over time.",
+      "description": "Rate of successful vs failed health checks over time",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1002,7 +1021,7 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "Service UP/DOWN state over time (1=UP, 0=DOWN).",
+      "description": "Raw UP (1) / DOWN (0) status over time",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1126,5 +1145,5 @@
   "timezone": "browser",
   "title": "External Service Detail",
   "uid": "ext-svc-detail",
-  "version": 4
+  "version": 5
 }

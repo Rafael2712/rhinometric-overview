@@ -1,65 +1,21 @@
 {
   "editable": true,
+  "id": 16,
   "links": [
     {
-      "asDropdown": false,
-      "icon": "external link",
-      "includeVars": false,
-      "keepTime": true,
-      "tags": [],
       "targetBlank": false,
-      "title": "\u2190 Fleet Overview",
-      "tooltip": "",
-      "type": "link",
-      "url": "/d/ext-svc-overview"
+      "title": "Fleet Overview \u2192",
+      "url": "/d/ext-svc-overview?${__url_time_range}"
     },
     {
-      "asDropdown": false,
-      "icon": "external link",
-      "includeVars": false,
-      "keepTime": true,
-      "tags": [],
       "targetBlank": false,
-      "title": "SLA & Reliability",
-      "tooltip": "",
-      "type": "link",
-      "url": "/d/ext-svc-sla"
+      "title": "Service Detail \u2192",
+      "url": "/d/ext-svc-detail?${__url_time_range}"
     },
     {
-      "asDropdown": false,
-      "icon": "external link",
-      "includeVars": false,
-      "keepTime": true,
-      "tags": [],
       "targetBlank": false,
-      "title": "Alerts & Incidents",
-      "tooltip": "",
-      "type": "link",
-      "url": "/d/ext-svc-incidents"
-    },
-    {
-      "asDropdown": false,
-      "icon": "external link",
-      "includeVars": false,
-      "keepTime": true,
-      "tags": [],
-      "targetBlank": false,
-      "title": "Latency Deep Dive",
-      "tooltip": "",
-      "type": "link",
-      "url": "/d/ext-svc-latency"
-    },
-    {
-      "asDropdown": false,
-      "icon": "external link",
-      "includeVars": false,
-      "keepTime": true,
-      "tags": [],
-      "targetBlank": false,
-      "title": "Performance Ranking",
-      "tooltip": "",
-      "type": "link",
-      "url": "/d/ext-svc-ranking"
+      "title": "Alerts & Incidents \u2192",
+      "url": "/d/ext-svc-incidents?${__url_time_range}"
     }
   ],
   "panels": [
@@ -212,7 +168,7 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "Percentage of failed checks across all services in the last 5 min.",
+      "description": "Ratio of failed checks to total checks across all services",
       "fieldConfig": {
         "defaults": {
           "max": 100,
@@ -303,7 +259,7 @@
                 "value": null
               },
               {
-                "color": "orange",
+                "color": "yellow",
                 "value": 1
               },
               {
@@ -358,11 +314,11 @@
           "links": [
             {
               "targetBlank": false,
-              "title": "View Service Details \u2192",
+              "title": "View Service Detail \u2192",
               "url": "/d/ext-svc-detail?var-service_name=${__field.labels.service_name}&${__url_time_range}"
             }
           ],
-          "noValue": "No active failures \u2705",
+          "noValue": "All services operating normally \u2713",
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -425,7 +381,14 @@
       "description": "Top 10 services by failure rate percentage (failures / total checks).",
       "fieldConfig": {
         "defaults": {
-          "noValue": "No failures detected \u2705",
+          "links": [
+            {
+              "targetBlank": false,
+              "title": "View Service Detail \u2192",
+              "url": "/d/ext-svc-detail?var-service_name=${__field.labels.service_name}&${__url_time_range}"
+            }
+          ],
+          "noValue": "No failures detected \u2713",
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -487,9 +450,10 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "Consecutive failures trend for the top 5 most-affected services.",
+      "description": "Consecutive failure count trend for top 5 worst services",
       "fieldConfig": {
         "defaults": {
+          "noValue": "No failures",
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -546,9 +510,10 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "Rate of failed checks per second for the top 5 failing services.",
+      "description": "Rate of failed checks per second for top 5 services",
       "fieldConfig": {
         "defaults": {
+          "noValue": "No failures",
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -598,7 +563,7 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "Rate of successful checks per second for the top 5 services.",
+      "description": "Rate of successful checks per second for top 5 services",
       "fieldConfig": {
         "defaults": {
           "thresholds": {
@@ -653,7 +618,7 @@
       "description": "Hourly incident count \u2014 useful for spotting failure spikes.",
       "fieldConfig": {
         "defaults": {
-          "noValue": "0",
+          "noValue": "No incidents detected",
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -698,7 +663,14 @@
       "description": "Services where failures have repeated (>1 consecutive). Indicates persistent problems.",
       "fieldConfig": {
         "defaults": {
-          "noValue": "No repeated failures \u2705",
+          "links": [
+            {
+              "targetBlank": false,
+              "title": "View Service Detail \u2192",
+              "url": "/d/ext-svc-detail?var-service_name=${__field.labels.service_name}&${__url_time_range}"
+            }
+          ],
+          "noValue": "No repeated failures \u2713",
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -765,11 +737,11 @@
           "links": [
             {
               "targetBlank": false,
-              "title": "View Service Details \u2192",
+              "title": "View Service Detail \u2192",
               "url": "/d/ext-svc-detail?var-service_name=${__field.labels.service_name}&${__url_time_range}"
             }
           ],
-          "noValue": "All services healthy \u2705",
+          "noValue": "All services healthy \u2713",
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -843,5 +815,6 @@
   },
   "timezone": "browser",
   "title": "External Services Failure Analysis",
-  "uid": "ext-svc-failures"
+  "uid": "ext-svc-failures",
+  "version": 3
 }

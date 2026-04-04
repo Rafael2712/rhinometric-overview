@@ -5,40 +5,14 @@
   "id": 14,
   "links": [
     {
-      "asDropdown": false,
-      "icon": "external link",
-      "includeVars": false,
-      "keepTime": true,
-      "tags": [],
       "targetBlank": false,
-      "title": "\u2190 Fleet Overview",
-      "tooltip": "",
-      "type": "link",
-      "url": "/d/ext-svc-overview"
+      "title": "Fleet Overview \u2192",
+      "url": "/d/ext-svc-overview?${__url_time_range}"
     },
     {
-      "asDropdown": false,
-      "icon": "external link",
-      "includeVars": false,
-      "keepTime": true,
-      "tags": [],
       "targetBlank": false,
-      "title": "SLA & Reliability",
-      "tooltip": "",
-      "type": "link",
-      "url": "/d/ext-svc-sla"
-    },
-    {
-      "asDropdown": false,
-      "icon": "external link",
-      "includeVars": true,
-      "keepTime": true,
-      "tags": [],
-      "targetBlank": false,
-      "title": "Alerts & Incidents",
-      "tooltip": "",
-      "type": "link",
-      "url": "/d/ext-svc-incidents"
+      "title": "Service Detail \u2192",
+      "url": "/d/ext-svc-detail?${__url_time_range}"
     }
   ],
   "panels": [
@@ -233,7 +207,7 @@
           "refId": "C"
         }
       ],
-      "title": "Group Health Score",
+      "title": "Health Score",
       "type": "gauge"
     },
     {
@@ -300,7 +274,7 @@
           "refId": "D"
         }
       ],
-      "title": "Latency P95",
+      "title": "Latency P95 (ms)",
       "type": "stat"
     },
     {
@@ -367,7 +341,7 @@
           "refId": "E"
         }
       ],
-      "title": "Group Uptime %",
+      "title": "Uptime %",
       "type": "stat"
     },
     {
@@ -389,7 +363,7 @@
               }
             ]
           },
-          "unit": "none"
+          "unit": "short"
         },
         "overrides": []
       },
@@ -454,12 +428,12 @@
                 "value": null
               },
               {
-                "color": "orange",
+                "color": "yellow",
                 "value": 1
               },
               {
                 "color": "red",
-                "value": 3
+                "value": 5
               }
             ]
           },
@@ -510,6 +484,13 @@
           "custom": {
             "align": "auto"
           },
+          "links": [
+            {
+              "targetBlank": false,
+              "title": "View Service Detail \u2192",
+              "url": "/d/ext-svc-detail?var-service_name=${__field.labels.service_name}&${__url_time_range}"
+            }
+          ],
           "noValue": "No services in group"
         },
         "overrides": [
@@ -891,6 +872,27 @@
             "showPoints": "auto",
             "spanNulls": false
           },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 500
+              },
+              {
+                "color": "orange",
+                "value": 1000
+              },
+              {
+                "color": "red",
+                "value": 2000
+              }
+            ]
+          },
           "unit": "ms"
         },
         "overrides": []
@@ -1025,7 +1027,14 @@
           "custom": {
             "align": "auto"
           },
-          "noValue": "No active failures \u2705"
+          "links": [
+            {
+              "targetBlank": false,
+              "title": "View Service Detail \u2192",
+              "url": "/d/ext-svc-detail?var-service_name=${__field.labels.service_name}&${__url_time_range}"
+            }
+          ],
+          "noValue": "No active failures \u2713"
         },
         "overrides": [
           {
@@ -1160,7 +1169,14 @@
           "custom": {
             "align": "auto"
           },
-          "noValue": "No certificates at risk \u2705"
+          "links": [
+            {
+              "targetBlank": false,
+              "title": "View Service Detail \u2192",
+              "url": "/d/ext-svc-detail?var-service_name=${__field.labels.service_name}&${__url_time_range}"
+            }
+          ],
+          "noValue": "No certificates at risk \u2713"
         },
         "overrides": [
           {
@@ -1347,5 +1363,5 @@
   "timezone": "browser",
   "title": "External Services Group View",
   "uid": "ext-svc-group",
-  "version": 4
+  "version": 5
 }

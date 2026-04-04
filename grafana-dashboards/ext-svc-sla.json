@@ -4,42 +4,17 @@
   },
   "editable": true,
   "fiscalYearStartMonth": 0,
+  "id": 12,
   "links": [
     {
-      "asDropdown": false,
-      "icon": "external link",
-      "includeVars": false,
-      "keepTime": true,
-      "tags": [],
       "targetBlank": false,
-      "title": "\u2190 Fleet Overview",
-      "tooltip": "",
-      "type": "link",
-      "url": "/d/ext-svc-overview"
+      "title": "Fleet Overview \u2192",
+      "url": "/d/ext-svc-overview?${__url_time_range}"
     },
     {
-      "asDropdown": false,
-      "icon": "external link",
-      "includeVars": false,
-      "keepTime": true,
-      "tags": [],
       "targetBlank": false,
-      "title": "Group View",
-      "tooltip": "",
-      "type": "link",
-      "url": "/d/ext-svc-group"
-    },
-    {
-      "asDropdown": false,
-      "icon": "external link",
-      "includeVars": false,
-      "keepTime": true,
-      "tags": [],
-      "targetBlank": false,
-      "title": "Alerts & Incidents",
-      "tooltip": "",
-      "type": "link",
-      "url": "/d/ext-svc-incidents"
+      "title": "Service Detail \u2192",
+      "url": "/d/ext-svc-detail?${__url_time_range}"
     }
   ],
   "liveNow": false,
@@ -108,6 +83,7 @@
           "expr": "avg(avg_over_time(external_service_up[$__range])) * 100 and on(service_name, service_type, group_name) external_service_up",
           "instant": true,
           "legendFormat": "SLA",
+          "range": false,
           "refId": "A"
         }
       ],
@@ -154,7 +130,8 @@
                 "value": 3
               }
             ]
-          }
+          },
+          "unit": "short"
         },
         "overrides": []
       },
@@ -184,6 +161,7 @@
           "expr": "count((avg_over_time(external_service_up[$__range]) * 100) < 99.9) OR on() vector(0) and on(service_name, service_type, group_name) external_service_up",
           "instant": true,
           "legendFormat": "Below SLA",
+          "range": false,
           "refId": "A"
         }
       ],
@@ -254,10 +232,11 @@
           "expr": "avg(external_service_health_score)",
           "instant": true,
           "legendFormat": "Health",
+          "range": false,
           "refId": "A"
         }
       ],
-      "title": "Average Reliability Score",
+      "title": "Health Score",
       "type": "gauge"
     },
     {
@@ -334,6 +313,7 @@
           "expr": "sum(increase(external_service_incidents_total[30d])) OR on() vector(0)",
           "instant": true,
           "legendFormat": "Incidents",
+          "range": false,
           "refId": "A"
         }
       ],
@@ -410,6 +390,7 @@
           "expr": "count(external_service_ssl_expiry_days < 30) OR on() vector(0)",
           "instant": true,
           "legendFormat": "At Risk",
+          "range": false,
           "refId": "A"
         }
       ],
@@ -424,6 +405,13 @@
       "description": "SLA percentage breakdown for each monitored service.",
       "fieldConfig": {
         "defaults": {
+          "links": [
+            {
+              "targetBlank": false,
+              "title": "View Service Detail \u2192",
+              "url": "/d/ext-svc-detail?var-service_name=${__field.labels.service_name}&${__url_time_range}"
+            }
+          ],
           "noValue": "No services"
         },
         "overrides": [
@@ -599,6 +587,7 @@
           "format": "table",
           "instant": true,
           "legendFormat": "",
+          "range": false,
           "refId": "A"
         }
       ],
@@ -627,7 +616,14 @@
       "description": "Services with uptime below 99.9% target. Empty = all on target.",
       "fieldConfig": {
         "defaults": {
-          "noValue": "All services meeting SLA \u2705"
+          "links": [
+            {
+              "targetBlank": false,
+              "title": "View Service Detail \u2192",
+              "url": "/d/ext-svc-detail?var-service_name=${__field.labels.service_name}&${__url_time_range}"
+            }
+          ],
+          "noValue": "All services meeting SLA \u2713"
         },
         "overrides": [
           {
@@ -798,6 +794,7 @@
           "format": "table",
           "instant": true,
           "legendFormat": "",
+          "range": false,
           "refId": "A"
         }
       ],
@@ -823,7 +820,7 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "Daily fleet SLA trend over the selected time range.",
+      "description": "Daily fleet-wide SLA percentage trend",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -896,7 +893,7 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "Daily incident count across all services.",
+      "description": "Daily incident volume across all services",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -914,6 +911,7 @@
             "spanNulls": false
           },
           "decimals": 0,
+          "noValue": "No incidents detected",
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -965,6 +963,13 @@
       "description": "All service SSL certificates sorted by expiry date.",
       "fieldConfig": {
         "defaults": {
+          "links": [
+            {
+              "targetBlank": false,
+              "title": "View Service Detail \u2192",
+              "url": "/d/ext-svc-detail?var-service_name=${__field.labels.service_name}&${__url_time_range}"
+            }
+          ],
           "noValue": "No certificates"
         },
         "overrides": [
@@ -1140,6 +1145,7 @@
           "format": "table",
           "instant": true,
           "legendFormat": "",
+          "range": false,
           "refId": "A"
         }
       ],
@@ -1168,7 +1174,14 @@
       "description": "Services sorted by time since last check. Useful for detecting monitoring gaps.",
       "fieldConfig": {
         "defaults": {
-          "noValue": "No services"
+          "links": [
+            {
+              "targetBlank": false,
+              "title": "View Service Detail \u2192",
+              "url": "/d/ext-svc-detail?var-service_name=${__field.labels.service_name}&${__url_time_range}"
+            }
+          ],
+          "noValue": "All checks current \u2713"
         },
         "overrides": [
           {
@@ -1343,6 +1356,7 @@
           "format": "table",
           "instant": true,
           "legendFormat": "",
+          "range": false,
           "refId": "A"
         }
       ],
@@ -1368,7 +1382,7 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "Distribution of services across uptime bands.",
+      "description": "Distribution of services by uptime brackets: <95%, 95-99%, 99-99.9%, >99.9%",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1381,7 +1395,7 @@
             "gradientMode": "none",
             "lineWidth": 1
           },
-          "noValue": "No data"
+          "noValue": "No data available"
         },
         "overrides": [
           {
@@ -1474,24 +1488,28 @@
           "expr": "count((avg_over_time(external_service_up[$__range]) * 100) < 95) OR on() vector(0) and on(service_name, service_type, group_name) external_service_up",
           "instant": true,
           "legendFormat": "<95%",
+          "range": false,
           "refId": "A"
         },
         {
           "expr": "count((avg_over_time(external_service_up[$__range]) * 100) >= 95 and (avg_over_time(external_service_up[$__range]) * 100) < 99) OR on() vector(0) and on(service_name, service_type, group_name) external_service_up",
           "instant": true,
           "legendFormat": "95\u201399%",
+          "range": false,
           "refId": "B"
         },
         {
           "expr": "count((avg_over_time(external_service_up[$__range]) * 100) >= 99 and (avg_over_time(external_service_up[$__range]) * 100) < 99.9) OR on() vector(0) and on(service_name, service_type, group_name) external_service_up",
           "instant": true,
           "legendFormat": "99\u201399.9%",
+          "range": false,
           "refId": "C"
         },
         {
           "expr": "count((avg_over_time(external_service_up[$__range]) * 100) >= 99.9) OR on() vector(0) and on(service_name, service_type, group_name) external_service_up",
           "instant": true,
           "legendFormat": "99.9%+",
+          "range": false,
           "refId": "D"
         }
       ],
@@ -1517,5 +1535,6 @@
   "timepicker": {},
   "timezone": "browser",
   "title": "External Services SLA & Reliability",
-  "uid": "ext-svc-sla"
+  "uid": "ext-svc-sla",
+  "version": 5
 }

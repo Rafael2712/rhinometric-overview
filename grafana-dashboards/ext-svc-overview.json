@@ -4,42 +4,22 @@
   },
   "editable": true,
   "fiscalYearStartMonth": 0,
+  "id": 10,
   "links": [
     {
-      "asDropdown": false,
-      "icon": "external link",
-      "includeVars": false,
-      "keepTime": true,
-      "tags": [],
       "targetBlank": false,
-      "title": "Group View",
-      "tooltip": "",
-      "type": "link",
-      "url": "/d/ext-svc-group"
+      "title": "Group View \u2192",
+      "url": "/d/ext-svc-group?${__url_time_range}"
     },
     {
-      "asDropdown": false,
-      "icon": "external link",
-      "includeVars": false,
-      "keepTime": true,
-      "tags": [],
       "targetBlank": false,
-      "title": "SLA & Reliability",
-      "tooltip": "",
-      "type": "link",
-      "url": "/d/ext-svc-sla"
+      "title": "SLA & Reliability \u2192",
+      "url": "/d/ext-svc-sla?${__url_time_range}"
     },
     {
-      "asDropdown": false,
-      "icon": "external link",
-      "includeVars": false,
-      "keepTime": true,
-      "tags": [],
       "targetBlank": false,
-      "title": "Alerts & Incidents",
-      "tooltip": "",
-      "type": "link",
-      "url": "/d/ext-svc-incidents"
+      "title": "Alerts & Incidents \u2192",
+      "url": "/d/ext-svc-incidents?${__url_time_range}"
     }
   ],
   "liveNow": false,
@@ -49,7 +29,7 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "Number of external services currently responding to health checks.",
+      "description": "Count of services currently returning successful health checks",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -94,6 +74,7 @@
           "expr": "count(external_service_up == 1)",
           "instant": true,
           "legendFormat": "UP",
+          "range": false,
           "refId": "A"
         }
       ],
@@ -105,7 +86,7 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "Number of external services currently not responding. 0 = all services reachable.",
+      "description": "Count of services currently failing health checks",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -165,6 +146,7 @@
           "expr": "count(external_service_up == 0) OR on() vector(0)",
           "instant": true,
           "legendFormat": "DOWN",
+          "range": false,
           "refId": "A"
         }
       ],
@@ -235,6 +217,7 @@
           "expr": "avg(external_service_health_score)",
           "instant": true,
           "legendFormat": "Health",
+          "range": false,
           "refId": "A"
         }
       ],
@@ -305,10 +288,11 @@
           "expr": "histogram_quantile(0.95, sum(rate(external_service_latency_seconds_bucket[5m])) by (le)) * 1000",
           "instant": true,
           "legendFormat": "P95",
+          "range": false,
           "refId": "A"
         }
       ],
-      "title": "Fleet Latency P95",
+      "title": "Latency P95 (ms)",
       "type": "stat"
     },
     {
@@ -375,10 +359,11 @@
           "expr": "avg(avg_over_time(external_service_up[$__range])) * 100 and on(service_name, service_type, group_name) external_service_up",
           "instant": true,
           "legendFormat": "Uptime",
+          "range": false,
           "refId": "A"
         }
       ],
-      "title": "Fleet Uptime %",
+      "title": "Uptime %",
       "type": "stat"
     },
     {
@@ -386,7 +371,7 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "Total health checks executed per minute across all services.",
+      "description": "Health check executions per minute across all services",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -432,6 +417,7 @@
           "expr": "sum(rate(external_service_checks_total[5m])) * 60",
           "instant": true,
           "legendFormat": "rate",
+          "range": false,
           "refId": "A"
         }
       ],
@@ -470,7 +456,7 @@
                 "value": null
               },
               {
-                "color": "orange",
+                "color": "yellow",
                 "value": 1
               },
               {
@@ -508,6 +494,7 @@
           "expr": "sum(increase(external_service_incidents_total[24h])) OR on() vector(0)",
           "instant": true,
           "legendFormat": "Incidents",
+          "range": false,
           "refId": "A"
         }
       ],
@@ -529,11 +516,11 @@
           "links": [
             {
               "targetBlank": false,
-              "title": "View Service Details \u2192",
+              "title": "View Service Detail \u2192",
               "url": "/d/ext-svc-detail?var-service_name=${__field.labels.service_name}&${__url_time_range}"
             }
           ],
-          "noValue": "All services OK",
+          "noValue": "All services operating normally",
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -543,15 +530,15 @@
               },
               {
                 "color": "yellow",
-                "value": 300
-              },
-              {
-                "color": "orange",
                 "value": 500
               },
               {
-                "color": "red",
+                "color": "orange",
                 "value": 1000
+              },
+              {
+                "color": "red",
+                "value": 2000
               }
             ]
           },
@@ -586,6 +573,7 @@
           "expr": "topk(5, external_service_latency_ms)",
           "instant": true,
           "legendFormat": "{{service_name}}",
+          "range": false,
           "refId": "A"
         }
       ],
@@ -597,7 +585,7 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "Distribution of services across health bands: Critical <50, Warning 50\u201375, Good 75\u201390, Excellent >90.",
+      "description": "Distribution of services by health score brackets: Critical (<50), Warning (50-75), Fair (75-90), Good (>90)",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -610,7 +598,7 @@
             "gradientMode": "none",
             "lineWidth": 1
           },
-          "noValue": "No data"
+          "noValue": "No data available"
         },
         "overrides": [
           {
@@ -703,24 +691,28 @@
           "expr": "count(external_service_health_score < 50) OR on() vector(0)",
           "instant": true,
           "legendFormat": "Critical (<50)",
+          "range": false,
           "refId": "A"
         },
         {
           "expr": "count(external_service_health_score >= 50 and external_service_health_score < 75) OR on() vector(0)",
           "instant": true,
           "legendFormat": "Warning (50-75)",
+          "range": false,
           "refId": "B"
         },
         {
           "expr": "count(external_service_health_score >= 75 and external_service_health_score < 90) OR on() vector(0)",
           "instant": true,
           "legendFormat": "Fair (75-90)",
+          "range": false,
           "refId": "C"
         },
         {
           "expr": "count(external_service_health_score >= 90) OR on() vector(0)",
           "instant": true,
           "legendFormat": "Good (90+)",
+          "range": false,
           "refId": "D"
         }
       ],
@@ -735,7 +727,14 @@
       "description": "Services with active consecutive failures. Empty = all operating normally.",
       "fieldConfig": {
         "defaults": {
-          "noValue": "All services healthy \u2705"
+          "links": [
+            {
+              "targetBlank": false,
+              "title": "View Service Detail \u2192",
+              "url": "/d/ext-svc-detail?var-service_name=${__field.labels.service_name}&${__url_time_range}"
+            }
+          ],
+          "noValue": "All services healthy \u2713"
         },
         "overrides": [
           {
@@ -898,6 +897,7 @@
           "format": "table",
           "instant": true,
           "legendFormat": "",
+          "range": false,
           "refId": "A"
         }
       ],
@@ -926,7 +926,14 @@
       "description": "SSL certificates expiring within 60 days. Empty = all valid.",
       "fieldConfig": {
         "defaults": {
-          "noValue": "No certificates at risk \u2705"
+          "links": [
+            {
+              "targetBlank": false,
+              "title": "View Service Detail \u2192",
+              "url": "/d/ext-svc-detail?var-service_name=${__field.labels.service_name}&${__url_time_range}"
+            }
+          ],
+          "noValue": "No certificates at risk \u2713"
         },
         "overrides": [
           {
@@ -1089,6 +1096,7 @@
           "format": "table",
           "instant": true,
           "legendFormat": "",
+          "range": false,
           "refId": "A"
         }
       ],
@@ -1127,5 +1135,6 @@
   "timepicker": {},
   "timezone": "browser",
   "title": "External Services Overview",
-  "uid": "ext-svc-overview"
+  "uid": "ext-svc-overview",
+  "version": 5
 }
