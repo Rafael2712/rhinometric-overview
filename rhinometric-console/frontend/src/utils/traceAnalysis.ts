@@ -47,6 +47,80 @@ export interface JaegerTrace {
   warnings?: string[]
 }
 
+// ── Classification ──────────────────────────────────────
+
+export type TraceClassificationType = 'collector' | 'platform' | 'customer'
+
+export interface TraceClassification {
+  type: TraceClassificationType
+  label: string
+  description: string
+  confidence: 'high' | 'medium' | 'low'
+}
+
+/**
+ * Classify a trace based on operations, service names, and tags.
+ * Current data is exclusively collector traces, but the logic
+ * supports future platform and customer traces as well.
+ */
+export function classifyTrace(trace: JaegerTrace): TraceClassification {
+  const { spans, processes } = trace
+  if (!spans || spans.length === 0) {
+    return {
+      type: 'collector',
+      label: 'Unknown',
+      description: 'Empty trace — no spans available.',
+      confidence: 'low',
+    }
+  }
+
+  const operations = spans.map(s => s.operationName.toLowerCase())
+  const serviceNames = new Set<string>()
+  for (const s of spans) serviceNames.add(getServiceName(s, processes).toLowerCase())
+
+  // ── Collector traces ──
+  const collectorOpPatterns = ['collector.', 'collector_cycle', 'send_metrics', 'send_logs']
+  const collectorOps = operations.filter(op =>
+    collectorOpPatterns.some(p => op.includes(p))
+  )
+  const isCollectorService = [...serviceNames].some(s => s.includes('collector'))
+
+  if (collectorOps.length > 0 || isCollectorService) {
+    const allCollector = collectorOps.length === operations.length
+    return {
+      type: 'collector',
+      label: 'Collector Trace',
+      description: 'This trace represents an internal telemetry collection cycle, not an end-user business transaction.',
+      confidence: allCollector ? 'high' : 'medium',
+    }
+  }
+
+  // ── Platform traces ──
+  const platformPatterns = ['api.', 'backend.', 'auth.', 'db.', 'cache.', 'queue.', 'health']
+  const isPlatformOp = operations.some(op =>
+    platformPatterns.some(p => op.startsWith(p))
+  )
+  const isPlatformSvc = [...serviceNames].some(s =>
+    s.includes('backend') || s.includes('console') || s.includes('api')
+  )
+  if (isPlatformOp || isPlatformSvc) {
+    return {
+      type: 'platform',
+      label: 'Platform Trace',
+      description: 'This trace represents internal platform activity, not a customer business transaction.',
+      confidence: 'medium',
+    }
+  }
+
+  // ── Customer traces ──
+  return {
+    type: 'customer',
+    label: 'Customer Trace',
+    description: 'This trace may represent customer-facing application activity.',
+    confidence: 'low',
+  }
+}
+
 // ── Enriched types for the UI ───────────────────────────
 
 export interface SpanNode {
@@ -63,9 +137,9 @@ export interface SpanNode {
 
 export interface ServiceBreakdown {
   serviceName: string
-  totalDuration: number    // microseconds
+  totalDuration: number    // microseconds — wall-clock (merged overlapping spans)
   spanCount: number
-  pctOfTrace: number
+  pctOfTrace: number       // wall-clock contribution as % of trace duration (≤100 per service)
   hasErrors: boolean
 }
 
@@ -86,6 +160,7 @@ export interface TraceAnalysis {
   spanTree: SpanNode[]
   flatTree: SpanNode[]         // pre-order traversal for rendering
   insights: string[]
+  classification: TraceClassification
 }
 
 // ── Helpers ─────────────────────────────────────────────
@@ -114,9 +189,42 @@ export function isErrorSpan(span: JaegerSpan): boolean {
 }
 
 export function formatDuration(microseconds: number): string {
-  if (microseconds < 1000) return `${Math.round(microseconds)}μs`
+  if (microseconds < 1000) return `${Math.round(microseconds)}\u00B5s`
   if (microseconds < 1000000) return `${(microseconds / 1000).toFixed(1)}ms`
   return `${(microseconds / 1000000).toFixed(2)}s`
+}
+
+// ── Wall-clock per service (merge overlapping intervals) ─
+
+function computeWallClockPerService(
+  spans: JaegerSpan[],
+  processes: Record<string, JaegerProcess>,
+): Map<string, number> {
+  const svcIntervals = new Map<string, { s: number; e: number }[]>()
+
+  for (const span of spans) {
+    const svc = getServiceName(span, processes)
+    if (!svcIntervals.has(svc)) svcIntervals.set(svc, [])
+    svcIntervals.get(svc)!.push({
+      s: span.startTime,
+      e: span.startTime + span.duration,
+    })
+  }
+
+  const result = new Map<string, number>()
+  for (const [svc, intervals] of svcIntervals) {
+    intervals.sort((a, b) => a.s - b.s)
+    const merged: { s: number; e: number }[] = []
+    for (const iv of intervals) {
+      if (merged.length > 0 && iv.s <= merged[merged.length - 1].e) {
+        merged[merged.length - 1].e = Math.max(merged[merged.length - 1].e, iv.e)
+      } else {
+        merged.push({ s: iv.s, e: iv.e })
+      }
+    }
+    result.set(svc, merged.reduce((sum, m) => sum + (m.e - m.s), 0))
+  }
+  return result
 }
 
 // ── Span tree builder ───────────────────────────────────
@@ -183,9 +291,6 @@ function flattenTree(nodes: SpanNode[]): SpanNode[] {
 // ── Critical path ───────────────────────────────────────
 
 function computeCriticalPath(spans: JaegerSpan[]): Set<string> {
-  // Critical path = the chain of spans from root to the leaf
-  // that accounts for the most total duration.
-  // We find the longest path by self-time + child critical path.
   const spanMap = new Map<string, JaegerSpan>()
   const childrenMap = new Map<string, JaegerSpan[]>()
 
@@ -203,7 +308,6 @@ function computeCriticalPath(spans: JaegerSpan[]): Set<string> {
     }
   }
 
-  // Find the path from root with the longest total duration
   const pathIds = new Set<string>()
 
   function findLongest(spanId: string): number {
@@ -212,7 +316,6 @@ function computeCriticalPath(spans: JaegerSpan[]): Set<string> {
     const children = childrenMap.get(spanId) || []
     if (children.length === 0) return span.duration
 
-    // Find child with longest duration (contributing most to total)
     let maxChildDur = 0
     let maxChildId = ''
     for (const child of children) {
@@ -226,7 +329,6 @@ function computeCriticalPath(spans: JaegerSpan[]): Set<string> {
     return span.duration
   }
 
-  // Start from the root with the longest duration
   if (roots.length > 0) {
     const mainRoot = roots.reduce((a, b) => a.duration >= b.duration ? a : b)
     pathIds.add(mainRoot.spanID)
@@ -240,8 +342,10 @@ function computeCriticalPath(spans: JaegerSpan[]): Set<string> {
 
 export function analyzeTrace(trace: JaegerTrace): TraceAnalysis {
   const { spans, processes, traceID } = trace
+  const classification = classifyTrace(trace)
+
   if (!spans || spans.length === 0) {
-    return emptyAnalysis(traceID)
+    return emptyAnalysis(traceID, classification)
   }
 
   const minStart = Math.min(...spans.map(s => s.startTime))
@@ -266,24 +370,24 @@ export function analyzeTrace(trace: JaegerTrace): TraceAnalysis {
     if (isErrorSpan(span)) errorIds.add(span.spanID)
   }
 
-  // Service breakdown
-  const svcMap = new Map<string, { duration: number; count: number; hasErrors: boolean }>()
+  // Service breakdown — wall-clock merged per service
+  const wallClockMap = computeWallClockPerService(spans, processes)
+  const svcSpanCount = new Map<string, { count: number; hasErrors: boolean }>()
   for (const span of spans) {
     const svc = getServiceName(span, processes)
-    const entry = svcMap.get(svc) || { duration: 0, count: 0, hasErrors: false }
-    entry.duration += span.duration
+    const entry = svcSpanCount.get(svc) || { count: 0, hasErrors: false }
     entry.count++
     if (errorIds.has(span.spanID)) entry.hasErrors = true
-    svcMap.set(svc, entry)
+    svcSpanCount.set(svc, entry)
   }
 
-  const serviceBreakdown: ServiceBreakdown[] = Array.from(svcMap.entries())
-    .map(([name, data]) => ({
+  const serviceBreakdown: ServiceBreakdown[] = Array.from(wallClockMap.entries())
+    .map(([name, wallClock]) => ({
       serviceName: name,
-      totalDuration: data.duration,
-      spanCount: data.count,
-      pctOfTrace: totalDuration > 0 ? (data.duration / totalDuration) * 100 : 0,
-      hasErrors: data.hasErrors,
+      totalDuration: wallClock,
+      spanCount: svcSpanCount.get(name)?.count || 0,
+      pctOfTrace: totalDuration > 0 ? (wallClock / totalDuration) * 100 : 0,
+      hasErrors: svcSpanCount.get(name)?.hasErrors || false,
     }))
     .sort((a, b) => b.totalDuration - a.totalDuration)
 
@@ -306,19 +410,26 @@ export function analyzeTrace(trace: JaegerTrace): TraceAnalysis {
   })
   const flatTree = flattenTree(spanTree)
 
-  // Insights
+  // ── Insights (classification-aware, trustworthy) ──
   const insights: string[] = []
 
+  // Classification context
+  if (classification.type === 'collector') {
+    insights.push('Internal collector flow detected')
+  }
+
+  // Bottleneck
   if (bottleneckPct >= 50) {
     insights.push(
-      `Bottleneck: span "${bottleneckSpan.operationName}" accounts for ${bottleneckPct.toFixed(0)}% of total latency (${formatDuration(bottleneckSpan.duration)})`
+      `Bottleneck span accounts for ${bottleneckPct.toFixed(0)}% of total trace duration (${formatDuration(bottleneckSpan.duration)})`
     )
   } else if (bottleneckPct >= 30) {
     insights.push(
-      `Slowest span: "${bottleneckSpan.operationName}" — ${bottleneckPct.toFixed(0)}% of total (${formatDuration(bottleneckSpan.duration)})`
+      `Slowest span: "${bottleneckSpan.operationName}" \u2014 ${bottleneckPct.toFixed(0)}% of total (${formatDuration(bottleneckSpan.duration)})`
     )
   }
 
+  // Errors
   if (errorIds.size > 0) {
     const errorServices = new Set<string>()
     for (const sid of errorIds) {
@@ -329,17 +440,14 @@ export function analyzeTrace(trace: JaegerTrace): TraceAnalysis {
       `${errorIds.size} error span${errorIds.size > 1 ? 's' : ''} detected` +
       (errorServices.size > 0 ? ` in ${Array.from(errorServices).join(', ')}` : '')
     )
+  } else {
+    insights.push('No errors detected in this trace')
   }
 
-  if (serviceBreakdown.length > 1 && dominantServicePct >= 60) {
-    insights.push(`Dominant service: ${dominantService} (${dominantServicePct.toFixed(0)}% of total time)`)
-  }
-
-  if (insights.length === 0) {
-    insights.push(
-      `Trace completed in ${formatDuration(totalDuration)} across ${spans.length} span${spans.length > 1 ? 's' : ''} and ${serviceSet.size} service${serviceSet.size > 1 ? 's' : ''}`
-    )
-  }
+  // Duration summary
+  insights.push(
+    `Trace completed in ${formatDuration(totalDuration)} across ${spans.length} span${spans.length > 1 ? 's' : ''} and ${serviceSet.size} service${serviceSet.size > 1 ? 's' : ''}`
+  )
 
   return {
     traceID,
@@ -358,6 +466,7 @@ export function analyzeTrace(trace: JaegerTrace): TraceAnalysis {
     spanTree,
     flatTree,
     insights,
+    classification,
   }
 }
 
@@ -370,10 +479,12 @@ export function summarizeTrace(trace: JaegerTrace): {
   rootOperation: string
   rootService: string
   startTime: number
+  classificationType: TraceClassificationType
+  classificationLabel: string
 } {
   const { spans, processes } = trace
   if (!spans || spans.length === 0) {
-    return { totalDuration: 0, spanCount: 0, serviceCount: 0, errorCount: 0, rootOperation: 'Unknown', rootService: 'unknown', startTime: 0 }
+    return { totalDuration: 0, spanCount: 0, serviceCount: 0, errorCount: 0, rootOperation: 'Unknown', rootService: 'unknown', startTime: 0, classificationType: 'collector', classificationLabel: 'Unknown' }
   }
 
   const minStart = Math.min(...spans.map(s => s.startTime))
@@ -393,6 +504,8 @@ export function summarizeTrace(trace: JaegerTrace): {
     if (isErrorSpan(span)) errorCount++
   }
 
+  const classification = classifyTrace(trace)
+
   return {
     totalDuration,
     spanCount: spans.length,
@@ -401,10 +514,12 @@ export function summarizeTrace(trace: JaegerTrace): {
     rootOperation: rootSpan.operationName,
     rootService: getServiceName(rootSpan, processes),
     startTime: rootSpan.startTime,
+    classificationType: classification.type,
+    classificationLabel: classification.label,
   }
 }
 
-function emptyAnalysis(traceID: string): TraceAnalysis {
+function emptyAnalysis(traceID: string, classification: TraceClassification): TraceAnalysis {
   return {
     traceID,
     totalDuration: 0,
@@ -422,5 +537,6 @@ function emptyAnalysis(traceID: string): TraceAnalysis {
     spanTree: [],
     flatTree: [],
     insights: ['No spans in this trace'],
+    classification,
   }
 }

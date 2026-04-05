@@ -1,33 +1,42 @@
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
-import { Network, Clock, Search, Filter, Download, Inbox, XCircle, ArrowUpDown } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
+import { Search, Filter, Clock, ArrowUpDown, Network, XCircle, Download, Inbox } from 'lucide-react'
 import { useAuthStore } from '../lib/auth/store'
-import type { JaegerTrace } from '../utils/traceAnalysis'
 import { summarizeTrace, formatDuration } from '../utils/traceAnalysis'
+import type { JaegerTrace, TraceClassificationType } from '../utils/traceAnalysis'
 
-type SortKey = 'duration' | 'errors' | 'recent' | 'spans'
+type SortKey = 'recent' | 'duration' | 'errors' | 'spans'
+
+const CLS_BADGE: Record<TraceClassificationType, { bg: string; text: string; label: string }> = {
+  collector: { bg: 'bg-gray-500/20', text: 'text-gray-400', label: 'Collector' },
+  platform:  { bg: 'bg-purple-500/20', text: 'text-purple-300', label: 'Platform' },
+  customer:  { bg: 'bg-emerald-500/20', text: 'text-emerald-300', label: 'Customer' },
+}
 
 export function TracesPage() {
-  const token = useAuthStore((state) => state.token)
   const navigate = useNavigate()
+  const token = useAuthStore((state) => state.token)
+
   const [searchQuery, setSearchQuery] = useState('')
-  const [serviceFilter, setServiceFilter] = useState<string>('all')
-  const [minDuration, setMinDuration] = useState<string>('')
-  const [timeRange, setTimeRange] = useState<string>('1h')
+  const [serviceFilter, setServiceFilter] = useState('all')
+  const [minDuration, setMinDuration] = useState('')
+  const [timeRange, setTimeRange] = useState('1h')
   const [sortBy, setSortBy] = useState<SortKey>('recent')
 
   // Fetch available services
   const { data: servicesData } = useQuery({
-    queryKey: ['jaeger-services'],
+    queryKey: ['trace-services', token],
     queryFn: async () => {
-      const response = await fetch('/api/traces/services', {
-        headers: { Authorization: `Bearer ${token}` }
+      if (!token) throw new Error('No token')
+      const res = await fetch('/api/traces/services', {
+        headers: { Authorization: `Bearer ${token}` },
       })
-      if (!response.ok) return { services: [] }
-      return response.json()
+      if (!res.ok) throw new Error('Failed to fetch services')
+      return res.json()
     },
-    staleTime: 30000,
+    enabled: !!token,
+    staleTime: 60_000,
   })
 
   const { data: tracesData, isLoading, error, refetch } = useQuery({
@@ -227,63 +236,76 @@ export function TracesPage() {
         ) : traces.length === 0 ? (
           <div className="text-center py-16 px-4">
             <Inbox className="text-gray-500 mx-auto mb-4" size={56} />
-            <p className="text-white text-lg font-semibold">No customer traces connected</p>
-            <p className="text-gray-400 mt-2 text-sm">This workspace is not receiving customer distributed traces yet.</p>
-            <p className="text-gray-500 mt-1 text-xs">Deploy a collector to ingest traces for your services.</p>
+            <p className="text-white text-lg font-semibold">No traces found</p>
+            <p className="text-gray-400 mt-2 text-sm">No distributed traces available in the selected time range.</p>
+            <p className="text-gray-500 mt-1 text-xs">Try expanding the time range or check that trace ingestion is active.</p>
           </div>
         ) : (
           <div className="space-y-2">
-            {sorted.map(({ trace, summary }) => (
-              <div
-                key={trace.traceID}
-                className="p-3 sm:p-4 bg-surface-light hover:bg-surface-light/80 border border-gray-700 hover:border-primary/50 rounded-lg cursor-pointer transition-all"
-                onClick={() => navigate(`/traces/${trace.traceID}`, { state: { trace } })}
-              >
-                {/* Row 1: ID + badges + duration */}
-                <div className="flex items-center justify-between mb-1.5 gap-2">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${getDurationColor(summary.totalDuration)}`} />
-                    <span className="text-white font-mono text-xs sm:text-sm truncate">
-                      {trace.traceID.slice(0, 16)}...
-                    </span>
-                    <span className="text-[10px] sm:text-xs px-1.5 py-0.5 rounded bg-gray-700 text-gray-300 flex-shrink-0">
-                      {summary.spanCount} span{summary.spanCount > 1 ? 's' : ''}
-                    </span>
-                    {summary.serviceCount > 1 && (
-                      <span className="text-[10px] sm:text-xs px-1.5 py-0.5 rounded bg-gray-700/50 text-gray-400 flex-shrink-0">
-                        {summary.serviceCount} svc{summary.serviceCount > 1 ? 's' : ''}
+            {sorted.map(({ trace, summary }) => {
+              const clsBadge = CLS_BADGE[summary.classificationType] || CLS_BADGE.collector
+              const isSlow = summary.totalDuration > 1000000
+              return (
+                <div
+                  key={trace.traceID}
+                  className={`p-3 sm:p-4 bg-surface-light hover:bg-surface-light/80 border rounded-lg cursor-pointer transition-all ${
+                    summary.errorCount > 0
+                      ? 'border-red-500/30 hover:border-red-500/50'
+                      : isSlow
+                      ? 'border-yellow-500/20 hover:border-yellow-500/40'
+                      : 'border-gray-700 hover:border-primary/50'
+                  }`}
+                  onClick={() => navigate(`/traces/${trace.traceID}`, { state: { trace } })}
+                >
+                  {/* Row 1: ID + badges + duration */}
+                  <div className="flex items-center justify-between mb-1.5 gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${getDurationColor(summary.totalDuration)}`} />
+                      <span className="text-white font-mono text-xs sm:text-sm truncate">
+                        {trace.traceID.slice(0, 16)}...
                       </span>
-                    )}
-                    {summary.errorCount > 0 && (
-                      <span className="text-[10px] sm:text-xs px-1.5 py-0.5 rounded bg-red-500/20 text-red-400 flex-shrink-0 flex items-center gap-0.5">
-                        <XCircle size={10} /> {summary.errorCount}
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded flex-shrink-0 ${clsBadge.bg} ${clsBadge.text}`}>
+                        {clsBadge.label}
                       </span>
-                    )}
+                      <span className="text-[10px] sm:text-xs px-1.5 py-0.5 rounded bg-gray-700 text-gray-300 flex-shrink-0">
+                        {summary.spanCount} span{summary.spanCount > 1 ? 's' : ''}
+                      </span>
+                      {summary.serviceCount > 1 && (
+                        <span className="text-[10px] sm:text-xs px-1.5 py-0.5 rounded bg-gray-700/50 text-gray-400 flex-shrink-0">
+                          {summary.serviceCount} svc{summary.serviceCount > 1 ? 's' : ''}
+                        </span>
+                      )}
+                      {summary.errorCount > 0 && (
+                        <span className="text-[10px] sm:text-xs px-1.5 py-0.5 rounded bg-red-500/20 text-red-400 flex-shrink-0 flex items-center gap-0.5">
+                          <XCircle size={10} /> {summary.errorCount}
+                        </span>
+                      )}
+                    </div>
+                    <span className={`font-mono text-xs sm:text-sm flex-shrink-0 font-medium ${
+                      summary.totalDuration > 1000000 ? 'text-red-400' :
+                      summary.totalDuration > 500000 ? 'text-yellow-400' :
+                      'text-gray-300'
+                    }`}>
+                      {formatDuration(summary.totalDuration)}
+                    </span>
                   </div>
-                  <span className={`font-mono text-xs sm:text-sm flex-shrink-0 font-medium ${
-                    summary.totalDuration > 1000000 ? 'text-red-400' :
-                    summary.totalDuration > 500000 ? 'text-yellow-400' :
-                    'text-gray-300'
-                  }`}>
-                    {formatDuration(summary.totalDuration)}
-                  </span>
-                </div>
 
-                {/* Row 2: operation */}
-                <div className="text-xs sm:text-sm text-gray-200 mb-1.5 truncate font-medium">
-                  {summary.rootOperation}
-                </div>
+                  {/* Row 2: operation */}
+                  <div className="text-xs sm:text-sm text-gray-200 mb-1.5 truncate font-medium">
+                    {summary.rootOperation}
+                  </div>
 
-                {/* Row 3: service + timestamp */}
-                <div className="flex items-center gap-2 text-xs text-gray-500">
-                  <span className="truncate">{summary.rootService}</span>
-                  <span>{'\u2022'}</span>
-                  <span className="flex-shrink-0">
-                    {new Date(summary.startTime / 1000).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-                  </span>
+                  {/* Row 3: service + timestamp */}
+                  <div className="flex items-center gap-2 text-xs text-gray-500">
+                    <span className="truncate">{summary.rootService}</span>
+                    <span>{'\u2022'}</span>
+                    <span className="flex-shrink-0">
+                      {new Date(summary.startTime / 1000).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                    </span>
+                  </div>
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         )}
       </div>

@@ -12,15 +12,19 @@ import { RelatedLogs } from '../components/RelatedLogs'
 import { MetricsContext } from '../components/MetricsContext'
 import { TraceActionLinks } from '../components/TraceActionLinks'
 
+const CLS_BADGE: Record<string, { bg: string; text: string }> = {
+  collector: { bg: 'bg-gray-500/20', text: 'text-gray-300' },
+  platform:  { bg: 'bg-purple-500/20', text: 'text-purple-300' },
+  customer:  { bg: 'bg-emerald-500/20', text: 'text-emerald-300' },
+}
+
 /** Extract service_key from trace span tags or process tags */
 function extractServiceKey(trace: JaegerTrace): string | null {
-  // 1. Check root span tags for rhinometric.service_key or service_key
   for (const span of trace.spans) {
     const sk = getTagValue(span.tags, 'rhinometric.service_key')
       || getTagValue(span.tags, 'service_key')
     if (sk && typeof sk === 'string') return sk
   }
-  // 2. Fall back to process tags
   for (const pid of Object.keys(trace.processes)) {
     const proc = trace.processes[pid]
     const sk = getTagValue(proc.tags, 'rhinometric.service_key')
@@ -32,7 +36,6 @@ function extractServiceKey(trace: JaegerTrace): string | null {
 
 /** Derive a human-friendly service_name from service_key by stripping env suffix */
 function deriveServiceName(serviceKey: string): string {
-  // "rhinometric-web-produccion" -> "rhinometric-web"
   const envSuffixes = ['-produccion', '-production', '-staging', '-dev', '-test', '-qa']
   let name = serviceKey
   for (const suffix of envSuffixes) {
@@ -76,7 +79,9 @@ export function TraceDetailPage() {
 
   const traceData = stateTrace || data
 
-  // Compute correlation context
+  // Compute analysis + correlation
+  const analysis = useMemo(() => traceData ? analyzeTrace(traceData) : null, [traceData])
+
   const correlationCtx = useMemo(() => {
     if (!traceData) return null
     const serviceKey = extractServiceKey(traceData)
@@ -114,11 +119,12 @@ export function TraceDetailPage() {
     )
   }
 
-  if (!traceData) return null
+  if (!traceData || !analysis) return null
 
-  const analysis = analyzeTrace(traceData)
   const sKey = correlationCtx?.serviceKey
   const sName = correlationCtx?.serviceName
+  const cls = analysis.classification
+  const badge = CLS_BADGE[cls.type] || CLS_BADGE.collector
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -131,7 +137,12 @@ export function TraceDetailPage() {
           >
             <ArrowLeft size={16} /> Back to Traces
           </button>
-          <h1 className="text-xl sm:text-2xl font-bold text-white mb-1">Trace Detail</h1>
+          <div className="flex items-center gap-2 mb-1">
+            <h1 className="text-xl sm:text-2xl font-bold text-white">Trace Detail</h1>
+            <span className={`text-[10px] font-medium px-2 py-0.5 rounded ${badge.bg} ${badge.text}`}>
+              {cls.label}
+            </span>
+          </div>
           <p className="text-xs sm:text-sm text-gray-400 font-mono truncate">{traceId}</p>
           {analysis.rootSpan && (
             <p className="text-sm text-gray-300 mt-1">{analysis.rootSpan.operationName}</p>

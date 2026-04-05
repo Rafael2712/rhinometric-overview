@@ -24,7 +24,7 @@ interface Props {
 export function MetricsContext({ serviceName, serviceKey, traceStartUs: _tStart, traceDurationUs: _tDur }: Props) {
   const token = useAuthStore((s) => s.token)
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, error } = useQuery({
     queryKey: ['svc-summary', serviceName],
     queryFn: async () => {
       if (!token) throw new Error('No token')
@@ -58,6 +58,18 @@ export function MetricsContext({ serviceName, serviceKey, traceStartUs: _tStart,
     )
   }
 
+  if (error) {
+    return (
+      <div className="card p-4">
+        <div className="flex items-center gap-2 mb-3">
+          <Activity size={18} className="text-primary" />
+          <h3 className="text-sm font-semibold text-white">Service Metrics</h3>
+        </div>
+        <p className="text-gray-500 text-sm">Metrics context unavailable for this service.</p>
+      </div>
+    )
+  }
+
   if (!svc) {
     return (
       <div className="card p-4">
@@ -65,7 +77,9 @@ export function MetricsContext({ serviceName, serviceKey, traceStartUs: _tStart,
           <Activity size={18} className="text-primary" />
           <h3 className="text-sm font-semibold text-white">Service Metrics</h3>
         </div>
-        <p className="text-gray-500 text-sm">No metrics data found for {serviceName}</p>
+        <p className="text-gray-500 text-sm">
+          No metrics context available &mdash; service <span className="font-mono text-gray-400">{serviceName}</span> was not matched to any monitored endpoint.
+        </p>
       </div>
     )
   }
@@ -103,7 +117,7 @@ export function MetricsContext({ serviceName, serviceKey, traceStartUs: _tStart,
             <Clock size={12} /> Latency
           </div>
           <p className={'text-lg font-bold ' + (latency !== null && latency > 1000 ? 'text-yellow-400' : 'text-white')}>
-            {latency !== null ? `${latency.toFixed(0)}ms` : '—'}
+            {latency !== null ? `${latency.toFixed(0)}ms` : '\u2014'}
           </p>
         </div>
 
@@ -117,7 +131,7 @@ export function MetricsContext({ serviceName, serviceKey, traceStartUs: _tStart,
             healthPct !== null && healthPct >= 70 ? 'text-yellow-400' :
             healthPct !== null ? 'text-red-400' : 'text-white'
           )}>
-            {healthPct !== null ? `${healthPct.toFixed(0)}%` : '—'}
+            {healthPct !== null ? `${healthPct.toFixed(0)}%` : '\u2014'}
           </p>
         </div>
 
@@ -132,7 +146,7 @@ export function MetricsContext({ serviceName, serviceKey, traceStartUs: _tStart,
           </p>
         </div>
 
-        {/* SSL Expiry */}
+        {/* SSL Expiry — only show if data exists */}
         {svc.ssl_expiry_days !== undefined && svc.ssl_expiry_days !== null && (
           <div className="space-y-1">
             <div className="flex items-center gap-1 text-xs text-gray-400">

@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { useAuthStore } from '../lib/auth/store'
 import { FileText, AlertTriangle, XCircle, Info, Bug, ChevronDown, ChevronUp } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 
 interface LogEntry {
   timestamp: string
@@ -33,6 +33,13 @@ const LEVEL_COLOR: Record<string, string> = {
   debug: 'text-gray-500',
 }
 
+const LEVEL_PRIORITY: Record<string, number> = {
+  error: 0,
+  warn: 1,
+  info: 2,
+  debug: 3,
+}
+
 function usToNs(us: number): string {
   return String(Math.floor(us) * 1000)
 }
@@ -46,6 +53,17 @@ function formatNsTimestamp(ns: string): string {
       fractionalSecondDigits: 3,
     } as Intl.DateTimeFormatOptions)
   } catch { return ns }
+}
+
+/** Detect if a log message is generic collector noise */
+function isCollectorNoise(msg: string): boolean {
+  const noisePatterns = [
+    /^collector.*cycle/i,
+    /^sending\s+(metrics|logs)/i,
+    /^cycle\s+completed/i,
+    /^starting\s+collection/i,
+  ]
+  return noisePatterns.some(p => p.test(msg))
 }
 
 export function RelatedLogs({ serviceKey, traceStartUs, traceDurationUs }: Props) {
@@ -82,9 +100,29 @@ export function RelatedLogs({ serviceKey, traceStartUs, traceDurationUs }: Props
   })
 
   const logs = data || []
+
+  // Sort by severity: errors first, then warns, then info/debug
+  const sortedLogs = useMemo(() => {
+    return [...logs].sort((a, b) => {
+      const pa = LEVEL_PRIORITY[a.level] ?? 4
+      const pb = LEVEL_PRIORITY[b.level] ?? 4
+      if (pa !== pb) return pa - pb
+      return 0 // preserve original order within same level
+    })
+  }, [logs])
+
   const errorLogs = logs.filter(l => l.level === 'error')
   const warnLogs  = logs.filter(l => l.level === 'warn')
-  const visibleLogs = expanded ? logs : logs.slice(0, 8)
+  const allNoise = logs.length > 0 && logs.every(l => isCollectorNoise(l.message))
+  const visibleLogs = expanded ? sortedLogs : sortedLogs.slice(0, 8)
+
+  // Summary sentence
+  const summaryParts: string[] = []
+  if (logs.length > 0) {
+    summaryParts.push(`${logs.length} log${logs.length > 1 ? 's' : ''} found in \u00B130s window`)
+    if (errorLogs.length > 0) summaryParts.push(`${errorLogs.length} error${errorLogs.length > 1 ? 's' : ''}`)
+    if (warnLogs.length > 0) summaryParts.push(`${warnLogs.length} warning${warnLogs.length > 1 ? 's' : ''}`)
+  }
 
   return (
     <div className="card overflow-hidden">
@@ -116,9 +154,22 @@ export function RelatedLogs({ serviceKey, traceStartUs, traceDurationUs }: Props
         {error && (
           <p className="text-red-400 text-sm">Failed to load logs</p>
         )}
-        {!isLoading && logs.length === 0 && (
-          <p className="text-gray-500 text-sm">No logs found in the ±30s window around this trace.</p>
+
+        {/* Empty state */}
+        {!isLoading && !error && logs.length === 0 && (
+          <p className="text-gray-500 text-sm">No related logs found in the {'\u00B1'}30s window around this trace.</p>
         )}
+
+        {/* Summary sentence */}
+        {logs.length > 0 && (
+          <p className="text-xs text-gray-400 mb-3">
+            {summaryParts.join(' \u2014 ')}
+            {allNoise && (
+              <span className="ml-1 text-gray-500 italic"> &mdash; all entries appear to be internal collector logs.</span>
+            )}
+          </p>
+        )}
+
         {visibleLogs.length > 0 && (
           <div className="space-y-1 font-mono text-xs">
             {visibleLogs.map((log, i) => (
