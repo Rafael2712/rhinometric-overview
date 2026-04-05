@@ -1,31 +1,62 @@
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { useState } from 'react'
-import { ArrowLeft, ExternalLink, Network, Loader2 } from 'lucide-react'
+import { useState, useMemo } from 'react'
+import { ArrowLeft, Network, Loader2 } from 'lucide-react'
 import { useAuthStore } from '../lib/auth/store'
-import { openGrafanaExplore } from '../utils/grafana'
-import { analyzeTrace } from '../utils/traceAnalysis'
+import { analyzeTrace, getTagValue } from '../utils/traceAnalysis'
 import type { JaegerTrace, JaegerSpan } from '../utils/traceAnalysis'
 import { TraceInsights } from '../components/TraceInsights'
 import { TraceWaterfall } from '../components/TraceWaterfall'
 import { SpanDetailPanel } from '../components/SpanDetailPanel'
+import { RelatedLogs } from '../components/RelatedLogs'
+import { MetricsContext } from '../components/MetricsContext'
+import { TraceActionLinks } from '../components/TraceActionLinks'
+
+/** Extract service_key from trace span tags or process tags */
+function extractServiceKey(trace: JaegerTrace): string | null {
+  // 1. Check root span tags for rhinometric.service_key or service_key
+  for (const span of trace.spans) {
+    const sk = getTagValue(span.tags, 'rhinometric.service_key')
+      || getTagValue(span.tags, 'service_key')
+    if (sk && typeof sk === 'string') return sk
+  }
+  // 2. Fall back to process tags
+  for (const pid of Object.keys(trace.processes)) {
+    const proc = trace.processes[pid]
+    const sk = getTagValue(proc.tags, 'rhinometric.service_key')
+      || getTagValue(proc.tags, 'service_key')
+    if (sk && typeof sk === 'string') return sk
+  }
+  return null
+}
+
+/** Derive a human-friendly service_name from service_key by stripping env suffix */
+function deriveServiceName(serviceKey: string): string {
+  // "rhinometric-web-produccion" -> "rhinometric-web"
+  const envSuffixes = ['-produccion', '-production', '-staging', '-dev', '-test', '-qa']
+  let name = serviceKey
+  for (const suffix of envSuffixes) {
+    if (name.endsWith(suffix)) {
+      name = name.slice(0, -suffix.length)
+      break
+    }
+  }
+  return name
+}
 
 export function TraceDetailPage() {
   const { traceId } = useParams<{ traceId: string }>()
   const navigate = useNavigate()
   const location = useLocation()
   const token = useAuthStore((state) => state.token)
-  const isAdmin = useAuthStore((state) => state.isAdmin)
   const [selectedSpan, setSelectedSpan] = useState<JaegerSpan | null>(null)
 
-  // Try to get trace data from router state (passed from list page)
   const stateTrace = (location.state as any)?.trace as JaegerTrace | undefined
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['trace-detail', traceId],
     queryFn: async () => {
       if (!token || !traceId) throw new Error('Missing token or trace ID')
-      // Try multiple lookback windows to find the trace
       for (const lookback of ['3h', '12h', '24h']) {
         const response = await fetch(`/api/traces?limit=200&lookback=${lookback}`, {
           headers: { Authorization: `Bearer ${token}` },
@@ -44,6 +75,19 @@ export function TraceDetailPage() {
   })
 
   const traceData = stateTrace || data
+
+  // Compute correlation context
+  const correlationCtx = useMemo(() => {
+    if (!traceData) return null
+    const serviceKey = extractServiceKey(traceData)
+    const serviceName = serviceKey ? deriveServiceName(serviceKey) : null
+    return {
+      serviceKey,
+      serviceName,
+      logsAvailable: !!serviceKey,
+      metricsAvailable: !!serviceName,
+    }
+  }, [traceData])
 
   if (!stateTrace && isLoading) {
     return (
@@ -73,6 +117,8 @@ export function TraceDetailPage() {
   if (!traceData) return null
 
   const analysis = analyzeTrace(traceData)
+  const sKey = correlationCtx?.serviceKey
+  const sName = correlationCtx?.serviceName
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -91,25 +137,34 @@ export function TraceDetailPage() {
             <p className="text-sm text-gray-300 mt-1">{analysis.rootSpan.operationName}</p>
           )}
         </div>
-        {isAdmin() && (
-          <button
-            onClick={() => {
-              const exploreUrl = `?orgId=1&left=${encodeURIComponent(JSON.stringify({
-                datasource: 'jaeger',
-                queries: [{ refId: 'A', query: traceId }],
-                range: { from: 'now-1h', to: 'now' }
-              }))}`
-              openGrafanaExplore(exploreUrl)
-            }}
-            className="btn btn-secondary flex items-center gap-2 text-sm self-start"
-          >
-            <ExternalLink size={16} /> View in Grafana
-          </button>
-        )}
       </div>
 
-      {/* Insights */}
-      <TraceInsights analysis={analysis} />
+      {/* Action Links */}
+      {sKey && sName && traceId && (
+        <TraceActionLinks
+          serviceKey={sKey}
+          serviceName={sName}
+          traceId={traceId}
+          traceStartUs={analysis.rootSpan?.startTime || traceData.spans[0]?.startTime || 0}
+          traceDurationUs={analysis.totalDuration}
+        />
+      )}
+
+      {/* Insights with correlation context */}
+      <TraceInsights
+        analysis={analysis}
+        correlationContext={correlationCtx || undefined}
+      />
+
+      {/* Metrics Context */}
+      {sKey && sName && (
+        <MetricsContext
+          serviceName={sName}
+          serviceKey={sKey}
+          traceStartUs={analysis.rootSpan?.startTime || traceData.spans[0]?.startTime || 0}
+          traceDurationUs={analysis.totalDuration}
+        />
+      )}
 
       {/* Waterfall */}
       <TraceWaterfall
@@ -125,6 +180,15 @@ export function TraceDetailPage() {
           span={selectedSpan}
           processes={traceData.processes}
           onClose={() => setSelectedSpan(null)}
+        />
+      )}
+
+      {/* Related Logs */}
+      {sKey && (
+        <RelatedLogs
+          serviceKey={sKey}
+          traceStartUs={analysis.rootSpan?.startTime || traceData.spans[0]?.startTime || 0}
+          traceDurationUs={analysis.totalDuration}
         />
       )}
     </div>

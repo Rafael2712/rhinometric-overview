@@ -1,14 +1,21 @@
-import { AlertTriangle, Zap, Info, XCircle } from 'lucide-react'
+import { AlertTriangle, Zap, Info, XCircle, Link2 } from 'lucide-react'
 import type { TraceAnalysis, ServiceBreakdown } from '../utils/traceAnalysis'
 import { formatDuration } from '../utils/traceAnalysis'
 
 interface Props {
   analysis: TraceAnalysis
+  correlationContext?: {
+    serviceKey: string | null
+    serviceName: string | null
+    logsAvailable: boolean
+    metricsAvailable: boolean
+  }
 }
 
-export function TraceInsights({ analysis }: Props) {
+export function TraceInsights({ analysis, correlationContext }: Props) {
   const hasErrors = analysis.errorCount > 0
   const isSlow = analysis.bottleneckPct >= 50
+  const ctx = correlationContext
 
   return (
     <div className="space-y-4">
@@ -34,6 +41,15 @@ export function TraceInsights({ analysis }: Props) {
                 {insight}
               </p>
             ))}
+            {/* Correlation context line */}
+            {ctx && ctx.serviceKey && (
+              <p className="text-sm text-gray-300 flex items-center gap-1.5 mt-1">
+                <Link2 size={14} className="text-gray-400" />
+                Service: <span className="font-mono text-primary">{ctx.serviceKey}</span>
+                {ctx.logsAvailable && <span className="text-xs bg-blue-500/20 text-blue-300 px-1.5 py-0.5 rounded">logs ✓</span>}
+                {ctx.metricsAvailable && <span className="text-xs bg-green-500/20 text-green-300 px-1.5 py-0.5 rounded">metrics ✓</span>}
+              </p>
+            )}
           </div>
         </div>
       </div>
