@@ -15,6 +15,7 @@ import { SLOPage } from './pages/SLO'
 import { AlertRulesPage } from './pages/AlertRules'
 import { LogsPage } from './pages/Logs'
 import { TracesPage } from './pages/Traces'
+import { TraceDetailPage } from './pages/TraceDetail'
 import { LicensePage } from './pages/License'
 import { SettingsPage } from './pages/Settings'
 import { IntegrationsPage } from './pages/Integrations'
@@ -45,7 +46,7 @@ function App() {
   if (!hasHydrated) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="animate-pulse text-gray-400 text-sm">Loading session…</div>
+        <div className="animate-pulse text-gray-400 text-sm">Loading sessionâ€¦</div>
       </div>
     )
   }
@@ -73,6 +74,7 @@ function App() {
           <Route path="alert-rules" element={<AlertRulesPage />} />
           <Route path="logs" element={<LogsPage />} />
           <Route path="traces" element={<TracesPage />} />
+          <Route path="traces/:traceId" element={<TraceDetailPage />} />
           <Route path="license" element={<LicensePage />} />
           <Route path="backup-recovery" element={<BackupRecoveryPage />} />
           <Route path="users" element={<UsersPage />} />
