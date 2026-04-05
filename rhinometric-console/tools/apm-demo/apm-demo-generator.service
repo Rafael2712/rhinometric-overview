@@ -1,0 +1,18 @@
+[Unit]
+Description=APM Demo Trace Generator for Rhinometric
+Documentation=Generates realistic multi-service OTel traces for APM validation
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=15
+ExecStartPre=/usr/bin/docker cp /opt/rhinometric/config/apm_demo_generator.py rhinometric-console-backend:/tmp/apm_demo_generator.py
+ExecStart=/usr/bin/docker exec rhinometric-console-backend python3 -u /tmp/apm_demo_generator.py
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=apm-demo
+
+[Install]
+WantedBy=multi-user.target
