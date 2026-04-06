@@ -27,6 +27,14 @@ pub fn build_router(db: Database, python_anomaly_url: String) -> Router {
         .route("/health", get(crate::api::health::health))
         .route("/api/v2/anomalies", get(crate::api::anomalies::list_anomalies))
         .route(
+            "/api/v2/anomalies/active",
+            get(crate::api::anomalies::list_active),
+        )
+        .route(
+            "/api/v2/anomalies/resolved",
+            get(crate::api::anomalies::list_resolved),
+        )
+        .route(
             "/api/v2/anomalies/history",
             get(crate::api::anomalies::list_history),
         )

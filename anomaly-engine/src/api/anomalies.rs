@@ -79,6 +79,54 @@ pub async fn list_history(
     }))
 }
 
+/// GET /api/v2/anomalies/active — deduplicated (one per service), active only.
+pub async fn list_active(
+    State(state): State<AppState>,
+    Query(params): Query<ListParams>,
+) -> Result<Json<AnomalyListResponse>, axum::http::StatusCode> {
+    let limit = params.limit.unwrap_or(50);
+
+    let anomalies = repository::get_active_deduplicated(&state.db.pool, limit)
+        .await
+        .map_err(|e| {
+            tracing::error!("DB error: {e}");
+            axum::http::StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+
+    let count = anomalies.len();
+    let summary = build_summary(&anomalies);
+
+    Ok(Json(AnomalyListResponse {
+        anomalies,
+        count,
+        summary,
+    }))
+}
+
+/// GET /api/v2/anomalies/resolved — recently resolved anomalies.
+pub async fn list_resolved(
+    State(state): State<AppState>,
+    Query(params): Query<ListParams>,
+) -> Result<Json<AnomalyListResponse>, axum::http::StatusCode> {
+    let limit = params.limit.unwrap_or(50);
+
+    let anomalies = repository::get_resolved_recent(&state.db.pool, limit)
+        .await
+        .map_err(|e| {
+            tracing::error!("DB error: {e}");
+            axum::http::StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+
+    let count = anomalies.len();
+    let summary = build_summary(&anomalies);
+
+    Ok(Json(AnomalyListResponse {
+        anomalies,
+        count,
+        summary,
+    }))
+}
+
 fn build_summary(rows: &[repository::AnomalyRow]) -> AnomalySummary {
     use crate::models::anomaly::SeverityCounts;
 

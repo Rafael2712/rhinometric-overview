@@ -151,6 +151,56 @@ pub async fn get_all_anomalies(pool: &PgPool, limit: i64) -> Result<Vec<AnomalyR
     Ok(rows)
 }
 
+/// Fetch deduplicated active anomalies — one row per service_id, highest score wins.
+pub async fn get_active_deduplicated(pool: &PgPool, limit: i64) -> Result<Vec<AnomalyRow>, sqlx::Error> {
+    let rows = sqlx::query_as::<_, AnomalyRow>(
+        r#"
+        SELECT DISTINCT ON (service_id)
+            id, service_id, service_name, service_type, group_name, environment,
+            anomaly_score, severity, confidence, confidence_label,
+            category_scores, reason_codes, evidence_summary,
+            status, fingerprint, first_seen_at, last_seen_at, occurrence_count,
+            baseline_deviation_pct, triggered_categories_count, is_anomalous, evaluation_duration_ms
+        FROM anomaly_engine_results_v1
+        WHERE status = 'active'
+        ORDER BY service_id, anomaly_score DESC, last_seen_at DESC
+        "#,
+    )
+    .fetch_all(pool)
+    .await?;
+
+    // Re-sort by score descending after DISTINCT ON (which requires service_id ordering first)
+    let mut rows = rows;
+    rows.sort_by(|a, b| b.anomaly_score.cmp(&a.anomaly_score));
+    if rows.len() > limit as usize {
+        rows.truncate(limit as usize);
+    }
+    Ok(rows)
+}
+
+/// Fetch recently resolved anomalies (for history view).
+pub async fn get_resolved_recent(pool: &PgPool, limit: i64) -> Result<Vec<AnomalyRow>, sqlx::Error> {
+    let rows = sqlx::query_as::<_, AnomalyRow>(
+        r#"
+        SELECT
+            id, service_id, service_name, service_type, group_name, environment,
+            anomaly_score, severity, confidence, confidence_label,
+            category_scores, reason_codes, evidence_summary,
+            status, fingerprint, first_seen_at, last_seen_at, occurrence_count,
+            baseline_deviation_pct, triggered_categories_count, is_anomalous, evaluation_duration_ms
+        FROM anomaly_engine_results_v1
+        WHERE status = 'resolved'
+        ORDER BY last_seen_at DESC
+        LIMIT $1
+        "#,
+    )
+    .bind(limit)
+    .fetch_all(pool)
+    .await?;
+
+    Ok(rows)
+}
+
 /// Raw row from the database.
 #[derive(Debug, sqlx::FromRow, serde::Serialize)]
 pub struct AnomalyRow {

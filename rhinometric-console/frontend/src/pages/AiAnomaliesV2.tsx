@@ -1,9 +1,10 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useAuthStore } from '../lib/auth/store'
 import {
   AlertTriangle, Activity, Brain, ArrowUpDown, Eye, EyeOff,
-  BarChart3, Zap, Shield, Clock, TrendingUp, ChevronDown, ChevronUp
+  BarChart3, Zap, TrendingUp, ChevronDown, ChevronUp,
+  History, Radio
 } from 'lucide-react'
 
 // ─── Types ───
@@ -89,18 +90,23 @@ interface CompareResponse {
 // ─── Constants ───
 
 const V2_BASE = '/api/v2/anomalies'
+const PAGE_LIMIT = 50
 
-const SEVERITY_COLORS: Record<string, { bg: string; text: string; border: string }> = {
-  normal:    { bg: 'bg-green-500/10',  text: 'text-green-400',  border: 'border-green-500/30' },
-  watch:     { bg: 'bg-yellow-500/10', text: 'text-yellow-400', border: 'border-yellow-500/30' },
-  degraded:  { bg: 'bg-orange-500/10', text: 'text-orange-400', border: 'border-orange-500/30' },
-  critical:  { bg: 'bg-red-500/10',    text: 'text-red-400',    border: 'border-red-500/30' },
-  emergency: { bg: 'bg-red-700/20',    text: 'text-red-300',    border: 'border-red-700/40' },
+const SEVERITY_COLORS: Record<string, { bg: string; text: string; border: string; ring: string }> = {
+  normal:    { bg: 'bg-green-500/10',  text: 'text-green-400',  border: 'border-green-500/20', ring: 'ring-green-500/30' },
+  watch:     { bg: 'bg-yellow-500/10', text: 'text-yellow-400', border: 'border-yellow-500/20', ring: 'ring-yellow-500/30' },
+  degraded:  { bg: 'bg-orange-500/10', text: 'text-orange-400', border: 'border-orange-500/20', ring: 'ring-orange-500/30' },
+  critical:  { bg: 'bg-red-500/10',    text: 'text-red-400',    border: 'border-red-500/20', ring: 'ring-red-500/30' },
+  emergency: { bg: 'bg-red-700/20',    text: 'text-red-300',    border: 'border-red-700/30', ring: 'ring-red-700/40' },
 }
 
-// ─── Fetch helpers ───
+const SEVERITY_ORDER: Record<string, number> = {
+  emergency: 5, critical: 4, degraded: 3, watch: 2, normal: 1,
+}
 
-function useV2Fetch<T>(key: string, endpoint: string) {
+// ─── Fetch hook ───
+
+function useV2Fetch<T>(key: string, endpoint: string, enabled = true) {
   const { token } = useAuthStore()
   return useQuery<T>({
     queryKey: [key],
@@ -114,29 +120,51 @@ function useV2Fetch<T>(key: string, endpoint: string) {
     refetchInterval: 30_000,
     staleTime: 15_000,
     retry: 2,
+    enabled,
   })
+}
+
+// ─── Utility: how fresh is last_seen ───
+
+function freshness(lastSeen: string): 'live' | 'recent' | 'stale' {
+  const age = Date.now() - new Date(lastSeen).getTime()
+  if (age < 3 * 60_000) return 'live'   // < 3 min
+  if (age < 15 * 60_000) return 'recent' // < 15 min
+  return 'stale'
+}
+
+function timeAgo(iso: string): string {
+  const sec = Math.floor((Date.now() - new Date(iso).getTime()) / 1000)
+  if (sec < 60) return `${sec}s ago`
+  if (sec < 3600) return `${Math.floor(sec / 60)}m ago`
+  if (sec < 86400) return `${Math.floor(sec / 3600)}h ago`
+  return `${Math.floor(sec / 86400)}d ago`
 }
 
 // ─── Components ───
 
-function StatCard({ label, value, icon: Icon, color = 'text-primary' }: {
-  label: string; value: string | number; icon: typeof Activity; color?: string
+function StatCard({ label, value, sub, icon: Icon, color = 'text-primary' }: {
+  label: string; value: string | number; sub?: string; icon: typeof Activity; color?: string
 }) {
   return (
-    <div className="bg-surface rounded-lg border border-gray-700 p-4">
-      <div className="flex items-center justify-between mb-2">
-        <span className="text-xs text-gray-400 uppercase tracking-wider">{label}</span>
-        <Icon className={`w-4 h-4 ${color}`} />
+    <div className="bg-surface rounded-lg border border-gray-700/60 p-4">
+      <div className="flex items-center justify-between mb-1">
+        <span className="text-[11px] text-gray-500 uppercase tracking-wider font-medium">{label}</span>
+        <Icon className={`w-3.5 h-3.5 ${color} opacity-60`} />
       </div>
       <div className={`text-2xl font-bold ${color}`}>{value}</div>
+      {sub && <div className="text-[11px] text-gray-500 mt-0.5">{sub}</div>}
     </div>
   )
 }
 
-function SeverityBadge({ severity }: { severity: string }) {
+function SeverityBadge({ severity, size = 'sm' }: { severity: string; size?: 'sm' | 'xs' }) {
   const c = SEVERITY_COLORS[severity] || SEVERITY_COLORS.normal
+  const cls = size === 'xs'
+    ? `px-1.5 py-0 text-[10px]`
+    : `px-2 py-0.5 text-xs`
   return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${c.bg} ${c.text} border ${c.border}`}>
+    <span className={`inline-flex items-center rounded font-semibold uppercase ${c.bg} ${c.text} border ${c.border} ${cls}`}>
       {severity}
     </span>
   )
@@ -147,26 +175,26 @@ function ScoreBar({ score, max = 100 }: { score: number; max?: number }) {
   const color = score > 60 ? 'bg-red-500' : score > 35 ? 'bg-orange-500' : score > 15 ? 'bg-yellow-500' : 'bg-green-500'
   return (
     <div className="flex items-center gap-2">
-      <div className="flex-1 h-2 bg-gray-700 rounded-full overflow-hidden">
+      <div className="flex-1 h-1.5 bg-gray-700/60 rounded-full overflow-hidden">
         <div className={`h-full ${color} rounded-full transition-all`} style={{ width: `${pct}%` }} />
       </div>
-      <span className="text-sm font-mono w-8 text-right">{score}</span>
+      <span className="text-xs font-mono w-7 text-right text-gray-300">{score}</span>
     </div>
   )
 }
 
 function CategoryBreakdown({ scores }: { scores: CategoryScores }) {
-  const categories = [
-    { key: 'latency', label: 'Latency', score: scores.latency },
-    { key: 'availability', label: 'Availability', score: scores.availability },
-    { key: 'error', label: 'Error', score: scores.error },
+  const cats = [
+    { key: 'latency', label: 'LAT', score: scores.latency },
+    { key: 'availability', label: 'AVL', score: scores.availability },
+    { key: 'error', label: 'ERR', score: scores.error },
     { key: 'ssl', label: 'SSL', score: scores.ssl },
   ]
   return (
-    <div className="grid grid-cols-4 gap-2">
-      {categories.map(c => (
-        <div key={c.key} className="text-center">
-          <div className="text-xs text-gray-400 mb-1">{c.label}</div>
+    <div className="grid grid-cols-4 gap-3">
+      {cats.map(c => (
+        <div key={c.key}>
+          <div className="text-[10px] text-gray-500 mb-1 font-medium">{c.label}</div>
           <ScoreBar score={c.score} />
         </div>
       ))}
@@ -174,65 +202,85 @@ function CategoryBreakdown({ scores }: { scores: CategoryScores }) {
   )
 }
 
-function AnomalyCard({ anomaly, validationMode }: { anomaly: AnomalyV2; validationMode: boolean }) {
+function FreshnessDot({ lastSeen }: { lastSeen: string }) {
+  const f = freshness(lastSeen)
+  const colors = { live: 'bg-green-400', recent: 'bg-yellow-400', stale: 'bg-gray-500' }
+  const labels = { live: 'Live', recent: 'Recent', stale: 'Stale' }
+  return (
+    <span className="inline-flex items-center gap-1" title={`Last seen: ${new Date(lastSeen).toLocaleString()}`}>
+      <span className={`w-1.5 h-1.5 rounded-full ${colors[f]}`} />
+      <span className="text-[10px] text-gray-500">{labels[f]}</span>
+    </span>
+  )
+}
+
+// ─── Anomaly Card ───
+
+function AnomalyCard({ anomaly, validationMode, isHistory = false }: {
+  anomaly: AnomalyV2; validationMode: boolean; isHistory?: boolean
+}) {
   const [expanded, setExpanded] = useState(false)
   const c = SEVERITY_COLORS[anomaly.severity] || SEVERITY_COLORS.normal
 
   return (
-    <div className={`bg-surface rounded-lg border ${c.border} overflow-hidden`}>
-      {/* Header */}
-      <div
-        className={`p-4 cursor-pointer hover:bg-surface-light/50 transition-colors ${c.bg}`}
+    <div className={`rounded-lg border ${isHistory ? 'border-gray-700/40 opacity-75' : c.border} overflow-hidden bg-surface`}>
+      {/* Compact header */}
+      <button
+        className={`w-full text-left p-3 sm:p-4 hover:bg-surface-light/30 transition-colors focus:outline-none ${!isHistory ? c.bg : ''}`}
         onClick={() => setExpanded(!expanded)}
       >
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <AlertTriangle className={`w-5 h-5 ${c.text}`} />
-            <div>
-              <div className="font-semibold text-white">{anomaly.service_name}</div>
-              <div className="text-xs text-gray-400">
-                {anomaly.service_type} · {anomaly.group_name} · {anomaly.environment}
-              </div>
+        <div className="flex items-center gap-3">
+          {/* Severity color strip (left accent) */}
+          <div className={`w-1 self-stretch rounded-full ${c.text.replace('text-', 'bg-')} opacity-60 shrink-0`} />
+
+          {/* Service info */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="font-semibold text-white text-sm truncate">{anomaly.service_name}</span>
+              {!isHistory && <FreshnessDot lastSeen={anomaly.last_seen_at} />}
+              {isHistory && <span className="text-[10px] text-gray-500 bg-gray-700/50 px-1.5 rounded">resolved</span>}
+            </div>
+            <div className="text-[11px] text-gray-500 mt-0.5 truncate">
+              {[anomaly.group_name, anomaly.environment, anomaly.service_type].filter(Boolean).join(' · ')}
             </div>
           </div>
-          <div className="flex items-center gap-3">
+
+          {/* Score + severity (right side) */}
+          <div className="flex items-center gap-2.5 shrink-0">
             <SeverityBadge severity={anomaly.severity} />
             <div className="text-right">
-              <div className="text-lg font-bold font-mono text-white">{anomaly.anomaly_score}</div>
-              <div className="text-xs text-gray-400">{anomaly.confidence_label} conf</div>
+              <div className="text-lg font-bold font-mono text-white leading-tight">{anomaly.anomaly_score}</div>
+              <div className="text-[10px] text-gray-500">{anomaly.confidence_label}</div>
             </div>
-            {expanded ? <ChevronUp className="w-4 h-4 text-gray-500" /> : <ChevronDown className="w-4 h-4 text-gray-500" />}
+            {expanded
+              ? <ChevronUp className="w-4 h-4 text-gray-600" />
+              : <ChevronDown className="w-4 h-4 text-gray-600" />}
           </div>
         </div>
-
-        {/* Score bar */}
-        <div className="mt-3">
-          <ScoreBar score={anomaly.anomaly_score} />
-        </div>
-      </div>
+      </button>
 
       {/* Expanded details */}
       {expanded && (
-        <div className="p-4 border-t border-gray-700 space-y-4">
+        <div className="px-4 pb-4 pt-2 border-t border-gray-700/40 space-y-3">
           {/* Category breakdown */}
           <div>
-            <div className="text-xs text-gray-400 mb-2 uppercase tracking-wider">Category Breakdown</div>
+            <div className="text-[10px] text-gray-500 mb-1.5 uppercase tracking-wider font-medium">Category Scores</div>
             <CategoryBreakdown scores={anomaly.category_scores} />
           </div>
 
           {/* Evidence */}
           <div>
-            <div className="text-xs text-gray-400 mb-1 uppercase tracking-wider">Evidence</div>
-            <p className="text-sm text-gray-300">{anomaly.evidence_summary}</p>
+            <div className="text-[10px] text-gray-500 mb-1 uppercase tracking-wider font-medium">Evidence</div>
+            <p className="text-xs text-gray-300 leading-relaxed">{anomaly.evidence_summary}</p>
           </div>
 
           {/* Reason codes */}
           {anomaly.reason_codes.length > 0 && (
             <div>
-              <div className="text-xs text-gray-400 mb-1 uppercase tracking-wider">Reason Codes</div>
-              <div className="flex flex-wrap gap-1.5">
+              <div className="text-[10px] text-gray-500 mb-1 uppercase tracking-wider font-medium">Reason Codes</div>
+              <div className="flex flex-wrap gap-1">
                 {anomaly.reason_codes.map((rc, i) => (
-                  <span key={i} className="px-2 py-0.5 bg-surface-light rounded text-xs text-gray-300 font-mono">
+                  <span key={i} className="px-1.5 py-0.5 bg-gray-700/50 rounded text-[11px] text-gray-400 font-mono">
                     {rc.code}
                   </span>
                 ))}
@@ -240,56 +288,57 @@ function AnomalyCard({ anomaly, validationMode }: { anomaly: AnomalyV2; validati
             </div>
           )}
 
-          {/* Metadata */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+          {/* Metadata row */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
             <div>
-              <span className="text-gray-400">Status</span>
-              <div className={anomaly.status === 'active' ? 'text-red-400' : 'text-green-400'}>{anomaly.status}</div>
+              <span className="text-gray-500">Occurrences</span>
+              <div className="text-white font-mono">{anomaly.occurrence_count}</div>
             </div>
             <div>
-              <span className="text-gray-400">Occurrences</span>
-              <div className="text-white">{anomaly.occurrence_count}</div>
+              <span className="text-gray-500">First Seen</span>
+              <div className="text-gray-300">{timeAgo(anomaly.first_seen_at)}</div>
             </div>
             <div>
-              <span className="text-gray-400">First Seen</span>
-              <div className="text-white">{new Date(anomaly.first_seen_at).toLocaleString()}</div>
+              <span className="text-gray-500">Last Seen</span>
+              <div className="text-gray-300">{timeAgo(anomaly.last_seen_at)}</div>
             </div>
             <div>
-              <span className="text-gray-400">Last Seen</span>
-              <div className="text-white">{new Date(anomaly.last_seen_at).toLocaleString()}</div>
+              <span className="text-gray-500">Confidence</span>
+              <div className="text-white font-mono">{(anomaly.confidence * 100).toFixed(0)}%</div>
             </div>
           </div>
 
-          {/* Validation fields */}
+          {/* Validation data (only when validation mode is active) */}
           {validationMode && (
-            <div className="p-3 bg-purple-500/10 border border-purple-500/30 rounded-lg">
-              <div className="text-xs text-purple-400 mb-2 uppercase tracking-wider flex items-center gap-1.5">
-                <Eye className="w-3.5 h-3.5" /> Validation Data
+            <div className="p-2.5 bg-purple-500/5 border border-purple-500/20 rounded">
+              <div className="text-[10px] text-purple-400/80 mb-1.5 uppercase tracking-wider font-medium flex items-center gap-1">
+                <Eye className="w-3 h-3" /> Validation
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-[11px]">
                 <div>
-                  <span className="text-gray-400">Baseline Dev %</span>
+                  <span className="text-gray-500">Baseline Dev</span>
                   <div className="text-white font-mono">
-                    {anomaly.baseline_deviation_pct !== null ? `${anomaly.baseline_deviation_pct.toFixed(1)}%` : 'N/A'}
+                    {anomaly.baseline_deviation_pct !== null ? `${anomaly.baseline_deviation_pct.toFixed(1)}%` : '—'}
                   </div>
                 </div>
                 <div>
-                  <span className="text-gray-400">Triggered Cats</span>
-                  <div className="text-white font-mono">{anomaly.triggered_categories_count ?? 'N/A'}</div>
+                  <span className="text-gray-500">Triggered Cats</span>
+                  <div className="text-white font-mono">{anomaly.triggered_categories_count ?? '—'}</div>
                 </div>
                 <div>
-                  <span className="text-gray-400">Is Anomalous</span>
-                  <div className={anomaly.is_anomalous ? 'text-red-400' : 'text-green-400'}>
-                    {anomaly.is_anomalous !== null ? (anomaly.is_anomalous ? 'YES' : 'NO') : 'N/A'}
+                  <span className="text-gray-500">Anomalous</span>
+                  <div className={anomaly.is_anomalous ? 'text-red-400 font-medium' : 'text-green-400'}>
+                    {anomaly.is_anomalous !== null ? (anomaly.is_anomalous ? 'YES' : 'NO') : '—'}
                   </div>
                 </div>
                 <div>
-                  <span className="text-gray-400">Eval Duration</span>
+                  <span className="text-gray-500">Eval Time</span>
                   <div className="text-white font-mono">{anomaly.evaluation_duration_ms ?? 0}ms</div>
                 </div>
-              </div>
-              <div className="mt-2 text-xs text-gray-500 font-mono">
-                Fingerprint: {anomaly.fingerprint.substring(0, 16)}...
+                <div>
+                  <span className="text-gray-500">Fingerprint</span>
+                  <div className="text-gray-400 font-mono truncate">{anomaly.fingerprint.substring(0, 12)}</div>
+                </div>
               </div>
             </div>
           )}
@@ -298,152 +347,136 @@ function AnomalyCard({ anomaly, validationMode }: { anomaly: AnomalyV2; validati
     </div>
   )
 }
+
+// ─── Validation Summary Panel (collapsible) ───
 
 function ValidationSummaryPanel({ data }: { data: ValidationSummary }) {
+  const [open, setOpen] = useState(false)
   return (
-    <div className="bg-surface rounded-lg border border-gray-700 p-5">
-      <div className="flex items-center gap-2 mb-4">
-        <BarChart3 className="w-5 h-5 text-primary" />
-        <h3 className="text-lg font-semibold text-white">Validation Summary</h3>
-      </div>
+    <div className="bg-surface rounded-lg border border-purple-500/20">
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-center justify-between p-4 text-left hover:bg-surface-light/20 transition-colors"
+      >
+        <div className="flex items-center gap-2">
+          <BarChart3 className="w-4 h-4 text-purple-400" />
+          <span className="text-sm font-medium text-purple-300">Validation Summary</span>
+          <span className="text-[10px] text-gray-500 ml-1">
+            {data.total_evaluated} evaluated · {data.total_anomalous} anomalous
+          </span>
+        </div>
+        {open ? <ChevronUp className="w-4 h-4 text-gray-500" /> : <ChevronDown className="w-4 h-4 text-gray-500" />}
+      </button>
+      {open && (
+        <div className="px-4 pb-4 space-y-3">
+          <div className="grid grid-cols-3 sm:grid-cols-5 gap-3 text-center text-xs">
+            <div><div className="text-lg font-bold text-white">{data.total_evaluated}</div><div className="text-gray-500">Evaluated</div></div>
+            <div><div className="text-lg font-bold text-yellow-400">{data.total_active}</div><div className="text-gray-500">Active</div></div>
+            <div><div className="text-lg font-bold text-red-400">{data.total_anomalous}</div><div className="text-gray-500">Anomalous</div></div>
+            <div><div className="text-lg font-bold text-primary">{data.avg_score.toFixed(1)}</div><div className="text-gray-500">Avg Score</div></div>
+            <div><div className="text-lg font-bold text-orange-400">{data.max_score}</div><div className="text-gray-500">Max Score</div></div>
+          </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-4">
-        <div className="text-center">
-          <div className="text-2xl font-bold text-white">{data.total_evaluated}</div>
-          <div className="text-xs text-gray-400">Evaluated</div>
-        </div>
-        <div className="text-center">
-          <div className="text-2xl font-bold text-yellow-400">{data.total_active}</div>
-          <div className="text-xs text-gray-400">Active</div>
-        </div>
-        <div className="text-center">
-          <div className="text-2xl font-bold text-red-400">{data.total_anomalous}</div>
-          <div className="text-xs text-gray-400">Anomalous</div>
-        </div>
-        <div className="text-center">
-          <div className="text-2xl font-bold text-primary">{data.avg_score.toFixed(1)}</div>
-          <div className="text-xs text-gray-400">Avg Score</div>
-        </div>
-        <div className="text-center">
-          <div className="text-2xl font-bold text-orange-400">{data.max_score}</div>
-          <div className="text-xs text-gray-400">Max Score</div>
-        </div>
-      </div>
+          {data.score_histogram.length > 0 && (
+            <div>
+              <div className="text-[10px] text-gray-500 mb-1.5 uppercase tracking-wider">Score Distribution</div>
+              <div className="flex items-end gap-1 h-12">
+                {data.score_histogram.map(b => {
+                  const maxC = Math.max(...data.score_histogram.map(x => x.count), 1)
+                  const h = Math.max((b.count / maxC) * 100, 4)
+                  return (
+                    <div key={b.range} className="flex-1 flex flex-col items-center">
+                      <div className="w-full bg-purple-500/40 rounded-t" style={{ height: `${h}%` }} title={`${b.range}: ${b.count}`} />
+                      <div className="text-[9px] text-gray-600 mt-0.5">{b.range}</div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
 
-      {/* Score histogram */}
-      {data.score_histogram.length > 0 && (
-        <div>
-          <div className="text-xs text-gray-400 mb-2 uppercase tracking-wider">Score Distribution</div>
-          <div className="flex items-end gap-1 h-16">
-            {data.score_histogram.map(b => {
-              const maxCount = Math.max(...data.score_histogram.map(x => x.count), 1)
-              const height = Math.max((b.count / maxCount) * 100, 4)
-              return (
-                <div key={b.range} className="flex-1 flex flex-col items-center">
-                  <div
-                    className="w-full bg-primary/60 rounded-t"
-                    style={{ height: `${height}%` }}
-                    title={`${b.range}: ${b.count}`}
-                  />
-                  <div className="text-[10px] text-gray-500 mt-1">{b.range}</div>
-                </div>
-              )
-            })}
+          <div className="grid grid-cols-3 gap-3 text-[11px] text-gray-500">
+            <div>Avg Confidence: <span className="text-gray-300">{(data.avg_confidence * 100).toFixed(0)}%</span></div>
+            <div>Avg Baseline Dev: <span className="text-gray-300">{data.avg_baseline_deviation_pct.toFixed(1)}%</span></div>
+            <div>Avg Eval Time: <span className="text-gray-300">{data.avg_evaluation_duration_ms.toFixed(0)}ms</span></div>
           </div>
         </div>
       )}
-
-      <div className="mt-4 grid grid-cols-3 gap-4 text-xs text-gray-400">
-        <div>Avg Confidence: <span className="text-white">{(data.avg_confidence * 100).toFixed(0)}%</span></div>
-        <div>Avg Baseline Dev: <span className="text-white">{data.avg_baseline_deviation_pct.toFixed(1)}%</span></div>
-        <div>Avg Eval Duration: <span className="text-white">{data.avg_evaluation_duration_ms.toFixed(0)}ms</span></div>
-      </div>
     </div>
   )
 }
+
+// ─── Compare Panel (collapsible) ───
 
 function ComparePanel({ data }: { data: CompareResponse }) {
+  const [open, setOpen] = useState(false)
   return (
-    <div className="bg-surface rounded-lg border border-gray-700 p-5">
-      <div className="flex items-center gap-2 mb-4">
-        <ArrowUpDown className="w-5 h-5 text-purple-400" />
-        <h3 className="text-lg font-semibold text-white">V1 ↔ V2 Comparison</h3>
-      </div>
-
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4 text-center">
-        <div>
-          <div className="text-xl font-bold text-primary">{data.rust_v2_count}</div>
-          <div className="text-xs text-gray-400">Rust V2 Active</div>
+    <div className="bg-surface rounded-lg border border-purple-500/20">
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-center justify-between p-4 text-left hover:bg-surface-light/20 transition-colors"
+      >
+        <div className="flex items-center gap-2">
+          <ArrowUpDown className="w-4 h-4 text-purple-400" />
+          <span className="text-sm font-medium text-purple-300">V1 ↔ V2 Comparison</span>
+          <span className="text-[10px] text-gray-500 ml-1">
+            {data.matched_services.length} matched · {data.rust_only.length + data.python_only.length} unmatched
+          </span>
         </div>
-        <div>
-          <div className="text-xl font-bold text-yellow-400">{data.python_v1_count}</div>
-          <div className="text-xs text-gray-400">Python V1 Active</div>
-        </div>
-        <div>
-          <div className="text-xl font-bold text-green-400">{data.matched_services.length}</div>
-          <div className="text-xs text-gray-400">Matched</div>
-        </div>
-        <div>
-          <div className="text-xl font-bold text-gray-400">
-            {data.rust_only.length + data.python_only.length}
+        {open ? <ChevronUp className="w-4 h-4 text-gray-500" /> : <ChevronDown className="w-4 h-4 text-gray-500" />}
+      </button>
+      {open && (
+        <div className="px-4 pb-4 space-y-3">
+          <div className="grid grid-cols-4 gap-3 text-center text-xs">
+            <div><div className="text-lg font-bold text-primary">{data.rust_v2_count}</div><div className="text-gray-500">V2 Active</div></div>
+            <div><div className="text-lg font-bold text-yellow-400">{data.python_v1_count}</div><div className="text-gray-500">V1 Active</div></div>
+            <div><div className="text-lg font-bold text-green-400">{data.matched_services.length}</div><div className="text-gray-500">Matched</div></div>
+            <div><div className="text-lg font-bold text-gray-400">{data.rust_only.length + data.python_only.length}</div><div className="text-gray-500">Unmatched</div></div>
           </div>
-          <div className="text-xs text-gray-400">Unmatched</div>
-        </div>
-      </div>
 
-      {/* Matched services table */}
-      {data.matched_services.length > 0 && (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-xs text-gray-400 uppercase border-b border-gray-700">
-                <th className="text-left py-2 pr-3">Service</th>
-                <th className="text-right py-2 px-2">V2 Score</th>
-                <th className="text-right py-2 px-2">V1 Score</th>
-                <th className="text-center py-2 px-2">Agreement</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.matched_services.map(s => (
-                <tr key={s.service_name} className="border-b border-gray-800">
-                  <td className="py-2 pr-3 text-white">{s.service_name}</td>
-                  <td className="py-2 px-2 text-right font-mono">
-                    {s.rust_score}
-                    <SeverityBadge severity={s.rust_severity} />
-                  </td>
-                  <td className="py-2 px-2 text-right font-mono">
-                    {s.python_anomaly_score.toFixed(2)}
-                    <SeverityBadge severity={s.python_severity} />
-                  </td>
-                  <td className="py-2 px-2 text-center">
-                    <span className={`px-2 py-0.5 rounded text-xs ${
-                      s.agreement === 'both_flagged' ? 'bg-red-500/20 text-red-400' :
-                      s.agreement === 'both_normal' ? 'bg-green-500/20 text-green-400' :
-                      'bg-yellow-500/20 text-yellow-400'
-                    }`}>
-                      {s.agreement.replace('_', ' ')}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {/* Unmatched */}
-      {(data.rust_only.length > 0 || data.python_only.length > 0) && (
-        <div className="mt-3 grid grid-cols-2 gap-4 text-xs">
-          {data.rust_only.length > 0 && (
-            <div>
-              <span className="text-gray-400">V2 only: </span>
-              <span className="text-primary">{data.rust_only.join(', ')}</span>
+          {data.matched_services.length > 0 && (
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="text-[10px] text-gray-500 uppercase border-b border-gray-700/50">
+                    <th className="text-left py-1.5 pr-2">Service</th>
+                    <th className="text-right py-1.5 px-2">V2</th>
+                    <th className="text-right py-1.5 px-2">V1</th>
+                    <th className="text-center py-1.5 pl-2">Agreement</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.matched_services.map(s => (
+                    <tr key={s.service_name} className="border-b border-gray-800/40">
+                      <td className="py-1.5 pr-2 text-gray-300">{s.service_name}</td>
+                      <td className="py-1.5 px-2 text-right font-mono text-white">
+                        {s.rust_score} <SeverityBadge severity={s.rust_severity} size="xs" />
+                      </td>
+                      <td className="py-1.5 px-2 text-right font-mono text-gray-300">
+                        {s.python_anomaly_score.toFixed(1)} <SeverityBadge severity={s.python_severity} size="xs" />
+                      </td>
+                      <td className="py-1.5 pl-2 text-center">
+                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                          s.agreement === 'both_flagged' ? 'bg-red-500/15 text-red-400' :
+                          s.agreement === 'both_normal' ? 'bg-green-500/15 text-green-400' :
+                          'bg-yellow-500/15 text-yellow-400'
+                        }`}>{s.agreement.replace('_', ' ')}</span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
-          {data.python_only.length > 0 && (
-            <div>
-              <span className="text-gray-400">V1 only: </span>
-              <span className="text-yellow-400">{data.python_only.join(', ')}</span>
+
+          {(data.rust_only.length > 0 || data.python_only.length > 0) && (
+            <div className="grid grid-cols-2 gap-3 text-[11px]">
+              {data.rust_only.length > 0 && (
+                <div><span className="text-gray-500">V2 only: </span><span className="text-primary">{data.rust_only.join(', ')}</span></div>
+              )}
+              {data.python_only.length > 0 && (
+                <div><span className="text-gray-500">V1 only: </span><span className="text-yellow-400">{data.python_only.join(', ')}</span></div>
+              )}
             </div>
           )}
         </div>
@@ -452,57 +485,83 @@ function ComparePanel({ data }: { data: CompareResponse }) {
   )
 }
 
-// ─── Filters ───
+// ─── Filter types ───
 
 type FilterSeverity = 'all' | 'normal' | 'watch' | 'degraded' | 'critical' | 'emergency'
-type FilterStatus = 'all' | 'active' | 'resolved'
 type SortBy = 'score' | 'service' | 'severity' | 'last_seen'
+type ViewTab = 'active' | 'history'
 
 // ─── Page ───
 
 export function AiAnomaliesV2Page() {
-  const [validationMode, setValidationMode] = useState(true)
+  const [validationMode, setValidationMode] = useState(false)
   const [filterSeverity, setFilterSeverity] = useState<FilterSeverity>('all')
-  const [filterStatus, setFilterStatus] = useState<FilterStatus>('all')
   const [sortBy, setSortBy] = useState<SortBy>('score')
   const [sortDesc, setSortDesc] = useState(true)
+  const [tab, setTab] = useState<ViewTab>('active')
 
-  const { data: anomalyData, isLoading: loadingAnomalies, error: anomalyError } =
-    useV2Fetch<AnomalyListResponse>('v2-anomalies', `${V2_BASE}?limit=200`)
+  // --- Data fetching ---
+  const { data: activeData, isLoading: loadingActive, error: activeError } =
+    useV2Fetch<AnomalyListResponse>('v2-active', `${V2_BASE}/active?limit=${PAGE_LIMIT}`)
 
-  const { data: validationData, isLoading: loadingValidation } =
-    useV2Fetch<ValidationSummary>('v2-validation-summary', `${V2_BASE}/validation-summary`)
+  const { data: historyData, isLoading: loadingHistory } =
+    useV2Fetch<AnomalyListResponse>('v2-resolved', `${V2_BASE}/resolved?limit=${PAGE_LIMIT}`)
 
-  const { data: compareData, isLoading: loadingCompare } =
-    useV2Fetch<CompareResponse>('v2-compare-python', `${V2_BASE}/compare-python`)
+  const { data: validationData } =
+    useV2Fetch<ValidationSummary>('v2-validation-summary', `${V2_BASE}/validation-summary`, validationMode)
 
-  // Filtered + sorted anomalies
-  const filteredAnomalies = useMemo(() => {
-    if (!anomalyData?.anomalies) return []
-    let list = [...anomalyData.anomalies]
+  const { data: compareData } =
+    useV2Fetch<CompareResponse>('v2-compare-python', `${V2_BASE}/compare-python`, validationMode)
 
+  // --- Derived: which list to show ---
+  const sourceList = tab === 'active' ? activeData?.anomalies : historyData?.anomalies
+
+  // --- Client-side summary from displayed data (Task 3) ---
+  const displaySummary = useMemo(() => {
+    const list = activeData?.anomalies ?? []
+    const counts: Record<string, number> = { normal: 0, watch: 0, degraded: 0, critical: 0, emergency: 0 }
+    let maxScore = 0
+    for (const a of list) {
+      const sev = a.severity in counts ? a.severity : 'normal'
+      counts[sev]++
+      if (a.anomaly_score > maxScore) maxScore = a.anomaly_score
+    }
+    return { total: list.length, counts, maxScore }
+  }, [activeData])
+
+  // --- Filter + sort ---
+  const displayedAnomalies = useMemo(() => {
+    if (!sourceList) return []
+    let list = [...sourceList]
+
+    // Severity filter
     if (filterSeverity !== 'all') {
       list = list.filter(a => a.severity === filterSeverity)
     }
-    if (filterStatus !== 'all') {
-      list = list.filter(a => a.status === filterStatus)
-    }
 
+    // Sort
     list.sort((a, b) => {
       let cmp = 0
       switch (sortBy) {
         case 'score': cmp = a.anomaly_score - b.anomaly_score; break
         case 'service': cmp = a.service_name.localeCompare(b.service_name); break
-        case 'severity': cmp = a.anomaly_score - b.anomaly_score; break
+        case 'severity': cmp = (SEVERITY_ORDER[a.severity] ?? 0) - (SEVERITY_ORDER[b.severity] ?? 0); break
         case 'last_seen': cmp = new Date(a.last_seen_at).getTime() - new Date(b.last_seen_at).getTime(); break
       }
       return sortDesc ? -cmp : cmp
     })
 
-    return list
-  }, [anomalyData, filterSeverity, filterStatus, sortBy, sortDesc])
+    return list.slice(0, PAGE_LIMIT)
+  }, [sourceList, filterSeverity, sortBy, sortDesc])
 
-  if (loadingAnomalies && !anomalyData) {
+  // --- Handlers ---
+  const toggleSort = useCallback(() => setSortDesc(d => !d), [])
+
+  // --- Loading / error states ---
+  const isLoading = tab === 'active' ? loadingActive : loadingHistory
+  const error = tab === 'active' ? activeError : null
+
+  if (isLoading && !sourceList) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
@@ -510,150 +569,169 @@ export function AiAnomaliesV2Page() {
     )
   }
 
-  if (anomalyError) {
+  if (error) {
     return (
       <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-6 text-center">
         <AlertTriangle className="w-8 h-8 text-red-400 mx-auto mb-2" />
-        <p className="text-red-400">Failed to load anomalies from V2 engine</p>
-        <p className="text-xs text-gray-400 mt-1">{String(anomalyError)}</p>
+        <p className="text-red-400 text-sm">Failed to load anomalies</p>
+        <p className="text-[11px] text-gray-500 mt-1">{String(error)}</p>
       </div>
     )
   }
 
-  const summary = anomalyData?.summary
+  const activeCount = activeData?.count ?? 0
+  const historyCount = historyData?.count ?? 0
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+    <div className="space-y-5">
+
+      {/* ── Header ── */}
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-            <Brain className="w-7 h-7 text-primary" />
-            AI Anomalies V2
+          <h1 className="text-xl font-bold text-white flex items-center gap-2">
+            <Brain className="w-5 h-5 text-primary" />
+            Anomaly Detection
           </h1>
-          <p className="text-sm text-gray-400 mt-1">
-            Rust-native multi-signal scoring engine · Validation mode
+          <p className="text-[11px] text-gray-500 mt-0.5">
+            Rust multi-signal engine · {PAGE_LIMIT} max · 30s refresh
           </p>
         </div>
-
-        {/* Validation mode toggle */}
         <button
-          onClick={() => setValidationMode(!validationMode)}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${
+          onClick={() => setValidationMode(v => !v)}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md border text-xs font-medium transition-colors ${
             validationMode
-              ? 'bg-purple-500/20 border-purple-500/40 text-purple-300'
-              : 'bg-surface border-gray-600 text-gray-400 hover:text-white'
+              ? 'bg-purple-500/15 border-purple-500/30 text-purple-400'
+              : 'bg-transparent border-gray-700 text-gray-500 hover:text-gray-300'
           }`}
+          title="Toggle validation overlay"
         >
-          {validationMode ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
-          Validation Mode {validationMode ? 'ON' : 'OFF'}
+          {validationMode ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+          {validationMode ? 'Validation ON' : 'Validation'}
         </button>
       </div>
 
-      {/* Summary cards */}
-      {summary && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <StatCard label="Total Active" value={summary.total_active} icon={Zap} color="text-red-400" />
-          <StatCard label="Max Score" value={summary.max_score} icon={TrendingUp} color="text-orange-400" />
-          <StatCard label="Services" value={anomalyData?.count ?? 0} icon={Shield} color="text-primary" />
-          <StatCard label="Refresh" value="30s" icon={Clock} color="text-gray-400" />
-        </div>
-      )}
+      {/* ── Summary cards (always from active data) ── */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <StatCard
+          label="Active"
+          value={displaySummary.total}
+          sub={displaySummary.total === 0 ? 'All clear' : undefined}
+          icon={Zap}
+          color={displaySummary.total > 0 ? 'text-red-400' : 'text-green-400'}
+        />
+        <StatCard
+          label="Max Score"
+          value={displaySummary.maxScore}
+          icon={TrendingUp}
+          color={displaySummary.maxScore > 60 ? 'text-red-400' : displaySummary.maxScore > 15 ? 'text-orange-400' : 'text-green-400'}
+        />
+        <StatCard
+          label="Critical+"
+          value={(displaySummary.counts.critical ?? 0) + (displaySummary.counts.emergency ?? 0)}
+          sub={`${displaySummary.counts.degraded ?? 0} degraded, ${displaySummary.counts.watch ?? 0} watch`}
+          icon={AlertTriangle}
+          color="text-red-400"
+        />
+        <StatCard label="History" value={historyCount} sub="Recently resolved" icon={History} color="text-gray-400" />
+      </div>
 
-      {/* Validation panels */}
+      {/* ── Validation panels (only when enabled, collapsible) ── */}
       {validationMode && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="space-y-2">
           {validationData && <ValidationSummaryPanel data={validationData} />}
-          {loadingValidation && (
-            <div className="bg-surface rounded-lg border border-gray-700 p-5 flex items-center justify-center">
-              <div className="animate-pulse text-gray-400 text-sm">Loading validation data...</div>
-            </div>
-          )}
           {compareData && <ComparePanel data={compareData} />}
-          {loadingCompare && (
-            <div className="bg-surface rounded-lg border border-gray-700 p-5 flex items-center justify-center">
-              <div className="animate-pulse text-gray-400 text-sm">Loading comparison data...</div>
-            </div>
-          )}
         </div>
       )}
 
-      {/* Filters */}
-      <div className="flex flex-wrap gap-3 items-center">
-        {/* Severity filter */}
-        <div className="flex items-center gap-1.5">
-          <span className="text-xs text-gray-400">Severity:</span>
-          {(['all', 'normal', 'watch', 'degraded', 'critical', 'emergency'] as FilterSeverity[]).map(s => (
+      {/* ── Tab bar ── */}
+      <div className="flex items-center gap-4 border-b border-gray-700/50">
+        <button
+          onClick={() => setTab('active')}
+          className={`pb-2 text-sm font-medium border-b-2 transition-colors flex items-center gap-1.5 ${
+            tab === 'active'
+              ? 'border-primary text-primary'
+              : 'border-transparent text-gray-500 hover:text-gray-300'
+          }`}
+        >
+          <Radio className="w-3.5 h-3.5" />
+          Active
+          {activeCount > 0 && (
+            <span className="ml-1 px-1.5 py-0 text-[10px] rounded-full bg-red-500/20 text-red-400 font-bold">{activeCount}</span>
+          )}
+        </button>
+        <button
+          onClick={() => setTab('history')}
+          className={`pb-2 text-sm font-medium border-b-2 transition-colors flex items-center gap-1.5 ${
+            tab === 'history'
+              ? 'border-primary text-primary'
+              : 'border-transparent text-gray-500 hover:text-gray-300'
+          }`}
+        >
+          <History className="w-3.5 h-3.5" />
+          History
+          {historyCount > 0 && (
+            <span className="ml-1 px-1.5 py-0 text-[10px] rounded-full bg-gray-600 text-gray-300 font-medium">{historyCount}</span>
+          )}
+        </button>
+      </div>
+
+      {/* ── Filters + sort (below tab bar) ── */}
+      <div className="flex flex-wrap gap-2 items-center">
+        <span className="text-[11px] text-gray-500 font-medium">Severity:</span>
+        {(['all', 'normal', 'watch', 'degraded', 'critical', 'emergency'] as FilterSeverity[]).map(s => {
+          const isActive = filterSeverity === s
+          return (
             <button
               key={s}
               onClick={() => setFilterSeverity(s)}
-              className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${
-                filterSeverity === s
-                  ? 'bg-primary/20 text-primary border border-primary/40'
-                  : 'bg-surface text-gray-400 hover:text-white border border-gray-700'
+              className={`px-2 py-0.5 rounded text-[11px] font-medium transition-colors ${
+                isActive
+                  ? 'bg-primary/15 text-primary border border-primary/30'
+                  : 'text-gray-500 hover:text-gray-300 border border-transparent'
               }`}
             >
               {s}
             </button>
-          ))}
-        </div>
+          )
+        })}
 
-        {/* Status filter */}
-        <div className="flex items-center gap-1.5">
-          <span className="text-xs text-gray-400">Status:</span>
-          {(['all', 'active', 'resolved'] as FilterStatus[]).map(s => (
-            <button
-              key={s}
-              onClick={() => setFilterStatus(s)}
-              className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${
-                filterStatus === s
-                  ? 'bg-primary/20 text-primary border border-primary/40'
-                  : 'bg-surface text-gray-400 hover:text-white border border-gray-700'
-              }`}
-            >
-              {s}
-            </button>
-          ))}
-        </div>
-
-        {/* Sort */}
         <div className="flex items-center gap-1.5 ml-auto">
-          <span className="text-xs text-gray-400">Sort:</span>
+          <span className="text-[11px] text-gray-500">Sort:</span>
           <select
             value={sortBy}
             onChange={e => setSortBy(e.target.value as SortBy)}
-            className="bg-surface border border-gray-700 rounded px-2 py-1 text-xs text-white"
+            className="bg-surface border border-gray-700 rounded px-2 py-0.5 text-[11px] text-gray-300 focus:outline-none"
           >
             <option value="score">Score</option>
+            <option value="severity">Severity</option>
             <option value="service">Service</option>
             <option value="last_seen">Last Seen</option>
           </select>
-          <button
-            onClick={() => setSortDesc(!sortDesc)}
-            className="p-1 rounded hover:bg-surface-light text-gray-400 hover:text-white"
-          >
-            <ArrowUpDown className="w-4 h-4" />
+          <button onClick={toggleSort} className="p-0.5 rounded hover:bg-surface-light text-gray-500 hover:text-white" title="Toggle order">
+            <ArrowUpDown className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>
 
-      {/* Anomaly list */}
-      <div className="space-y-3">
-        {filteredAnomalies.length === 0 ? (
-          <div className="bg-surface rounded-lg border border-gray-700 p-8 text-center">
-            <Activity className="w-10 h-10 text-gray-600 mx-auto mb-3" />
-            <p className="text-gray-400">No anomalies match current filters</p>
+      {/* ── Anomaly list ── */}
+      <div className="space-y-2">
+        {displayedAnomalies.length === 0 ? (
+          <div className="bg-surface rounded-lg border border-gray-700/40 p-10 text-center">
+            <Activity className="w-8 h-8 text-gray-700 mx-auto mb-2" />
+            <p className="text-gray-500 text-sm">
+              {tab === 'active' ? 'No active anomalies — all services healthy' : 'No resolved anomalies in history'}
+            </p>
           </div>
         ) : (
-          filteredAnomalies.map(a => (
-            <AnomalyCard key={a.id} anomaly={a} validationMode={validationMode} />
+          displayedAnomalies.map(a => (
+            <AnomalyCard key={a.id} anomaly={a} validationMode={validationMode} isHistory={tab === 'history'} />
           ))
         )}
       </div>
 
-      {/* Footer */}
-      <div className="text-center text-xs text-gray-500">
-        Rust Anomaly Engine V2 · Polling every 30s · {anomalyData?.count ?? 0} results
+      {/* ── Footer ── */}
+      <div className="text-center text-[11px] text-gray-600 pb-2">
+        Showing {displayedAnomalies.length} of {(tab === 'active' ? activeCount : historyCount)} · Polling 30s
       </div>
     </div>
   )
