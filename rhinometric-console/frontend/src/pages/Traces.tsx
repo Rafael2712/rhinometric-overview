@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Search, Filter, Clock, ArrowUpDown, Network, XCircle, Download, Inbox } from 'lucide-react'
 import { useAuthStore } from '../lib/auth/store'
@@ -16,10 +16,15 @@ const CLS_BADGE: Record<TraceClassificationType, { bg: string; text: string; lab
 
 export function TracesPage() {
   const navigate = useNavigate()
+  const location = useLocation()
   const token = useAuthStore((state) => state.token)
 
+  // Read navigation state from Service Map (node click / edge click)
+  const navState = (location.state || {}) as Record<string, string | undefined>
+  const prefillSvc = navState.prefillService || navState.sourceService || ''
+
   const [searchQuery, setSearchQuery] = useState('')
-  const [serviceFilter, setServiceFilter] = useState('all')
+  const [serviceFilter, setServiceFilter] = useState(prefillSvc || 'all')
   const [minDuration, setMinDuration] = useState('')
   const [timeRange, setTimeRange] = useState('1h')
   const [sortBy, setSortBy] = useState<SortKey>('recent')
