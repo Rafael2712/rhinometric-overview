@@ -1,4 +1,4 @@
-﻿import re
+import re
 from fastapi import APIRouter, Depends, HTTPException, Query
 from typing import Optional
 import httpx
@@ -78,19 +78,31 @@ async def get_traces(
     lookback: str = Query("1h", description="Time range to look back"),
     service: Optional[str] = Query(None, description="Filter by service name"),
     minDuration: Optional[str] = Query(None, description="Minimum duration filter"),
+    start: Optional[int] = Query(None, description="Absolute start time in microseconds"),
+    end: Optional[int] = Query(None, description="Absolute end time in microseconds"),
     current_user: UserModel = Depends(get_current_user),
 ):
     """
     Proxy traces from Jaeger, excluding internal platform services.
+
+    Supports two time modes:
+      1. Relative: ?lookback=1h  (default)
+      2. Absolute: ?start=<µs>&end=<µs>  (overrides lookback when both provided)
     """
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
-            lookback_delta = parse_lookback(lookback)
-            end_time = datetime.now()
-            start_time = end_time - lookback_delta
-
-            start_us = int(start_time.timestamp() * 1_000_000)
-            end_us = int(end_time.timestamp() * 1_000_000)
+            # --- Determine time window ---
+            if start is not None and end is not None:
+                # Absolute timestamps provided by frontend
+                start_us = start
+                end_us = end
+            else:
+                # Relative lookback (existing behaviour)
+                lookback_delta = parse_lookback(lookback)
+                end_time = datetime.now()
+                start_time = end_time - lookback_delta
+                start_us = int(start_time.timestamp() * 1_000_000)
+                end_us = int(end_time.timestamp() * 1_000_000)
 
             params: dict = {
                 "start": start_us,

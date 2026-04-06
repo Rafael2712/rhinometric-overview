@@ -6,7 +6,7 @@ import { Search, Filter, Clock, ArrowUpDown, Network, XCircle, Download, Inbox }
 import { useAuthStore } from '../lib/auth/store'
 import { summarizeTrace, formatDuration } from '../utils/traceAnalysis'
 import type { JaegerTrace, TraceClassificationType } from '../utils/traceAnalysis'
-import { useTimeRangeStore, TIME_RANGE_OPTIONS } from '../hooks/useTracesData'
+import { useTimeRangeStore, TIME_RANGE_OPTIONS, resolveTimeParams, rangeLabel } from '../hooks/useTracesData'
 
 type SortKey = 'recent' | 'duration' | 'errors' | 'spans'
 
@@ -48,9 +48,6 @@ export function TracesPage() {
   })
 
   // ── Smart queryKey: matches shared cache when no filters active ─
-  //    When serviceFilter='all' and minDuration='', the queryKey is
-  //    ['traces-shared', timeRange] — SAME as TraceAnalytics & ServiceMap.
-  //    React Query serves from cache → zero extra fetches on navigation.
   const hasActiveFilters = serviceFilter !== 'all' || !!minDuration
   const queryKey = hasActiveFilters
     ? ['traces-filtered', timeRange, serviceFilter, minDuration]
@@ -60,7 +57,7 @@ export function TracesPage() {
     queryKey,
     queryFn: async () => {
       if (!token) throw new Error('No token available')
-      const params = new URLSearchParams({ limit: '100', lookback: timeRange })
+      const params = resolveTimeParams(timeRange)
       if (serviceFilter !== 'all') params.append('service', serviceFilter)
       if (minDuration) params.append('minDuration', `${minDuration}ms`)
       const response = await fetch(`/api/traces?${params}`, {
@@ -77,7 +74,7 @@ export function TracesPage() {
   const traces: JaegerTrace[] = tracesData?.traces || []
   const services = ['all', ...(servicesData?.services || [])]
 
-  // ── MEMOIZED derivations — no recalculation on unrelated renders ─
+  // ── MEMOIZED derivations ─────────────────────────────────────
   const traceSummaries = useMemo(
     () => traces.map(trace => ({ trace, summary: summarizeTrace(trace) })),
     [traces],
@@ -113,7 +110,7 @@ export function TracesPage() {
     return 'bg-green-500'
   }
 
-  const currentRangeLabel = TIME_RANGE_OPTIONS.find(o => o.value === timeRange)?.label || timeRange
+  const currentRangeLabel = rangeLabel(timeRange)
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -258,8 +255,10 @@ export function TracesPage() {
           <div className="text-center py-16 px-4">
             <Inbox className="text-gray-500 mx-auto mb-4" size={56} />
             <p className="text-white text-lg font-semibold">No traces found</p>
-            <p className="text-gray-400 mt-2 text-sm">No distributed traces available in the selected time range.</p>
-            <p className="text-gray-500 mt-1 text-xs">Try expanding the time range or check that trace ingestion is active.</p>
+            <p className="text-gray-400 mt-2 text-sm">No traces available for {currentRangeLabel}.</p>
+            <p className="text-gray-500 mt-1 text-xs">
+              Trace retention is approximately 48 hours. Try a more recent time range.
+            </p>
           </div>
         ) : (
           <div className="space-y-2">
