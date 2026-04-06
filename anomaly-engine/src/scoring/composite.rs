@@ -1,0 +1,158 @@
+use crate::models::reason_code::ReasonCode;
+use crate::models::snapshot::ServiceSignalSnapshot;
+use crate::scoring::{availability, error, latency, ssl};
+
+/// Category weights — must sum to 1.0
+const W_LATENCY: f64 = 0.30;
+const W_AVAILABILITY: f64 = 0.30;
+const W_ERROR: f64 = 0.25;
+const W_SSL: f64 = 0.15;
+
+/// Result of composite scoring.
+pub struct CompositeResult {
+    pub score: f64,
+    pub latency_score: f64,
+    pub availability_score: f64,
+    pub error_score: f64,
+    pub ssl_score: f64,
+    pub reason_codes: Vec<ReasonCode>,
+}
+
+/// Compute the composite anomaly score from all category scorers.
+///
+/// Formula:
+///   weighted_sum = L*0.30 + A*0.30 + E*0.25 + S*0.15
+///   + correlation_bonus(0–10)
+///
+/// Correlation bonus: when 2+ non-SSL categories fire (score > 15),
+/// add 5–10 points because multi-category degradation is more
+/// significant than single-category.
+pub fn score(snap: &ServiceSignalSnapshot) -> CompositeResult {
+    let (lat_score, mut lat_reasons) = latency::score(snap);
+    let (avail_score, mut avail_reasons) = availability::score(snap);
+    let (err_score, mut err_reasons) = error::score(snap);
+    let (ssl_score, mut ssl_reasons) = ssl::score(snap);
+
+    let weighted = lat_score * W_LATENCY
+        + avail_score * W_AVAILABILITY
+        + err_score * W_ERROR
+        + ssl_score * W_SSL;
+
+    let correlation_bonus = compute_correlation_bonus(lat_score, avail_score, err_score);
+
+    let final_score = (weighted + correlation_bonus).min(100.0);
+
+    let mut all_reasons = Vec::new();
+    all_reasons.append(&mut lat_reasons);
+    all_reasons.append(&mut avail_reasons);
+    all_reasons.append(&mut err_reasons);
+    all_reasons.append(&mut ssl_reasons);
+
+    // Sort by severity weight descending
+    all_reasons.sort_by(|a, b| {
+        b.severity_weight()
+            .partial_cmp(&a.severity_weight())
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
+
+    CompositeResult {
+        score: round2(final_score),
+        latency_score: round2(lat_score),
+        availability_score: round2(avail_score),
+        error_score: round2(err_score),
+        ssl_score: round2(ssl_score),
+        reason_codes: all_reasons,
+    }
+}
+
+/// Correlation bonus: multi-category degradation amplifier.
+/// Only considers operational categories (not SSL risk signal).
+fn compute_correlation_bonus(lat: f64, avail: f64, err: f64) -> f64 {
+    let firing_count = [lat, avail, err]
+        .iter()
+        .filter(|&&v| v > 15.0)
+        .count();
+
+    match firing_count {
+        3 => 10.0,
+        2 => 5.0,
+        _ => 0.0,
+    }
+}
+
+fn round2(v: f64) -> f64 {
+    (v * 100.0).round() / 100.0
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::models::snapshot::ServiceSignalSnapshot;
+
+    fn base_snap() -> ServiceSignalSnapshot {
+        ServiceSignalSnapshot {
+            service_name: "test".into(),
+            service_id: 1,
+            service_type: "http".into(),
+            group_name: "Default".into(),
+            environment: "test".into(),
+            timestamp_ms: 0,
+            check_interval_seconds: 60,
+            latency_current_ms: 100.0,
+            latency_baseline_ms: 100.0,
+            latency_p95_ms: 200.0,
+            is_up: true,
+            health_score: 97.0,
+            consecutive_failures: 0,
+            incidents_24h: 0,
+            error_rate_1h: 0.0,
+            log_error_count_1h: 0,
+            log_warn_count_1h: 0,
+            ssl_expiry_days: 365.0,
+            baseline_age_hours: 24.0,
+            checks_in_last_1h: 60,
+            signals_available: vec![],
+        }
+    }
+
+    #[test]
+    fn test_healthy_composite() {
+        let snap = base_snap();
+        let r = score(&snap);
+        assert_eq!(r.score, 0.0);
+        assert!(r.reason_codes.is_empty());
+    }
+
+    #[test]
+    fn test_latency_only() {
+        let mut snap = base_snap();
+        snap.latency_current_ms = 500.0; // 400% deviation
+        let r = score(&snap);
+        assert!(r.score > 0.0, "Latency issue should produce non-zero composite");
+        assert!(r.latency_score > 0.0);
+        assert_eq!(r.availability_score, 0.0);
+        assert_eq!(r.error_score, 0.0);
+    }
+
+    #[test]
+    fn test_correlation_bonus() {
+        let mut snap = base_snap();
+        snap.latency_current_ms = 500.0;  // High latency
+        snap.is_up = false;               // Down
+        snap.health_score = 30.0;         // Low health
+        snap.consecutive_failures = 5;    // Failure streak
+        snap.error_rate_1h = 0.25;        // High error rate
+        let r = score(&snap);
+        // Should have correlation bonus since lat > 15, avail > 15, err > 15
+        assert!(r.score > 50.0, "Multi-category degradation should be severe: {}", r.score);
+    }
+
+    #[test]
+    fn test_ssl_only_low_weight() {
+        let mut snap = base_snap();
+        snap.ssl_expiry_days = 5.0; // Expiring soon
+        let r = score(&snap);
+        // SSL score=90, weight=0.15 → ~13.5
+        assert!(r.score < 20.0, "SSL-only should be modest: {}", r.score);
+    }
+}
