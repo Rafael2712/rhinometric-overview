@@ -2,19 +2,20 @@ import { FileText, BarChart3, Timer, Navigation } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 
 interface Props {
-  serviceKey: string          // e.g. "rhinometric-web-produccion"
-  serviceName: string         // e.g. "rhinometric-web"
+  serviceKey: string
+  serviceName: string
   traceId: string
   traceStartUs: number
   traceDurationUs: number
 }
 
-export function TraceActionLinks({ serviceKey, serviceName, traceId: _traceId, traceStartUs, traceDurationUs }: Props) {
+export function TraceActionLinks({ serviceKey, serviceName, traceStartUs, traceDurationUs }: Props) {
   const navigate = useNavigate()
 
+  // Compute time window for log navigation
   const traceStartMs = Math.floor(traceStartUs / 1000)
   const traceEndMs   = Math.floor((traceStartUs + traceDurationUs) / 1000)
-  const padMs = 60_000 // 1 min padding
+  const padMs = 60_000
   const from = traceStartMs - padMs
   const to   = traceEndMs + padMs
 
@@ -26,9 +27,9 @@ export function TraceActionLinks({ serviceKey, serviceName, traceId: _traceId, t
       onClick: () => {
         navigate('/logs', {
           state: {
-            prefillService: serviceKey,
-            prefillFrom: new Date(from).toISOString(),
-            prefillTo: new Date(to).toISOString(),
+            service: serviceKey,
+            from,
+            to,
           },
         })
       },

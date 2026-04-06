@@ -2,7 +2,6 @@ import { Bell, Filter, Download, Clock, AlertTriangle, CheckCircle2, XCircle, Vo
 import { useEffect, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuthStore } from '../lib/auth/store'
-import { openGrafanaExplore } from '../utils/grafana'
 
 interface Alert {
   fingerprint: string
@@ -564,31 +563,7 @@ export function AlertsPage() {
               </div>
               {/* Action buttons - stack on mobile */}
               <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
-                {isAdmin() && (
-                <button
-                  className="btn flex-1 min-h-[44px]"
-                  onClick={() => {
-                    const job = selectedAlert.labels.job || ''
-                    const instance = selectedAlert.labels.instance || ''
-                    let prometheusQuery = 'up'
-                    if (job && instance) {
-                      prometheusQuery = `up{job="${job}", instance="${instance}"}`
-                    } else if (job) {
-                      prometheusQuery = `up{job="${job}"}`
-                    } else if (instance) {
-                      prometheusQuery = `up{instance="${instance}"}`
-                    }
-                    const exploreUrl = `?orgId=1&left=${encodeURIComponent(JSON.stringify({
-                      datasource: 'victoriametrics',
-                      queries: [{ refId: 'A', expr: prometheusQuery }],
-                      range: { from: 'now-1h', to: 'now' }
-                    }))}`
-                    openGrafanaExplore(exploreUrl)
-                  }}
-                >
-                  View in Grafana
-                </button>
-                )}
+                
                 <div className="flex-1 flex gap-2">
                   <select
                     value={silenceDuration}

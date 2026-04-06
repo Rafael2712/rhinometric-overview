@@ -1,5 +1,5 @@
 /**
- * Dashboard Library — catalog of available Grafana dashboards.
+ * Dashboard Library — catalog of available dashboards.
  * Phase 1: frontend-only state with localStorage persistence.
  *
  * Tiers:

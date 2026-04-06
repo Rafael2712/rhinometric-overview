@@ -1,67 +1,11 @@
 /**
  * Utilidades para generar enlaces a herramientas externas de observabilidad
- * Grafana (Metrics + Logs). Traces out of scope.
+ * Observability link utilities.
  *
  * ARCHITECTURAL RULE: No hardcoded queries. All queries derived from anomaly metadata.
  */
 
-/**
- * Genera URL de Grafana Explore con query de VictoriaMetrics/Prometheus
- */
-export function getGrafanaMetricsUrl(
-  metricQuery: string,
-  startTime: string,
-  endTime: string
-): string {
-  const from = new Date(startTime).getTime();
-  const to = new Date(endTime).getTime();
 
-  const params = new URLSearchParams({
-    'orgId': '1',
-    'left': JSON.stringify({
-      datasource: 'victoriametrics',
-      queries: [{
-        refId: 'A',
-        expr: metricQuery
-      }],
-      range: {
-        from: from.toString(),
-        to: to.toString()
-      }
-    })
-  });
-
-  return `/grafana/explore?${params.toString()}`;
-}
-
-/**
- * Genera URL de Grafana Explore con query de Loki (logs)
- */
-export function getGrafanaLogsUrl(
-  logQuery: string,
-  startTime: string,
-  endTime: string
-): string {
-  const from = new Date(startTime).getTime();
-  const to = new Date(endTime).getTime();
-
-  const params = new URLSearchParams({
-    'orgId': '1',
-    'left': JSON.stringify({
-      datasource: 'loki',
-      queries: [{
-        refId: 'A',
-        expr: logQuery
-      }],
-      range: {
-        from: from.toString(),
-        to: to.toString()
-      }
-    })
-  });
-
-  return `/grafana/explore?${params.toString()}`;
-}
 
 /**
  * Verifica si el usuario tiene permisos para acceder a herramientas externas
@@ -158,9 +102,3 @@ export function buildDynamicLogQL(anomaly: {
   return '{job="console-backend"} |~ "(?i)(error|warn|fail)"';
 }
 
-/**
- * Abre enlace externo en nueva pestana
- */
-export function openExternalLink(url: string): void {
-  window.open(url, '_blank', 'noopener,noreferrer');
-}

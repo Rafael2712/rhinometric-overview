@@ -15,17 +15,18 @@ interface ServiceStatus {
 }
 
 interface Props {
-  serviceName: string       // e.g. "rhinometric-web"
-  serviceKey: string        // e.g. "rhinometric-web-produccion"
+  serviceName: string
+  serviceKey: string
   traceStartUs: number
   traceDurationUs: number
 }
 
-export function MetricsContext({ serviceName, serviceKey, traceStartUs: _tStart, traceDurationUs: _tDur }: Props) {
+export function MetricsContext({ serviceName, serviceKey }: Props) {
   const token = useAuthStore((s) => s.token)
 
+  // Fetch ONCE from /api/external-services
   const { data, isLoading, error } = useQuery({
-    queryKey: ['svc-summary', serviceName],
+    queryKey: ['svc-metrics', serviceKey],
     queryFn: async () => {
       if (!token) throw new Error('No token')
       const res = await fetch('/api/external-services', {
@@ -33,6 +34,7 @@ export function MetricsContext({ serviceName, serviceKey, traceStartUs: _tStart,
       })
       if (!res.ok) throw new Error(`API error: ${res.status}`)
       const services: ServiceStatus[] = await res.json()
+      // Match by service_name OR serviceKey
       return services.find(s =>
         s.name === serviceName ||
         s.service_key === serviceKey ||
@@ -70,6 +72,7 @@ export function MetricsContext({ serviceName, serviceKey, traceStartUs: _tStart,
     )
   }
 
+  // No match state
   if (!svc) {
     return (
       <div className="card p-4">
@@ -77,9 +80,7 @@ export function MetricsContext({ serviceName, serviceKey, traceStartUs: _tStart,
           <Activity size={18} className="text-primary" />
           <h3 className="text-sm font-semibold text-white">Service Metrics</h3>
         </div>
-        <p className="text-gray-500 text-sm">
-          No metrics context available &mdash; service <span className="font-mono text-gray-400">{serviceName}</span> was not matched to any monitored endpoint.
-        </p>
+        <p className="text-gray-500 text-sm">No metrics available for this service</p>
       </div>
     )
   }
@@ -146,7 +147,7 @@ export function MetricsContext({ serviceName, serviceKey, traceStartUs: _tStart,
           </p>
         </div>
 
-        {/* SSL Expiry — only show if data exists */}
+        {/* SSL Expiry — only if data exists */}
         {svc.ssl_expiry_days !== undefined && svc.ssl_expiry_days !== null && (
           <div className="space-y-1">
             <div className="flex items-center gap-1 text-xs text-gray-400">

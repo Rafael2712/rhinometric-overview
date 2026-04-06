@@ -1,4 +1,4 @@
-import { AlertTriangle, Zap, Info, XCircle, Link2, Tag } from 'lucide-react'
+import { AlertTriangle, Zap, Info, XCircle, Link2, Tag, AlertCircle } from 'lucide-react'
 import type { TraceAnalysis, ServiceBreakdown } from '../utils/traceAnalysis'
 import { formatDuration } from '../utils/traceAnalysis'
 
@@ -23,6 +23,11 @@ export function TraceInsights({ analysis, correlationContext }: Props) {
   const isSlow = analysis.bottleneckPct >= 50
   const ctx = correlationContext
   const cls = analysis.classification
+
+  // Consistency check: detect naming mismatch between trace service and correlation keys
+  const hasMismatch = ctx?.serviceKey && ctx?.serviceName &&
+    ctx.serviceKey !== ctx.serviceName &&
+    !ctx.serviceKey.startsWith(ctx.serviceName)
 
   return (
     <div className="space-y-4">
@@ -70,9 +75,24 @@ export function TraceInsights({ analysis, correlationContext }: Props) {
                 {ctx.metricsAvailable && <span className="text-xs bg-green-500/20 text-green-300 px-1.5 py-0.5 rounded">metrics {'\u2713'}</span>}
               </p>
             )}
+            {/* No serviceKey — logs unavailable */}
+            {ctx && !ctx.serviceKey && (
+              <p className="text-sm text-gray-400 flex items-center gap-1.5 mt-1">
+                <Link2 size={14} className="text-gray-500" />
+                Logs unavailable for this trace
+              </p>
+            )}
           </div>
         </div>
       </div>
+
+      {/* Consistency mismatch warning */}
+      {hasMismatch && (
+        <div className="flex items-center gap-2 p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+          <AlertCircle size={16} className="text-yellow-400 flex-shrink-0" />
+          <p className="text-xs text-yellow-300">Correlation limited due to naming mismatch</p>
+        </div>
+      )}
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -119,7 +139,6 @@ function SummaryCard({ label, value, variant = 'default' }: { label: string; val
   )
 }
 
-/** When only one service exists, show a compact single-line summary instead of a misleading bar */
 function SingleServiceSummary({ svc }: { svc: ServiceBreakdown }) {
   return (
     <div className="flex items-center justify-between text-sm">
@@ -134,10 +153,6 @@ function SingleServiceSummary({ svc }: { svc: ServiceBreakdown }) {
   )
 }
 
-/**
- * Service bar. Uses maxDuration (highest service wall-clock) to scale bars
- * relative to each other, preventing any bar from exceeding 100%.
- */
 function ServiceBar({ svc, maxDuration }: { svc: ServiceBreakdown; maxDuration: number }) {
   const barPct = maxDuration > 0 ? (svc.totalDuration / maxDuration) * 100 : 0
   return (

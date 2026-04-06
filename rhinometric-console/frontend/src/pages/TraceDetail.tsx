@@ -18,18 +18,41 @@ const CLS_BADGE: Record<string, { bg: string; text: string }> = {
   customer:  { bg: 'bg-emerald-500/20', text: 'text-emerald-300' },
 }
 
-/** Extract service_key from trace span tags or process tags */
+/**
+ * Extract service_key from trace using safe fallback chain:
+ *   1. span.tags['rhinometric.service_key']
+ *   2. span.tags['service_key']
+ *   3. process.serviceName
+ *   4. span.serviceName (if present)
+ *   5. null
+ */
 function extractServiceKey(trace: JaegerTrace): string | null {
+  // First: check span tags for explicit service_key
   for (const span of trace.spans) {
     const sk = getTagValue(span.tags, 'rhinometric.service_key')
       || getTagValue(span.tags, 'service_key')
     if (sk && typeof sk === 'string') return sk
   }
+  // Second: check process tags for service_key
   for (const pid of Object.keys(trace.processes)) {
     const proc = trace.processes[pid]
     const sk = getTagValue(proc.tags, 'rhinometric.service_key')
       || getTagValue(proc.tags, 'service_key')
     if (sk && typeof sk === 'string') return sk
+  }
+  // Third: fall back to process.serviceName from the root span
+  const rootSpans = trace.spans.filter(s =>
+    !s.references || s.references.length === 0 ||
+    !s.references.some(r => r.refType === 'CHILD_OF')
+  )
+  if (rootSpans.length > 0) {
+    const proc = trace.processes[rootSpans[0].processID]
+    if (proc?.serviceName) return proc.serviceName
+  }
+  // Fourth: any process serviceName
+  for (const pid of Object.keys(trace.processes)) {
+    const proc = trace.processes[pid]
+    if (proc?.serviceName) return proc.serviceName
   }
   return null
 }
@@ -79,9 +102,10 @@ export function TraceDetailPage() {
 
   const traceData = stateTrace || data
 
-  // Compute analysis + correlation
+  // Compute analysis
   const analysis = useMemo(() => traceData ? analyzeTrace(traceData) : null, [traceData])
 
+  // Compute correlation context with safe fallback
   const correlationCtx = useMemo(() => {
     if (!traceData) return null
     const serviceKey = extractServiceKey(traceData)
@@ -194,7 +218,7 @@ export function TraceDetailPage() {
         />
       )}
 
-      {/* Related Logs */}
+      {/* Related Logs — serviceKey required, otherwise shows unavailable message in Insights */}
       {sKey && (
         <RelatedLogs
           serviceKey={sKey}

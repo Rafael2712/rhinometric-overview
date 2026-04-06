@@ -1,16 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, AlertCircle, Loader2, RefreshCw, ExternalLink, Lock } from 'lucide-react';
+import { ArrowLeft, AlertCircle, Loader2, RefreshCw } from 'lucide-react';
 import { useCorrelation } from '../hooks/useCorrelation';
 import { CorrelationTimeline } from '../components/CorrelationTimeline';
 import { CorrelationCard } from '../components/CorrelationCard';
 import { useAuthStore } from '../lib/auth/store';
-import { 
-  getGrafanaMetricsUrl, 
-  getGrafanaLogsUrl, 
-  canAccessExternalTools,
-  openExternalLink 
-} from '../utils/externalLinks';
 import { format } from 'date-fns';
 import { useQuery } from '@tanstack/react-query';
 import { getSignalAvailability, getTelemetryLabel, getTelemetryStatusStyle } from '../utils/signalAvailability';
@@ -117,11 +111,8 @@ export function CorrelationView() {
   const metricName = searchParams.get('metric_name') || '';
   const source = searchParams.get('source') || '';
   const { loading, error, data, correlate } = useCorrelation();
-  const { user, token } = useAuthStore();
+  const { token } = useAuthStore();
   const [isRefreshing, setIsRefreshing] = useState(false);
-  
-  const hasExternalAccess = user ? canAccessExternalTools(user.roles) : false;
-
   // Signal availability — what telemetry actually exists for this entity type
   const currentEntityType = entityType || data?.metadata?.entity_type || '';
   const staticSignals = getSignalAvailability(currentEntityType);
@@ -464,162 +455,58 @@ export function CorrelationView() {
         </div>
       )}
 
-      {/* Quick Actions - External Tools */}
+      {/* Quick Actions */}
       <div className="card mb-8 bg-gray-800/50 border-gray-700">
         <div className="flex items-start gap-3 mb-4">
           <div className="text-2xl">🔗</div>
           <div className="flex-1">
-            <h3 className="text-white font-semibold mb-1">Deep Analysis</h3>
+            <h3 className="text-white font-semibold mb-1">Quick Actions</h3>
             <p className="text-sm text-gray-400">
-              Explore data in native observability tools
+              Navigate to related views
             </p>
           </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* Grafana Metrics */}
+          {/* View Logs */}
           <button
-            onClick={() => {
-              if (hasExternalAccess) {
-                // Build the proper PromQL query using entity context
-                // data.metrics[0].query_name is a key name, not a valid PromQL expression
-                const et = data.metadata?.entity_type || entityType;
-                const en = data.metadata?.entity_name || entityName;
-                const mn = data.metadata?.metric_name || metricName;
-                let metricQuery: string;
-
-                if (et === 'service' || mn?.startsWith('external_service_')) {
-                  // Service metrics have service_name label
-                  const baseMetric = mn?.split('::')[0]?.trim() || '';
-                  const svcMetrics: Record<string, string> = {
-                    'external_service_latency_ms': `external_service_latency_ms{service_name="${en}"}`,
-                    'external_service_latency': `external_service_latency_ms{service_name="${en}"}`,
-                    'external_service_health_score': `external_service_health_score{service_name="${en}"}`,
-                    'external_service_health': `external_service_health_score{service_name="${en}"}`,
-                    'external_service_up': `external_service_up{service_name="${en}"}`,
-                    'external_service_availability': `external_service_up{service_name="${en}"}`,
-                  };
-                  metricQuery = svcMetrics[baseMetric] || `${baseMetric}{service_name="${en}"}`;
-                } else if (et === 'infrastructure' || mn?.startsWith('node_')) {
-                  // Infrastructure metrics - use proper PromQL with labels
-                  const baseMetric = mn?.split('::')[0]?.trim() || '';
-                  const infraMetrics: Record<string, string> = {
-                    'node_cpu_usage': '100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle",job="node-exporter"}[5m])) * 100)',
-                    'node_memory_usage': '(1 - (node_memory_MemAvailable_bytes{job="node-exporter"} / node_memory_MemTotal_bytes{job="node-exporter"})) * 100',
-                    'node_disk_usage': '(node_filesystem_size_bytes{job="node-exporter"} - node_filesystem_avail_bytes{job="node-exporter"}) / node_filesystem_size_bytes{job="node-exporter"} * 100',
-                    'node_disk_io': 'rate(node_disk_io_time_seconds_total{job="node-exporter"}[5m])',
-                    'node_network_receive': 'rate(node_network_receive_bytes_total{job="node-exporter"}[5m])',
-                    'node_network_transmit': 'rate(node_network_transmit_bytes_total{job="node-exporter"}[5m])',
-                  };
-                  metricQuery = infraMetrics[baseMetric] || baseMetric;
-                } else {
-                  metricQuery = mn || data.metrics[0]?.query_name || 'up';
-                }
-
-                const url = getGrafanaMetricsUrl(
-                  metricQuery,
-                  data.correlation_window.start,
-                  data.correlation_window.end
-                );
-                openExternalLink(url);
-              }
-            }}
-            disabled={!hasExternalAccess}
-            className={`p-4 rounded-lg border transition-all flex items-center gap-3 ${
-              hasExternalAccess
-                ? 'bg-blue-500/10 border-blue-500/30 hover:bg-blue-500/20 hover:border-blue-500/50 cursor-pointer'
-                : 'bg-gray-800 border-gray-700 opacity-50 cursor-not-allowed'
-            }`}
-            title={hasExternalAccess ? 'Open metrics in Grafana' : 'Only available for Administrators'}
-          >
-            <div className="text-3xl">📊</div>
-            <div className="flex-1 text-left">
-              <div className="text-white font-medium flex items-center gap-2">
-                Grafana Metrics
-                {hasExternalAccess ? (
-                  <ExternalLink size={14} className="text-blue-400" />
-                ) : (
-                  <Lock size={14} className="text-gray-500" />
-                )}
-              </div>
-              <div className="text-xs text-gray-400">
-                {!hasExternalAccess
-                  ? 'Restricted access'
-                  : signals.monitoringMode === 'synthetic'
-                    ? 'Synthetic check metrics'
-                    : signals.monitoringMode === 'telemetry_enabled'
-                    ? 'Telemetry metrics'
-                    : 'View detailed metrics'}
-              </div>
-            </div>
-          </button>
-
-          {/* Loki Logs */}
-          <button
-            onClick={() => {
-              if (hasExternalAccess) {
-                // Dynamic LogQL based on entity context
-                const et = data.metadata?.entity_type || entityType;
-                let logQuery: string;
-                if (et === 'service') {
-                  const en = data.metadata?.entity_name || entityName;
-                  logQuery = `{job="console-backend"} |= "${en}" |~ "(?i)(error|warn|fail|timeout)"`;
-                } else if (et === 'infrastructure') {
-                  logQuery = '{job="docker_logs"} |~ "(?i)(error|warn|fail|oom)"';
-                } else if (et === 'website') {
-                  logQuery = '{job="console-backend"} |~ "(?i)(website|ssl|dns)" |~ "(?i)(error|warn)"';
-                } else {
-                  logQuery = '{job="console-backend"} |~ "(?i)(error|warn)"';
-                }
-                const url = getGrafanaLogsUrl(
-                  logQuery,
-                  data.correlation_window.start,
-                  data.correlation_window.end
-                );
-                openExternalLink(url);
-              }
-            }}
-            disabled={!hasExternalAccess || !signals.logs}
-            className={`p-4 rounded-lg border transition-all flex items-center gap-3 ${
-              hasExternalAccess && signals.logs
-                ? 'bg-green-500/10 border-green-500/30 hover:bg-green-500/20 hover:border-green-500/50 cursor-pointer'
-                : 'bg-gray-800 border-gray-700 opacity-50 cursor-not-allowed'
-            }`}
-            title={!hasExternalAccess ? 'Only available for Administrators' : !signals.logs ? 'Customer logs are not connected for this service' : 'Open logs in Grafana (Loki)'}
+            onClick={() => navigate('/logs')}
+            className="p-4 rounded-lg border transition-all flex items-center gap-3 bg-green-500/10 border-green-500/30 hover:bg-green-500/20 hover:border-green-500/50 cursor-pointer"
+            title="View system logs"
           >
             <div className="text-3xl">📝</div>
             <div className="flex-1 text-left">
-              <div className="text-white font-medium flex items-center gap-2">
-                Loki Logs
-                {hasExternalAccess && signals.logs ? (
-                  <ExternalLink size={14} className="text-green-400" />
-                ) : (
-                  <Lock size={14} className="text-gray-500" />
-                )}
-              </div>
-              <div className="text-xs text-gray-400">
-                {!hasExternalAccess ? 'Restricted access' : !signals.logs ? 'Customer logs are not connected' : 'Explore full logs'}
-              </div>
+              <div className="text-white font-medium">View Logs</div>
+              <div className="text-xs text-gray-400">Explore full logs</div>
             </div>
           </button>
 
-          {/* Jaeger Traces – disabled: customer traces not connected */}
+          {/* Service Dashboard */}
           <button
-            disabled
-            className="p-4 rounded-lg border transition-all flex items-center gap-3 bg-gray-800 border-gray-700 opacity-50 cursor-not-allowed"
-            title="Customer traces are not connected for this service"
+            onClick={() => navigate('/dashboards/ext-svc-detail/view')}
+            className="p-4 rounded-lg border transition-all flex items-center gap-3 bg-blue-500/10 border-blue-500/30 hover:bg-blue-500/20 hover:border-blue-500/50 cursor-pointer"
+            title="View service dashboard"
           >
-            <div className="text-3xl">🔗</div>
+            <div className="text-3xl">📊</div>
             <div className="flex-1 text-left">
-              <div className="text-white font-medium flex items-center gap-2">
-                Jaeger Traces
-                <Lock size={14} className="text-gray-500" />
-              </div>
-              <div className="text-xs text-gray-400">{signals.traces ? 'View distributed traces' : 'Customer traces are not connected'}</div>
+              <div className="text-white font-medium">Service Dashboard</div>
+              <div className="text-xs text-gray-400">View detailed metrics</div>
+            </div>
+          </button>
+
+          {/* Latency Dashboard */}
+          <button
+            onClick={() => navigate('/dashboards/ext-svc-latency/view')}
+            className="p-4 rounded-lg border transition-all flex items-center gap-3 bg-purple-500/10 border-purple-500/30 hover:bg-purple-500/20 hover:border-purple-500/50 cursor-pointer"
+            title="View latency dashboard"
+          >
+            <div className="text-3xl">⏱️</div>
+            <div className="flex-1 text-left">
+              <div className="text-white font-medium">Latency Dashboard</div>
+              <div className="text-xs text-gray-400">Analyze service latency</div>
             </div>
           </button>
         </div>
-
       </div>
 
       {/* Data Cards Grid */}
