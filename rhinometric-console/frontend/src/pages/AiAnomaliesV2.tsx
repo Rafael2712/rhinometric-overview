@@ -39,6 +39,9 @@ interface AnomalyV2 {
   triggered_categories_count: number | null
   is_anomalous: boolean | null
   evaluation_duration_ms: number | null
+  latency_trend_slope: number | null
+  latency_trend_r2: number | null
+  log_error_burst_ratio: number | null
 }
 
 interface AnomalySummary {
@@ -63,6 +66,10 @@ interface ValidationSummary {
   avg_baseline_deviation_pct: number
   avg_triggered_categories: number
   avg_evaluation_duration_ms: number
+  avg_latency_trend_slope: number
+  avg_log_error_burst_ratio: number
+  pct_positive_trend: number
+  pct_burst_detected: number
   severity_distribution: Array<{ severity: string; count: number }>
   score_histogram: Array<{ range: string; count: number }>
 }
@@ -314,7 +321,7 @@ function AnomalyCard({ anomaly, validationMode, isHistory = false }: {
               <div className="text-[10px] text-purple-400/80 mb-1.5 uppercase tracking-wider font-medium flex items-center gap-1">
                 <Eye className="w-3 h-3" /> Validation
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-[11px]">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
                 <div>
                   <span className="text-gray-500">Baseline Dev</span>
                   <div className="text-white font-mono">
@@ -334,6 +341,25 @@ function AnomalyCard({ anomaly, validationMode, isHistory = false }: {
                 <div>
                   <span className="text-gray-500">Eval Time</span>
                   <div className="text-white font-mono">{anomaly.evaluation_duration_ms ?? 0}ms</div>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-[11px] mt-2 pt-2 border-t border-purple-500/10">
+                <div>
+                  <span className="text-gray-500">Trend</span>
+                  <div className="text-white font-mono">
+                    {anomaly.latency_trend_slope != null
+                      ? `${anomaly.latency_trend_slope > 0 ? '↑' : anomaly.latency_trend_slope < 0 ? '↓' : '→'} ${anomaly.latency_trend_slope > 0 ? '+' : ''}${anomaly.latency_trend_slope.toFixed(3)}`
+                      : '—'}
+                    {anomaly.latency_trend_r2 != null && anomaly.latency_trend_r2 > 0
+                      ? <span className="text-gray-500 ml-1">(r²: {anomaly.latency_trend_r2.toFixed(2)})</span>
+                      : null}
+                  </div>
+                </div>
+                <div>
+                  <span className="text-gray-500">Burst Ratio</span>
+                  <div className={`font-mono ${(anomaly.log_error_burst_ratio ?? 0) > 3 ? 'text-red-400' : 'text-white'}`}>
+                    {anomaly.log_error_burst_ratio != null ? `${anomaly.log_error_burst_ratio.toFixed(1)}x` : '—'}
+                  </div>
                 </div>
                 <div>
                   <span className="text-gray-500">Fingerprint</span>
@@ -399,6 +425,12 @@ function ValidationSummaryPanel({ data }: { data: ValidationSummary }) {
             <div>Avg Confidence: <span className="text-gray-300">{(data.avg_confidence * 100).toFixed(0)}%</span></div>
             <div>Avg Baseline Dev: <span className="text-gray-300">{data.avg_baseline_deviation_pct.toFixed(1)}%</span></div>
             <div>Avg Eval Time: <span className="text-gray-300">{data.avg_evaluation_duration_ms.toFixed(0)}ms</span></div>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-[11px] text-gray-500">
+            <div>Avg Trend Slope: <span className="text-gray-300">{data.avg_latency_trend_slope.toFixed(4)}</span></div>
+            <div>Avg Burst Ratio: <span className="text-gray-300">{data.avg_log_error_burst_ratio.toFixed(2)}x</span></div>
+            <div>Degrading Trend: <span className="text-yellow-400">{data.pct_positive_trend.toFixed(1)}%</span></div>
+            <div>Burst Detected: <span className="text-red-400">{data.pct_burst_detected.toFixed(1)}%</span></div>
           </div>
         </div>
       )}

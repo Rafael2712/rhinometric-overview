@@ -47,10 +47,10 @@ impl Default for ThresholdConfig {
                 active_threshold: 15.0,
                 anomalous_threshold: 35.0,
                 weights: WeightConfig {
-                    latency: 0.30,
+                    latency: 0.35,
                     availability: 0.30,
                     error: 0.25,
-                    ssl: 0.15,
+                    ssl: 0.10,
                 },
                 category_trigger_threshold: 15.0,
             },

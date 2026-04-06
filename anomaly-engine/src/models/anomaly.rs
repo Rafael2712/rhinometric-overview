@@ -50,6 +50,11 @@ pub struct AnomalyOutput {
     pub triggered_categories_count: i16,
     pub is_anomalous: bool,
     pub evaluation_duration_ms: i32,
+
+    // Signal enrichment (V1.3)
+    pub latency_trend_slope: f64,
+    pub latency_trend_r2: f64,
+    pub log_error_burst_ratio: f64,
 }
 
 /// Anomaly lifecycle states.

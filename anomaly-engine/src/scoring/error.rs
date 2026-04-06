@@ -77,6 +77,16 @@ pub fn score(snap: &ServiceSignalSnapshot) -> (f64, Vec<ReasonCode>) {
         base += 3.0;
     }
 
+    // ── Error burst detection (V1.3) ──
+    // burst_ratio = error_5m / (error_1h / 12)
+    // If recent 5-min error rate is 3x+ the hourly average → short-term spike
+    if snap.log_error_burst_ratio > 3.0 {
+        base += 15.0;
+        reasons.push(ReasonCode::ErrorBurstDetected {
+            burst_ratio: round2(snap.log_error_burst_ratio),
+        });
+    }
+
     let score = base.min(100.0);
     (score, reasons)
 }
@@ -102,6 +112,8 @@ mod tests {
             latency_current_ms: 100.0,
             latency_baseline_ms: 100.0,
             latency_p95_ms: 200.0,
+            latency_trend_slope: 0.0,
+            latency_trend_r2: 0.0,
             is_up: true,
             health_score: 97.0,
             consecutive_failures: 0,
@@ -109,6 +121,7 @@ mod tests {
             error_rate_1h: error_rate,
             log_error_count_1h: log_err,
             log_warn_count_1h: log_warn,
+            log_error_burst_ratio: 0.0,
             ssl_expiry_days: 365.0,
             baseline_age_hours: 24.0,
             checks_in_last_1h: 60,

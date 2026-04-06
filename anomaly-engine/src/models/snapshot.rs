@@ -18,6 +18,12 @@ pub struct ServiceSignalSnapshot {
     pub latency_baseline_ms: f64,
     pub latency_p95_ms: f64,
 
+    // ── Latency Trend (V1.3) ──
+    #[serde(default)]
+    pub latency_trend_slope: f64,
+    #[serde(default)]
+    pub latency_trend_r2: f64,
+
     // ── Availability Signals ──
     pub is_up: bool,
     pub health_score: f64,
@@ -28,6 +34,10 @@ pub struct ServiceSignalSnapshot {
     pub error_rate_1h: f64,
     pub log_error_count_1h: u64,
     pub log_warn_count_1h: u64,
+
+    // ── Error Burst (V1.3) ──
+    #[serde(default)]
+    pub log_error_burst_ratio: f64,
 
     // ── SSL ──
     pub ssl_expiry_days: f64,

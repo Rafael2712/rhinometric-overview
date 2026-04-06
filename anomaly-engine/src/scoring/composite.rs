@@ -3,10 +3,10 @@ use crate::models::snapshot::ServiceSignalSnapshot;
 use crate::scoring::{availability, error, latency, ssl};
 
 /// Category weights — must sum to 1.0
-const W_LATENCY: f64 = 0.30;
+const W_LATENCY: f64 = 0.35;
 const W_AVAILABILITY: f64 = 0.30;
 const W_ERROR: f64 = 0.25;
-const W_SSL: f64 = 0.15;
+const W_SSL: f64 = 0.10;
 
 /// Result of composite scoring.
 pub struct CompositeResult {
@@ -21,7 +21,7 @@ pub struct CompositeResult {
 /// Compute the composite anomaly score from all category scorers.
 ///
 /// Formula:
-///   weighted_sum = L*0.30 + A*0.30 + E*0.25 + S*0.15
+///   weighted_sum = L*0.35 + A*0.30 + E*0.25 + S*0.10
 ///   + correlation_bonus(0–10)
 ///
 /// Correlation bonus: when 2+ non-SSL categories fire (score > 15),
@@ -101,6 +101,8 @@ mod tests {
             latency_current_ms: 100.0,
             latency_baseline_ms: 100.0,
             latency_p95_ms: 200.0,
+            latency_trend_slope: 0.0,
+            latency_trend_r2: 0.0,
             is_up: true,
             health_score: 97.0,
             consecutive_failures: 0,
@@ -108,6 +110,7 @@ mod tests {
             error_rate_1h: 0.0,
             log_error_count_1h: 0,
             log_warn_count_1h: 0,
+            log_error_burst_ratio: 0.0,
             ssl_expiry_days: 365.0,
             baseline_age_hours: 24.0,
             checks_in_last_1h: 60,
@@ -152,7 +155,7 @@ mod tests {
         let mut snap = base_snap();
         snap.ssl_expiry_days = 5.0; // Expiring soon
         let r = score(&snap);
-        // SSL score=90, weight=0.15 → ~13.5
-        assert!(r.score < 20.0, "SSL-only should be modest: {}", r.score);
+        // SSL score=90, weight=0.10 → ~9.0
+        assert!(r.score < 15.0, "SSL-only should be modest: {}", r.score);
     }
 }

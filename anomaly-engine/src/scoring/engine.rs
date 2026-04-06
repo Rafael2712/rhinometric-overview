@@ -89,6 +89,9 @@ pub fn evaluate(snap: &ServiceSignalSnapshot) -> AnomalyOutput {
         triggered_categories_count,
         is_anomalous,
         evaluation_duration_ms: 0, // set by worker after timing
+        latency_trend_slope: snap.latency_trend_slope,
+        latency_trend_r2: snap.latency_trend_r2,
+        log_error_burst_ratio: snap.log_error_burst_ratio,
     }
 }
 
@@ -128,6 +131,8 @@ mod tests {
             latency_current_ms: 200.0,
             latency_baseline_ms: 200.0,
             latency_p95_ms: 350.0,
+            latency_trend_slope: 0.0,
+            latency_trend_r2: 0.0,
             is_up: true,
             health_score: 97.1,
             consecutive_failures: 0,
@@ -135,6 +140,7 @@ mod tests {
             error_rate_1h: 0.0,
             log_error_count_1h: 0,
             log_warn_count_1h: 0,
+            log_error_burst_ratio: 0.0,
             ssl_expiry_days: 48.1,
             baseline_age_hours: 24.0,
             checks_in_last_1h: 60,

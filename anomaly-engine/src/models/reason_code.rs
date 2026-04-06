@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "code", content = "detail")]
 pub enum ReasonCode {
-    // ── Latency (3 variants) ──
+    // ── Latency (5 variants) ──
     LatencyBaselineBreach {
         deviation_pct: f64,
         baseline_ms: f64,
@@ -17,6 +17,16 @@ pub enum ReasonCode {
     LatencyHigh {
         current_ms: f64,
         threshold_ms: f64,
+    },
+    /// V1.3: latency trend is degrading (positive slope + high R²)
+    LatencyTrendDegrading {
+        slope: f64,
+        r2: f64,
+    },
+    /// V1.3: latency trend is recovering (negative slope + high R²)
+    LatencyTrendRecovery {
+        slope: f64,
+        r2: f64,
     },
 
     // ── Availability (4 variants) ──
@@ -34,7 +44,7 @@ pub enum ReasonCode {
         count: u32,
     },
 
-    // ── Error (3 variants) ──
+    // ── Error (4 variants) ──
     ErrorRateElevated {
         rate: f64,
         threshold: f64,
@@ -46,6 +56,10 @@ pub enum ReasonCode {
     LogWarningSurge {
         count: u64,
         window: String,
+    },
+    /// V1.3: short-term error burst vs hourly baseline
+    ErrorBurstDetected {
+        burst_ratio: f64,
     },
 
     // ── SSL (2 variants) — risk signal, not operational anomaly ──
@@ -68,6 +82,12 @@ impl ReasonCode {
             ReasonCode::LatencyHigh { current_ms, threshold_ms } => {
                 format!("High Latency ({:.0}ms > {:.0}ms threshold)", current_ms, threshold_ms)
             }
+            ReasonCode::LatencyTrendDegrading { slope, r2 } => {
+                format!("Latency Trend Degrading (slope={:.2}, r²={:.2})", slope, r2)
+            }
+            ReasonCode::LatencyTrendRecovery { slope, r2 } => {
+                format!("Latency Trend Recovery (slope={:.2}, r²={:.2})", slope, r2)
+            }
             ReasonCode::ServiceDown { consecutive_failures } => {
                 format!("Service Down ({} consecutive failures)", consecutive_failures)
             }
@@ -89,6 +109,9 @@ impl ReasonCode {
             ReasonCode::LogWarningSurge { count, window } => {
                 format!("Log Warning Surge ({} warnings in {})", count, window)
             }
+            ReasonCode::ErrorBurstDetected { burst_ratio } => {
+                format!("Error Burst Detected ({:.1}x normal rate)", burst_ratio)
+            }
             ReasonCode::SslExpirySoon { days_remaining } => {
                 format!("SSL Expiry Soon ({:.1} days remaining) [risk signal]", days_remaining)
             }
@@ -107,8 +130,11 @@ impl ReasonCode {
             ReasonCode::HealthScoreLow { .. } => 20,
             ReasonCode::FailureStreak { .. } => 18,
             ReasonCode::LogErrorSurge { .. } => 15,
+            ReasonCode::LatencyTrendDegrading { .. } => 16,
             ReasonCode::LatencyAboveP95 { .. } => 14,
             ReasonCode::LatencyHigh { .. } => 12,
+            ReasonCode::ErrorBurstDetected { .. } => 11,
+            ReasonCode::LatencyTrendRecovery { .. } => 2,
             ReasonCode::UptimeDegraded { .. } => 10,
             ReasonCode::SslExpired => 8,
             ReasonCode::SslExpirySoon { .. } => 5,

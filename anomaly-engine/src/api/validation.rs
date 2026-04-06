@@ -16,6 +16,10 @@ pub struct ValidationSummaryResponse {
     pub avg_baseline_deviation_pct: f64,
     pub avg_triggered_categories: f64,
     pub avg_evaluation_duration_ms: f64,
+    pub avg_latency_trend_slope: f64,
+    pub avg_log_error_burst_ratio: f64,
+    pub pct_positive_trend: f64,
+    pub pct_burst_detected: f64,
     pub severity_distribution: Vec<SeverityBucket>,
     pub score_histogram: Vec<ScoreBucket>,
 }
@@ -47,7 +51,11 @@ pub async fn validation_summary(
             COALESCE(avg(confidence), 0)::float8 AS avg_confidence,
             COALESCE(avg(baseline_deviation_pct), 0)::float8 AS avg_baseline_deviation_pct,
             COALESCE(avg(triggered_categories_count), 0)::float8 AS avg_triggered_categories,
-            COALESCE(avg(evaluation_duration_ms), 0)::float8 AS avg_evaluation_duration_ms
+            COALESCE(avg(evaluation_duration_ms), 0)::float8 AS avg_evaluation_duration_ms,
+            COALESCE(avg(latency_trend_slope), 0)::float8 AS avg_latency_trend_slope,
+            COALESCE(avg(log_error_burst_ratio), 0)::float8 AS avg_log_error_burst_ratio,
+            COALESCE(100.0 * count(*) FILTER (WHERE latency_trend_slope > 0.15) / NULLIF(count(*), 0), 0)::float8 AS pct_positive_trend,
+            COALESCE(100.0 * count(*) FILTER (WHERE log_error_burst_ratio > 3.0) / NULLIF(count(*), 0), 0)::float8 AS pct_burst_detected
         FROM anomaly_engine_results_v1
         "#,
     )
@@ -123,6 +131,10 @@ pub async fn validation_summary(
         avg_baseline_deviation_pct: stats.avg_baseline_deviation_pct,
         avg_triggered_categories: stats.avg_triggered_categories,
         avg_evaluation_duration_ms: stats.avg_evaluation_duration_ms,
+        avg_latency_trend_slope: stats.avg_latency_trend_slope,
+        avg_log_error_burst_ratio: stats.avg_log_error_burst_ratio,
+        pct_positive_trend: stats.pct_positive_trend,
+        pct_burst_detected: stats.pct_burst_detected,
         severity_distribution,
         score_histogram,
     }))
@@ -139,6 +151,10 @@ struct AggRow {
     avg_baseline_deviation_pct: f64,
     avg_triggered_categories: f64,
     avg_evaluation_duration_ms: f64,
+    avg_latency_trend_slope: f64,
+    avg_log_error_burst_ratio: f64,
+    pct_positive_trend: f64,
+    pct_burst_detected: f64,
 }
 
 #[derive(sqlx::FromRow)]

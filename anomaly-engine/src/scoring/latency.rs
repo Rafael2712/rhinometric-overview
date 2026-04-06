@@ -2,10 +2,17 @@ use crate::models::reason_code::ReasonCode;
 use crate::models::snapshot::ServiceSignalSnapshot;
 
 /// Latency category scorer.
-/// Weight: 0.30 of composite.
+/// Weight: 0.35 of composite (V1.3: increased from 0.30).
 ///
-/// Inputs: latency_current_ms, latency_baseline_ms, latency_p95_ms
+/// Inputs: latency_current_ms, latency_baseline_ms, latency_p95_ms,
+///         latency_trend_slope, latency_trend_r2 (V1.3)
 /// Score range: 0–100
+///
+/// V1.3: Trend awareness
+///  - slope > threshold AND r2 > 0.7 → add trend_bonus (degradation)
+///  - slope < 0 AND r2 > 0.7 → subtract recovery_bonus
+///  - Config: trend_slope_threshold=0.15, trend_r2_min=0.7,
+///            trend_bonus=10, recovery_bonus=5
 pub fn score(snap: &ServiceSignalSnapshot) -> (f64, Vec<ReasonCode>) {
     let mut reasons = Vec::new();
 
@@ -47,6 +54,31 @@ pub fn score(snap: &ServiceSignalSnapshot) -> (f64, Vec<ReasonCode>) {
         });
     }
 
+    // ── V1.3: Trend bonus/recovery ──
+    // Only apply when trend signal is reliable (r² > threshold)
+    const TREND_SLOPE_THRESHOLD: f64 = 0.15;
+    const TREND_R2_MIN: f64 = 0.7;
+    const TREND_BONUS: f64 = 10.0;
+    const RECOVERY_BONUS: f64 = 5.0;
+
+    if snap.latency_trend_r2 >= TREND_R2_MIN {
+        if snap.latency_trend_slope > TREND_SLOPE_THRESHOLD {
+            // Degradation trend detected
+            score += TREND_BONUS;
+            reasons.push(ReasonCode::LatencyTrendDegrading {
+                slope: round2(snap.latency_trend_slope),
+                r2: round2(snap.latency_trend_r2),
+            });
+        } else if snap.latency_trend_slope < 0.0 {
+            // Recovery trend — reduce score
+            score -= RECOVERY_BONUS;
+            reasons.push(ReasonCode::LatencyTrendRecovery {
+                slope: round2(snap.latency_trend_slope),
+                r2: round2(snap.latency_trend_r2),
+            });
+        }
+    }
+
     let score = score.clamp(0.0, 100.0);
     (score, reasons)
 }
@@ -72,6 +104,8 @@ mod tests {
             latency_current_ms: current,
             latency_baseline_ms: baseline,
             latency_p95_ms: p95,
+            latency_trend_slope: 0.0,
+            latency_trend_r2: 0.0,
             is_up: true,
             health_score: 100.0,
             consecutive_failures: 0,
@@ -79,6 +113,7 @@ mod tests {
             error_rate_1h: 0.0,
             log_error_count_1h: 0,
             log_warn_count_1h: 0,
+            log_error_burst_ratio: 0.0,
             ssl_expiry_days: 365.0,
             baseline_age_hours: 24.0,
             checks_in_last_1h: 60,

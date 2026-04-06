@@ -22,13 +22,15 @@ pub async fn upsert_result(pool: &PgPool, output: &AnomalyOutput) -> Result<(), 
             anomaly_score, severity, confidence, confidence_label,
             category_scores, reason_codes, evidence_summary,
             status, fingerprint, first_seen_at, last_seen_at, occurrence_count,
-            baseline_deviation_pct, triggered_categories_count, is_anomalous, evaluation_duration_ms
+            baseline_deviation_pct, triggered_categories_count, is_anomalous, evaluation_duration_ms,
+            latency_trend_slope, latency_trend_r2, log_error_burst_ratio
         ) VALUES (
             $1, $2, $3, $4, $5, $6,
             $7, $8, $9, $10,
             $11, $12, $13,
             $14, $15, $16, $17, $18,
-            $19, $20, $21, $22
+            $19, $20, $21, $22,
+            $23, $24, $25
         )
         ON CONFLICT (service_id, fingerprint) WHERE status = 'active'
         DO UPDATE SET
@@ -45,6 +47,9 @@ pub async fn upsert_result(pool: &PgPool, output: &AnomalyOutput) -> Result<(), 
             triggered_categories_count = $20,
             is_anomalous = $21,
             evaluation_duration_ms = $22,
+            latency_trend_slope = $23,
+            latency_trend_r2 = $24,
+            log_error_burst_ratio = $25,
             updated_at = now()
         "#,
     )
@@ -70,6 +75,9 @@ pub async fn upsert_result(pool: &PgPool, output: &AnomalyOutput) -> Result<(), 
     .bind(output.triggered_categories_count)
     .bind(output.is_anomalous)
     .bind(output.evaluation_duration_ms)
+    .bind(output.latency_trend_slope as f32)
+    .bind(output.latency_trend_r2 as f32)
+    .bind(output.log_error_burst_ratio as f32)
     .execute(pool)
     .await?;
 
@@ -115,7 +123,8 @@ pub async fn get_active_anomalies(pool: &PgPool) -> Result<Vec<AnomalyRow>, sqlx
             anomaly_score, severity, confidence, confidence_label,
             category_scores, reason_codes, evidence_summary,
             status, fingerprint, first_seen_at, last_seen_at, occurrence_count,
-            baseline_deviation_pct, triggered_categories_count, is_anomalous, evaluation_duration_ms
+            baseline_deviation_pct, triggered_categories_count, is_anomalous, evaluation_duration_ms,
+            latency_trend_slope, latency_trend_r2, log_error_burst_ratio
         FROM anomaly_engine_results_v1
         WHERE status = 'active'
         ORDER BY anomaly_score DESC
@@ -136,7 +145,8 @@ pub async fn get_all_anomalies(pool: &PgPool, limit: i64) -> Result<Vec<AnomalyR
             anomaly_score, severity, confidence, confidence_label,
             category_scores, reason_codes, evidence_summary,
             status, fingerprint, first_seen_at, last_seen_at, occurrence_count,
-            baseline_deviation_pct, triggered_categories_count, is_anomalous, evaluation_duration_ms
+            baseline_deviation_pct, triggered_categories_count, is_anomalous, evaluation_duration_ms,
+            latency_trend_slope, latency_trend_r2, log_error_burst_ratio
         FROM anomaly_engine_results_v1
         ORDER BY
             CASE WHEN status = 'active' THEN 0 ELSE 1 END,
@@ -160,7 +170,8 @@ pub async fn get_active_deduplicated(pool: &PgPool, limit: i64) -> Result<Vec<An
             anomaly_score, severity, confidence, confidence_label,
             category_scores, reason_codes, evidence_summary,
             status, fingerprint, first_seen_at, last_seen_at, occurrence_count,
-            baseline_deviation_pct, triggered_categories_count, is_anomalous, evaluation_duration_ms
+            baseline_deviation_pct, triggered_categories_count, is_anomalous, evaluation_duration_ms,
+            latency_trend_slope, latency_trend_r2, log_error_burst_ratio
         FROM anomaly_engine_results_v1
         WHERE status = 'active'
         ORDER BY service_id, anomaly_score DESC, last_seen_at DESC
@@ -187,7 +198,8 @@ pub async fn get_resolved_recent(pool: &PgPool, limit: i64) -> Result<Vec<Anomal
             anomaly_score, severity, confidence, confidence_label,
             category_scores, reason_codes, evidence_summary,
             status, fingerprint, first_seen_at, last_seen_at, occurrence_count,
-            baseline_deviation_pct, triggered_categories_count, is_anomalous, evaluation_duration_ms
+            baseline_deviation_pct, triggered_categories_count, is_anomalous, evaluation_duration_ms,
+            latency_trend_slope, latency_trend_r2, log_error_burst_ratio
         FROM anomaly_engine_results_v1
         WHERE status = 'resolved'
         ORDER BY last_seen_at DESC
@@ -226,4 +238,7 @@ pub struct AnomalyRow {
     pub triggered_categories_count: Option<i16>,
     pub is_anomalous: Option<bool>,
     pub evaluation_duration_ms: Option<i32>,
+    pub latency_trend_slope: Option<f32>,
+    pub latency_trend_r2: Option<f32>,
+    pub log_error_burst_ratio: Option<f32>,
 }
