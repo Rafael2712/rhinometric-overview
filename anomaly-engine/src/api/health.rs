@@ -1,7 +1,7 @@
 use axum::{extract::State, Json};
 use serde::Serialize;
 
-use crate::persistence::db::Database;
+use crate::server::AppState;
 
 #[derive(Serialize)]
 pub struct HealthResponse {
@@ -12,8 +12,8 @@ pub struct HealthResponse {
 }
 
 /// GET /health
-pub async fn health(State(db): State<Database>) -> Json<HealthResponse> {
-    let db_ok = db.is_healthy().await;
+pub async fn health(State(state): State<AppState>) -> Json<HealthResponse> {
+    let db_ok = state.db.is_healthy().await;
 
     Json(HealthResponse {
         status: if db_ok { "healthy" } else { "degraded" },

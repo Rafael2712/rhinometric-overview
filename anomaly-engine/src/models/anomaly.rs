@@ -44,6 +44,12 @@ pub struct AnomalyOutput {
     pub first_seen: DateTime<Utc>,
     pub last_seen: DateTime<Utc>,
     pub occurrence_count: u32,
+
+    // Validation fields (V1.1)
+    pub baseline_deviation_pct: f64,
+    pub triggered_categories_count: i16,
+    pub is_anomalous: bool,
+    pub evaluation_duration_ms: i32,
 }
 
 /// Anomaly lifecycle states.

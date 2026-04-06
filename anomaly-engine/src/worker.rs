@@ -8,6 +8,7 @@ use crate::client::backend::BackendClient;
 use crate::persistence::db::Database;
 use crate::persistence::{history, repository};
 use crate::scoring::engine;
+use crate::threshold::SharedThresholdConfig;
 
 /// Prometheus metrics for the worker.
 struct WorkerMetrics {
@@ -57,7 +58,7 @@ impl WorkerMetrics {
 }
 
 /// Start the worker loop. Runs indefinitely on the given interval.
-pub async fn run(db: Database, client: BackendClient, interval_secs: u64) {
+pub async fn run(db: Database, client: BackendClient, interval_secs: u64, threshold: SharedThresholdConfig) {
     let metrics = WorkerMetrics::new();
 
     tracing::info!("Worker started (interval={}s)", interval_secs);
@@ -65,7 +66,10 @@ pub async fn run(db: Database, client: BackendClient, interval_secs: u64) {
     loop {
         let cycle_start = Instant::now();
 
-        match run_cycle(&db, &client, &metrics).await {
+        // Hot-reload threshold config from disk each cycle
+        crate::threshold::reload(&threshold, "config/anomaly_v1.yaml").await;
+
+        match run_cycle(&db, &client, &metrics, &threshold).await {
             Ok(()) => {
                 metrics.cycles_total.inc();
             }
@@ -91,6 +95,7 @@ async fn run_cycle(
     db: &Database,
     client: &BackendClient,
     metrics: &WorkerMetrics,
+    threshold: &SharedThresholdConfig,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let cycle_start = Instant::now();
 
@@ -112,8 +117,24 @@ async fn run_cycle(
     let mut anomaly_count = 0u32;
     let mut max_score = 0.0_f64;
 
+    let cfg = threshold.read().await;
+    let active_threshold = cfg.scoring.active_threshold;
+    let anomalous_threshold = cfg.scoring.anomalous_threshold;
+    let cat_trigger = cfg.scoring.category_trigger_threshold;
+    drop(cfg);
+
     for snap in snapshots {
-        let output = engine::evaluate(snap);
+        let eval_start = Instant::now();
+        let mut output = engine::evaluate(snap);
+        output.evaluation_duration_ms = eval_start.elapsed().as_millis() as i32;
+
+        // Apply hot-reloaded thresholds
+        output.is_anomalous = output.score > anomalous_threshold;
+        let cat = &output.category_scores;
+        output.triggered_categories_count = [cat.latency, cat.availability, cat.error, cat.ssl]
+            .iter()
+            .filter(|&&s| s > cat_trigger)
+            .count() as i16;
 
         if output.score > max_score {
             max_score = output.score;

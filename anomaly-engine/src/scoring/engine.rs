@@ -39,6 +39,25 @@ pub fn evaluate(snap: &ServiceSignalSnapshot) -> AnomalyOutput {
         AnomalyStatus::Resolved
     };
 
+    // 7. Validation fields (V1.1)
+    let baseline_deviation_pct = if snap.latency_baseline_ms > 0.0 {
+        ((snap.latency_current_ms - snap.latency_baseline_ms) / snap.latency_baseline_ms) * 100.0
+    } else {
+        0.0
+    };
+
+    let triggered_categories_count = [
+        comp.latency_score,
+        comp.availability_score,
+        comp.error_score,
+        comp.ssl_score,
+    ]
+    .iter()
+    .filter(|&&s| s > 15.0)
+    .count() as i16;
+
+    let is_anomalous = comp.score > 35.0;
+
     let now = Utc::now();
 
     AnomalyOutput {
@@ -66,6 +85,10 @@ pub fn evaluate(snap: &ServiceSignalSnapshot) -> AnomalyOutput {
         first_seen: now,
         last_seen: now,
         occurrence_count: 1,
+        baseline_deviation_pct,
+        triggered_categories_count,
+        is_anomalous,
+        evaluation_duration_ms: 0, // set by worker after timing
     }
 }
 

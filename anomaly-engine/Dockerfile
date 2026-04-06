@@ -29,6 +29,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 COPY --from=builder /build/target/release/rhinometric-anomaly-engine /usr/local/bin/anomaly-engine
 
+# Config directory (hot-reloadable)
+COPY config/ /app/config/
+WORKDIR /app
+
 # Non-root user
 RUN useradd -r -s /bin/false anomaly
 USER anomaly

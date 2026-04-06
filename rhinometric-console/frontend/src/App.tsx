@@ -28,6 +28,7 @@ import { RoadmapPage } from './pages/Roadmap'
 import { AIInsightsPage } from './pages/AIInsights'
 import { BackupRecoveryPage } from './pages/BackupRecovery'
 import { TraceAnalyticsPage } from './pages/TraceAnalytics'
+import { AiAnomaliesV2Page } from './pages/AiAnomaliesV2'
 import { useAuthStore, useHasHydrated } from './lib/auth/store'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -77,6 +78,7 @@ function App() {
           <Route path="traces" element={<TracesPage />} />
           <Route path="traces/:traceId" element={<TraceDetailPage />} />
           <Route path="trace-analytics" element={<TraceAnalyticsPage />} />
+          <Route path="ai-anomalies-v2" element={<AiAnomaliesV2Page />} />
           <Route path="license" element={<LicensePage />} />
           <Route path="backup-recovery" element={<BackupRecoveryPage />} />
           <Route path="users" element={<UsersPage />} />

@@ -9,6 +9,8 @@ pub struct AppConfig {
     pub evaluation_interval_s: u64,
     /// HTTP listen address
     pub listen_addr: String,
+    /// Python anomaly service URL (for comparison endpoint)
+    pub python_anomaly_url: String,
 }
 
 impl AppConfig {
@@ -25,6 +27,8 @@ impl AppConfig {
                 .unwrap_or(60),
             listen_addr: std::env::var("LISTEN_ADDR")
                 .unwrap_or_else(|_| "0.0.0.0:8091".into()),
+            python_anomaly_url: std::env::var("PYTHON_ANOMALY_URL")
+                .unwrap_or_else(|_| "http://rhinometric-ai-anomaly:8085".into()),
         }
     }
 

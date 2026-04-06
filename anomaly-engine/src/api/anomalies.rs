@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::models::anomaly::AnomalySummary;
 use crate::persistence::{db::Database, history, repository};
+use crate::server::AppState;
 
 #[derive(Deserialize)]
 pub struct ListParams {
@@ -22,21 +23,21 @@ pub struct AnomalyListResponse {
 
 /// GET /api/v2/anomalies
 pub async fn list_anomalies(
-    State(db): State<Database>,
+    State(state): State<AppState>,
     Query(params): Query<ListParams>,
 ) -> Result<Json<AnomalyListResponse>, axum::http::StatusCode> {
     let active_only = params.active_only.unwrap_or(false);
     let limit = params.limit.unwrap_or(100);
 
     let anomalies = if active_only {
-        repository::get_active_anomalies(&db.pool)
+        repository::get_active_anomalies(&state.db.pool)
             .await
             .map_err(|e| {
                 tracing::error!("DB error: {e}");
                 axum::http::StatusCode::INTERNAL_SERVER_ERROR
             })?
     } else {
-        repository::get_all_anomalies(&db.pool, limit)
+        repository::get_all_anomalies(&state.db.pool, limit)
             .await
             .map_err(|e| {
                 tracing::error!("DB error: {e}");
@@ -62,9 +63,9 @@ pub struct HistoryResponse {
 
 /// GET /api/v2/anomalies/history
 pub async fn list_history(
-    State(db): State<Database>,
+    State(state): State<AppState>,
 ) -> Result<Json<HistoryResponse>, axum::http::StatusCode> {
-    let rows = history::get_recent_history(&db.pool, 50)
+    let rows = history::get_recent_history(&state.db.pool, 50)
         .await
         .map_err(|e| {
             tracing::error!("DB error: {e}");
