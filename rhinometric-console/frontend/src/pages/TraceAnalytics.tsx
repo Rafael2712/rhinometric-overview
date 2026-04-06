@@ -1,15 +1,14 @@
 /* eslint-disable */
 import { useMemo } from 'react'
-import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
-import { useAuthStore } from '../lib/auth/store'
-import { RefreshCw, AlertTriangle, Inbox, Flame, Zap, BarChart3 } from 'lucide-react'
+import { RefreshCw, AlertTriangle, Inbox, Flame, Zap, BarChart3, Clock } from 'lucide-react'
 import { summarizeTrace, formatDuration } from '../utils/traceAnalysis'
 import type { JaegerTrace } from '../utils/traceAnalysis'
+import { useTracesData, useTimeRangeStore, TIME_RANGE_OPTIONS } from '../hooks/useTracesData'
 
-/* ================================================================
+/* ═══════════════════════════════════════════════════════════════════
    TYPES
-   ================================================================ */
+   ═══════════════════════════════════════════════════════════════════ */
 
 interface OperationStats {
   operation: string
@@ -23,9 +22,9 @@ interface OperationStats {
   serviceCount: number // max unique services across traces
 }
 
-/* ================================================================
+/* ═══════════════════════════════════════════════════════════════════
    AGGREGATION ENGINE
-   ================================================================ */
+   ═══════════════════════════════════════════════════════════════════ */
 
 function aggregateOperations(traces: JaegerTrace[]): OperationStats[] {
   const groups = new Map<string, {
@@ -81,9 +80,9 @@ function aggregateOperations(traces: JaegerTrace[]): OperationStats[] {
   return result
 }
 
-/* ================================================================
+/* ═══════════════════════════════════════════════════════════════════
    FORMATTING HELPERS
-   ================================================================ */
+   ═══════════════════════════════════════════════════════════════════ */
 
 function latencyColor(us: number): string {
   if (us > 1_000_000) return 'text-red-400'
@@ -110,9 +109,9 @@ function errorBadgeClass(rate: number): string {
   return 'bg-gray-700/30 text-gray-500 border-gray-600/30'
 }
 
-/* ================================================================
+/* ═══════════════════════════════════════════════════════════════════
    SECTION COMPONENT
-   ================================================================ */
+   ═══════════════════════════════════════════════════════════════════ */
 
 function OperationSection({
   title,
@@ -202,31 +201,14 @@ function OperationSection({
   )
 }
 
-/* ================================================================
+/* ═══════════════════════════════════════════════════════════════════
    MAIN PAGE
-   ================================================================ */
+   ═══════════════════════════════════════════════════════════════════ */
 
 export function TraceAnalyticsPage() {
-  const { token } = useAuthStore()
   const navigate = useNavigate()
-
-  const { data: tracesData, isLoading, error, refetch, isFetching } = useQuery({
-    queryKey: ['trace-analytics'],
-    queryFn: async () => {
-      if (!token) throw new Error('No token')
-      const params = new URLSearchParams({ limit: '100', lookback: '15m' })
-      const res = await fetch(`/api/traces?${params}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      if (!res.ok) throw new Error('Failed to fetch traces')
-      return res.json()
-    },
-    enabled: !!token,
-    staleTime: 30_000,
-    refetchOnWindowFocus: false,
-  })
-
-  const traces: JaegerTrace[] = tracesData?.traces || []
+  const { traces, isLoading, isFetching, error, refetch } = useTracesData()
+  const { timeRange, setTimeRange } = useTimeRangeStore()
 
   const ops = useMemo(() => aggregateOperations(traces), [traces])
 
@@ -257,6 +239,8 @@ export function TraceAnalyticsPage() {
     errorOps: ops.filter(o => o.errorRate > 0).length,
   }), [ops, traces])
 
+  const currentRangeLabel = TIME_RANGE_OPTIONS.find(o => o.value === timeRange)?.label || timeRange
+
   return (
     <div className="space-y-4 sm:space-y-6">
       {/* Header */}
@@ -265,17 +249,35 @@ export function TraceAnalyticsPage() {
           <h1 className="text-xl sm:text-2xl font-bold text-white">Trace Analytics</h1>
           <p className="text-xs sm:text-sm text-gray-400 mt-1">
             Operational insights &mdash; aggregated from {traces.length} traces
+            {traces.length >= 100 && (
+              <span className="text-gray-500"> (capped at 100)</span>
+            )}
           </p>
         </div>
-        <button
-          onClick={() => refetch()}
-          disabled={isFetching}
-          className="flex items-center gap-1.5 px-3 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg text-xs
-            transition-colors disabled:opacity-50 border border-gray-700"
-        >
-          <RefreshCw size={12} className={isFetching ? 'animate-spin' : ''} />
-          {isFetching ? 'Loading...' : 'Refresh'}
-        </button>
+        <div className="flex items-center gap-2">
+          {/* Time range selector */}
+          <div className="flex items-center gap-1.5 px-2 py-1.5 bg-gray-800 border border-gray-700 rounded-lg">
+            <Clock size={12} className="text-gray-400" />
+            <select
+              value={timeRange}
+              onChange={(e) => setTimeRange(e.target.value)}
+              className="bg-transparent text-gray-300 text-xs border-none outline-none cursor-pointer"
+            >
+              {TIME_RANGE_OPTIONS.map(opt => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+          </div>
+          <button
+            onClick={() => refetch()}
+            disabled={isFetching}
+            className="flex items-center gap-1.5 px-3 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg text-xs
+               transition-colors disabled:opacity-50 border border-gray-700"
+          >
+            <RefreshCw size={12} className={isFetching ? 'animate-spin' : ''} />
+            {isFetching ? 'Loading...' : 'Refresh'}
+          </button>
+        </div>
       </div>
 
       {/* Summary stats */}
@@ -314,12 +316,12 @@ export function TraceAnalyticsPage() {
           <Inbox size={56} className="mb-4 opacity-20" />
           <p className="text-lg font-semibold text-gray-400">No trace operations available</p>
           <p className="text-sm mt-1 text-gray-600">
-            No traces found in the last 15 minutes.
+            No traces found in the selected time range ({currentRangeLabel}).
           </p>
           <button
             onClick={() => refetch()}
             className="mt-4 px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg text-xs
-              transition-colors border border-gray-700 flex items-center gap-1.5"
+                 transition-colors border border-gray-700 flex items-center gap-1.5"
           >
             <RefreshCw size={12} />
             Try again

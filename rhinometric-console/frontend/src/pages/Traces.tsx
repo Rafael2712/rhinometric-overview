@@ -1,10 +1,12 @@
-import { useState } from 'react'
+/* eslint-disable */
+import { useState, useMemo } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Search, Filter, Clock, ArrowUpDown, Network, XCircle, Download, Inbox } from 'lucide-react'
 import { useAuthStore } from '../lib/auth/store'
 import { summarizeTrace, formatDuration } from '../utils/traceAnalysis'
 import type { JaegerTrace, TraceClassificationType } from '../utils/traceAnalysis'
+import { useTimeRangeStore, TIME_RANGE_OPTIONS } from '../hooks/useTracesData'
 
 type SortKey = 'recent' | 'duration' | 'errors' | 'spans'
 
@@ -19,7 +21,7 @@ export function TracesPage() {
   const location = useLocation()
   const token = useAuthStore((state) => state.token)
 
-  // Read navigation state from Service Map (node click / edge click)
+  // Read navigation state from Service Map / Analytics deep links
   const navState = (location.state || {}) as Record<string, string | undefined>
   const prefillSvc = navState.prefillService || navState.sourceService || ''
   const prefillOp = navState.prefillOperation || ''
@@ -27,12 +29,12 @@ export function TracesPage() {
   const [searchQuery, setSearchQuery] = useState(prefillOp)
   const [serviceFilter, setServiceFilter] = useState(prefillSvc || 'all')
   const [minDuration, setMinDuration] = useState('')
-  const [timeRange, setTimeRange] = useState('1h')
+  const { timeRange, setTimeRange } = useTimeRangeStore()
   const [sortBy, setSortBy] = useState<SortKey>('recent')
 
-  // Fetch available services
+  // ── Fetch available services (shared cache, 60 s stale) ───────
   const { data: servicesData } = useQuery({
-    queryKey: ['trace-services', token],
+    queryKey: ['trace-services'],
     queryFn: async () => {
       if (!token) throw new Error('No token')
       const res = await fetch('/api/traces/services', {
@@ -45,64 +47,64 @@ export function TracesPage() {
     staleTime: 60_000,
   })
 
-  const { data: tracesData, isLoading, error, refetch } = useQuery({
-    queryKey: ['traces', token, serviceFilter, minDuration, timeRange],
+  // ── Smart queryKey: matches shared cache when no filters active ─
+  //    When serviceFilter='all' and minDuration='', the queryKey is
+  //    ['traces-shared', timeRange] — SAME as TraceAnalytics & ServiceMap.
+  //    React Query serves from cache → zero extra fetches on navigation.
+  const hasActiveFilters = serviceFilter !== 'all' || !!minDuration
+  const queryKey = hasActiveFilters
+    ? ['traces-filtered', timeRange, serviceFilter, minDuration]
+    : ['traces-shared', timeRange]
+
+  const { data: tracesData, isLoading, error, refetch, isFetching } = useQuery({
+    queryKey,
     queryFn: async () => {
       if (!token) throw new Error('No token available')
-
-      const params = new URLSearchParams({
-        limit: '100',
-        lookback: timeRange
-      })
-
-      if (serviceFilter !== 'all') {
-        params.append('service', serviceFilter)
-      }
-      if (minDuration) {
-        params.append('minDuration', `${minDuration}ms`)
-      }
-
+      const params = new URLSearchParams({ limit: '100', lookback: timeRange })
+      if (serviceFilter !== 'all') params.append('service', serviceFilter)
+      if (minDuration) params.append('minDuration', `${minDuration}ms`)
       const response = await fetch(`/api/traces?${params}`, {
         headers: { Authorization: `Bearer ${token}` }
       })
-
       if (!response.ok) throw new Error('Failed to fetch traces')
       return response.json()
     },
     enabled: !!token,
-    staleTime: 0,
+    staleTime: 30_000,
+    refetchOnWindowFocus: false,
   })
 
   const traces: JaegerTrace[] = tracesData?.traces || []
   const services = ['all', ...(servicesData?.services || [])]
 
-  // Compute summaries for all traces
-  const traceSummaries = traces.map(trace => ({
-    trace,
-    summary: summarizeTrace(trace),
-  }))
+  // ── MEMOIZED derivations — no recalculation on unrelated renders ─
+  const traceSummaries = useMemo(
+    () => traces.map(trace => ({ trace, summary: summarizeTrace(trace) })),
+    [traces],
+  )
 
-  // Filter
-  const filtered = traceSummaries.filter(({ trace, summary }) => {
-    if (!searchQuery) return true
+  const filtered = useMemo(() => {
+    if (!searchQuery) return traceSummaries
     const q = searchQuery.toLowerCase()
-    return (
+    return traceSummaries.filter(({ trace, summary }) =>
       trace.traceID.toLowerCase().includes(q) ||
       summary.rootOperation.toLowerCase().includes(q) ||
-      summary.rootService.toLowerCase().includes(q)
+      summary.rootService.toLowerCase().includes(q),
     )
-  })
+  }, [traceSummaries, searchQuery])
 
-  // Sort
-  const sorted = [...filtered].sort((a, b) => {
-    switch (sortBy) {
-      case 'duration': return b.summary.totalDuration - a.summary.totalDuration
-      case 'errors': return b.summary.errorCount - a.summary.errorCount
-      case 'spans': return b.summary.spanCount - a.summary.spanCount
-      case 'recent':
-      default: return b.summary.startTime - a.summary.startTime
-    }
-  })
+  const sorted = useMemo(
+    () => [...filtered].sort((a, b) => {
+      switch (sortBy) {
+        case 'duration': return b.summary.totalDuration - a.summary.totalDuration
+        case 'errors':   return b.summary.errorCount - a.summary.errorCount
+        case 'spans':    return b.summary.spanCount - a.summary.spanCount
+        case 'recent':
+        default:         return b.summary.startTime - a.summary.startTime
+      }
+    }),
+    [filtered, sortBy],
+  )
 
   const getDurationColor = (us: number): string => {
     if (us > 1000000) return 'bg-red-500'
@@ -110,6 +112,8 @@ export function TracesPage() {
     if (us > 100000) return 'bg-blue-500'
     return 'bg-green-500'
   }
+
+  const currentRangeLabel = TIME_RANGE_OPTIONS.find(o => o.value === timeRange)?.label || timeRange
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -153,10 +157,15 @@ export function TracesPage() {
           </div>
           <button
             onClick={() => refetch()}
-            className="btn flex items-center gap-2 min-h-[44px] text-sm justify-center"
+            disabled={isFetching}
+            className="btn flex items-center gap-2 min-h-[44px] text-sm justify-center disabled:opacity-50"
           >
-            <Search size={16} />
-            Search
+            {isFetching ? (
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+            ) : (
+              <Search size={16} />
+            )}
+            {isFetching ? 'Loading...' : 'Search'}
           </button>
         </div>
 
@@ -195,10 +204,9 @@ export function TracesPage() {
               onChange={(e) => setTimeRange(e.target.value)}
               className="bg-surface-light border border-gray-700 text-white rounded px-2 sm:px-3 py-1.5 text-sm"
             >
-              <option value="15m">Last 15 min</option>
-              <option value="30m">Last 30 min</option>
-              <option value="1h">Last 1 hour</option>
-              <option value="3h">Last 3 hours</option>
+              {TIME_RANGE_OPTIONS.map(opt => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
             </select>
           </div>
 
@@ -222,6 +230,13 @@ export function TracesPage() {
           </div>
         </div>
       </div>
+
+      {/* Trace count cap note */}
+      {traces.length >= 100 && (
+        <p className="text-xs text-gray-500 px-1">
+          Showing up to 100 traces from the selected time range ({currentRangeLabel}).
+        </p>
+      )}
 
       {/* Traces Display */}
       <div className="card">

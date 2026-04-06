@@ -1,8 +1,6 @@
 /* eslint-disable */
 import { useState, useMemo, useEffect, useCallback } from 'react'
-import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
-import { useAuthStore } from '../lib/auth/store'
 import {
   ReactFlow,
   Background,
@@ -17,15 +15,15 @@ import {
 } from '@xyflow/react'
 import type { Node, Edge, EdgeMouseHandler } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
-import { RefreshCw, Network, AlertTriangle, ArrowRight } from 'lucide-react'
+import { RefreshCw, Network, AlertTriangle, ArrowRight, Clock } from 'lucide-react'
 import { buildServiceGraph } from '../utils/serviceGraph'
 import type { GraphEdge, GraphNode as GNode } from '../utils/serviceGraph'
-import type { JaegerTrace } from '../utils/traceAnalysis'
+import { useTracesData, useTimeRangeStore, TIME_RANGE_OPTIONS } from '../hooks/useTracesData'
 import Dagre from '@dagrejs/dagre'
 
-/* ================================================================
+/* ═══════════════════════════════════════════════════════════════════
    VISUALIZATION CONSTANTS
-   ================================================================ */
+   ═══════════════════════════════════════════════════════════════════ */
 
 const EDGE_THRESHOLDS = { fast: 100, medium: 300 } as const
 const ERROR_THRESHOLD = 0.05
@@ -40,9 +38,9 @@ const COLORS = {
   border:   '#374151',
 } as const
 
-/* ================================================================
+/* ═══════════════════════════════════════════════════════════════════
    EDGE HELPERS
-   ================================================================ */
+   ═══════════════════════════════════════════════════════════════════ */
 
 function edgeColor(edge: GraphEdge): string {
   if (edge.errorRate > ERROR_THRESHOLD) return COLORS.error
@@ -56,33 +54,29 @@ function edgeWidth(count: number, maxCount: number): number {
   return 2 + (count / maxCount) * 6
 }
 
-/** Derive edge stroke dash array based on error state */
 function edgeStrokeDash(edge: GraphEdge): string | undefined {
-  if (edge.errorRate > ERROR_THRESHOLD) return undefined // animated handles >5%
-  if (edge.errorCount > 0) return '8 4' // dashed for any errors < 5%
+  if (edge.errorRate > ERROR_THRESHOLD) return undefined
+  if (edge.errorCount > 0) return '8 4'
   return undefined
 }
 
-/* ================================================================
-   NODE STATUS — uses both latency AND error thresholds
-   ================================================================ */
+/* ═══════════════════════════════════════════════════════════════════
+   NODE STATUS
+   ═══════════════════════════════════════════════════════════════════ */
 
 type NodeStatus = 'healthy' | 'degraded' | 'critical'
 
 function computeNodeStatus(errorCount: number, callCount: number, avgLatency: number): NodeStatus {
   const errorRate = callCount > 0 ? errorCount / callCount : 0
-  // Critical: high errors OR high latency
   if (errorRate >= ERROR_THRESHOLD || avgLatency > EDGE_THRESHOLDS.medium) return 'critical'
-  // Degraded: any errors OR medium latency
   if (errorCount > 0 || avgLatency > EDGE_THRESHOLDS.fast) return 'degraded'
-  // Healthy
   return 'healthy'
 }
 
 const STATUS_STYLES: Record<NodeStatus, {
   ring: string; glow: string; dot: string; glowActive: string; badge: string; badgeText: string
 }> = {
-  healthy:  {
+  healthy: {
     ring: COLORS.healthy, glow: '', dot: 'bg-emerald-500',
     glowActive: 'shadow-[0_0_20px_rgba(16,185,129,0.25)]',
     badge: 'bg-emerald-500/20 border-emerald-500/40', badgeText: 'text-emerald-400'
@@ -99,7 +93,6 @@ const STATUS_STYLES: Record<NodeStatus, {
   },
 }
 
-/** Quick insight line for node tooltip */
 function nodeInsight(status: NodeStatus, errorRate: number, avgLatency: number): string {
   if (status === 'critical') {
     if (errorRate >= ERROR_THRESHOLD) return `${(errorRate * 100).toFixed(1)}% error rate — investigate`
@@ -112,21 +105,20 @@ function nodeInsight(status: NodeStatus, errorRate: number, avgLatency: number):
   return 'No issues detected'
 }
 
-/** Node width scales with call count */
 function nodeWidth(callCount: number, maxCalls: number): number {
   const MIN = 160, MAX = 240
   if (maxCalls <= 1) return MIN
   return MIN + ((callCount / maxCalls) * (MAX - MIN))
 }
 
-/* ================================================================
-   NODE METADATA — incoming/outgoing counts + avgLatency per node
-   ================================================================ */
+/* ═══════════════════════════════════════════════════════════════════
+   NODE METADATA
+   ═══════════════════════════════════════════════════════════════════ */
 
 interface NodeMeta {
   incoming: Map<string, number>
   outgoing: Map<string, number>
-  avgLatency: Map<string, number>  // weighted avg across all edges touching node
+  avgLatency: Map<string, number>
   totalEdgeCalls: Map<string, number>
   totalEdgeErrors: Map<string, number>
 }
@@ -143,7 +135,6 @@ function computeNodeMeta(edges: GraphEdge[]): NodeMeta {
     incoming.set(e.target, (incoming.get(e.target) || 0) + 1)
     outgoing.set(e.source, (outgoing.get(e.source) || 0) + 1)
 
-    // Accumulate latency for both source and target
     for (const nodeId of [e.source, e.target]) {
       latSum.set(nodeId, (latSum.get(nodeId) || 0) + e.avgLatency * e.count)
       latWeight.set(nodeId, (latWeight.get(nodeId) || 0) + e.count)
@@ -161,9 +152,9 @@ function computeNodeMeta(edges: GraphEdge[]): NodeMeta {
   return { incoming, outgoing, avgLatency, totalEdgeCalls, totalEdgeErrors }
 }
 
-/* ================================================================
+/* ═══════════════════════════════════════════════════════════════════
    DAGRE LAYOUT
-   ================================================================ */
+   ═══════════════════════════════════════════════════════════════════ */
 
 function dagreLayout(
   graphNodes: GNode[],
@@ -243,9 +234,9 @@ function dagreLayout(
   return { nodes, edges }
 }
 
-/* ================================================================
+/* ═══════════════════════════════════════════════════════════════════
    CUSTOM SERVICE NODE
-   ================================================================ */
+   ═══════════════════════════════════════════════════════════════════ */
 
 interface ServiceNodeData {
   label: string
@@ -277,7 +268,6 @@ function ServiceNode({ data }: { data: ServiceNodeData }) {
       <Handle type="target" position={Position.Top} className="!bg-gray-600 !w-2.5 !h-2.5 !border-2 !border-gray-800 !-top-1" />
       <Handle type="source" position={Position.Bottom} className="!bg-gray-600 !w-2.5 !h-2.5 !border-2 !border-gray-800 !-bottom-1" />
 
-      {/* Node card */}
       <div
         className={`rounded-xl border-2 px-4 py-3 cursor-pointer transition-all duration-200 backdrop-blur-sm
           hover:scale-[1.03] ${hovered ? ss.glowActive : ss.glow}`}
@@ -287,12 +277,10 @@ function ServiceNode({ data }: { data: ServiceNodeData }) {
           backgroundColor: 'rgba(17, 24, 39, 0.92)',
         }}
       >
-        {/* Status badge — top right */}
         <div className={`absolute -top-2 -right-2 px-1.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider border ${ss.badge} ${ss.badgeText}`}>
           {data.status === 'critical' ? 'ERR' : data.status === 'degraded' ? 'WARN' : 'OK'}
         </div>
 
-        {/* Header row */}
         <div className="flex items-center gap-2 mb-1.5">
           <div className={`w-2.5 h-2.5 rounded-full ${ss.dot} flex-shrink-0`} />
           <span className="text-sm font-semibold text-gray-100 truncate" title={data.label}>
@@ -300,7 +288,6 @@ function ServiceNode({ data }: { data: ServiceNodeData }) {
           </span>
         </div>
 
-        {/* Metrics row */}
         <div className="flex items-center gap-3 text-[11px]">
           <span className="text-gray-400">
             <span className="text-gray-200 font-mono font-medium">{data.callCount}</span> spans
@@ -316,7 +303,6 @@ function ServiceNode({ data }: { data: ServiceNodeData }) {
         </div>
       </div>
 
-      {/* Hover tooltip */}
       {hovered && (
         <div
           className="absolute z-50 left-full ml-3 top-0 rounded-lg p-3 min-w-[210px] pointer-events-none border"
@@ -328,7 +314,6 @@ function ServiceNode({ data }: { data: ServiceNodeData }) {
         >
           <p className="text-xs font-bold text-gray-100 mb-2 truncate">{data.label}</p>
 
-          {/* Quick insight */}
           <p className={`text-[10px] mb-2 px-2 py-1 rounded ${ss.badge} ${ss.badgeText}`}>
             {insight}
           </p>
@@ -363,9 +348,9 @@ function Row({ label, value, color }: { label: string; value: string; color?: st
 
 const nodeTypes = { service: ServiceNode }
 
-/* ================================================================
-   EDGE TOOLTIP (follows cursor)
-   ================================================================ */
+/* ═══════════════════════════════════════════════════════════════════
+   EDGE TOOLTIP
+   ═══════════════════════════════════════════════════════════════════ */
 
 function EdgeTooltip({ edge, position }: { edge: GraphEdge | null; position: { x: number; y: number } }) {
   if (!edge) return null
@@ -404,7 +389,6 @@ function EdgeTooltip({ edge, position }: { edge: GraphEdge | null; position: { x
         {edge.target}
       </p>
 
-      {/* Quick insight */}
       <p className={`text-[10px] mb-2 px-2 py-1 rounded border ${insightStyle}`}>
         {insight}
       </p>
@@ -422,9 +406,9 @@ function EdgeTooltip({ edge, position }: { edge: GraphEdge | null; position: { x
   )
 }
 
-/* ================================================================
+/* ═══════════════════════════════════════════════════════════════════
    LEGEND
-   ================================================================ */
+   ═══════════════════════════════════════════════════════════════════ */
 
 function Legend() {
   return (
@@ -501,41 +485,25 @@ function LegendLine({ color, text }: { color: string; text: string }) {
   )
 }
 
-/* ================================================================
+/* ═══════════════════════════════════════════════════════════════════
    MAIN PAGE
-   ================================================================ */
+   ═══════════════════════════════════════════════════════════════════ */
 
 export function ServiceMapPage() {
-  const { token } = useAuthStore()
   const navigate = useNavigate()
 
   const [hoveredEdge, setHoveredEdge] = useState<GraphEdge | null>(null)
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 })
 
-  /* ── Fetch traces (manual refresh) ─────────────────────────── */
-  const { data: tracesData, isLoading, error, refetch, isFetching } = useQuery({
-    queryKey: ['service-map-traces'],
-    queryFn: async () => {
-      if (!token) throw new Error('No token')
-      const params = new URLSearchParams({ limit: '100', lookback: '15m' })
-      const res = await fetch(`/api/traces?${params}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      if (!res.ok) throw new Error('Failed to fetch traces')
-      return res.json()
-    },
-    enabled: !!token,
-    staleTime: Infinity,
-    refetchOnWindowFocus: false,
-  })
-
-  const traces: JaegerTrace[] = tracesData?.traces || []
+  /* ── Shared trace data ─────────────────────────────────────── */
+  const { traces, isLoading, isFetching, error, refetch } = useTracesData()
+  const { timeRange, setTimeRange } = useTimeRangeStore()
 
   /* ── Build graph (memoized) ────────────────────────────────── */
   const graph = useMemo(() => buildServiceGraph(traces), [traces])
   const meta = useMemo(() => computeNodeMeta(graph.edges), [graph.edges])
 
-  /* ── Node click → navigate to traces filtered by service ───── */
+  /* ── Node click → navigate to traces ───────────────────────── */
   const handleNodeSelect = useCallback((serviceId: string) => {
     navigate('/traces', { state: { prefillService: serviceId } })
   }, [navigate])
@@ -564,7 +532,6 @@ export function ServiceMapPage() {
     setHoveredEdge(null)
   }, [])
 
-  /** Edge click → navigate to traces with source + target context */
   const onEdgeClick: EdgeMouseHandler = useCallback((_event, edge) => {
     const d = edge.data as unknown as GraphEdge | undefined
     if (d) {
@@ -590,6 +557,8 @@ export function ServiceMapPage() {
     errorEdges: graph.edges.filter(e => e.errorRate > ERROR_THRESHOLD).length,
   }), [graph, traces])
 
+  const currentRangeLabel = TIME_RANGE_OPTIONS.find(o => o.value === timeRange)?.label || timeRange
+
   /* ── Render ────────────────────────────────────────────────── */
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -599,17 +568,33 @@ export function ServiceMapPage() {
           <h1 className="text-xl sm:text-2xl font-bold text-white">Service Map</h1>
           <p className="text-xs sm:text-sm text-gray-400 mt-1">
             Trace-based dependency graph &mdash; built from {traces.length} traces
+            {traces.length >= 100 && <span className="text-gray-500"> (capped at 100)</span>}
           </p>
         </div>
-        <button
-          onClick={() => refetch()}
-          disabled={isFetching}
-          className="flex items-center gap-1.5 px-3 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg text-xs
-            transition-colors disabled:opacity-50 border border-gray-700"
-        >
-          <RefreshCw size={12} className={isFetching ? 'animate-spin' : ''} />
-          {isFetching ? 'Loading...' : 'Refresh'}
-        </button>
+        <div className="flex items-center gap-2">
+          {/* Time range selector */}
+          <div className="flex items-center gap-1.5 px-2 py-1.5 bg-gray-800 border border-gray-700 rounded-lg">
+            <Clock size={12} className="text-gray-400" />
+            <select
+              value={timeRange}
+              onChange={(e) => setTimeRange(e.target.value)}
+              className="bg-transparent text-gray-300 text-xs border-none outline-none cursor-pointer"
+            >
+              {TIME_RANGE_OPTIONS.map(opt => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+          </div>
+          <button
+            onClick={() => refetch()}
+            disabled={isFetching}
+            className="flex items-center gap-1.5 px-3 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg text-xs
+               transition-colors disabled:opacity-50 border border-gray-700"
+          >
+            <RefreshCw size={12} className={isFetching ? 'animate-spin' : ''} />
+            {isFetching ? 'Loading...' : 'Refresh'}
+          </button>
+        </div>
       </div>
 
       {/* Stats bar */}
@@ -653,12 +638,12 @@ export function ServiceMapPage() {
             <Network size={56} className="mb-4 opacity-20" />
             <p className="text-lg font-semibold text-gray-400">No services detected</p>
             <p className="text-sm mt-1 text-gray-600">
-              No cross-service traces found in the last 15 minutes.
+              No cross-service traces found in the selected time range ({currentRangeLabel}).
             </p>
             <button
               onClick={() => refetch()}
               className="mt-4 px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg text-xs
-                transition-colors border border-gray-700 flex items-center gap-1.5"
+                    transition-colors border border-gray-700 flex items-center gap-1.5"
             >
               <RefreshCw size={12} />
               Try again
