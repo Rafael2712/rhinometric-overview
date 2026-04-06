@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useLocation, Outlet } from 'react-router-dom'
-import { Home, LayoutDashboard, AlertTriangle, Bell, FileText, Network, CreditCard, Settings, LogOut, Menu, X, Users, Map, Globe, Brain, ClipboardList, Flame, Target, Shield, Share2, HardDrive } from 'lucide-react'
+import { Home, LayoutDashboard, AlertTriangle, Bell, FileText, Network, CreditCard, Settings, LogOut, Menu, X, Users, Map, Globe, Brain, ClipboardList, Flame, Target, Shield, Share2, HardDrive, BarChart3 } from 'lucide-react'
 import { useAuthStore } from '../lib/auth/store'
 
 const navigation = [
@@ -17,6 +17,7 @@ const navigation = [
   { name: 'Alert Rules', href: '/alert-rules', icon: Shield },
   { name: 'Logs', href: '/logs', icon: FileText },
   { name: 'Traces', href: '/traces', icon: Network },
+  { name: 'Trace Analytics', href: '/trace-analytics', icon: BarChart3 },
   { name: 'License', href: '/license', icon: CreditCard },
   { name: 'Backup & Recovery', href: '/backup-recovery', icon: HardDrive },
   { name: 'Users', href: '/users', icon: Users, requiresAdmin: true },

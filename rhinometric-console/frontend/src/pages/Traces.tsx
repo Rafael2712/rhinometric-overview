@@ -22,8 +22,9 @@ export function TracesPage() {
   // Read navigation state from Service Map (node click / edge click)
   const navState = (location.state || {}) as Record<string, string | undefined>
   const prefillSvc = navState.prefillService || navState.sourceService || ''
+  const prefillOp = navState.prefillOperation || ''
 
-  const [searchQuery, setSearchQuery] = useState('')
+  const [searchQuery, setSearchQuery] = useState(prefillOp)
   const [serviceFilter, setServiceFilter] = useState(prefillSvc || 'all')
   const [minDuration, setMinDuration] = useState('')
   const [timeRange, setTimeRange] = useState('1h')
