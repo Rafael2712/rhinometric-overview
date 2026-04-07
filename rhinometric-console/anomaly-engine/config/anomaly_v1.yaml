@@ -1,0 +1,75 @@
+# Anomaly Engine V1 — Threshold Configuration
+# Hot-reloadable: engine re-reads this file every cycle.
+# Changes take effect on next evaluation cycle (no restart needed).
+
+scoring:
+  # Score above which anomaly status = "active"
+  active_threshold: 15.0
+  
+  # Score above which is_anomalous = true  (validation field)
+  anomalous_threshold: 35.0
+
+  # Category weights (must sum to 1.0)
+  weights:
+    latency: 0.30
+    availability: 0.25
+    error: 0.20
+    trace: 0.20
+    ssl: 0.05
+
+  # Per-category score floor to count as "triggered"
+  category_trigger_threshold: 15.0
+
+severity:
+  # Score ranges → severity label (exclusive upper bound)
+  normal_max: 15
+  watch_max: 35
+  degraded_max: 60
+  critical_max: 80
+  # above critical_max → emergency
+
+confidence:
+  # Minimum baseline age (hours) for full confidence
+  min_baseline_hours: 12.0
+  # Minimum checks in last hour for full confidence
+  min_checks_1h: 30
+
+# ── V1.5: Predictive Risk Layer ──
+# Short-horizon degradation forecast (30m / 1h / 2h).
+# Deterministic, explainable, no ML.
+prediction:
+  enabled: true
+
+  # Latency prediction
+  latency_slope_threshold: 0.15
+  latency_r2_min: 0.7
+  latency_baseline_multiplier_warn: 1.25
+  latency_baseline_multiplier_high: 1.5
+
+  # Error prediction
+  error_burst_ratio_warn: 2.5
+  error_burst_ratio_high: 4.0
+  error_rate_warn: 0.03
+  error_rate_high: 0.08
+  log_error_count_warn: 5
+  log_error_count_high: 20
+
+  # Availability prediction
+  health_score_drop_warn: 10
+  health_score_drop_high: 20
+  consecutive_failures_warn: 1
+  consecutive_failures_high: 3
+
+  # Trace prediction
+  trace_bottleneck_warn: 0.4
+  trace_bottleneck_high: 0.6
+  trace_slow_ops_warn: 2
+  trace_slow_ops_high: 5
+
+  # SSL prediction (certificate expiry horizon)
+  ssl_days_warn: 14
+  ssl_days_high: 7
+
+  # Correlation bonus
+  correlation_bonus_two_signals: 10
+  correlation_bonus_three_signals: 15

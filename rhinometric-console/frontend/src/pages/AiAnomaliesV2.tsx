@@ -4,7 +4,7 @@ import { useAuthStore } from '../lib/auth/store'
 import {
   AlertTriangle, Activity, Brain, ArrowUpDown, Eye, EyeOff,
   BarChart3, Zap, TrendingUp, ChevronDown, ChevronUp,
-  History, Radio
+  History, Radio, Sparkles, Loader2
 } from 'lucide-react'
 
 // ─── Types ───
@@ -13,6 +13,7 @@ interface CategoryScores {
   latency: number
   availability: number
   error: number
+  trace: number
   ssl: number
 }
 
@@ -42,6 +43,33 @@ interface AnomalyV2 {
   latency_trend_slope: number | null
   latency_trend_r2: number | null
   log_error_burst_ratio: number | null
+  trace_p95_latency_ms: number | null
+  trace_error_rate: number | null
+  trace_bottleneck_score: number | null
+  trace_slow_operations: number | null
+  predicted_risk_score: number | null
+  predicted_risk_level: string | null
+  predicted_horizon_minutes: number | null
+  prediction_confidence: string | null
+  prediction_reason_codes: Array<{ code: string; detail: Record<string, number> }> | null
+  prediction_summary: string | null
+}
+
+interface LlmExplanation {
+  summary: string
+  current_state: string
+  prediction_outlook: string
+  key_signals: string[]
+  risk_interpretation: string
+  confidence_note: string
+}
+
+interface ExplanationApiResponse {
+  anomaly_id: string
+  service_name: string
+  explanation: LlmExplanation
+  model: string
+  cached: boolean
 }
 
 interface AnomalySummary {
@@ -70,6 +98,14 @@ interface ValidationSummary {
   avg_log_error_burst_ratio: number
   pct_positive_trend: number
   pct_burst_detected: number
+  avg_trace_bottleneck_score: number
+  avg_trace_error_rate: number
+  avg_trace_p95_latency: number
+  total_slow_operations: number
+  avg_predicted_risk_score: number
+  predicted_high_count: number
+  predicted_critical_count: number
+  predicted_with_horizon_count: number
   severity_distribution: Array<{ severity: string; count: number }>
   score_histogram: Array<{ range: string; count: number }>
 }
@@ -223,6 +259,108 @@ function FreshnessDot({ lastSeen }: { lastSeen: string }) {
 
 // ─── Anomaly Card ───
 
+function AiExplanationSection({ anomalyId }: { anomalyId: string }) {
+  const [open, setOpen] = useState(false)
+  const token = useAuthStore(s => s.token)
+  const { data, isLoading, error, refetch } = useQuery<ExplanationApiResponse>({
+    queryKey: ['v2-explanation', anomalyId],
+    queryFn: async () => {
+      const r = await fetch(`/api/v2/anomalies/${anomalyId}/explanation`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      if (!r.ok) throw new Error(`${r.status} ${r.statusText}`)
+      return r.json()
+    },
+    enabled: open,
+    staleTime: 5 * 60_000,
+    retry: 1,
+  })
+
+  const ex = data?.explanation
+
+  return (
+    <div className="border border-indigo-500/20 rounded bg-indigo-500/5">
+      <button
+        className="w-full text-left px-2.5 py-2 flex items-center gap-2 hover:bg-indigo-500/10 transition-colors"
+        onClick={() => { setOpen(!open); if (!open && !data && !isLoading) refetch() }}
+      >
+        <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
+        <span className="text-[10px] text-indigo-400/80 uppercase tracking-wider font-medium flex-1">
+          AI Explanation
+        </span>
+        {data?.cached && <span className="text-[9px] text-gray-600 font-mono">cached</span>}
+        {open ? <ChevronUp className="w-3 h-3 text-gray-600" /> : <ChevronDown className="w-3 h-3 text-gray-600" />}
+      </button>
+
+      {open && (
+        <div className="px-2.5 pb-2.5 space-y-2.5">
+          {isLoading && (
+            <div className="flex items-center gap-2 py-3 justify-center">
+              <Loader2 className="w-4 h-4 text-indigo-400 animate-spin" />
+              <span className="text-xs text-gray-500">Generating explanation…</span>
+            </div>
+          )}
+          {error && (
+            <div className="text-xs text-red-400 py-2">
+              Failed to generate explanation: {(error as Error).message}
+            </div>
+          )}
+          {ex && (
+            <>
+              {/* Summary */}
+              <p className="text-xs text-indigo-200 leading-relaxed font-medium">{ex.summary}</p>
+
+              {/* Anomaly Explanation */}
+              <div>
+                <div className="text-[10px] text-gray-500 mb-0.5 uppercase tracking-wider font-medium">Current State</div>
+                <p className="text-xs text-gray-300 leading-relaxed">{ex.current_state}</p>
+              </div>
+
+              {/* Prediction Explanation */}
+              <div>
+                <div className="text-[10px] text-gray-500 mb-0.5 uppercase tracking-wider font-medium">Prediction Outlook</div>
+                <p className="text-xs text-gray-300 leading-relaxed">{ex.prediction_outlook}</p>
+              </div>
+
+              {/* Key Signals */}
+              {ex.key_signals.length > 0 && (
+                <div>
+                  <div className="text-[10px] text-gray-500 mb-0.5 uppercase tracking-wider font-medium">Key Signals</div>
+                  <ul className="space-y-0.5">
+                    {ex.key_signals.map((s, i) => (
+                      <li key={i} className="text-[11px] text-gray-400 flex items-start gap-1.5">
+                        <span className="text-indigo-500 mt-0.5">•</span>
+                        <span>{s}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Risk + Confidence row */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div>
+                  <div className="text-[10px] text-gray-500 mb-0.5 uppercase tracking-wider font-medium">Risk interpretation</div>
+                  <p className="text-[11px] text-gray-400">{ex.risk_interpretation}</p>
+                </div>
+                <div>
+                  <div className="text-[10px] text-gray-500 mb-0.5 uppercase tracking-wider font-medium">Confidence note</div>
+                  <p className="text-[11px] text-gray-400">{ex.confidence_note}</p>
+                </div>
+              </div>
+
+              {/* Model tag */}
+              <div className="text-[9px] text-gray-600 font-mono text-right">
+                model: {data?.model}{data?.cached ? ' (cached)' : ''}
+              </div>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function AnomalyCard({ anomaly, validationMode, isHistory = false }: {
   anomaly: AnomalyV2; validationMode: boolean; isHistory?: boolean
 }) {
@@ -255,6 +393,17 @@ function AnomalyCard({ anomaly, validationMode, isHistory = false }: {
           {/* Score + severity (right side) */}
           <div className="flex items-center gap-2.5 shrink-0">
             <SeverityBadge severity={anomaly.severity} />
+            {anomaly.predicted_risk_level && anomaly.predicted_risk_level !== 'none' && (
+              <div className={`px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wide ${
+                anomaly.predicted_risk_level === 'critical' ? 'bg-red-500/20 text-red-400 border border-red-500/30' :
+                anomaly.predicted_risk_level === 'high' ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30' :
+                anomaly.predicted_risk_level === 'medium' ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30' :
+                'bg-blue-500/20 text-blue-400 border border-blue-500/30'
+              }`}>
+                {anomaly.predicted_risk_level === 'critical' ? '⚠ ' : ''}{anomaly.predicted_risk_level}
+                {anomaly.predicted_horizon_minutes && <span className="ml-1 opacity-70">{anomaly.predicted_horizon_minutes}m</span>}
+              </div>
+            )}
             <div className="text-right">
               <div className="text-lg font-bold font-mono text-white leading-tight">{anomaly.anomaly_score}</div>
               <div className="text-[10px] text-gray-500">{anomaly.confidence_label}</div>
@@ -294,6 +443,51 @@ function AnomalyCard({ anomaly, validationMode, isHistory = false }: {
               </div>
             </div>
           )}
+
+          {/* Prediction details */}
+          {anomaly.predicted_risk_score != null && anomaly.predicted_risk_score > 0 && (
+            <div className="p-2.5 bg-amber-500/5 border border-amber-500/20 rounded">
+              <div className="text-[10px] text-amber-400/80 mb-1.5 uppercase tracking-wider font-medium">Predictive Risk</div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
+                <div>
+                  <span className="text-gray-500">Risk Score</span>
+                  <div className="text-white font-mono">{anomaly.predicted_risk_score}/100</div>
+                </div>
+                <div>
+                  <span className="text-gray-500">Risk Level</span>
+                  <div className={`font-medium ${
+                    anomaly.predicted_risk_level === 'critical' ? 'text-red-400' :
+                    anomaly.predicted_risk_level === 'high' ? 'text-orange-400' :
+                    anomaly.predicted_risk_level === 'medium' ? 'text-yellow-400' :
+                    'text-gray-300'
+                  }`}>{anomaly.predicted_risk_level?.toUpperCase() ?? '—'}</div>
+                </div>
+                <div>
+                  <span className="text-gray-500">Horizon</span>
+                  <div className="text-white font-mono">{anomaly.predicted_horizon_minutes ? `${anomaly.predicted_horizon_minutes}m` : '—'}</div>
+                </div>
+                <div>
+                  <span className="text-gray-500">Confidence</span>
+                  <div className="text-white font-mono">{anomaly.prediction_confidence ?? '—'}</div>
+                </div>
+              </div>
+              {anomaly.prediction_summary && anomaly.prediction_summary !== 'No elevated predicted risk' && (
+                <p className="text-xs text-amber-300/80 mt-1.5">{anomaly.prediction_summary}</p>
+              )}
+              {anomaly.prediction_reason_codes && anomaly.prediction_reason_codes.length > 0 && (
+                <div className="flex flex-wrap gap-1 mt-1.5">
+                  {anomaly.prediction_reason_codes.map((rc, i) => (
+                    <span key={i} className="px-1.5 py-0.5 bg-amber-700/30 rounded text-[10px] text-amber-400 font-mono">
+                      {rc.code}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* AI Explanation (V1.6) */}
+          <AiExplanationSection anomalyId={anomaly.id} />
 
           {/* Metadata row */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
@@ -366,6 +560,32 @@ function AnomalyCard({ anomaly, validationMode, isHistory = false }: {
                   <div className="text-gray-400 font-mono truncate">{anomaly.fingerprint.substring(0, 12)}</div>
                 </div>
               </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px] mt-2 pt-2 border-t border-purple-500/10">
+                <div>
+                  <span className="text-gray-500">Trace P95</span>
+                  <div className="text-white font-mono">
+                    {anomaly.trace_p95_latency_ms != null && anomaly.trace_p95_latency_ms > 0 ? `${anomaly.trace_p95_latency_ms.toFixed(0)}ms` : '—'}
+                  </div>
+                </div>
+                <div>
+                  <span className="text-gray-500">Trace Err</span>
+                  <div className={`font-mono ${(anomaly.trace_error_rate ?? 0) > 0.05 ? 'text-red-400' : 'text-white'}`}>
+                    {anomaly.trace_error_rate != null && anomaly.trace_error_rate > 0 ? `${(anomaly.trace_error_rate * 100).toFixed(1)}%` : '—'}
+                  </div>
+                </div>
+                <div>
+                  <span className="text-gray-500">Bottleneck</span>
+                  <div className={`font-mono ${(anomaly.trace_bottleneck_score ?? 0) > 0.5 ? 'text-orange-400' : 'text-white'}`}>
+                    {anomaly.trace_bottleneck_score != null && anomaly.trace_bottleneck_score > 0 ? `${(anomaly.trace_bottleneck_score * 100).toFixed(0)}%` : '—'}
+                  </div>
+                </div>
+                <div>
+                  <span className="text-gray-500">Slow Ops</span>
+                  <div className={`font-mono ${(anomaly.trace_slow_operations ?? 0) >= 2 ? 'text-yellow-400' : 'text-white'}`}>
+                    {anomaly.trace_slow_operations != null && anomaly.trace_slow_operations > 0 ? anomaly.trace_slow_operations : '—'}
+                  </div>
+                </div>
+              </div>
             </div>
           )}
         </div>
@@ -431,6 +651,18 @@ function ValidationSummaryPanel({ data }: { data: ValidationSummary }) {
             <div>Avg Burst Ratio: <span className="text-gray-300">{data.avg_log_error_burst_ratio.toFixed(2)}x</span></div>
             <div>Degrading Trend: <span className="text-yellow-400">{data.pct_positive_trend.toFixed(1)}%</span></div>
             <div>Burst Detected: <span className="text-red-400">{data.pct_burst_detected.toFixed(1)}%</span></div>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-[11px] text-gray-500">
+            <div>Avg Bottleneck: <span className={`${data.avg_trace_bottleneck_score > 0.3 ? 'text-orange-400' : 'text-gray-300'}`}>{(data.avg_trace_bottleneck_score * 100).toFixed(0)}%</span></div>
+            <div>Avg Trace Err: <span className={`${data.avg_trace_error_rate > 0.05 ? 'text-red-400' : 'text-gray-300'}`}>{(data.avg_trace_error_rate * 100).toFixed(1)}%</span></div>
+            <div>Avg Trace P95: <span className="text-gray-300">{data.avg_trace_p95_latency.toFixed(0)}ms</span></div>
+            <div>Total Slow Ops: <span className={`${data.total_slow_operations > 0 ? 'text-yellow-400' : 'text-gray-300'}`}>{data.total_slow_operations}</span></div>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-[11px] text-gray-500">
+            <div>Avg Risk Score: <span className={`${data.avg_predicted_risk_score > 20 ? 'text-orange-400' : 'text-gray-300'}`}>{data.avg_predicted_risk_score.toFixed(1)}</span></div>
+            <div>Predicted High: <span className={`${data.predicted_high_count > 0 ? 'text-orange-400' : 'text-gray-300'}`}>{data.predicted_high_count}</span></div>
+            <div>Predicted Critical: <span className={`${data.predicted_critical_count > 0 ? 'text-red-400' : 'text-gray-300'}`}>{data.predicted_critical_count}</span></div>
+            <div>With Horizon: <span className={`${data.predicted_with_horizon_count > 0 ? 'text-yellow-400' : 'text-gray-300'}`}>{data.predicted_with_horizon_count}</span></div>
           </div>
         </div>
       )}
