@@ -9,10 +9,17 @@ use crate::persistence::db::Database;
 pub struct AppState {
     pub db: Database,
     pub python_anomaly_url: String,
+    pub openai_api_key: String,
+    pub openai_model: String,
 }
 
 /// Build the Axum router with all routes.
-pub fn build_router(db: Database, python_anomaly_url: String) -> Router {
+pub fn build_router(
+    db: Database,
+    python_anomaly_url: String,
+    openai_api_key: String,
+    openai_model: String,
+) -> Router {
     let cors = CorsLayer::new()
         .allow_origin(Any)
         .allow_methods(Any)
@@ -21,6 +28,8 @@ pub fn build_router(db: Database, python_anomaly_url: String) -> Router {
     let state = AppState {
         db: db.clone(),
         python_anomaly_url,
+        openai_api_key,
+        openai_model,
     };
 
     Router::new()
@@ -39,12 +48,20 @@ pub fn build_router(db: Database, python_anomaly_url: String) -> Router {
             get(crate::api::anomalies::list_history),
         )
         .route(
+            "/api/v2/anomalies/:id/explanation",
+            get(crate::api::explanation::get_explanation),
+        )
+        .route(
             "/api/v2/anomalies/validation-summary",
             get(crate::api::validation::validation_summary),
         )
         .route(
             "/api/v2/anomalies/compare-python",
             get(crate::api::validation::compare_python),
+        )
+        .route(
+            "/api/v2/alerts/ai-context",
+            get(crate::api::alert_context::get_alert_ai_context),
         )
         .route("/metrics", get(crate::api::metrics::metrics))
         .layer(cors)

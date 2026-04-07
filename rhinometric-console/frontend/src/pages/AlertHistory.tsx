@@ -4,7 +4,7 @@ import { useAuthStore } from '../lib/auth/store'
 import {
   Clock, Filter, Download, Bell, CheckCircle2, XCircle,
   AlertTriangle, Shield, Activity, ChevronDown, ChevronUp,
-  Timer, BarChart3
+  Timer, BarChart3, Brain
 } from 'lucide-react'
 
 /* ── Types ─────────────────────────────────────────────────────── */
@@ -40,6 +40,47 @@ interface AlertStats {
   resolved: number
   acknowledged: number
   avg_resolution_seconds: number | null
+}
+
+/* ── AI Context Types (V1.7 Alert Integration) ── */
+interface ServiceAiContext {
+  anomaly_id: string
+  anomaly_score: number
+  severity: string
+  status: string
+  confidence: number
+  confidence_label: string
+  evidence_summary: string
+  predicted_risk_score: number | null
+  predicted_risk_level: string | null
+  predicted_horizon_minutes: number | null
+  prediction_confidence: string | null
+  prediction_summary: string | null
+  explanation_summary: string | null
+  first_seen_at: string
+  last_seen_at: string
+}
+
+interface AiContextResponse {
+  contexts: Record<string, ServiceAiContext>
+  count: number
+}
+
+/* ── AI Score Badge ── */
+function AiScoreBadge({ ctx }: { ctx: ServiceAiContext | undefined }) {
+  if (!ctx) return null
+  const score = ctx.anomaly_score
+  const color =
+    score >= 70 ? 'bg-red-500/20 text-red-400 border-red-500/30' :
+    score >= 40 ? 'bg-amber-500/20 text-amber-400 border-amber-500/30' :
+    score >= 15 ? 'bg-blue-500/20 text-blue-400 border-blue-500/30' :
+    'bg-gray-500/20 text-gray-400 border-gray-700/50'
+  return (
+    <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium border ${color}`} title={`AI Score: ${score}/100 — ${ctx.severity}`}>
+      <Brain size={10} />
+      {score}
+    </span>
+  )
 }
 
 /* ── Helpers ───────────────────────────────────────────────────── */
@@ -171,6 +212,24 @@ export function AlertHistoryPage() {
 
   const events = data?.alert_events || []
 
+  // V1.7: Fetch AI context for all entity names in current events
+  const entityNames = events
+    .map(e => e.entity_name)
+    .filter((n): n is string => !!n && n.length > 0)
+    .filter((v, i, arr) => arr.indexOf(v) === i)
+    .join(',')
+  const { data: aiContextData } = useQuery<AiContextResponse>({
+    queryKey: ['alert-history-ai-context', entityNames],
+    queryFn: async () => {
+      if (!entityNames) return { contexts: {}, count: 0 }
+      const res = await fetch(`/api/v2/alerts/ai-context?service_names=${encodeURIComponent(entityNames)}`)
+      if (!res.ok) return { contexts: {}, count: 0 }
+      return res.json()
+    },
+    enabled: !!entityNames,
+    refetchInterval: 60000,
+  })
+
   // Export CSV
   const exportCSV = () => {
     const headers = ['Alert', 'Entity', 'Severity', 'Status', 'Started', 'Ended', 'Duration']
@@ -291,6 +350,7 @@ export function AlertHistoryPage() {
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase">Alert</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase">Entity</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase">Severity</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase">AI</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase">Started</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase">Ended</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase">Duration</th>
@@ -317,6 +377,9 @@ export function AlertHistoryPage() {
                       </td>
                       <td className="px-4 py-3">
                         <SeverityBadge severity={ev.severity} />
+                      </td>
+                      <td className="px-4 py-3">
+                        <AiScoreBadge ctx={aiContextData?.contexts?.[ev.entity_name]} />
                       </td>
                       <td className="px-4 py-3 text-gray-300 whitespace-nowrap">
                         <div>{formatTimestamp(ev.started_at)}</div>
@@ -354,7 +417,7 @@ export function AlertHistoryPage() {
                     </tr>
                     {expandedRow === ev.id && (
                       <tr key={`${ev.id}-detail`} className="bg-surface-light/30">
-                        <td colSpan={8} className="px-6 py-4">
+                        <td colSpan={9} className="px-6 py-4">
                           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                             <div>
                               <span className="text-gray-500 block text-xs">Fingerprint</span>
@@ -379,6 +442,50 @@ export function AlertHistoryPage() {
                               <span className="text-gray-300 text-sm">{ev.summary}</span>
                             </div>
                           )}
+                          {/* V1.7: AI Context in expanded detail */}
+                          {(() => {
+                            const ctx = aiContextData?.contexts?.[ev.entity_name]
+                            if (!ctx) return null
+                            const scoreColor =
+                              ctx.anomaly_score >= 70 ? 'text-red-400' :
+                              ctx.anomaly_score >= 40 ? 'text-amber-400' :
+                              ctx.anomaly_score >= 15 ? 'text-blue-400' : 'text-gray-400'
+                            return (
+                              <div className="mt-3 p-3 rounded border border-purple-500/30 bg-purple-500/5">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <Brain size={14} className="text-purple-400" />
+                                  <span className="text-sm font-medium text-purple-400">AI Analysis</span>
+                                  <span className="text-xs px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                                    {ctx.status === 'active' ? 'Live' : 'Recent'}
+                                  </span>
+                                </div>
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                                  <div>
+                                    <span className="text-gray-500 text-xs">Score</span>
+                                    <p className={`font-bold ${scoreColor}`}>{ctx.anomaly_score}<span className="text-xs font-normal text-gray-500">/100</span></p>
+                                  </div>
+                                  <div>
+                                    <span className="text-gray-500 text-xs">Severity</span>
+                                    <p className="text-gray-300 capitalize">{ctx.severity}</p>
+                                  </div>
+                                  <div>
+                                    <span className="text-gray-500 text-xs">Predicted Risk</span>
+                                    <p className="text-gray-300 capitalize">{ctx.predicted_risk_level || 'none'}</p>
+                                  </div>
+                                  <div>
+                                    <span className="text-gray-500 text-xs">Confidence</span>
+                                    <p className="text-gray-300 capitalize">{ctx.confidence_label}</p>
+                                  </div>
+                                </div>
+                                {(ctx.explanation_summary || ctx.evidence_summary) && (
+                                  <p className="text-xs text-gray-400 mt-2">{ctx.explanation_summary || ctx.evidence_summary}</p>
+                                )}
+                                <a href="/ai-insights" className="inline-flex items-center gap-1 mt-2 text-xs text-purple-400 hover:text-purple-300">
+                                  <Brain size={10} /> Full AI analysis →
+                                </a>
+                              </div>
+                            )
+                          })()}
                         </td>
                       </tr>
                     )}
@@ -407,6 +514,7 @@ export function AlertHistoryPage() {
               </div>
               <div className="flex items-center justify-between text-xs">
                 <SeverityBadge severity={ev.severity} />
+                <AiScoreBadge ctx={aiContextData?.contexts?.[ev.entity_name]} />
                 <span className="text-gray-400">{timeAgo(ev.started_at)}</span>
                 <span className="font-mono text-gray-300">
                   {ev.status === 'firing' ? 'ongoing' : formatDuration(ev.duration_seconds)}

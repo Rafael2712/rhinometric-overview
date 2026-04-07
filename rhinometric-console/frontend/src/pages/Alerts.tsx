@@ -1,4 +1,4 @@
-import { Bell, Filter, Download, Clock, AlertTriangle, CheckCircle2, XCircle, VolumeX, UserCheck, Trash2 } from 'lucide-react'
+import { Bell, Filter, Download, Clock, AlertTriangle, CheckCircle2, XCircle, VolumeX, UserCheck, Trash2, Brain, TrendingUp } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuthStore } from '../lib/auth/store'
@@ -37,6 +37,46 @@ interface AckInfo {
   note?: string
 }
 
+/* ── AI Context Types (V1.7 Alert Integration) ── */
+interface ServiceAiContext {
+  anomaly_id: string
+  anomaly_score: number
+  severity: string
+  status: string
+  confidence: number
+  confidence_label: string
+  evidence_summary: string
+  predicted_risk_score: number | null
+  predicted_risk_level: string | null
+  predicted_horizon_minutes: number | null
+  prediction_confidence: string | null
+  prediction_summary: string | null
+  explanation_summary: string | null
+  first_seen_at: string
+  last_seen_at: string
+}
+
+interface AiContextResponse {
+  contexts: Record<string, ServiceAiContext>
+  count: number
+}
+
+/* ── AI Score Badge ── */
+function AiScoreBadge({ ctx }: { ctx: ServiceAiContext | undefined }) {
+  if (!ctx) return null
+  const score = ctx.anomaly_score
+  const color =
+    score >= 70 ? 'bg-red-500/20 text-red-400 border-red-500/30' :
+    score >= 40 ? 'bg-amber-500/20 text-amber-400 border-amber-500/30' :
+    score >= 15 ? 'bg-blue-500/20 text-blue-400 border-blue-500/30' :
+    'bg-gray-500/20 text-gray-400 border-gray-700/50'
+  return (
+    <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium border ${color}`} title={`AI Score: ${score}/100 — ${ctx.severity}`}>
+      <Brain size={10} />
+      {score}
+    </span>
+  )
+}
 
 /* ── Task 4: Purge Modal ──────────────────────────────────────── */
 function PurgeModal({ module, isOpen, onClose, token }: {
@@ -200,6 +240,24 @@ export function AlertsPage() {
     },
     enabled: !!token && !!fingerprints,
     refetchInterval: 30000,
+  })
+
+  // V1.7: Fetch AI context for all alert service names
+  const serviceNames = alertsData?.alerts
+    ?.map(a => a.labels.service_name)
+    .filter((n): n is string => !!n && n.length > 0)
+    .filter((v, i, arr) => arr.indexOf(v) === i)
+    .join(',') || ''
+  const { data: aiContextData } = useQuery<AiContextResponse>({
+    queryKey: ['alert-ai-context', serviceNames],
+    queryFn: async () => {
+      if (!serviceNames) return { contexts: {}, count: 0 }
+      const res = await fetch(`/api/v2/alerts/ai-context?service_names=${encodeURIComponent(serviceNames)}`)
+      if (!res.ok) return { contexts: {}, count: 0 }
+      return res.json()
+    },
+    enabled: !!serviceNames,
+    refetchInterval: 60000,
   })
 
   // Fetch active silences
@@ -396,6 +454,7 @@ export function AlertsPage() {
                     <th className="text-left py-3 px-4 text-sm font-semibold text-gray-400 whitespace-nowrap">Alert</th>
                     <th className="text-left py-3 px-4 text-sm font-semibold text-gray-400 whitespace-nowrap">Severity</th>
                     <th className="text-left py-3 px-4 text-sm font-semibold text-gray-400 whitespace-nowrap">Instance</th>
+                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-400 whitespace-nowrap">AI</th>
                     <th className="text-left py-3 px-4 text-sm font-semibold text-gray-400 whitespace-nowrap">Started</th>
                     <th className="text-left py-3 px-4 text-sm font-semibold text-gray-400 whitespace-nowrap">Actions</th>
                   </tr>
@@ -403,6 +462,7 @@ export function AlertsPage() {
                 <tbody>
                   {filteredAlerts.map((alert) => {
                     const ackInfo = ackData?.[alert.fingerprint]
+                    const aiCtx = aiContextData?.contexts?.[alert.labels.service_name || '']
                     return (
                       <tr
                         key={alert.fingerprint}
@@ -437,6 +497,9 @@ export function AlertsPage() {
                           <code className="text-sm text-blue-400">{alert.labels.instance || alert.labels.job || '-'}</code>
                         </td>
                         <td className="py-3 px-4">
+                          <AiScoreBadge ctx={aiCtx} />
+                        </td>
+                        <td className="py-3 px-4">
                           <div className="flex items-center gap-1 text-sm text-gray-400">
                             <Clock size={14} />
                             {new Date(alert.startsAt).toLocaleString()}
@@ -458,6 +521,7 @@ export function AlertsPage() {
             <div className="md:hidden divide-y divide-gray-700/50">
               {filteredAlerts.map((alert) => {
                 const ackInfo = ackData?.[alert.fingerprint]
+                const aiCtx = aiContextData?.contexts?.[alert.labels.service_name || '']
                 return (
                   <div
                     key={alert.fingerprint}
@@ -469,9 +533,12 @@ export function AlertsPage() {
                         {getStatusIcon(alert.status)}
                         <span className="text-white font-medium text-sm truncate">{alert.labels.alertname}</span>
                       </div>
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium flex-shrink-0 ${getSeverityColor(alert.severity)}`}>
-                        {alert.severity.toUpperCase()}
-                      </span>
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                        <AiScoreBadge ctx={aiCtx} />
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getSeverityColor(alert.severity)}`}>
+                          {alert.severity.toUpperCase()}
+                        </span>
+                      </div>
                     </div>
                     <p className="text-xs text-gray-400 line-clamp-2 mb-2 ml-7">
                       {alert.annotations.summary || alert.annotations.description || 'No description'}
@@ -550,6 +617,70 @@ export function AlertsPage() {
                   <p className="text-gray-300 text-sm break-words">{selectedAlert.annotations.description}</p>
                 </div>
               )}
+              {/* V1.7: AI Analysis Context */}
+              {(() => {
+                const ctx = aiContextData?.contexts?.[selectedAlert.labels.service_name || '']
+                if (!ctx) return null
+                const scoreColor =
+                  ctx.anomaly_score >= 70 ? 'text-red-400' :
+                  ctx.anomaly_score >= 40 ? 'text-amber-400' :
+                  ctx.anomaly_score >= 15 ? 'text-blue-400' : 'text-gray-400'
+                const riskColor =
+                  ctx.predicted_risk_level === 'high' || ctx.predicted_risk_level === 'critical' ? 'text-red-400' :
+                  ctx.predicted_risk_level === 'moderate' ? 'text-amber-400' :
+                  ctx.predicted_risk_level === 'low' ? 'text-blue-400' : 'text-gray-400'
+                return (
+                  <div className="card p-3 sm:p-4 border-purple-500/30">
+                    <h3 className="text-base sm:text-lg font-semibold text-white mb-3 flex items-center gap-2">
+                      <Brain size={18} className="text-purple-400" />
+                      AI Analysis
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-400 border border-purple-500/30 font-normal">
+                        {ctx.status === 'active' ? 'Live' : 'Recent'}
+                      </span>
+                    </h3>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
+                      <div>
+                        <p className="text-xs text-gray-500">Anomaly Score</p>
+                        <p className={`text-lg font-bold ${scoreColor}`}>{ctx.anomaly_score}<span className="text-xs font-normal text-gray-500">/100</span></p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500">AI Severity</p>
+                        <p className="text-sm font-medium text-gray-200 capitalize">{ctx.severity}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500">Predicted Risk</p>
+                        <p className={`text-sm font-medium capitalize ${riskColor}`}>
+                          {ctx.predicted_risk_level || 'none'}
+                          {ctx.predicted_risk_score != null && <span className="text-gray-500 font-normal"> ({ctx.predicted_risk_score}%)</span>}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500">Confidence</p>
+                        <p className="text-sm font-medium text-gray-200 capitalize">{ctx.confidence_label}</p>
+                      </div>
+                    </div>
+                    {ctx.explanation_summary && (
+                      <div className="p-2.5 bg-surface rounded border border-gray-700 mb-3">
+                        <p className="text-sm text-gray-300">{ctx.explanation_summary}</p>
+                      </div>
+                    )}
+                    {!ctx.explanation_summary && ctx.evidence_summary && (
+                      <div className="p-2.5 bg-surface rounded border border-gray-700 mb-3">
+                        <p className="text-sm text-gray-400">{ctx.evidence_summary}</p>
+                      </div>
+                    )}
+                    {ctx.predicted_horizon_minutes != null && ctx.predicted_horizon_minutes > 0 && (
+                      <div className="flex items-center gap-2 text-xs text-gray-500">
+                        <TrendingUp size={12} />
+                        <span>Prediction horizon: {ctx.predicted_horizon_minutes} minutes</span>
+                      </div>
+                    )}
+                    <a href="/ai-insights" className="inline-flex items-center gap-1 mt-2 text-xs text-purple-400 hover:text-purple-300 transition-colors">
+                      <Brain size={12} /> View full AI analysis →
+                    </a>
+                  </div>
+                )
+              })()}
               <div className="card p-3 sm:p-4">
                 <h3 className="text-base sm:text-lg font-semibold text-white mb-3">Labels</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
