@@ -78,6 +78,17 @@ function AiScoreBadge({ ctx }: { ctx: ServiceAiContext | undefined }) {
   )
 }
 
+
+/* ── Extract service name from alertname (after '::' delimiter) ── */
+function getAlertServiceName(alert: { labels: { alertname?: string; service_name?: string; service?: string } }): string {
+  // Primary: extract from alertname after '::'
+  const parts = (alert.labels.alertname || '').split('::')
+  if (parts.length > 1 && parts[1].trim()) return parts[1].trim()
+  // Fallback: service_name label (if ever added)
+  if (alert.labels.service_name) return alert.labels.service_name
+  return ''
+}
+
 /* ── Task 4: Purge Modal ──────────────────────────────────────── */
 function PurgeModal({ module, isOpen, onClose, token }: {
   module: 'alerts' | 'incidents' | 'anomalies'
@@ -244,7 +255,7 @@ export function AlertsPage() {
 
   // V1.7: Fetch AI context for all alert service names
   const serviceNames = alertsData?.alerts
-    ?.map(a => a.labels.service_name)
+    ?.map(a => getAlertServiceName(a))
     .filter((n): n is string => !!n && n.length > 0)
     .filter((v, i, arr) => arr.indexOf(v) === i)
     .join(',') || ''
@@ -462,7 +473,7 @@ export function AlertsPage() {
                 <tbody>
                   {filteredAlerts.map((alert) => {
                     const ackInfo = ackData?.[alert.fingerprint]
-                    const aiCtx = aiContextData?.contexts?.[alert.labels.service_name || '']
+                    const aiCtx = aiContextData?.contexts?.[getAlertServiceName(alert)]
                     return (
                       <tr
                         key={alert.fingerprint}
@@ -521,7 +532,7 @@ export function AlertsPage() {
             <div className="md:hidden divide-y divide-gray-700/50">
               {filteredAlerts.map((alert) => {
                 const ackInfo = ackData?.[alert.fingerprint]
-                const aiCtx = aiContextData?.contexts?.[alert.labels.service_name || '']
+                const aiCtx = aiContextData?.contexts?.[getAlertServiceName(alert)]
                 return (
                   <div
                     key={alert.fingerprint}
@@ -619,7 +630,8 @@ export function AlertsPage() {
               )}
               {/* V1.7: AI Analysis Context */}
               {(() => {
-                const ctx = aiContextData?.contexts?.[selectedAlert.labels.service_name || '']
+                const svcKey = getAlertServiceName(selectedAlert)
+                const ctx = aiContextData?.contexts?.[svcKey]
                 if (!ctx) return null
                 const scoreColor =
                   ctx.anomaly_score >= 70 ? 'text-red-400' :
