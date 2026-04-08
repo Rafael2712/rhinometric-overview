@@ -112,6 +112,12 @@ def _apply_retention_and_exclusion(query, db: Session, time_range: str = None):
             ~AlertEvent.entity_type.in_(list(_SERVICE_ENTITY_TYPES))
         )
 
+
+    # ?? Infrastructure alert exclusion: only show external service alerts ??
+    query = query.filter(
+        AlertEvent.alert_name.like("external_service_%")
+    )
+
     return query
 
 

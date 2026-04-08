@@ -106,6 +106,12 @@ async def get_alerts(
                         if a.get("labels", {}).get("severity", "").lower() == severity.lower()
                     ]
 
+                # Filter: only show external service alerts (hide infrastructure/node alerts)
+                alerts_data = [
+                    a for a in alerts_data
+                    if a.get("labels", {}).get("metric", "").startswith("external_service_")
+                ]
+
                 formatted_alerts = []
                 for alert in alerts_data:
                     formatted_alerts.append(Alert(

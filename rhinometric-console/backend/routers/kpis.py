@@ -179,10 +179,11 @@ async def get_kpis(current_user: UserModel = Depends(get_current_user)):
                 )
                 if alerts_response.status_code == 200:
                     alerts_data = alerts_response.json()
-                    # Filter only FIRING alerts (status.state == "active")
+                    # Filter only FIRING alerts for EXTERNAL SERVICES (hide infra)
                     firing_alerts = [
-                        a for a in alerts_data 
+                        a for a in alerts_data
                         if a.get("status", {}).get("state") == "active"
+                        and a.get("labels", {}).get("metric", "").startswith("external_service_")
                     ]
                     alerts_count = len(firing_alerts)
                     if alerts_count > 0:
@@ -320,7 +321,7 @@ async def get_kpis_historical(current_user: UserModel = Depends(get_current_user
             alerts_response = await client.get(
                 prom_url,
                 params={
-                    "query": 'count(ALERTS{alertstate="firing"})',
+                    "query": 'count(ALERTS{alertstate="firing", metric=~"external_service_.*"})',
                     "start": start_ts,
                     "end": end_ts,
                     "step": step

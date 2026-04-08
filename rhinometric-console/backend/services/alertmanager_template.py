@@ -120,6 +120,9 @@ def render_alertmanager_config(channels: dict, ai_alerting_enabled: bool) -> str
                     "rhinometric_source": "ai-anomaly",
                     "severity": "critical"
                 },
+                "match_re": {
+                    "metric": "external_service_.*"
+                },
                 "receiver": ai_critical_receiver,
                 "group_by": ["alertname", "metric", "severity"],
                 "group_wait": "30s",

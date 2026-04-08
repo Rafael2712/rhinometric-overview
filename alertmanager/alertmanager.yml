@@ -30,6 +30,8 @@ route:
     group_interval: 1h
     repeat_interval: 24h
     continue: false
+    match_re:
+      metric: 'external_service_.*'
   - match:
       rhinometric_source: ai-anomaly
     receiver: blackhole
