@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useAuthStore } from '../lib/auth/store'
 import {
@@ -758,6 +758,7 @@ type ViewTab = 'active' | 'history'
 // ─── Page ───
 
 export function AiAnomaliesV2Page() {
+  useEffect(() => { document.title = 'Rhinometric - Anomaly Analysis' }, [])
   const [validationMode] = useState(false)
   const [filterSeverity, setFilterSeverity] = useState<FilterSeverity>('all')
   const [sortBy, setSortBy] = useState<SortBy>('score')
@@ -854,10 +855,10 @@ export function AiAnomaliesV2Page() {
         <div>
           <h1 className="text-xl font-bold text-white flex items-center gap-2">
             <Brain className="w-5 h-5 text-primary" />
-            Anomaly Detection
+            Anomaly Analysis
           </h1>
           <p className="text-[11px] text-gray-500 mt-0.5">
-            Rust multi-signal engine · {PAGE_LIMIT} max · 30s refresh
+            Detect, inspect and understand anomalous service behavior — scores, evidence & predictions
           </p>
         </div>
         {/* Validation toggle removed ? AI Cutover: single engine */}
@@ -866,14 +867,14 @@ export function AiAnomaliesV2Page() {
       {/* ── Summary cards (always from active data) ── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <StatCard
-          label="Active"
+          label="Detected"
           value={displaySummary.total}
-          sub={displaySummary.total === 0 ? 'All clear' : undefined}
+          sub={displaySummary.total === 0 ? 'No anomalies detected' : undefined}
           icon={Zap}
           color={displaySummary.total > 0 ? 'text-red-400' : 'text-green-400'}
         />
         <StatCard
-          label="Max Score"
+          label="Peak Score"
           value={displaySummary.maxScore}
           icon={TrendingUp}
           color={displaySummary.maxScore > 60 ? 'text-red-400' : displaySummary.maxScore > 15 ? 'text-orange-400' : 'text-green-400'}
@@ -885,7 +886,7 @@ export function AiAnomaliesV2Page() {
           icon={AlertTriangle}
           color="text-red-400"
         />
-        <StatCard label="History" value={historyCount} sub="Recently resolved" icon={History} color="text-gray-400" />
+        <StatCard label="Resolved" value={historyCount} sub="Recently resolved anomalies" icon={History} color="text-gray-400" />
       </div>
 
       {/* ── Validation panels (only when enabled, collapsible) ── */}
@@ -907,7 +908,7 @@ export function AiAnomaliesV2Page() {
           }`}
         >
           <Radio className="w-3.5 h-3.5" />
-          Active
+          Detected
           {activeCount > 0 && (
             <span className="ml-1 px-1.5 py-0 text-[10px] rounded-full bg-red-500/20 text-red-400 font-bold">{activeCount}</span>
           )}
@@ -921,7 +922,7 @@ export function AiAnomaliesV2Page() {
           }`}
         >
           <History className="w-3.5 h-3.5" />
-          History
+          Resolved
           {historyCount > 0 && (
             <span className="ml-1 px-1.5 py-0 text-[10px] rounded-full bg-gray-600 text-gray-300 font-medium">{historyCount}</span>
           )}
@@ -972,7 +973,7 @@ export function AiAnomaliesV2Page() {
           <div className="bg-surface rounded-lg border border-gray-700/40 p-10 text-center">
             <Activity className="w-8 h-8 text-gray-700 mx-auto mb-2" />
             <p className="text-gray-500 text-sm">
-              {tab === 'active' ? 'No active anomalies — all services healthy' : 'No resolved anomalies in history'}
+              {tab === 'active' ? 'No anomalies detected — all services within normal baselines' : 'No resolved anomalies in the analysis window'}
             </p>
           </div>
         ) : (
@@ -984,7 +985,7 @@ export function AiAnomaliesV2Page() {
 
       {/* ── Footer ── */}
       <div className="text-center text-[11px] text-gray-600 pb-2">
-        Showing {displayedAnomalies.length} of {(tab === 'active' ? activeCount : historyCount)} · Polling 30s
+        Showing {displayedAnomalies.length} of {(tab === 'active' ? activeCount : historyCount)} · Auto-refresh 30s
       </div>
     </div>
   )

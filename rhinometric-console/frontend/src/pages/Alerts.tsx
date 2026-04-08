@@ -207,7 +207,7 @@ function PurgeModal({ module, isOpen, onClose, token }: {
 
 export function AlertsPage() {
   useEffect(() => {
-    document.title = 'Rhinometric - Alerts'
+    document.title = 'Rhinometric - Operational Alerts'
   }, [])
 
   const token = useAuthStore((state) => state.token)
@@ -380,8 +380,8 @@ export function AlertsPage() {
       {/* Header - stacks on mobile */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-2 sm:mb-6">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-white mb-1 sm:mb-2">Alert Management</h1>
-          <p className="text-text-muted text-sm sm:text-base">Monitor and manage system alerts from AlertManager</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-white mb-1 sm:mb-2">Operational Alerts</h1>
+          <p className="text-text-muted text-sm sm:text-base">Alerts requiring attention — triggered when anomaly conditions exceed operational thresholds</p>
         </div>
         <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
           {silencesData?.total > 0 && (
@@ -631,7 +631,7 @@ export function AlertsPage() {
                   <p className="text-gray-300 text-sm break-words">{selectedAlert.annotations.description}</p>
                 </div>
               )}
-              {/* V1.7: AI Analysis Context */}
+              {/* Anomaly Context from detection engine */}
               {(() => {
                 const svcKey = getAlertServiceName(selectedAlert)
                 const ctx = aiContextData?.contexts?.[svcKey]
@@ -648,7 +648,7 @@ export function AlertsPage() {
                   <div className="card p-3 sm:p-4 border-purple-500/30">
                     <h3 className="text-base sm:text-lg font-semibold text-white mb-3 flex items-center gap-2">
                       <Brain size={18} className="text-purple-400" />
-                      AI Analysis
+                      Anomaly Context
                       <span className="text-xs px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-400 border border-purple-500/30 font-normal">
                         {ctx.status === 'active' ? 'Live' : 'Recent'}
                       </span>
@@ -691,7 +691,7 @@ export function AlertsPage() {
                       </div>
                     )}
                     <a href="/ai-anomalies-v2" className="inline-flex items-center gap-1 mt-2 text-xs text-purple-400 hover:text-purple-300 transition-colors">
-                      <Brain size={12} /> View full AI analysis →
+                      <Brain size={12} /> View full anomaly analysis →
                     </a>
                   </div>
                 )

@@ -263,7 +263,7 @@ export function AlertHistoryPage() {
             Alert History
           </h1>
           <p className="text-sm text-gray-400 mt-1">
-            Complete alert lifecycle history — firing, resolved, acknowledged
+            Historical record of operational alerts — past firing, resolution and acknowledgment events
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -462,7 +462,7 @@ export function AlertHistoryPage() {
                               <div className="mt-3 p-3 rounded border border-purple-500/30 bg-purple-500/5">
                                 <div className="flex items-center gap-2 mb-2">
                                   <Brain size={14} className="text-purple-400" />
-                                  <span className="text-sm font-medium text-purple-400">AI Analysis</span>
+                                  <span className="text-sm font-medium text-purple-400">Anomaly Context</span>
                                   <span className="text-xs px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30">
                                     {ctx.status === 'active' ? 'Live' : 'Recent'}
                                   </span>
@@ -489,7 +489,7 @@ export function AlertHistoryPage() {
                                   <p className="text-xs text-gray-400 mt-2">{ctx.explanation_summary || ctx.evidence_summary}</p>
                                 )}
                                 <a href="/ai-anomalies-v2" className="inline-flex items-center gap-1 mt-2 text-xs text-purple-400 hover:text-purple-300">
-                                  <Brain size={10} /> Full AI analysis →
+                                  <Brain size={10} /> View full anomaly analysis →
                                 </a>
                               </div>
                             )
