@@ -1,8 +1,9 @@
 """
-Incidents router — Phase 2.3 Incident Management Engine.
+Incidents router ? Phase 2.3 Incident Management Engine.
+Phase 3 additions ? AI-powered create, summary, hints, postmortem.
 
 Groups related alert events into operational incidents.
-Provides list, detail, and status-update endpoints.
+Provides list, detail, create, and status-update endpoints.
 
 Task 2: Only customer-facing incidents are exposed.
 Internal platform entity names are excluded from list and stats.
@@ -29,6 +30,14 @@ from models.incident_comment import IncidentComment
 from models.external_service import ExternalService
 from logging_config import get_logger
 
+# Phase 3: AI service
+from services.incident_ai_service import (
+    fetch_anomaly_context,
+    generate_incident_summary,
+    generate_investigation_hints,
+    generate_postmortem,
+)
+
 logger = get_logger(__name__)
 
 # Root Cause Assistant (Phase 2.7)
@@ -38,14 +47,11 @@ router = APIRouter()
 VALID_STATUSES = {"open", "investigating", "resolved"}
 SEVERITY_RANK = {"critical": 4, "warning": 3, "info": 2}
 
-# ── Task 4: Retention ──────────────────────────────────────────
+# -- Task 4: Retention --
 MAX_RETENTION_DAYS = 30
 
 
-# ── Customer-facing filter — Task 2 ────────────────────────────
-# Incidents whose entity_name matches any of these internal platform
-# services are hidden from list / stats endpoints.
-# ────────────────────────────────────────────────────────────────
+# -- Customer-facing filter -- Task 2 --
 INTERNAL_ENTITY_NAMES: set = {
     "console-backend",
     "docker_logs",
@@ -73,7 +79,6 @@ INTERNAL_ENTITY_NAMES: set = {
     "expired licenses",
 }
 
-# Also exclude entity_type == "infrastructure"
 INTERNAL_ENTITY_TYPES: set = {"infrastructure"}
 
 INTERNAL_NAME_PATTERN = re.compile(
@@ -97,14 +102,12 @@ def _is_internal_incident(entity_name: str, entity_type: str) -> bool:
 
 def _apply_customer_filter(query):
     """Add SQL WHERE clauses to exclude internal platform incidents."""
-    # Exclude infrastructure entity_type
     query = query.filter(
         or_(
             Incident.entity_type.is_(None),
             Incident.entity_type != "infrastructure",
         )
     )
-    # Exclude exact-match internal entity names (case-insensitive)
     for name in INTERNAL_ENTITY_NAMES:
         query = query.filter(
             sa_func.lower(Incident.entity_name) != name
@@ -112,26 +115,15 @@ def _apply_customer_filter(query):
     return query
 
 
-# Entity types that reference external services
 _SERVICE_ENTITY_TYPES = {"service", "external-services"}
 
 
 def _get_existing_service_names(db: Session) -> set:
-    """Return the set of service names that currently exist in external_services.
-
-    Task 5 fix: existence-based check instead of enabled-flag check.
-    """
     rows = db.query(ExternalService.name).all()
     return {r[0].lower() for r in rows}
 
 
 def _apply_deleted_service_exclusion(query, db: Session):
-    """Exclude incidents whose service no longer exists in external_services.
-
-    Task 5 fix: existence-based.  Service-type incidents are only shown
-    if their entity_name matches an existing external service.
-    Non-service incidents pass through unfiltered.
-    """
     existing_names = _get_existing_service_names(db)
     if existing_names:
         query = query.filter(
@@ -141,7 +133,6 @@ def _apply_deleted_service_exclusion(query, db: Session):
             )
         )
     else:
-        # No services exist at all → hide ALL service-type incidents
         query = query.filter(
             ~Incident.entity_type.in_(list(_SERVICE_ENTITY_TYPES))
         )
@@ -149,17 +140,9 @@ def _apply_deleted_service_exclusion(query, db: Session):
 
 
 def _apply_retention(query, time_range: str = None):
-    """Apply 30-day retention policy.
-
-    - Open / investigating incidents are ALWAYS shown (regardless of age).
-    - Resolved incidents older than 30 days are hidden.
-    - User-requested time_range is respected if tighter than 30d.
-    """
     retention_cutoff = datetime.now(timezone.utc) - timedelta(days=MAX_RETENTION_DAYS)
-
     user_cutoff = _parse_time_range(time_range) if time_range else None
     effective_cutoff = max(retention_cutoff, user_cutoff) if user_cutoff else retention_cutoff
-
     query = query.filter(
         or_(
             Incident.status.in_(["open", "investigating"]),
@@ -169,7 +152,7 @@ def _apply_retention(query, time_range: str = None):
     return query
 
 
-# ── Schemas ─────────────────────────────────────────────────────
+# -- Schemas --
 
 class IncidentStatusUpdate(BaseModel):
     status: str
@@ -180,16 +163,21 @@ class CommentCreate(BaseModel):
 class TagsUpdate(BaseModel):
     tags: List[str]
 
+class IncidentCreate(BaseModel):
+    """Phase 3: Create an incident manually from alert context."""
+    service_name: str
+    severity: str = "warning"
+    title: Optional[str] = None
+    alert_fingerprint: Optional[str] = None
+    anomaly_id: Optional[str] = None
 
 
-# ── Helpers ─────────────────────────────────────────────────────
-
-
+# -- Helpers --
 
 def create_timeline_event(db: Session, incident_id, event_type: str,
-                                                   description: str = None,
-                                                   created_by: str = None,
-                                                   metadata: dict = None) -> None:
+                          description: str = None,
+                          created_by: str = None,
+                          metadata: dict = None) -> None:
     """Insert a timeline event for an incident."""
     import uuid as _uuid
     evt = IncidentEvent(
@@ -204,32 +192,22 @@ def create_timeline_event(db: Session, incident_id, event_type: str,
     db.flush()
 
 def _incident_key(entity_type: str, entity_name: str) -> str:
-    """Deterministic grouping key for incidents."""
     return f"{entity_type}:{entity_name}"
 
-
 def _highest_severity(current: str, incoming: str) -> str:
-    """Return the higher severity between two values."""
     if SEVERITY_RANK.get(incoming, 0) > SEVERITY_RANK.get(current, 0):
         return incoming
     return current
 
 
 def find_or_create_incident(db: Session, entity_type: str, entity_name: str,
-                                                 severity: str, started_at: datetime) -> "Incident":
-    """Find an existing open/investigating incident for the entity, or create one.
-
-    Race-safe: handles concurrent INSERT attempts via savepoint + retry.
-    """
+                            severity: str, started_at: datetime) -> "Incident":
     key = _incident_key(entity_type, entity_name)
-
     existing = db.query(Incident).filter(
         Incident.incident_key == key,
         Incident.status.in_(["open", "investigating"]),
     ).first()
-
     if existing:
-        # Escalate severity if incoming is higher
         new_sev = _highest_severity(existing.severity, severity)
         if new_sev != existing.severity:
             existing.severity = new_sev
@@ -238,9 +216,8 @@ def find_or_create_incident(db: Session, entity_type: str, entity_name: str,
 
     import uuid
     from sqlalchemy.exc import IntegrityError
-
     try:
-        nested = db.begin_nested()  # SAVEPOINT
+        nested = db.begin_nested()
         incident = Incident(
             id=uuid.uuid4(),
             incident_key=key,
@@ -251,7 +228,7 @@ def find_or_create_incident(db: Session, entity_type: str, entity_name: str,
             started_at=started_at,
         )
         db.add(incident)
-        db.flush()  # get the ID before commit
+        db.flush()
         create_timeline_event(db, incident.id, "incident_created",
                               description=f"Incident created automatically for {entity_name}",
                               metadata={"entity_type": entity_type, "severity": severity})
@@ -265,19 +242,16 @@ def find_or_create_incident(db: Session, entity_type: str, entity_name: str,
         ).order_by(Incident.started_at.desc()).first()
         if existing:
             return existing
-        raise  # should never happen
+        raise
 
 
 def check_incident_resolution(db: Session, incident_id) -> None:
-    """If all linked alert events are resolved, resolve the incident."""
     if incident_id is None:
         return
-
     still_active = db.query(AlertEvent).filter(
         AlertEvent.incident_id == incident_id,
         AlertEvent.status.in_(["firing", "acknowledged"]),
     ).count()
-
     if still_active == 0:
         incident = db.query(Incident).filter(Incident.id == incident_id).first()
         if incident and incident.status != "resolved":
@@ -285,11 +259,146 @@ def check_incident_resolution(db: Session, incident_id) -> None:
             incident.resolved_at = datetime.now(timezone.utc)
             incident.updated_at = datetime.now(timezone.utc)
             create_timeline_event(db, incident.id, "incident_resolved",
-                                  description="Incident auto-resolved — all alerts resolved",
+                                  description="Incident auto-resolved -- all alerts resolved",
                                   created_by="system")
-            logger.info(f"Auto-resolved incident {incident.id} — all alerts resolved")
+            logger.info(f"Auto-resolved incident {incident.id} -- all alerts resolved")
 
-# ── Endpoints ───────────────────────────────────────────────────
+
+def _serialize_incident(inc: Incident, alert_count: int = 0) -> dict:
+    """Standard serialisation for an incident (Phase 3: includes AI fields)."""
+    duration = None
+    if inc.resolved_at and inc.started_at:
+        duration = int((inc.resolved_at - inc.started_at).total_seconds())
+    return {
+        "id": str(inc.id),
+        "incident_key": inc.incident_key,
+        "entity_name": inc.entity_name,
+        "entity_type": inc.entity_type,
+        "severity": inc.severity,
+        "status": inc.status,
+        "started_at": inc.started_at.isoformat() if inc.started_at else None,
+        "resolved_at": inc.resolved_at.isoformat() if inc.resolved_at else None,
+        "duration_seconds": duration,
+        "alert_count": alert_count,
+        "created_at": inc.created_at.isoformat() if inc.created_at else None,
+        "updated_at": inc.updated_at.isoformat() if inc.updated_at else None,
+        "tags": inc.tags or [],
+        # Phase 3 AI fields
+        "title": inc.title,
+        "summary": inc.summary,
+        "investigation_hints": inc.investigation_hints or [],
+        "postmortem": inc.postmortem,
+        "anomaly_id": inc.anomaly_id,
+        "alert_fingerprint": inc.alert_fingerprint,
+    }
+
+
+# -- Endpoints --
+
+@router.post("")
+async def create_incident(
+    body: IncidentCreate,
+    current_user: UserModel = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Phase 3: Create an incident from alert/anomaly context.
+
+    - Prevents duplicates: if an open incident exists for this service, returns it.
+    - Fetches anomaly context and generates AI summary + investigation hints.
+    """
+    import uuid
+
+    entity_type = "service"
+    key = _incident_key(entity_type, body.service_name)
+
+    # Check for existing open incident
+    existing = db.query(Incident).filter(
+        Incident.incident_key == key,
+        Incident.status.in_(["open", "investigating"]),
+    ).first()
+
+    if existing:
+        alert_count = db.query(AlertEvent).filter(
+            AlertEvent.incident_id == existing.id
+        ).count()
+        return {
+            "incident": _serialize_incident(existing, alert_count),
+            "created": False,
+            "message": "An open incident already exists for this service.",
+        }
+
+    # Fetch anomaly context for AI generation
+    anomaly_ctx = await fetch_anomaly_context(body.service_name)
+
+    # Generate AI content
+    title = body.title or f"Incident: {body.service_name}"
+    summary = generate_incident_summary(body.service_name, body.severity, anomaly_ctx)
+    hints = generate_investigation_hints(body.service_name, body.severity, anomaly_ctx)
+
+    now = datetime.now(timezone.utc)
+    incident = Incident(
+        id=uuid.uuid4(),
+        incident_key=key,
+        entity_name=body.service_name,
+        entity_type=entity_type,
+        severity=body.severity,
+        status="open",
+        started_at=now,
+        title=title,
+        summary=summary,
+        investigation_hints=hints,
+        anomaly_id=body.anomaly_id,
+        alert_fingerprint=body.alert_fingerprint,
+    )
+    db.add(incident)
+    db.flush()
+
+    create_timeline_event(
+        db, incident.id, "incident_created",
+        description=f"Incident created by {current_user.username} for {body.service_name}",
+        created_by=current_user.username,
+        metadata={
+            "entity_type": entity_type,
+            "severity": body.severity,
+            "anomaly_id": body.anomaly_id,
+            "source": "manual",
+        },
+    )
+
+    if anomaly_ctx:
+        create_timeline_event(
+            db, incident.id, "ai_analysis",
+            description="AI summary and investigation hints generated from anomaly context",
+            created_by="system",
+            metadata={"hint_count": len(hints), "has_anomaly_context": True},
+        )
+
+    db.commit()
+    logger.info(f"Created incident {incident.id} for {body.service_name} by {current_user.username}")
+
+    return {
+        "incident": _serialize_incident(incident),
+        "created": True,
+        "message": "Incident created with AI analysis.",
+    }
+
+
+@router.get("/check")
+async def check_existing_incident(
+    service_name: str = Query(...),
+    current_user: UserModel = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Phase 3: Check if an open incident exists for a service (duplicate prevention)."""
+    key = _incident_key("service", service_name)
+    existing = db.query(Incident).filter(
+        Incident.incident_key == key,
+        Incident.status.in_(["open", "investigating"]),
+    ).first()
+    if existing:
+        return {"exists": True, "incident_id": str(existing.id), "status": existing.status}
+    return {"exists": False, "incident_id": None, "status": None}
+
 
 @router.get("")
 async def list_incidents(
@@ -302,17 +411,9 @@ async def list_incidents(
     limit: int = Query(50, ge=1, le=500),
     offset: int = Query(0, ge=0),
 ):
-    """List incidents with optional filters.
-
-    Task 2: Internal platform incidents are excluded automatically.
-    Task 4: 30-day retention; deleted services excluded.
-    """
+    """List incidents with optional filters."""
     query = db.query(Incident)
-
-    # ── Task 2: exclude internal platform incidents ─────────────
     query = _apply_customer_filter(query)
-
-    # ── Task 4: retention + deleted-service exclusion ───────────
     query = _apply_retention(query, time_range)
     query = _apply_deleted_service_exclusion(query, db)
 
@@ -324,17 +425,13 @@ async def list_incidents(
         query = query.filter(Incident.severity == severity)
 
     total = query.count()
-
     incidents = query.order_by(Incident.started_at.desc()).offset(offset).limit(limit).all()
 
-    # Post-filter: also exclude incidents matching INTERNAL_NAME_PATTERN
-    # (SQL can't easily do regex, so we do a final pass in Python)
     filtered_incidents = [
         inc for inc in incidents
         if not _is_internal_incident(inc.entity_name, inc.entity_type)
     ]
 
-    # Get alert counts per incident
     incident_ids = [i.id for i in filtered_incidents]
     alert_counts = {}
     if incident_ids:
@@ -346,27 +443,10 @@ async def list_incidents(
         ).group_by(AlertEvent.incident_id).all()
         alert_counts = {row[0]: row[1] for row in counts}
 
-    results = []
-    for inc in filtered_incidents:
-        duration = None
-        if inc.resolved_at and inc.started_at:
-            duration = int((inc.resolved_at - inc.started_at).total_seconds())
-
-        results.append({
-            "id": str(inc.id),
-            "incident_key": inc.incident_key,
-            "entity_name": inc.entity_name,
-            "entity_type": inc.entity_type,
-            "severity": inc.severity,
-            "status": inc.status,
-            "started_at": inc.started_at.isoformat() if inc.started_at else None,
-            "resolved_at": inc.resolved_at.isoformat() if inc.resolved_at else None,
-            "duration_seconds": duration,
-            "alert_count": alert_counts.get(inc.id, 0),
-            "created_at": inc.created_at.isoformat() if inc.created_at else None,
-            "updated_at": inc.updated_at.isoformat() if inc.updated_at else None,
-            "tags": inc.tags or [],
-        })
+    results = [
+        _serialize_incident(inc, alert_counts.get(inc.id, 0))
+        for inc in filtered_incidents
+    ]
 
     return {"incidents": results, "total": len(results)}
 
@@ -376,14 +456,8 @@ async def incident_stats(
     current_user: UserModel = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Aggregate incident statistics.
-
-    Task 2: Only customer-facing incidents are counted.
-    Task 4: retention + deleted-service exclusion applied.
-    """
+    """Aggregate incident statistics."""
     base_query = _apply_customer_filter(db.query(Incident))
-
-    # Task 4: retention + deleted-service exclusion
     retention_cutoff = datetime.now(timezone.utc) - timedelta(days=MAX_RETENTION_DAYS)
     base_query = base_query.filter(
         or_(
@@ -393,7 +467,6 @@ async def incident_stats(
     )
     base_query = _apply_deleted_service_exclusion(base_query, db)
 
-    # Fetch all customer-facing incidents and post-filter for regex patterns
     all_incidents = base_query.all()
     customer_incidents = [
         inc for inc in all_incidents
@@ -429,7 +502,7 @@ async def get_incident(
     current_user: UserModel = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Get incident details with related alert events."""
+    """Get incident details with related alert events (Phase 3: includes AI fields)."""
     import uuid as _uuid
     try:
         inc_uuid = _uuid.UUID(incident_id)
@@ -440,14 +513,9 @@ async def get_incident(
     if not incident:
         raise HTTPException(status_code=404, detail="Incident not found")
 
-    # Get linked alert events
     alert_events = db.query(AlertEvent).filter(
         AlertEvent.incident_id == inc_uuid
     ).order_by(AlertEvent.started_at.desc()).all()
-
-    duration = None
-    if incident.resolved_at and incident.started_at:
-        duration = int((incident.resolved_at - incident.started_at).total_seconds())
 
     events_list = []
     for ev in alert_events:
@@ -470,20 +538,7 @@ async def get_incident(
         })
 
     return {
-        "incident": {
-            "id": str(incident.id),
-            "incident_key": incident.incident_key,
-            "entity_name": incident.entity_name,
-            "entity_type": incident.entity_type,
-            "severity": incident.severity,
-            "status": incident.status,
-            "started_at": incident.started_at.isoformat() if incident.started_at else None,
-            "resolved_at": incident.resolved_at.isoformat() if incident.resolved_at else None,
-            "duration_seconds": duration,
-            "created_at": incident.created_at.isoformat() if incident.created_at else None,
-            "updated_at": incident.updated_at.isoformat() if incident.updated_at else None,
-            "tags": incident.tags or [],
-        },
+        "incident": _serialize_incident(incident, len(events_list)),
         "alert_events": events_list,
         "alert_count": len(events_list),
     }
@@ -496,7 +551,7 @@ async def update_incident_status(
     current_user: UserModel = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Update incident status (investigating / resolved)."""
+    """Update incident status. Phase 3: generates postmortem on resolve."""
     import uuid as _uuid
     try:
         inc_uuid = _uuid.UUID(incident_id)
@@ -516,24 +571,56 @@ async def update_incident_status(
     if body.status == "resolved" and not incident.resolved_at:
         incident.resolved_at = datetime.now(timezone.utc)
 
-    # Timeline event for status change
-    evt_type = "investigation_started" if body.status == "investigating" else "incident_resolved" if body.status == "resolved" else "status_changed"
+    evt_type = (
+        "investigation_started" if body.status == "investigating"
+        else "incident_resolved" if body.status == "resolved"
+        else "status_changed"
+    )
     create_timeline_event(db, inc_uuid, evt_type,
                           description=f"Status changed from {old_status} to {body.status}",
                           created_by=current_user.username)
 
+    # Phase 3: Generate postmortem on resolve
+    if body.status == "resolved" and not incident.postmortem:
+        try:
+            anomaly_ctx = await fetch_anomaly_context(incident.entity_name)
+            timeline_evts = db.query(IncidentEvent).filter(
+                IncidentEvent.incident_id == inc_uuid
+            ).order_by(IncidentEvent.created_at.asc()).all()
+            timeline_data = [
+                {"created_at": e.created_at.isoformat() if e.created_at else "", "description": e.description, "event_type": e.event_type}
+                for e in timeline_evts
+            ]
+            duration = None
+            if incident.resolved_at and incident.started_at:
+                duration = int((incident.resolved_at - incident.started_at).total_seconds())
+            incident.postmortem = generate_postmortem(
+                service_name=incident.entity_name,
+                severity=incident.severity,
+                started_at=incident.started_at.isoformat() if incident.started_at else "",
+                resolved_at=incident.resolved_at.isoformat() if incident.resolved_at else "",
+                duration_seconds=duration,
+                anomaly_ctx=anomaly_ctx,
+                timeline_events=timeline_data,
+            )
+            create_timeline_event(db, inc_uuid, "postmortem_generated",
+                                  description="AI postmortem generated on resolution",
+                                  created_by="system")
+        except Exception as e:
+            logger.warning(f"Failed to generate postmortem for {incident_id}: {e}")
+
     db.commit()
-    logger.info(f"Incident {incident_id} status → {body.status} by {current_user.username}")
+    logger.info(f"Incident {incident_id} status -> {body.status} by {current_user.username}")
 
     return {
         "id": str(incident.id),
         "status": incident.status,
+        "postmortem": incident.postmortem,
         "updated_at": incident.updated_at.isoformat() if incident.updated_at else None,
     }
 
 
-
-# ── Timeline endpoints ─────────────────────────────────────
+# -- Timeline endpoints --
 
 @router.get("/{incident_id}/timeline")
 async def get_incident_timeline(
@@ -541,7 +628,6 @@ async def get_incident_timeline(
     current_user: UserModel = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Get chronological timeline for an incident."""
     import uuid as _uuid
     try:
         inc_uuid = _uuid.UUID(incident_id)
@@ -571,7 +657,7 @@ async def get_incident_timeline(
     }
 
 
-# ── Comments endpoints ─────────────────────────────────────
+# -- Comments endpoints --
 
 @router.get("/{incident_id}/comments")
 async def get_incident_comments(
@@ -579,7 +665,6 @@ async def get_incident_comments(
     current_user: UserModel = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Get comments for an incident."""
     import uuid as _uuid
     try:
         inc_uuid = _uuid.UUID(incident_id)
@@ -614,7 +699,6 @@ async def add_incident_comment(
     current_user: UserModel = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Add a comment to an incident."""
     import uuid as _uuid
     try:
         inc_uuid = _uuid.UUID(incident_id)
@@ -634,7 +718,6 @@ async def add_incident_comment(
     db.add(comment)
     db.flush()
 
-    # Timeline event
     create_timeline_event(db, inc_uuid, "comment_added",
                           description=f"Comment by {current_user.username}",
                           created_by=current_user.username,
@@ -648,7 +731,7 @@ async def add_incident_comment(
     }
 
 
-# ── Tags endpoint ──────────────────────────────────────────
+# -- Tags endpoint --
 
 @router.patch("/{incident_id}/tags")
 async def update_incident_tags(
@@ -657,7 +740,6 @@ async def update_incident_tags(
     current_user: UserModel = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Update tags for an incident."""
     import uuid as _uuid
     try:
         inc_uuid = _uuid.UUID(incident_id)
@@ -670,14 +752,12 @@ async def update_incident_tags(
 
     old_tags = set(incident.tags or [])
     new_tags = set(body.tags)
-
     added = new_tags - old_tags
     removed = old_tags - new_tags
 
     incident.tags = list(new_tags)
     incident.updated_at = datetime.now(timezone.utc)
 
-    # Timeline events for tag changes
     for tag in added:
         create_timeline_event(db, inc_uuid, "tag_added",
                               description=f"Tag added: {tag}",
@@ -696,9 +776,7 @@ async def update_incident_tags(
     }
 
 
-
-
-# ── Root Cause Analysis (Phase 2.7) ────────────────────────────
+# -- Root Cause Analysis (Phase 2.7) --
 
 @router.get("/{incident_id}/root-cause")
 async def get_incident_root_cause(
@@ -706,21 +784,49 @@ async def get_incident_root_cause(
     db: Session = Depends(get_db),
     current_user: UserModel = Depends(get_current_user),
 ):
-    """
-    Analyse an incident and return a deterministic, explainable
-    root-cause hypothesis based on metrics, alerts, anomalies,
-    and log signals within a ±5-minute window.
-
-    Read-only — never mutates any data.
-    """
     result = await analyze_incident_root_cause(incident_id, db)
     return result
 
 
-# ── Private helpers ─────────────────────────────────────────────
+# -- Regenerate AI content (Phase 3) --
+
+@router.post("/{incident_id}/regenerate-ai")
+async def regenerate_ai_content(
+    incident_id: str,
+    current_user: UserModel = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Re-fetch anomaly context and regenerate summary + hints."""
+    import uuid as _uuid
+    try:
+        inc_uuid = _uuid.UUID(incident_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid incident ID")
+
+    incident = db.query(Incident).filter(Incident.id == inc_uuid).first()
+    if not incident:
+        raise HTTPException(status_code=404, detail="Incident not found")
+
+    anomaly_ctx = await fetch_anomaly_context(incident.entity_name)
+    incident.summary = generate_incident_summary(incident.entity_name, incident.severity, anomaly_ctx)
+    incident.investigation_hints = generate_investigation_hints(incident.entity_name, incident.severity, anomaly_ctx)
+    incident.updated_at = datetime.now(timezone.utc)
+
+    create_timeline_event(db, inc_uuid, "ai_regenerated",
+                          description=f"AI analysis regenerated by {current_user.username}",
+                          created_by=current_user.username)
+
+    db.commit()
+
+    return {
+        "summary": incident.summary,
+        "investigation_hints": incident.investigation_hints,
+    }
+
+
+# -- Private helpers --
 
 def _parse_time_range(tr: str) -> Optional[datetime]:
-    """Convert '24h', '7d', '30d' to a datetime cutoff."""
     now = datetime.now(timezone.utc)
     if tr.endswith("h"):
         return now - timedelta(hours=int(tr[:-1]))

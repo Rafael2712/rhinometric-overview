@@ -1,4 +1,4 @@
-import { Bell, Filter, Download, Clock, AlertTriangle, CheckCircle2, XCircle, VolumeX, UserCheck, Trash2, Brain, TrendingUp } from 'lucide-react'
+import { Bell, Filter, Download, Clock, AlertTriangle, CheckCircle2, XCircle, VolumeX, UserCheck, Trash2, Brain, TrendingUp, Flame } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuthStore } from '../lib/auth/store'
@@ -37,7 +37,7 @@ interface AckInfo {
   note?: string
 }
 
-/* ── AI Context Types (V1.7 Alert Integration) ── */
+/* -- AI Context Types (V1.7 Alert Integration) -- */
 interface ServiceAiContext {
   anomaly_id: string
   anomaly_score: number
@@ -61,7 +61,7 @@ interface AiContextResponse {
   count: number
 }
 
-/* ── AI Score Badge ── */
+/* -- AI Score Badge -- */
 function AiScoreBadge({ ctx }: { ctx: ServiceAiContext | undefined }) {
   if (!ctx) return null
   const score = ctx.anomaly_score
@@ -71,7 +71,7 @@ function AiScoreBadge({ ctx }: { ctx: ServiceAiContext | undefined }) {
     score >= 15 ? 'bg-blue-500/20 text-blue-400 border-blue-500/30' :
     'bg-gray-500/20 text-gray-400 border-gray-700/50'
   return (
-    <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium border ${color}`} title={`AI Score: ${score}/100 — ${ctx.severity}`}>
+    <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium border ${color}`} title={`AI Score: ${score}/100 -- ${ctx.severity}`}>
       <Brain size={10} />
       {score}
     </span>
@@ -79,17 +79,15 @@ function AiScoreBadge({ ctx }: { ctx: ServiceAiContext | undefined }) {
 }
 
 
-/* ── Extract service name from alertname (after '::' delimiter) ── */
+/* -- Extract service name from alertname (after '::' delimiter) -- */
 function getAlertServiceName(alert: { labels: { alertname?: string; service_name?: string; service?: string } }): string {
-  // Primary: extract from alertname after '::'
   const parts = (alert.labels.alertname || '').split('::')
   if (parts.length > 1 && parts[1].trim()) return parts[1].trim()
-  // Fallback: service_name label (if ever added)
   if (alert.labels.service_name) return alert.labels.service_name
   return ''
 }
 
-/* ── Task 4: Purge Modal ──────────────────────────────────────── */
+/* -- Task 4: Purge Modal -- */
 function PurgeModal({ module, isOpen, onClose, token }: {
   module: 'alerts' | 'incidents' | 'anomalies'
   isOpen: boolean
@@ -184,7 +182,7 @@ function PurgeModal({ module, isOpen, onClose, token }: {
             ) : (
               <div className="space-y-3">
                 <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3 text-red-300 text-sm">
-                  ⚠️ This action is irreversible. Are you sure?
+                  Warning: This action is irreversible. Are you sure?
                 </div>
                 <div className="flex gap-3">
                   <button onClick={() => setConfirming(false)}
@@ -221,6 +219,9 @@ export function AlertsPage() {
   const [ackLoading, setAckLoading] = useState(false)
   const [actionMessage, setActionMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
   const [showPurge, setShowPurge] = useState(false)
+  // Phase 3: Create Incident state
+  const [incidentLoading, setIncidentLoading] = useState(false)
+  const [existingIncidentId, setExistingIncidentId] = useState<string | null>(null)
 
   // Fetch alerts
   const { data: alertsData, isLoading, error } = useQuery({
@@ -286,6 +287,64 @@ export function AlertsPage() {
     refetchInterval: 30000,
   })
 
+  // Phase 3: Check for existing incident when alert is selected
+  useEffect(() => {
+    if (!selectedAlert || !token) { setExistingIncidentId(null); return }
+    const svcName = getAlertServiceName(selectedAlert)
+    if (!svcName) { setExistingIncidentId(null); return }
+    fetch(`/api/incidents/check?service_name=${encodeURIComponent(svcName)}`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data?.exists) setExistingIncidentId(data.incident_id)
+        else setExistingIncidentId(null)
+      })
+      .catch(() => setExistingIncidentId(null))
+  }, [selectedAlert, token])
+
+  // Phase 3: Create Incident handler
+  const handleCreateIncident = async (alert: Alert) => {
+    if (!token) return
+    setIncidentLoading(true)
+    setActionMessage(null)
+    const svcName = getAlertServiceName(alert)
+    const ctx = aiContextData?.contexts?.[svcName]
+    try {
+      const res = await fetch('/api/incidents', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          service_name: svcName,
+          severity: alert.severity || 'warning',
+          title: `Incident: ${svcName}`,
+          alert_fingerprint: alert.fingerprint,
+          anomaly_id: ctx?.anomaly_id || null,
+        }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        const incId = data.incident?.id
+        if (data.created) {
+          setActionMessage({ type: 'success', text: `Incident created with AI analysis.` })
+        } else {
+          setActionMessage({ type: 'success', text: data.message || 'An open incident already exists.' })
+        }
+        if (incId) setExistingIncidentId(incId)
+        queryClient.invalidateQueries({ queryKey: ['incidents'] })
+      } else {
+        setActionMessage({ type: 'error', text: data.detail || 'Failed to create incident' })
+      }
+    } catch (e: any) {
+      setActionMessage({ type: 'error', text: e.message || 'Failed to create incident' })
+    } finally {
+      setIncidentLoading(false)
+    }
+  }
+
   // Silence mutation
   const handleSilence = async (fingerprint: string) => {
     if (!token) return
@@ -343,9 +402,8 @@ export function AlertsPage() {
     }
   }
 
-  // Filter alerts — only show customer-facing alerts (must have a service name)
+  // Filter alerts
   const filteredAlerts = alertsData?.alerts?.filter(alert => {
-    // Hide infrastructure alerts that have no customer service mapping
     const serviceName = getAlertServiceName(alert)
     if (!serviceName) return false
     const severityMatch = severityFilter === 'all' || alert.severity === severityFilter
@@ -377,11 +435,11 @@ export function AlertsPage() {
   return (
     <div className="space-y-4 sm:space-y-6">
       <PurgeModal module="alerts" isOpen={showPurge} onClose={(purged) => { setShowPurge(false); if (purged) queryClient.invalidateQueries({ queryKey: ['alert-history'] }) }} token={token} />
-      {/* Header - stacks on mobile */}
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-2 sm:mb-6">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-white mb-1 sm:mb-2">Operational Alerts</h1>
-          <p className="text-text-muted text-sm sm:text-base">Alerts requiring attention — generated when anomaly scores or predicted risk exceed operational thresholds</p>
+          <p className="text-text-muted text-sm sm:text-base">Alerts requiring attention ? generated when anomaly scores or predicted risk exceed operational thresholds</p>
         </div>
         <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
           {silencesData?.total > 0 && (
@@ -404,7 +462,7 @@ export function AlertsPage() {
         </div>
       </div>
 
-      {/* Filters - wraps on mobile */}
+      {/* Filters */}
       <div className="card">
         <div className="flex flex-wrap items-center gap-3 sm:gap-4">
           <Filter size={18} className="text-gray-400 flex-shrink-0" />
@@ -691,11 +749,52 @@ export function AlertsPage() {
                       </div>
                     )}
                     <a href={`/ai-anomalies-v2?service=${encodeURIComponent(svcKey)}${ctx.anomaly_id ? `&anomaly_id=${encodeURIComponent(ctx.anomaly_id)}` : ''}`} className="inline-flex items-center gap-1 mt-2 text-xs text-purple-400 hover:text-purple-300 transition-colors">
-                      <Brain size={12} /> View full anomaly analysis →
+                      <Brain size={12} /> View full anomaly analysis
                     </a>
                   </div>
                 )
               })()}
+
+              {/* Phase 3: Create Incident / View Incident button */}
+              {(() => {
+                const svcName = getAlertServiceName(selectedAlert)
+                if (!svcName) return null
+                return (
+                  <div className="card p-3 sm:p-4 border-orange-500/20">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2">
+                        <Flame size={16} className="text-orange-400" />
+                        <span className="text-sm font-medium text-gray-200">Incident Management</span>
+                      </div>
+                      {existingIncidentId ? (
+                        <a
+                          href={`/incidents?expand=${existingIncidentId}`}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 border border-blue-500/30 transition-colors"
+                        >
+                          <Flame size={12} />
+                          View Open Incident
+                        </a>
+                      ) : (
+                        <button
+                          onClick={() => handleCreateIncident(selectedAlert)}
+                          disabled={incidentLoading}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-orange-500/20 text-orange-400 hover:bg-orange-500/30 border border-orange-500/30 transition-colors disabled:opacity-50"
+                        >
+                          <Flame size={12} />
+                          {incidentLoading ? 'Creating...' : 'Create Incident'}
+                        </button>
+                      )}
+                    </div>
+                    {existingIncidentId && (
+                      <p className="text-xs text-gray-500 mt-2">An open incident exists for this service. View it to track investigation progress.</p>
+                    )}
+                    {!existingIncidentId && (
+                      <p className="text-xs text-gray-500 mt-2">Create an incident to track investigation with AI-generated summary and hints.</p>
+                    )}
+                  </div>
+                )
+              })()}
+
               <div className="card p-3 sm:p-4">
                 <h3 className="text-base sm:text-lg font-semibold text-white mb-3">Labels</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
@@ -707,9 +806,9 @@ export function AlertsPage() {
                   ))}
                 </div>
               </div>
-              {/* Action buttons - stack on mobile */}
+              {/* Action buttons */}
               <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
-                
+
                 <div className="flex-1 flex gap-2">
                   <select
                     value={silenceDuration}

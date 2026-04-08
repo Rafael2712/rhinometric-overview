@@ -1,15 +1,16 @@
 /* eslint-disable */
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuthStore } from '../lib/auth/store'
 import {
   Bell, CheckCircle2, Search,
   Filter, ChevronDown, ChevronUp, Clock, Activity,
   Flame, Eye, BarChart3, MessageSquare, Tag, Plus, X, Send,
-  Crosshair, AlertTriangle, Zap, FileText, TrendingUp, Shield, Trash2
+  Crosshair, Shield, Trash2, Loader2,
+  Brain, Lightbulb, BookOpen, RefreshCw, ExternalLink
 } from 'lucide-react'
 
-/* ── Types ─────────────────────────────────────────────────────── */
+/* -- Types -- */
 
 interface IncidentSummary {
   id: string
@@ -25,6 +26,13 @@ interface IncidentSummary {
   created_at: string | null
   updated_at: string | null
   tags?: string[]
+  // Phase 3 AI fields
+  title?: string | null
+  summary?: string | null
+  investigation_hints?: string[]
+  postmortem?: string | null
+  anomaly_id?: string | null
+  alert_fingerprint?: string | null
 }
 
 interface IncidentDetail {
@@ -105,10 +113,10 @@ interface IncidentStats {
   avg_resolution_seconds: number | null
 }
 
-/* ── Helpers ───────────────────────────────────────────────────── */
+/* -- Helpers -- */
 
 function formatDuration(seconds: number | null): string {
-  if (seconds === null || seconds === undefined) return '—'
+  if (seconds === null || seconds === undefined) return '\u2014'
   if (seconds < 60) return `${seconds}s`
   if (seconds < 3600) return `${Math.floor(seconds / 60)}m ${seconds % 60}s`
   const h = Math.floor(seconds / 3600)
@@ -117,7 +125,7 @@ function formatDuration(seconds: number | null): string {
 }
 
 function timeAgo(iso: string | null): string {
-  if (!iso) return '—'
+  if (!iso) return '\u2014'
   const diff = Date.now() - new Date(iso).getTime()
   const mins = Math.floor(diff / 60000)
   if (mins < 1) return 'just now'
@@ -129,18 +137,18 @@ function timeAgo(iso: string | null): string {
 }
 
 function formatTs(iso: string | null): string {
-  if (!iso) return '—'
+  if (!iso) return '\u2014'
   return new Date(iso).toLocaleString()
 }
 
 function liveDuration(startedAt: string | null, resolvedAt: string | null): string {
-  if (!startedAt) return '—'
+  if (!startedAt) return '\u2014'
   const start = new Date(startedAt).getTime()
   const end = resolvedAt ? new Date(resolvedAt).getTime() : Date.now()
   return formatDuration(Math.floor((end - start) / 1000))
 }
 
-/* ── Status Badge ──────────────────────────────────────────────── */
+/* -- Status Badge -- */
 
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, { bg: string; text: string; icon: typeof Bell }> = {
@@ -186,7 +194,7 @@ function AlertStatusBadge({ status }: { status: string }) {
   )
 }
 
-/* ── Stat Card ─────────────────────────────────────────────────── */
+/* -- Stat Card -- */
 
 function StatCard({ label, value, icon: Icon, color }: {
   label: string; value: string | number; icon: typeof Bell; color: string
@@ -206,10 +214,9 @@ function StatCard({ label, value, icon: Icon, color }: {
   )
 }
 
-/* ── Main Page ─────────────────────────────────────────────────── */
+/* -- Main Page -- */
 
-
-/* ── Task 4: Purge Modal ──────────────────────────────────────── */
+/* -- Task 4: Purge Modal -- */
 function PurgeModal({ module, isOpen, onClose, token }: {
   module: 'alerts' | 'incidents' | 'anomalies'
   isOpen: boolean
@@ -304,7 +311,7 @@ function PurgeModal({ module, isOpen, onClose, token }: {
             ) : (
               <div className="space-y-3">
                 <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3 text-red-300 text-sm">
-                  ⚠️ This action is irreversible. Are you sure?
+                  Warning: This action is irreversible. Are you sure?
                 </div>
                 <div className="flex gap-3">
                   <button onClick={() => setConfirming(false)}
@@ -338,6 +345,17 @@ export function IncidentsPage() {
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [showPurge, setShowPurge] = useState(false)
 
+  // Phase 3: auto-expand from query param (deep-link from Alerts)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const expandParam = params.get('expand')
+    if (expandParam) {
+      setExpandedId(expandParam)
+      // Clean query param without reload
+      window.history.replaceState({}, '', window.location.pathname)
+    }
+  }, [])
+
   // List incidents
   const { data: listData, isLoading: listLoading } = useQuery({
     queryKey: ['incidents', statusFilter, severityFilter, entitySearch, timeRange],
@@ -367,7 +385,7 @@ export function IncidentsPage() {
   })
 
   // Incident detail (when expanded)
-  const { data: detailData } = useQuery({
+  const { data: detailData, isLoading: detailIsLoading } = useQuery({
     queryKey: ['incident-detail', expandedId],
     queryFn: async () => {
       if (!expandedId) return null
@@ -404,7 +422,7 @@ export function IncidentsPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-white">Incidents</h1>
-          <p className="text-sm text-gray-400 mt-1">Customer-facing operational incidents grouping related alert events</p>
+          <p className="text-sm text-gray-400 mt-1">AI-powered incident management -- track, investigate, and resolve with contextual guidance</p>
         </div>
         <div className="flex items-center gap-3 text-xs text-gray-400">
           <Activity size={14} className="text-green-400" />
@@ -427,7 +445,7 @@ export function IncidentsPage() {
           <StatCard label="Total" value={stats.total} icon={BarChart3} color="text-gray-300" />
           <StatCard label="Open" value={stats.open} icon={Flame} color="text-red-400" />
           <StatCard label="Investigating" value={stats.investigating} icon={Eye} color="text-blue-400" />
-          <StatCard label="Avg Resolution" value={stats.avg_resolution_seconds != null ? formatDuration(stats.avg_resolution_seconds) : '—'} icon={Clock} color="text-green-400" />
+          <StatCard label="Avg Resolution" value={stats.avg_resolution_seconds != null ? formatDuration(stats.avg_resolution_seconds) : '\u2014'} icon={Clock} color="text-green-400" />
         </div>
       )}
 
@@ -440,7 +458,6 @@ export function IncidentsPage() {
           </div>
 
           <div className="flex flex-wrap gap-2 flex-1">
-            {/* Time range */}
             <select
               value={timeRange}
               onChange={(e) => setTimeRange(e.target.value)}
@@ -452,7 +469,6 @@ export function IncidentsPage() {
               <option value="">All time</option>
             </select>
 
-            {/* Status */}
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
@@ -464,7 +480,6 @@ export function IncidentsPage() {
               <option value="resolved">Resolved</option>
             </select>
 
-            {/* Severity */}
             <select
               value={severityFilter}
               onChange={(e) => setSeverityFilter(e.target.value)}
@@ -476,7 +491,6 @@ export function IncidentsPage() {
               <option value="info">Info</option>
             </select>
 
-            {/* Entity search */}
             <div className="relative">
               <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-500" />
               <input
@@ -491,7 +505,7 @@ export function IncidentsPage() {
         </div>
       </div>
 
-      {/* Incidents table — desktop */}
+      {/* Incidents table -- desktop */}
       <div className="hidden md:block bg-surface rounded-lg border border-gray-700 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -513,13 +527,13 @@ export function IncidentsPage() {
               )}
               {!listLoading && incidents.length === 0 && (
                 <tr><td colSpan={8} className="px-4 py-12 text-center">
-                    <div className="flex flex-col items-center">
-                      <Shield size={40} className="text-gray-600 mb-3" />
-                      <p className="text-gray-300 text-base font-semibold mb-1">No customer incidents</p>
-                      <p className="text-gray-500 text-sm">There are currently no incidents affecting customer services.</p>
-                      <p className="text-gray-600 text-xs mt-2">Customer incidents will appear when customer alerts or anomalies are detected.</p>
-                    </div>
-                  </td></tr>
+                  <div className="flex flex-col items-center">
+                    <Shield size={40} className="text-gray-600 mb-3" />
+                    <p className="text-gray-300 text-base font-semibold mb-1">No customer incidents</p>
+                    <p className="text-gray-500 text-sm">There are currently no incidents affecting customer services.</p>
+                    <p className="text-gray-600 text-xs mt-2">Create incidents from the Alerts page when anomalies are detected.</p>
+                  </div>
+                </td></tr>
               )}
               {incidents.map((inc) => {
                 const isExpanded = expandedId === inc.id
@@ -540,7 +554,7 @@ export function IncidentsPage() {
         </div>
       </div>
 
-      {/* Incidents cards — mobile */}
+      {/* Incidents cards -- mobile */}
       <div className="md:hidden space-y-3">
         {listLoading && <p className="text-center text-gray-400 py-8">Loading...</p>}
         {!listLoading && incidents.length === 0 && (
@@ -548,7 +562,7 @@ export function IncidentsPage() {
             <Shield size={40} className="mx-auto text-gray-600 mb-3" />
             <p className="text-gray-300 text-base font-semibold mb-1">No customer incidents</p>
             <p className="text-gray-500 text-sm">There are currently no incidents affecting customer services.</p>
-            <p className="text-gray-600 text-xs mt-2">Customer incidents will appear when customer alerts or anomalies are detected.</p>
+            <p className="text-gray-600 text-xs mt-2">Create incidents from the Alerts page when anomalies are detected.</p>
           </div>
         )}
         {incidents.map((inc) => (
@@ -556,8 +570,9 @@ export function IncidentsPage() {
             key={inc.id}
             inc={inc}
             isExpanded={expandedId === inc.id}
-            detail={expandedId === inc.id ? detailData : null}
+            detail={expandedId === inc.id ? detailData ?? undefined : undefined}
             onToggle={() => setExpandedId(expandedId === inc.id ? null : inc.id)}
+            detailLoading={detailIsLoading}
             onStatusChange={(status) => statusMutation.mutate({ id: inc.id, status })}
           />
         ))}
@@ -566,7 +581,7 @@ export function IncidentsPage() {
   )
 }
 
-/* ── Desktop Row ───────────────────────────────────────────────── */
+/* -- Desktop Row -- */
 
 function IncidentRow({ inc, isExpanded, detail, onToggle, onStatusChange, isMutating }: {
   inc: IncidentSummary
@@ -585,7 +600,10 @@ function IncidentRow({ inc, isExpanded, detail, onToggle, onStatusChange, isMuta
         <td className="px-4 py-3">
           <div className="flex items-center gap-2">
             {isExpanded ? <ChevronUp size={14} className="text-gray-500" /> : <ChevronDown size={14} className="text-gray-500" />}
-            <span className="text-gray-300 font-mono text-xs">{inc.incident_key}</span>
+            <div>
+              <span className="text-gray-200 text-sm font-medium">{inc.title || inc.entity_name}</span>
+              <p className="text-gray-500 font-mono text-xs">{inc.incident_key}</p>
+            </div>
           </div>
         </td>
         <td className="px-4 py-3 text-gray-300">{inc.entity_name}</td>
@@ -638,7 +656,7 @@ function IncidentRow({ inc, isExpanded, detail, onToggle, onStatusChange, isMuta
   )
 }
 
-/* ── Expanded Detail Panel ─────────────────────────────────────── */
+/* -- Expanded Detail Panel -- */
 
 function IncidentDetailPanel({ detail }: { detail: IncidentDetail }) {
   const events = detail.alert_events || []
@@ -646,10 +664,12 @@ function IncidentDetailPanel({ detail }: { detail: IncidentDetail }) {
   const queryClient = useQueryClient()
   const headers: Record<string, string> = { Authorization: `Bearer ${token}` }
   const incidentId = detail.incident.id
+  const inc = detail.incident
 
-  const [activeTab, setActiveTab] = useState<'alerts' | 'timeline' | 'comments' | 'root-cause'>('alerts')
+  const [activeTab, setActiveTab] = useState<'summary' | 'alerts' | 'timeline' | 'comments' | 'root-cause'>('summary')
   const [newComment, setNewComment] = useState('')
   const [newTag, setNewTag] = useState('')
+  const [regenerating, setRegenerating] = useState(false)
 
   // Timeline query
   const { data: timelineData } = useQuery({
@@ -721,9 +741,26 @@ function IncidentDetailPanel({ detail }: { detail: IncidentDetail }) {
     },
   })
 
-  const currentTags: string[] = detail.incident.tags || []
+  // Phase 3: Regenerate AI content
+  const handleRegenerate = async () => {
+    setRegenerating(true)
+    try {
+      const res = await fetch(`/api/incidents/${incidentId}/regenerate-ai`, {
+        method: 'POST',
+        headers,
+      })
+      if (res.ok) {
+        queryClient.invalidateQueries({ queryKey: ['incident-detail'] })
+        queryClient.invalidateQueries({ queryKey: ['incident-timeline', incidentId] })
+      }
+    } catch (e) { /* ignore */ }
+    setRegenerating(false)
+  }
+
+  const currentTags: string[] = inc.tags || []
   const timeline = timelineData?.timeline || []
   const comments = commentsData?.comments || []
+  const hints = inc.investigation_hints || []
 
   const addTag = () => {
     const tag = newTag.trim().toLowerCase()
@@ -751,21 +788,33 @@ function IncidentDetailPanel({ detail }: { detail: IncidentDetail }) {
     tag_added:             { color: 'text-cyan-400',   label: 'Tag added' },
     tag_removed:           { color: 'text-gray-400',   label: 'Tag removed' },
     status_changed:        { color: 'text-blue-400',   label: 'Status changed' },
+    ai_analysis:           { color: 'text-purple-400', label: 'AI analysis' },
+    ai_regenerated:        { color: 'text-purple-400', label: 'AI regenerated' },
+    postmortem_generated:  { color: 'text-green-400',  label: 'Postmortem generated' },
   }
 
   return (
     <div className="space-y-3">
       {/* Header info */}
-      <div className="flex items-center gap-3 text-xs text-gray-400">
-        <span>Incident ID: <span className="font-mono text-gray-300">{detail.incident.id.slice(0, 8)}</span></span>
+      <div className="flex items-center gap-3 text-xs text-gray-400 flex-wrap">
+        <span>ID: <span className="font-mono text-gray-300">{inc.id.slice(0, 8)}</span></span>
         <span>|</span>
-        <span>Created: {formatTs(detail.incident.created_at)}</span>
-        {detail.incident.resolved_at && (
+        <span>Created: {formatTs(inc.created_at)}</span>
+        {inc.resolved_at && (
           <>
             <span>|</span>
-            <span>Resolved: {formatTs(detail.incident.resolved_at)}</span>
+            <span>Resolved: {formatTs(inc.resolved_at)}</span>
           </>
         )}
+        {/* Deep links */}
+        <span>|</span>
+        <a href={`/alerts`} className="inline-flex items-center gap-1 text-blue-400 hover:text-blue-300 transition-colors">
+          <ExternalLink size={10} /> Alerts
+        </a>
+        <a href={`/ai-anomalies-v2?service=${encodeURIComponent(inc.entity_name)}${inc.anomaly_id ? `&anomaly_id=${encodeURIComponent(inc.anomaly_id)}` : ''}`}
+           className="inline-flex items-center gap-1 text-purple-400 hover:text-purple-300 transition-colors">
+          <Brain size={10} /> Anomaly Analysis
+        </a>
       </div>
 
       {/* Tags section */}
@@ -791,8 +840,9 @@ function IncidentDetailPanel({ detail }: { detail: IncidentDetail }) {
       </div>
 
       {/* Tab bar */}
-      <div className="flex gap-1 border-b border-gray-700">
+      <div className="flex gap-1 border-b border-gray-700 overflow-x-auto">
         {([
+          { key: 'summary' as const, label: 'AI Summary', icon: Brain },
           { key: 'alerts' as const, label: `Alerts (${events.length})`, icon: Bell },
           { key: 'timeline' as const, label: `Timeline (${timeline.length})`, icon: Clock },
           { key: 'comments' as const, label: `Comments (${comments.length})`, icon: MessageSquare },
@@ -801,7 +851,7 @@ function IncidentDetailPanel({ detail }: { detail: IncidentDetail }) {
           <button
             key={key}
             onClick={() => setActiveTab(key)}
-            className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium border-b-2 transition-colors ${
+            className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium border-b-2 transition-colors whitespace-nowrap ${
               activeTab === key
                 ? 'border-blue-500 text-blue-400'
                 : 'border-transparent text-gray-500 hover:text-gray-300'
@@ -812,6 +862,99 @@ function IncidentDetailPanel({ detail }: { detail: IncidentDetail }) {
           </button>
         ))}
       </div>
+
+      {/* Tab content: AI Summary (Phase 3) */}
+      {activeTab === 'summary' && (
+        <div className="space-y-4">
+          {/* AI Summary */}
+          {inc.summary ? (
+            <div className="rounded-lg border border-purple-500/20 bg-purple-500/5 p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="text-sm font-semibold text-purple-300 flex items-center gap-2">
+                  <Brain size={14} className="text-purple-400" />
+                  AI Summary
+                </h4>
+                <button
+                  onClick={handleRegenerate}
+                  disabled={regenerating}
+                  className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs bg-purple-500/10 text-purple-400 hover:bg-purple-500/20 transition-colors disabled:opacity-50"
+                  title="Regenerate AI analysis from latest anomaly context"
+                >
+                  <RefreshCw size={10} className={regenerating ? 'animate-spin' : ''} />
+                  {regenerating ? 'Regenerating...' : 'Refresh'}
+                </button>
+              </div>
+              <div className="text-sm text-gray-300 leading-relaxed whitespace-pre-wrap">
+                {inc.summary}
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-lg border border-gray-700/50 bg-gray-800/20 p-4 text-center">
+              <Brain size={24} className="mx-auto text-gray-600 mb-2" />
+              <p className="text-sm text-gray-500">No AI summary available</p>
+              <button
+                onClick={handleRegenerate}
+                disabled={regenerating}
+                className="mt-2 inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs bg-purple-500/20 text-purple-400 hover:bg-purple-500/30 transition-colors disabled:opacity-50"
+              >
+                <RefreshCw size={10} className={regenerating ? 'animate-spin' : ''} />
+                {regenerating ? 'Generating...' : 'Generate AI Summary'}
+              </button>
+            </div>
+          )}
+
+          {/* Investigation Hints */}
+          {hints.length > 0 && (
+            <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-4">
+              <h4 className="text-sm font-semibold text-amber-300 flex items-center gap-2 mb-3">
+                <Lightbulb size={14} className="text-amber-400" />
+                Investigation Hints
+              </h4>
+              <ul className="space-y-2">
+                {hints.map((hint, i) => (
+                  <li key={i} className="flex items-start gap-2 text-sm text-gray-300">
+                    <span className="text-amber-500 mt-0.5 flex-shrink-0">{i + 1}.</span>
+                    <span className="leading-relaxed">{hint}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Postmortem (only when resolved) */}
+          {inc.postmortem && (
+            <div className="rounded-lg border border-green-500/20 bg-green-500/5 p-4">
+              <h4 className="text-sm font-semibold text-green-300 flex items-center gap-2 mb-3">
+                <BookOpen size={14} className="text-green-400" />
+                Postmortem
+              </h4>
+              <div className="text-sm text-gray-300 leading-relaxed whitespace-pre-wrap">
+                {inc.postmortem}
+              </div>
+            </div>
+          )}
+
+          {/* Quick info cards */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <div className="bg-gray-800/40 rounded-lg border border-gray-700/30 p-3 text-center">
+              <p className="text-xs text-gray-500 mb-1">Severity</p>
+              <SeverityBadge severity={inc.severity} />
+            </div>
+            <div className="bg-gray-800/40 rounded-lg border border-gray-700/30 p-3 text-center">
+              <p className="text-xs text-gray-500 mb-1">Status</p>
+              <StatusBadge status={inc.status} />
+            </div>
+            <div className="bg-gray-800/40 rounded-lg border border-gray-700/30 p-3 text-center">
+              <p className="text-xs text-gray-500 mb-1">Alerts</p>
+              <p className="text-lg font-bold text-gray-200">{events.length}</p>
+            </div>
+            <div className="bg-gray-800/40 rounded-lg border border-gray-700/30 p-3 text-center">
+              <p className="text-xs text-gray-500 mb-1">Duration</p>
+              <p className="text-sm font-medium text-gray-200">{liveDuration(inc.started_at, inc.resolved_at)}</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Tab content: Alerts */}
       {activeTab === 'alerts' && (
@@ -897,7 +1040,6 @@ function IncidentDetailPanel({ detail }: { detail: IncidentDetail }) {
             </div>
           ))}
 
-          {/* Add comment form */}
           <form onSubmit={handleCommentSubmit} className="flex gap-2">
             <input
               type="text"
@@ -917,248 +1059,80 @@ function IncidentDetailPanel({ detail }: { detail: IncidentDetail }) {
         </div>
       )}
 
-      {/* Tab content: Root Cause (Phase 2.7) */}
+      {/* Tab content: Root Cause */}
       {activeTab === 'root-cause' && (
-        <div className="space-y-4">
+        <div className="space-y-3">
           {rootCauseLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-cyan-400"></div>
-              <span className="ml-3 text-sm text-gray-400">Analyzing root cause...</span>
+            <div className="flex items-center gap-2 text-sm text-gray-400 py-4 justify-center">
+              <Loader2 size={14} className="animate-spin" /> Analyzing root cause...
             </div>
-          ) : !rootCauseData ? (
-            <div className="text-center py-8">
-              <Crosshair size={24} className="mx-auto text-gray-600 mb-2" />
-              <p className="text-sm text-gray-500">No analysis data available</p>
-            </div>
-          ) : (
+          ) : rootCauseData ? (
             <>
-              {/* Likely Root Cause Card */}
-              <div className={`rounded-lg border p-4 ${
-                rootCauseData.likely_root_cause.confidence === 'high'
-                  ? 'bg-red-500/10 border-red-500/30'
-                  : rootCauseData.likely_root_cause.confidence === 'medium'
-                  ? 'bg-yellow-500/10 border-yellow-500/30'
-                  : rootCauseData.likely_root_cause.confidence === 'low'
-                  ? 'bg-blue-500/10 border-blue-500/30'
-                  : 'bg-gray-800/40 border-gray-700/30'
-              }`}>
-                <div className="flex items-center gap-2 mb-2">
-                  <Crosshair size={16} className={
-                    rootCauseData.likely_root_cause.confidence === 'high' ? 'text-red-400'
-                    : rootCauseData.likely_root_cause.confidence === 'medium' ? 'text-yellow-400'
-                    : rootCauseData.likely_root_cause.confidence === 'low' ? 'text-blue-400'
-                    : 'text-gray-500'
-                  } />
-                  <h3 className="text-sm font-semibold text-gray-200">Likely Root Cause</h3>
-                  <span className={`ml-auto text-xs px-2 py-0.5 rounded-full font-medium ${
-                    rootCauseData.likely_root_cause.confidence === 'high'
-                      ? 'bg-red-500/20 text-red-400'
-                      : rootCauseData.likely_root_cause.confidence === 'medium'
-                      ? 'bg-yellow-500/20 text-yellow-400'
-                      : rootCauseData.likely_root_cause.confidence === 'low'
-                      ? 'bg-blue-500/20 text-blue-400'
-                      : 'bg-gray-700 text-gray-400'
-                  }`}>
-                    {rootCauseData.likely_root_cause.confidence.toUpperCase()} confidence
-                  </span>
-                </div>
+              <div className="bg-gradient-to-br from-orange-500/5 to-red-500/5 rounded-lg border border-orange-500/20 p-4">
+                <h4 className="text-sm font-semibold text-orange-300 mb-2 flex items-center gap-2">
+                  <Crosshair size={14} /> Root Cause Analysis
+                </h4>
                 <p className="text-sm text-gray-300 leading-relaxed">
-                  {rootCauseData.likely_root_cause.description}
+                  {rootCauseData.likely_root_cause?.description || 'No root cause determined yet.'}
                 </p>
-                {rootCauseData.likely_root_cause.entity && (
-                  <div className="mt-2 flex items-center gap-3 text-xs text-gray-400">
-                    <span className="flex items-center gap-1">
-                      <Shield size={10} /> Entity: <span className="text-gray-200 font-mono">{rootCauseData.likely_root_cause.entity}</span>
-                    </span>
+                {rootCauseData.likely_root_cause?.entity && (
+                  <div className="flex items-center gap-3 mt-2 text-xs text-gray-400">
+                    <span>Entity: <span className="text-gray-300">{rootCauseData.likely_root_cause.entity}</span></span>
                     {rootCauseData.likely_root_cause.metric && (
-                      <span className="flex items-center gap-1">
-                        <TrendingUp size={10} /> Metric: <span className="text-gray-200 font-mono">{rootCauseData.likely_root_cause.metric}</span>
-                      </span>
+                      <span>Metric: <span className="text-gray-300">{rootCauseData.likely_root_cause.metric}</span></span>
                     )}
-                    <span className="flex items-center gap-1">
-                      <BarChart3 size={10} /> Score: <span className="text-gray-200 font-mono">{rootCauseData.score}</span>
-                    </span>
+                    <span>Confidence: <span className="text-gray-300">{rootCauseData.likely_root_cause.confidence}</span></span>
                   </div>
                 )}
               </div>
 
-              {/* Signal Counts Summary */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                <div className="bg-gray-800/40 rounded-lg border border-gray-700/30 p-3 text-center">
-                  <TrendingUp size={14} className="mx-auto text-orange-400 mb-1" />
-                  <p className="text-lg font-bold text-gray-200">{rootCauseData.signal_counts.metric_spikes}</p>
-                  <p className="text-xs text-gray-500">Metric Spikes</p>
-                </div>
-                <div className="bg-gray-800/40 rounded-lg border border-gray-700/30 p-3 text-center">
-                  <Bell size={14} className="mx-auto text-red-400 mb-1" />
-                  <p className="text-lg font-bold text-gray-200">{rootCauseData.signal_counts.alerts}</p>
-                  <p className="text-xs text-gray-500">Alerts</p>
-                </div>
-                <div className="bg-gray-800/40 rounded-lg border border-gray-700/30 p-3 text-center">
-                  <Zap size={14} className="mx-auto text-purple-400 mb-1" />
-                  <p className="text-lg font-bold text-gray-200">{rootCauseData.signal_counts.anomalies}</p>
-                  <p className="text-xs text-gray-500">Anomalies</p>
-                </div>
-                <div className="bg-gray-800/40 rounded-lg border border-gray-700/30 p-3 text-center">
-                  <FileText size={14} className="mx-auto text-yellow-400 mb-1" />
-                  <p className="text-lg font-bold text-gray-200">{rootCauseData.signal_counts.log_errors}</p>
-                  <p className="text-xs text-gray-500">Log Errors</p>
-                </div>
-              </div>
-
-              {/* Evidence List */}
-              {rootCauseData.evidence.length > 0 && (
+              {rootCauseData.evidence && rootCauseData.evidence.length > 0 && (
                 <div>
-                  <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Evidence</h4>
+                  <h5 className="text-xs font-semibold text-gray-400 uppercase mb-2">Evidence ({rootCauseData.evidence.length})</h5>
                   <div className="space-y-2">
                     {rootCauseData.evidence.map((ev, i) => (
-                      <div key={i} className="bg-gray-800/30 rounded-lg border border-gray-700/20 p-3">
-                        <div className="flex items-center gap-2 mb-1">
-                          {ev.type === 'metric_spike' && <TrendingUp size={12} className="text-orange-400" />}
-                          {ev.type === 'alert' && <AlertTriangle size={12} className="text-red-400" />}
-                          {ev.type === 'anomaly' && <Zap size={12} className="text-purple-400" />}
-                          {ev.type === 'log_errors' && <FileText size={12} className="text-yellow-400" />}
-                          <span className="text-xs font-medium text-gray-300 capitalize">
-                            {ev.type === 'metric_spike' ? 'Metric Spike' : ev.type === 'log_errors' ? 'Log Errors' : ev.type}
+                      <div key={i} className="bg-gray-800/40 rounded p-2 border border-gray-700/30 text-sm">
+                        <span className="text-xs px-1.5 py-0.5 rounded bg-orange-500/10 text-orange-400 mr-2">{ev.type}</span>
+                        <span className="text-gray-300">{ev.detail || ev.metric || 'Signal detected'}</span>
+                        {ev.value !== undefined && (
+                          <span className="text-xs text-gray-500 ml-2">
+                            (value: {ev.value}{ev.baseline !== undefined ? `, baseline: ${ev.baseline}` : ''})
                           </span>
-                          {ev.metric && (
-                            <span className="text-xs text-gray-500 font-mono ml-1">{ev.metric}</span>
-                          )}
-                        </div>
-                        <div className="text-xs text-gray-400 space-y-0.5">
-                          {ev.type === 'metric_spike' && (
-                            <>
-                              <p>Value: <span className="text-gray-200">{typeof ev.value === 'number' ? ev.value.toFixed(2) : ev.value}</span>
-                                {typeof ev.baseline === 'number' && (
-                                  <> vs baseline <span className="text-gray-200">{ev.baseline.toFixed(2)}</span></>
-                                )}
-                              </p>
-                              {typeof ev.factor === 'number' && (
-                                <p>Factor: <span className="text-orange-300 font-semibold">{ev.factor.toFixed(1)}x</span> increase</p>
-                              )}
-                            </>
-                          )}
-                          {ev.type === 'alert' && (
-                            <>
-                              {ev.alert_name && <p>Alert: <span className="text-gray-200">{ev.alert_name}</span></p>}
-                              {ev.severity && <p>Severity: <span className="text-gray-200">{ev.severity}</span></p>}
-                            </>
-                          )}
-                          {ev.type === 'anomaly' && (
-                            <>
-                              {ev.entity && <p>Entity: <span className="text-gray-200">{ev.entity}</span></p>}
-                              {typeof ev.anomaly_score === 'number' && (
-                                <p>Anomaly score: <span className="text-purple-300 font-semibold">{ev.anomaly_score.toFixed(2)}</span></p>
-                              )}
-                            </>
-                          )}
-                          {ev.type === 'log_errors' && (
-                            <>
-                              <p>Error count: <span className="text-yellow-300 font-semibold">{ev.error_count}</span></p>
-                              {ev.samples && ev.samples.length > 0 && (
-                                <div className="mt-1 space-y-1">
-                                  {ev.samples.map((s: string, j: number) => (
-                                    <p key={j} className="text-xs text-gray-500 font-mono truncate bg-gray-900/50 rounded px-2 py-0.5">{s}</p>
-                                  ))}
-                                </div>
-                              )}
-                            </>
-                          )}
-                        </div>
+                        )}
                       </div>
                     ))}
                   </div>
                 </div>
               )}
 
-              {/* Analysis metadata */}
-              <div className="flex items-center justify-between text-xs text-gray-600 pt-2 border-t border-gray-700/30">
-                <span>Analyzed: {rootCauseData.analyzed_at ? new Date(rootCauseData.analyzed_at).toLocaleString() : 'N/A'}</span>
-                <button
-                  onClick={() => refetchRootCause()}
-                  className="flex items-center gap-1 text-gray-500 hover:text-cyan-400 transition-colors"
-                >
-                  <Activity size={10} />
-                  Re-analyze
+              <div className="grid grid-cols-4 gap-2">
+                {Object.entries(rootCauseData.signal_counts || {}).map(([key, val]) => (
+                  <div key={key} className="bg-gray-800/40 rounded p-2 border border-gray-700/30 text-center">
+                    <p className="text-lg font-bold text-gray-200">{val as number}</p>
+                    <p className="text-xs text-gray-500">{key.replace(/_/g, ' ')}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex items-center gap-2 text-xs text-gray-500 pt-2 border-t border-gray-700/30">
+                <span>Score: {rootCauseData.score.toFixed(2)}</span>
+                <span>{'\u00b7'}</span>
+                <span>Analyzed: {new Date(rootCauseData.analyzed_at).toLocaleString()}</span>
+                <button onClick={() => refetchRootCause()} className="ml-auto text-blue-400 hover:text-blue-300">
+                  <RefreshCw size={12} />
                 </button>
               </div>
             </>
-          )}
-        </div>
-      )}
-
-    </div>
-  )
-}
-
-/* ── Mobile Card ───────────────────────────────────────────────── */
-
-function MobileIncidentCard({ inc, isExpanded, detail, onToggle, onStatusChange }: {
-  inc: IncidentSummary
-  isExpanded: boolean
-  detail: IncidentDetail | null | undefined
-  onToggle: () => void
-  onStatusChange: (s: string) => void
-}) {
-  return (
-    <div className="bg-surface rounded-lg border border-gray-700 overflow-hidden">
-      <div className="p-4 space-y-3 cursor-pointer" onClick={onToggle}>
-        <div className="flex items-center justify-between">
-          <span className="font-mono text-xs text-gray-300">{inc.incident_key}</span>
-          {isExpanded ? <ChevronUp size={14} className="text-gray-500" /> : <ChevronDown size={14} className="text-gray-500" />}
-        </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          <SeverityBadge severity={inc.severity} />
-          <StatusBadge status={inc.status} />
-          <span className="text-xs text-gray-400 flex items-center gap-1"><Bell size={10} />{inc.alert_count} alerts</span>
-        </div>
-        <div className="flex items-center justify-between text-xs text-gray-400">
-          <span>{timeAgo(inc.started_at)}</span>
-          <span>{liveDuration(inc.started_at, inc.resolved_at)}</span>
-        </div>
-      </div>
-
-      {isExpanded && (
-        <div className="border-t border-gray-700 p-4 space-y-3 bg-gray-800/20">
-          {/* Action buttons */}
-          <div className="flex gap-2">
-            {inc.status === 'open' && (
-              <button
-                onClick={() => onStatusChange('investigating')}
-                className="px-3 py-1.5 rounded text-xs bg-blue-500/20 text-blue-400 hover:bg-blue-500/30"
-              >
-                Investigate
-              </button>
-            )}
-            {(inc.status === 'open' || inc.status === 'investigating') && (
-              <button
-                onClick={() => onStatusChange('resolved')}
-                className="px-3 py-1.5 rounded text-xs bg-green-500/20 text-green-400 hover:bg-green-500/30"
-              >
-                Resolve
-              </button>
-            )}
-          </div>
-
-          {!detail ? (
-            <p className="text-sm text-gray-400">Loading...</p>
           ) : (
-            <div className="space-y-2">
-              <p className="text-xs text-gray-400 font-medium uppercase">Alert Events ({detail.alert_events.length})</p>
-              {detail.alert_events.map((ev) => (
-                <div key={ev.id} className="bg-gray-800/40 rounded p-3 space-y-1">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-gray-300 font-medium">{ev.alert_name}</span>
-                    <AlertStatusBadge status={ev.status} />
-                  </div>
-                  <div className="text-xs text-gray-400">
-                    <SeverityBadge severity={ev.severity} />
-                    <span className="ml-2">{timeAgo(ev.started_at)}</span>
-                    {ev.ended_at && <span> → {timeAgo(ev.ended_at)}</span>}
-                  </div>
-                  {ev.summary && <p className="text-xs text-gray-500 truncate">{ev.summary}</p>}
-                </div>
-              ))}
+            <div className="text-center py-8">
+              <Crosshair size={24} className="mx-auto text-gray-600 mb-2" />
+              <p className="text-sm text-gray-500">Root cause analysis unavailable</p>
+              <button
+                onClick={() => refetchRootCause()}
+                className="mt-2 text-xs text-blue-400 hover:text-blue-300"
+              >
+                Retry Analysis
+              </button>
             </div>
           )}
         </div>
@@ -1166,3 +1140,65 @@ function MobileIncidentCard({ inc, isExpanded, detail, onToggle, onStatusChange 
     </div>
   )
 }
+
+/* -- Mobile Incident Card -- */
+
+function MobileIncidentCard({
+  inc,
+  isExpanded,
+  onToggle,
+  detail,
+  detailLoading,
+  onStatusChange,
+}: {
+  inc: IncidentSummary
+  isExpanded: boolean
+  onToggle: () => void
+  detail?: IncidentDetail
+  detailLoading: boolean
+  onStatusChange: (id: string, status: string) => void
+}) {
+  return (
+    <div className="bg-gray-800/30 rounded-lg border border-gray-700/30 overflow-hidden">
+      <div className="p-3 cursor-pointer active:bg-gray-800/50" onClick={onToggle}>
+        <div className="flex items-center gap-2 mb-2">
+          <SeverityBadge severity={inc.severity} />
+          <StatusBadge status={inc.status} />
+          <span className="text-xs text-gray-500 ml-auto">{timeAgo(inc.created_at)}</span>
+        </div>
+        <div className="text-sm font-medium text-gray-200">{inc.title || inc.entity_name}</div>
+        <div className="text-xs text-gray-500 mt-0.5">{inc.incident_key}</div>
+        <div className="flex items-center gap-3 mt-2 text-xs text-gray-400">
+          <span>{inc.alert_count} alerts</span>
+          <span>{liveDuration(inc.started_at, inc.resolved_at)}</span>
+          {inc.status === 'open' && (
+            <div className="ml-auto flex gap-1">
+              <button onClick={(e) => { e.stopPropagation(); onStatusChange(inc.id, 'investigating') }}
+                className="px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 text-xs">Investigate</button>
+              <button onClick={(e) => { e.stopPropagation(); onStatusChange(inc.id, 'resolved') }}
+                className="px-2 py-0.5 rounded bg-green-500/10 text-green-400 text-xs">Resolve</button>
+            </div>
+          )}
+          {inc.status === 'investigating' && (
+            <button onClick={(e) => { e.stopPropagation(); onStatusChange(inc.id, 'resolved') }}
+              className="ml-auto px-2 py-0.5 rounded bg-green-500/10 text-green-400 text-xs">Resolve</button>
+          )}
+        </div>
+      </div>
+
+      {isExpanded && (
+        <div className="border-t border-gray-700/30 p-3">
+          {detailLoading ? (
+            <div className="flex items-center gap-2 text-sm text-gray-400 py-4 justify-center">
+              <Loader2 size={14} className="animate-spin" /> Loading detail...
+            </div>
+          ) : detail ? (
+            <IncidentDetailPanel detail={detail} />
+          ) : null}
+        </div>
+      )}
+    </div>
+  )
+}
+
+export default IncidentsPage

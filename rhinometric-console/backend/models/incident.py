@@ -1,6 +1,7 @@
 """
 SQLAlchemy model for Incidents.
-Phase 2.3 — Incident Management Engine.
+Phase 2.3 ? Incident Management Engine.
+Phase 3   ? AI-Powered Incident Management (title, summary, hints, postmortem, linking).
 
 Groups multiple related alert events into a single operational incident.
 An incident is created when alert events fire for the same entity/scope,
@@ -8,7 +9,7 @@ and resolved when all linked alert events are resolved.
 """
 
 import uuid
-from sqlalchemy import Column, String, DateTime, Index
+from sqlalchemy import Column, String, DateTime, Text, Index
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.sql import func
 from database import Base
@@ -29,6 +30,14 @@ class Incident(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     tags = Column(JSONB, nullable=True, default=list)
+
+    # ?? Phase 3: AI-powered fields ??????????????????????????????
+    title = Column(Text, nullable=True)
+    summary = Column(Text, nullable=True)
+    investigation_hints = Column(JSONB, nullable=True, default=list)
+    postmortem = Column(Text, nullable=True)
+    anomaly_id = Column(Text, nullable=True)
+    alert_fingerprint = Column(Text, nullable=True)
 
     __table_args__ = (
         Index("ix_incidents_entity", "entity_type", "entity_name"),
