@@ -381,7 +381,7 @@ export function AlertsPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-2 sm:mb-6">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-white mb-1 sm:mb-2">Operational Alerts</h1>
-          <p className="text-text-muted text-sm sm:text-base">Alerts requiring attention — triggered when anomaly conditions exceed operational thresholds</p>
+          <p className="text-text-muted text-sm sm:text-base">Alerts requiring attention — generated when anomaly scores or predicted risk exceed operational thresholds</p>
         </div>
         <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
           {silencesData?.total > 0 && (
@@ -690,7 +690,7 @@ export function AlertsPage() {
                         <span>Prediction horizon: {ctx.predicted_horizon_minutes} minutes</span>
                       </div>
                     )}
-                    <a href="/ai-anomalies-v2" className="inline-flex items-center gap-1 mt-2 text-xs text-purple-400 hover:text-purple-300 transition-colors">
+                    <a href={`/ai-anomalies-v2?service=${encodeURIComponent(svcKey)}${ctx.anomaly_id ? `&anomaly_id=${encodeURIComponent(ctx.anomaly_id)}` : ''}`} className="inline-flex items-center gap-1 mt-2 text-xs text-purple-400 hover:text-purple-300 transition-colors">
                       <Brain size={12} /> View full anomaly analysis →
                     </a>
                   </div>

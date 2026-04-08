@@ -1,10 +1,11 @@
-import { useState, useMemo, useCallback, useEffect } from 'react'
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { useSearchParams } from 'react-router-dom'
 import { useAuthStore } from '../lib/auth/store'
 import {
   AlertTriangle, Activity, Brain, ArrowUpDown, Eye,
   BarChart3, Zap, TrendingUp, ChevronDown, ChevronUp,
-  History, Radio, Sparkles, Loader2
+  History, Radio, Sparkles, Loader2, Info
 } from 'lucide-react'
 
 // ─── Types ───
@@ -361,14 +362,14 @@ function AiExplanationSection({ anomalyId }: { anomalyId: string }) {
   )
 }
 
-function AnomalyCard({ anomaly, validationMode, isHistory = false }: {
-  anomaly: AnomalyV2; validationMode: boolean; isHistory?: boolean
+function AnomalyCard({ anomaly, validationMode, isHistory = false, highlight = false, cardRef }: {
+  anomaly: AnomalyV2; validationMode: boolean; isHistory?: boolean; highlight?: boolean; cardRef?: React.Ref<HTMLDivElement>
 }) {
-  const [expanded, setExpanded] = useState(false)
+  const [expanded, setExpanded] = useState(highlight)
   const c = SEVERITY_COLORS[anomaly.severity] || SEVERITY_COLORS.normal
 
   return (
-    <div className={`rounded-lg border ${isHistory ? 'border-gray-700/40 opacity-75' : c.border} overflow-hidden bg-surface`}>
+    <div ref={cardRef} className={`rounded-lg border ${highlight ? 'ring-2 ring-purple-500 ring-offset-1 ring-offset-gray-900' : ''} ${isHistory ? 'border-gray-700/40 opacity-75' : c.border} overflow-hidden bg-surface transition-all duration-500`}>
       {/* Compact header */}
       <button
         className={`w-full text-left p-3 sm:p-4 hover:bg-surface-light/30 transition-colors focus:outline-none ${!isHistory ? c.bg : ''}`}
@@ -759,6 +760,9 @@ type ViewTab = 'active' | 'history'
 
 export function AiAnomaliesV2Page() {
   useEffect(() => { document.title = 'Rhinometric - Anomaly Analysis' }, [])
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [highlightId, setHighlightId] = useState<string | null>(null)
+  const highlightRef = useRef<HTMLDivElement>(null)
   const [validationMode] = useState(false)
   const [filterSeverity, setFilterSeverity] = useState<FilterSeverity>('all')
   const [sortBy, setSortBy] = useState<SortBy>('score')
@@ -777,6 +781,64 @@ export function AiAnomaliesV2Page() {
 
   const { data: compareData } =
     useV2Fetch<CompareResponse>('v2-compare-python', `${V2_BASE}/compare-python`, validationMode)
+
+  // --- Deep-link: match anomaly from URL query params ---
+  useEffect(() => {
+    const svc = searchParams.get('service')
+    const aid = searchParams.get('anomaly_id')
+    if (!svc && !aid) return
+    const allAnomalies = [...(activeData?.anomalies ?? []), ...(historyData?.anomalies ?? [])]
+    if (allAnomalies.length === 0) return
+    let match = aid ? allAnomalies.find(a => a.id === aid) : undefined
+    if (!match && svc) match = allAnomalies.find(a => a.service_name === svc)
+    if (match) {
+      // Switch to correct tab
+      const isActive = (activeData?.anomalies ?? []).some(a => a.id === match!.id)
+      setTab(isActive ? 'active' : 'history')
+      setHighlightId(match.id)
+      // Clear params so refresh doesn't re-trigger
+      setSearchParams({}, { replace: true })
+    }
+  }, [activeData, historyData, searchParams, setSearchParams])
+
+  // Scroll to highlighted anomaly once rendered
+  useEffect(() => {
+    if (highlightId && highlightRef.current) {
+      highlightRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      // Remove highlight after animation
+      const timer = setTimeout(() => setHighlightId(null), 3000)
+      return () => clearTimeout(timer)
+    }
+  }, [highlightId, highlightRef.current])
+
+  // --- Deep-link: match anomaly from URL query params ---
+  useEffect(() => {
+    const svc = searchParams.get('service')
+    const aid = searchParams.get('anomaly_id')
+    if (!svc && !aid) return
+    const allAnomalies = [...(activeData?.anomalies ?? []), ...(historyData?.anomalies ?? [])]
+    if (allAnomalies.length === 0) return
+    let match = aid ? allAnomalies.find(a => a.id === aid) : undefined
+    if (!match && svc) match = allAnomalies.find(a => a.service_name === svc)
+    if (match) {
+      // Switch to correct tab
+      const isActive = (activeData?.anomalies ?? []).some(a => a.id === match!.id)
+      setTab(isActive ? 'active' : 'history')
+      setHighlightId(match.id)
+      // Clear params so refresh doesn't re-trigger
+      setSearchParams({}, { replace: true })
+    }
+  }, [activeData, historyData, searchParams, setSearchParams])
+
+  // Scroll to highlighted anomaly once rendered
+  useEffect(() => {
+    if (highlightId && highlightRef.current) {
+      highlightRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      // Remove highlight after animation
+      const timer = setTimeout(() => setHighlightId(null), 3000)
+      return () => clearTimeout(timer)
+    }
+  }, [highlightId, highlightRef.current])
 
   // --- Derived: which list to show ---
   const sourceList = tab === 'active' ? activeData?.anomalies : historyData?.anomalies
@@ -862,6 +924,14 @@ export function AiAnomaliesV2Page() {
           </p>
         </div>
         {/* Validation toggle removed ? AI Cutover: single engine */}
+      </div>
+
+      {/* Anomaly-to-Alert relationship context */}
+      <div className="flex items-start gap-2 px-3 py-2 bg-indigo-500/5 border border-indigo-500/15 rounded-lg">
+        <Info className="w-3.5 h-3.5 text-indigo-400 mt-0.5 shrink-0" />
+        <p className="text-[11px] text-gray-400 leading-relaxed">
+          Not all anomalies trigger alerts. Operational alerts are generated only when anomaly conditions exceed defined impact thresholds.
+        </p>
       </div>
 
       {/* ── Summary cards (always from active data) ── */}
@@ -978,7 +1048,14 @@ export function AiAnomaliesV2Page() {
           </div>
         ) : (
           displayedAnomalies.map(a => (
-            <AnomalyCard key={a.id} anomaly={a} validationMode={validationMode} isHistory={tab === 'history'} />
+            <AnomalyCard
+              key={a.id}
+              anomaly={a}
+              validationMode={validationMode}
+              isHistory={tab === 'history'}
+              highlight={a.id === highlightId}
+              cardRef={a.id === highlightId ? highlightRef : undefined}
+            />
           ))
         )}
       </div>
