@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useAuthStore } from '../lib/auth/store'
 import {
-  AlertTriangle, Activity, Brain, ArrowUpDown, Eye, EyeOff,
+  AlertTriangle, Activity, Brain, ArrowUpDown, Eye,
   BarChart3, Zap, TrendingUp, ChevronDown, ChevronUp,
   History, Radio, Sparkles, Loader2
 } from 'lucide-react'
@@ -758,7 +758,7 @@ type ViewTab = 'active' | 'history'
 // ─── Page ───
 
 export function AiAnomaliesV2Page() {
-  const [validationMode, setValidationMode] = useState(false)
+  const [validationMode] = useState(false)
   const [filterSeverity, setFilterSeverity] = useState<FilterSeverity>('all')
   const [sortBy, setSortBy] = useState<SortBy>('score')
   const [sortDesc, setSortDesc] = useState(true)
@@ -860,18 +860,7 @@ export function AiAnomaliesV2Page() {
             Rust multi-signal engine · {PAGE_LIMIT} max · 30s refresh
           </p>
         </div>
-        <button
-          onClick={() => setValidationMode(v => !v)}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md border text-xs font-medium transition-colors ${
-            validationMode
-              ? 'bg-purple-500/15 border-purple-500/30 text-purple-400'
-              : 'bg-transparent border-gray-700 text-gray-500 hover:text-gray-300'
-          }`}
-          title="Toggle validation overlay"
-        >
-          {validationMode ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
-          {validationMode ? 'Validation ON' : 'Validation'}
-        </button>
+        {/* Validation toggle removed ? AI Cutover: single engine */}
       </div>
 
       {/* ── Summary cards (always from active data) ── */}

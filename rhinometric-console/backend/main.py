@@ -23,7 +23,7 @@ setup_json_logging(service_name="console-backend", log_level=settings.LOG_LEVEL 
 logger = get_logger(__name__)
 
 # Import routers
-from routers import auth, kpis, license, anomalies, alerts, logs, traces, dashboards, settings as settings_router, users, grafana_proxy, correlation, external_services
+from routers import auth, kpis, license, alerts, logs, traces, dashboards, settings as settings_router, users, grafana_proxy, correlation, external_services
 from routers import alert_history
 from routers import alert_rules as alert_rules_router
 from routers import incidents
@@ -35,6 +35,7 @@ from routers import services_grouped as services_grouped_router
 from routers import backups as backups_router
 from routers import admin_purge as admin_purge_router
 from routers import telemetry_ingest as telemetry_ingest_router
+from routers import internal_snapshots_v1 as internal_snapshots_v1_router  # Anomaly Engine V1 signal assembler
 
 app = FastAPI(
     title=settings.API_TITLE,
@@ -323,7 +324,7 @@ async def health():
         "status": "healthy",
         "services": {
             "prometheus": settings.PROMETHEUS_URL,
-            "ai_anomaly": settings.AI_ANOMALY_URL,
+            "anomaly_engine_v1": "http://rhinometric-anomaly-engine-v1:8091",
             "license_validator": settings.LICENSE_VALIDATOR_URL,
             "alertmanager": settings.ALERTMANAGER_URL
         }
@@ -351,7 +352,9 @@ app.include_router(users.router, prefix=f"{settings.API_PREFIX}/users", tags=["U
 app.include_router(grafana_proxy.router, prefix=f"{settings.API_PREFIX}/grafana", tags=["Grafana"])  # Grafana RBAC Proxy
 app.include_router(grafana_proxy.router, prefix=f"{settings.API_PREFIX}/grafana-proxy", tags=["Grafana Render"])  # Panel rendering
 app.include_router(kpis.router, prefix=f"{settings.API_PREFIX}/kpis", tags=["KPIs"])
-app.include_router(anomalies.router, prefix=f"{settings.API_PREFIX}/anomalies", tags=["Anomalies"])
+app.include_router(internal_snapshots_v1_router.router, tags=["Anomaly Engine V1"])  # Phase 11: AI Anomaly Engine signal assembler
+# REMOVED (AI Cutover): old anomalies router replaced by Rust engine V1 at /api/v2/anomalies
+# app.include_router(anomalies.router, prefix=f"{settings.API_PREFIX}/anomalies", tags=["Anomalies"])
 app.include_router(license.router, prefix=f"{settings.API_PREFIX}/license", tags=["License"])
 app.include_router(alerts.router, prefix=f"{settings.API_PREFIX}/alerts", tags=["Alerts"])
 app.include_router(alert_history.router, prefix=f"{settings.API_PREFIX}/alert-history", tags=["Alert History"])

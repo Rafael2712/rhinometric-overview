@@ -150,7 +150,7 @@ export function HomePage() {
         {/* CARD 4: Active Anomaly Groups */}
         <div
           className="card hover:border-primary/50 cursor-pointer transition-all duration-200 hover:shadow-lg hover:shadow-primary/20 p-3 sm:p-4 lg:p-5"
-          onClick={() => navigate('/anomalies')}
+          onClick={() => navigate('/ai-anomalies-v2')}
         >
           <div className="flex items-start justify-between mb-2 sm:mb-3">
             <div className="p-1.5 sm:p-2 bg-primary/10 rounded-lg">

@@ -6,7 +6,6 @@ import { Layout } from './components/Layout'
 import { HomePage } from './pages/Home'
 import { DashboardsPage } from './pages/Dashboards'
 import { DashboardViewer } from './pages/DashboardViewer'
-import { AnomaliesPage } from './pages/Anomalies'
 import { CorrelationView } from './pages/CorrelationView'
 import { AlertsPage } from './pages/Alerts'
 import { AlertHistoryPage } from './pages/AlertHistory'
@@ -66,7 +65,7 @@ function App() {
           <Route path="services" element={<ServicesPage />} />
           <Route path="service-map" element={<ServiceMapPage />} />
           <Route path="system-health" element={<SystemHealthPage />} />
-          <Route path="anomalies" element={<AnomaliesPage />} />
+          <Route path="anomalies" element={<Navigate to="/ai-anomalies-v2" replace />} />
           <Route path="ai-insights" element={<AIInsightsPage />} />
           <Route path="correlations/:id" element={<CorrelationView />} />
           <Route path="alerts" element={<AlertsPage />} />

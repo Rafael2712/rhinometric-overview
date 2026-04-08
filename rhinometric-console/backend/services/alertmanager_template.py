@@ -171,7 +171,7 @@ def render_alertmanager_config(channels: dict, ai_alerting_enabled: bool) -> str
                 {
                     "type": "button",
                     "text": "Ver Dashboard en Consola",
-                    "url": '{{- $m := (index .Alerts 0).Labels.metric -}}{{- if match ".*::.*" $m -}}https://console-staging.rhinometric.com/anomalies?metric={{ reReplaceAll "::.*" "" $m }}&entity={{ reReplaceAll ".*::" "" $m }}{{- else -}}https://console-staging.rhinometric.com/anomalies?metric={{ $m }}{{- end -}}'
+                    "url": '{{- $m := (index .Alerts 0).Labels.metric -}}{{- if match ".*::.*" $m -}}https://console-staging.rhinometric.com/ai-anomalies-v2?metric={{ reReplaceAll "::.*" "" $m }}&entity={{ reReplaceAll ".*::" "" $m }}{{- else -}}https://console-staging.rhinometric.com/ai-anomalies-v2?metric={{ $m }}{{- end -}}'
                 },
                 {
                     "type": "button",

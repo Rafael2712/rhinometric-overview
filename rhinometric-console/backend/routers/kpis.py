@@ -8,13 +8,7 @@ from routers.auth import get_current_user
 from models.user import User as UserModel
 from database import SessionLocal
 from models.external_service import ExternalService
-from routers.anomalies import (
-    _fetch_and_normalize,
-    _build_anomaly_groups,
-    _is_customer_facing_group,
-    _is_existing_service,
-    _apply_retention_filter,
-)
+# NEW AI: anomaly counts fetched directly from Rust engine V1 via HTTP
 
 router = APIRouter()
 
@@ -153,28 +147,25 @@ async def get_kpis(current_user: UserModel = Depends(get_current_user)):
             except Exception as e:
                 print(f"Error counting external services: {e}")
 
-            # Get ACTIVE anomalies count — same filtered pipeline as
-            # the AI Anomalies page so the numbers always match.
-            # Task 6: reuse anomalies.py filtering (customer-facing,
-            # existence-based service exclusion, retention policy).
+            # Get ACTIVE anomalies count from NEW Rust Anomaly Engine V1
+            # The engine returns customer-facing anomalies with severity scores.
             anomalies_count = 0
             anomalies_status = "success"
             anomalies_change = "No issues detected"
             try:
-                normalized = await _fetch_and_normalize("24h", 500)
-                groups = _build_anomaly_groups(normalized)
-                groups = [g for g in groups if _is_customer_facing_group(g)]
-                groups = [g for g in groups if _is_existing_service(g)]
-                groups = _apply_retention_filter(groups)
-                # Count only active groups (same as Anomalies page default)
-                active_groups = [g for g in groups if g.get("status") == "active"]
-                anomalies_count = len(active_groups)
-                if anomalies_count > 0:
-                    anomalies_status = "warning"
-                    anomalies_change = f"{anomalies_count} active"
+                engine_resp = await client.get(
+                    "http://rhinometric-anomaly-engine-v1:8091/api/v2/anomalies/active",
+                    timeout=5.0
+                )
+                if engine_resp.status_code == 200:
+                    engine_data = engine_resp.json()
+                    anomalies_count = engine_data.get("count", 0)
+                    if anomalies_count > 0:
+                        anomalies_status = "warning"
+                        anomalies_change = f"{anomalies_count} active"
             except Exception as e:
-                print(f"Error fetching anomalies: {e}")
-                pass  # If AI service unavailable, keep at 0
+                print(f"Error fetching anomalies from engine V1: {e}")
+                pass  # If engine unavailable, keep at 0
             
             # Get active alerts count from AlertManager
             alerts_count = 0
@@ -302,12 +293,12 @@ async def get_kpis_historical(current_user: UserModel = Depends(get_current_user
                             value=float(point[1])
                         ))
             
-            # Query 3: Historical anomalies count from AI Anomaly service via Prometheus
-            # The AI service exposes a metric: rhinometric_anomaly_active_count
+            # Query 3: Historical anomalies count from Anomaly Engine V1 via Prometheus
+            # The Rust engine exposes: anomaly_engine_anomalies_active
             anomalies_response = await client.get(
                 prom_url,
                 params={
-                    "query": "rhinometric_anomaly_active_count",
+                    "query": "anomaly_engine_anomalies_active",
                     "start": start_ts,
                     "end": end_ts,
                     "step": step
