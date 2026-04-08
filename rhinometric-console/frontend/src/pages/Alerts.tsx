@@ -343,8 +343,11 @@ export function AlertsPage() {
     }
   }
 
-  // Filter alerts
+  // Filter alerts — only show customer-facing alerts (must have a service name)
   const filteredAlerts = alertsData?.alerts?.filter(alert => {
+    // Hide infrastructure alerts that have no customer service mapping
+    const serviceName = getAlertServiceName(alert)
+    if (!serviceName) return false
     const severityMatch = severityFilter === 'all' || alert.severity === severityFilter
     const statusMatch = statusFilter === 'all' || alert.status === statusFilter
     return severityMatch && statusMatch

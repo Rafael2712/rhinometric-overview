@@ -210,7 +210,15 @@ export function AlertHistoryPage() {
     refetchInterval: 30000,
   })
 
-  const events = data?.alert_events || []
+  // Filter: only show customer-facing alert events (hide infrastructure)
+  const events = (data?.alert_events || []).filter(ev => {
+    // Must have an entity_name (service mapping) to be customer-facing
+    if (!ev.entity_name || ev.entity_name.trim().length === 0) return false
+    // Exclude any infrastructure node-level alerts that may leak through
+    const an = (ev.alert_name || '').toLowerCase()
+    if (an.startsWith('node_') || an.includes('node_memory') || an.includes('node_network') || an.includes('node_cpu') || an.includes('node_disk')) return false
+    return true
+  })
 
   // V1.7: Fetch AI context for all entity names in current events
   const entityNames = events
