@@ -1,4 +1,4 @@
-import { Server, AlertTriangle, Bell, XCircle, BarChart3, Clock } from 'lucide-react'
+import { Server, Bell, XCircle, BarChart3, Clock } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useAuthStore } from '../lib/auth/store'
@@ -145,24 +145,6 @@ export function HomePage() {
           <p className="text-xs text-text-muted">
             {ext ? `${ext.healthy} up` + (ext.degraded > 0 ? ` \u00b7 ${ext.degraded} degraded` : '') + (ext.down > 0 ? ` \u00b7 ${ext.down} down` : '') : ''}
           </p>
-        </div>
-
-        {/* CARD 4: Active Anomaly Groups */}
-        <div
-          className="card hover:border-primary/50 cursor-pointer transition-all duration-200 hover:shadow-lg hover:shadow-primary/20 p-3 sm:p-4 lg:p-5"
-          onClick={() => navigate('/ai-anomalies-v2')}
-        >
-          <div className="flex items-start justify-between mb-2 sm:mb-3">
-            <div className="p-1.5 sm:p-2 bg-primary/10 rounded-lg">
-              <AlertTriangle className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
-            </div>
-            <span className={`text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full ${kpisData?.active_anomalies?.status === 'success' ? 'bg-success/10 text-success' : kpisData?.active_anomalies?.status === 'error' ? 'bg-red-500/10 text-red-400' : 'bg-warning/10 text-warning'}`}>
-              {kpisData?.active_anomalies?.status === 'success' ? 'Healthy' : kpisData?.active_anomalies?.status === 'error' ? 'Critical' : 'Warning'}
-            </span>
-          </div>
-          <p className="text-text-muted text-xs sm:text-sm mb-0.5 sm:mb-1">Active Anomaly Groups</p>
-          <p className="text-lg sm:text-2xl font-bold text-white mb-2">{kpisData?.active_anomalies?.value ?? '...'}</p>
-          <p className="text-[10px] sm:text-xs text-text-muted">{kpisData?.active_anomalies?.change || 'No anomalies'}</p>
         </div>
 
         {/* CARD 5: Alerts (24h) */}

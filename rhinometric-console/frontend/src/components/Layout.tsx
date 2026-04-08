@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useLocation, Outlet } from 'react-router-dom'
-import { Home, LayoutDashboard, AlertTriangle, Bell, FileText, Network, CreditCard, Settings, LogOut, Menu, X, Users, Map, Globe, Brain, ClipboardList, Flame, Target, Shield, Share2, HardDrive, BarChart3 } from 'lucide-react'
+import { Home, LayoutDashboard, AlertTriangle, Bell, FileText, Network, CreditCard, Settings, LogOut, Menu, X, Users, Map, Globe, ClipboardList, Flame, Target, Shield, Share2, HardDrive, BarChart3 } from 'lucide-react'
 import { useAuthStore } from '../lib/auth/store'
 
 const navigation = [
@@ -9,7 +9,6 @@ const navigation = [
   { name: 'Service Map', href: '/service-map', icon: Share2 },
   { name: 'Dashboards', href: '/dashboards', icon: LayoutDashboard },
   { name: 'AI Anomalies', href: '/ai-anomalies-v2', icon: AlertTriangle },
-  { name: 'AI Insights', href: '/ai-insights', icon: Brain },
   { name: 'Alerts', href: '/alerts', icon: Bell },
   { name: 'Alert History', href: '/alert-history', icon: ClipboardList },
   { name: 'Incidents', href: '/incidents', icon: Flame },

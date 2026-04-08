@@ -488,7 +488,7 @@ export function AlertHistoryPage() {
                                 {(ctx.explanation_summary || ctx.evidence_summary) && (
                                   <p className="text-xs text-gray-400 mt-2">{ctx.explanation_summary || ctx.evidence_summary}</p>
                                 )}
-                                <a href="/ai-insights" className="inline-flex items-center gap-1 mt-2 text-xs text-purple-400 hover:text-purple-300">
+                                <a href="/ai-anomalies-v2" className="inline-flex items-center gap-1 mt-2 text-xs text-purple-400 hover:text-purple-300">
                                   <Brain size={10} /> Full AI analysis →
                                 </a>
                               </div>

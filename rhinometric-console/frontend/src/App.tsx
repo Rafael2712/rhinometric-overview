@@ -24,7 +24,6 @@ import ServicesPage from './pages/Services'
 import { ServiceMapPage } from './pages/ServiceMap'
 import { SystemHealthPage } from './pages/SystemHealth'
 import { RoadmapPage } from './pages/Roadmap'
-import { AIInsightsPage } from './pages/AIInsights'
 import { BackupRecoveryPage } from './pages/BackupRecovery'
 import { TraceAnalyticsPage } from './pages/TraceAnalytics'
 import { AiAnomaliesV2Page } from './pages/AiAnomaliesV2'
@@ -65,8 +64,6 @@ function App() {
           <Route path="services" element={<ServicesPage />} />
           <Route path="service-map" element={<ServiceMapPage />} />
           <Route path="system-health" element={<SystemHealthPage />} />
-          <Route path="anomalies" element={<Navigate to="/ai-anomalies-v2" replace />} />
-          <Route path="ai-insights" element={<AIInsightsPage />} />
           <Route path="correlations/:id" element={<CorrelationView />} />
           <Route path="alerts" element={<AlertsPage />} />
           <Route path="alert-history" element={<AlertHistoryPage />} />

@@ -690,7 +690,7 @@ export function AlertsPage() {
                         <span>Prediction horizon: {ctx.predicted_horizon_minutes} minutes</span>
                       </div>
                     )}
-                    <a href="/ai-insights" className="inline-flex items-center gap-1 mt-2 text-xs text-purple-400 hover:text-purple-300 transition-colors">
+                    <a href="/ai-anomalies-v2" className="inline-flex items-center gap-1 mt-2 text-xs text-purple-400 hover:text-purple-300 transition-colors">
                       <Brain size={12} /> View full AI analysis →
                     </a>
                   </div>
