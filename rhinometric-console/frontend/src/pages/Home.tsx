@@ -1,4 +1,4 @@
-import { Server, Bell, XCircle, BarChart3, Clock } from 'lucide-react'
+import { Server, Bell, XCircle, BarChart3, Clock, ShieldAlert } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useAuthStore } from '../lib/auth/store'
@@ -104,6 +104,11 @@ export function HomePage() {
   }
   const uptimePct = ext && ext.total > 0 ? Math.round((ext.healthy / ext.total) * 100) : null
 
+  // === GLOBAL SEVERITY STATE ===
+  const alertsCount = parseInt(kpisData?.alerts_24h?.value ?? '0', 10) || 0
+  const globalStatus: 'CRITICAL' | 'WARNING' | 'HEALTHY' =
+    downServices.length > 0 ? 'CRITICAL' : alertsCount > 0 ? 'WARNING' : 'HEALTHY'
+
   // ========== RENDER ==========
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -114,6 +119,29 @@ export function HomePage() {
         {!token && <p className="text-warning text-sm mt-2">{'\u26a0\ufe0f'} No authentication token</p>}
         {error && <p className="text-error text-sm mt-2">{'\u274c'} Error: {(error as Error).message}</p>}
       </div>
+
+      {/* ===== CRITICAL BANNER ===== */}
+      {globalStatus === 'CRITICAL' && (
+        <div className="bg-red-600/20 border-2 border-red-500/60 rounded-xl p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-pulse-slow">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="p-2 bg-red-500/20 rounded-lg flex-shrink-0">
+              <ShieldAlert className="w-7 h-7 text-red-400" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-lg sm:text-xl font-bold text-red-300">CRITICAL: {downServices.length} service{downServices.length !== 1 ? 's' : ''} currently DOWN</p>
+              <p className="text-sm text-red-400/80 mt-0.5">Immediate investigation required — platform operational integrity is compromised</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 flex-shrink-0 w-full sm:w-auto">
+            <button onClick={() => navigate('/services')} className="flex-1 sm:flex-none px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-lg text-sm font-semibold transition-colors">
+              View Services
+            </button>
+            <button onClick={() => navigate('/alerts')} className="flex-1 sm:flex-none px-4 py-2 bg-red-600/40 hover:bg-red-600/60 text-red-200 border border-red-500/40 rounded-lg text-sm font-semibold transition-colors">
+              View Alerts
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ===== ROW 1: Main KPI Cards ===== */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 lg:gap-5">
@@ -127,8 +155,8 @@ export function HomePage() {
             <div className="p-2.5 bg-primary/10 rounded-lg">
               <Server className="w-7 h-7 text-primary" />
             </div>
-            <span className={`text-xs px-2 py-1 rounded-full ${ext && ext.down > 0 ? 'bg-warning/10 text-warning' : 'bg-success/10 text-success'}`}>
-              {ext && ext.down > 0 ? 'Warning' : 'Healthy'}
+            <span className={`text-xs px-2 py-1 rounded-full font-semibold ${globalStatus === 'CRITICAL' ? 'bg-red-500/20 text-red-400 border border-red-500/30' : globalStatus === 'WARNING' ? 'bg-warning/20 text-warning border border-warning/30' : 'bg-success/10 text-success'}`}>
+              {globalStatus === 'CRITICAL' ? 'CRITICAL' : globalStatus === 'WARNING' ? 'WARNING' : 'Healthy'}
             </span>
           </div>
           <p className="text-text-muted text-sm mb-1">Monitored Services</p>
@@ -137,13 +165,19 @@ export function HomePage() {
             <div className="h-10 -mx-2 mb-2">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={sparkline}>
-                  <Line type="monotone" dataKey="value" stroke={ext && ext.down > 0 ? '#f59e0b' : '#10b981'} strokeWidth={2} dot={false} isAnimationActive={false} />
+                  <Line type="monotone" dataKey="value" stroke={globalStatus === 'CRITICAL' ? '#ef4444' : globalStatus === 'WARNING' ? '#f59e0b' : '#10b981'} strokeWidth={2} dot={false} isAnimationActive={false} />
                 </LineChart>
               </ResponsiveContainer>
             </div>
           )}
           <p className="text-xs text-text-muted">
-            {ext ? `${ext.healthy} up` + (ext.degraded > 0 ? ` \u00b7 ${ext.degraded} degraded` : '') + (ext.down > 0 ? ` \u00b7 ${ext.down} down` : '') : ''}
+            {ext ? (
+              <>
+                {ext.healthy} up
+                {ext.degraded > 0 && <> &middot; {ext.degraded} degraded</>}
+                {ext.down > 0 && <> &middot; <span className="text-red-400 font-bold">{ext.down} down</span></>}
+              </>
+            ) : ''}
           </p>
         </div>
 
@@ -171,19 +205,22 @@ export function HomePage() {
 
         {/* CARD 6: Services Down */}
         <div
-          className="card hover:border-primary/50 cursor-pointer transition-all duration-200 hover:shadow-lg hover:shadow-primary/20 p-4 sm:p-5"
+          className={`card cursor-pointer transition-all duration-200 p-4 sm:p-5 ${downServices.length > 0 ? 'border-2 border-red-500/50 hover:border-red-500/80 bg-red-500/5 hover:shadow-lg hover:shadow-red-500/20' : 'hover:border-primary/50 hover:shadow-lg hover:shadow-primary/20'}`}
           onClick={() => navigate('/services')}
         >
           <div className="flex items-start justify-between mb-3">
-            <div className="p-2 bg-primary/10 rounded-lg">
-              <XCircle className="w-5 h-5 text-primary" />
+            <div className={`p-2 rounded-lg ${downServices.length > 0 ? 'bg-red-500/20' : 'bg-primary/10'}`}>
+              <XCircle className={`w-5 h-5 ${downServices.length > 0 ? 'text-red-400' : 'text-primary'}`} />
             </div>
-            <span className={`text-xs px-2 py-1 rounded-full ${downServices.length > 0 ? 'bg-red-500/10 text-red-400' : 'bg-success/10 text-success'}`}>
-              {downServices.length > 0 ? 'Alert' : 'Healthy'}
+            <span className={`text-xs px-2 py-1 rounded-full font-semibold ${downServices.length > 0 ? 'bg-red-500/20 text-red-400 border border-red-500/30' : 'bg-success/10 text-success'}`}>
+              {downServices.length > 0 ? 'CRITICAL' : 'Healthy'}
             </span>
           </div>
-          <p className="text-text-muted text-sm mb-1">Services Down</p>
-          <p className="text-2xl font-bold text-white mb-2">{extServices ? String(downServices.length) : '...'}</p>
+          <p className={`text-sm mb-1 ${downServices.length > 0 ? 'text-red-300 font-medium' : 'text-text-muted'}`}>Services Down</p>
+          <p className={`text-2xl font-bold mb-1 ${downServices.length > 0 ? 'text-red-400' : 'text-white'}`}>{extServices ? String(downServices.length) : '...'}</p>
+          {downServices.length > 0 && (
+            <p className="text-xs text-red-400/80 font-semibold mb-2">Immediate Attention Required</p>
+          )}
           <p className="text-xs text-text-muted">
             {extServices
               ? downServices.length > 0

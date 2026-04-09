@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link, useLocation, Outlet } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
 import { Home, LayoutDashboard, AlertTriangle, Bell, FileText, Network, CreditCard, Settings, LogOut, Menu, X, Users, Map, Globe, ClipboardList, Flame, Target, Shield, Share2, HardDrive, BarChart3 } from 'lucide-react'
 import { useAuthStore } from '../lib/auth/store'
 
@@ -35,6 +36,35 @@ export function Layout() {
 
   // Close sidebar on navigation (mobile UX)
   const closeSidebar = () => setSidebarOpen(false)
+
+  // === Global operational status (drives top-right indicator) ===
+  const token = useAuthStore((s) => s.token)
+  const { data: _summaryData } = useQuery({
+    queryKey: ['services-summary', token],
+    queryFn: async () => {
+      if (!token) throw new Error('No token')
+      const r = await fetch('/api/services/summary', { headers: { Authorization: `Bearer ${token}` } })
+      if (!r.ok) throw new Error('Failed')
+      return r.json()
+    },
+    enabled: !!token,
+    refetchInterval: 5000,
+  })
+  const { data: _kpisData } = useQuery({
+    queryKey: ['kpis', token],
+    queryFn: async () => {
+      if (!token) throw new Error('No token')
+      const r = await fetch('/api/kpis', { headers: { Authorization: `Bearer ${token}` } })
+      if (!r.ok) throw new Error('Failed')
+      return r.json()
+    },
+    enabled: !!token,
+    refetchInterval: 5000,
+  })
+  const _downCount = _summaryData?.monitored_services?.down ?? 0
+  const _alertCount = parseInt(_kpisData?.alerts_24h?.value ?? '0', 10) || 0
+  const _globalStatus: 'CRITICAL' | 'WARNING' | 'HEALTHY' =
+    _downCount > 0 ? 'CRITICAL' : _alertCount > 0 ? 'WARNING' : 'HEALTHY'
 
   return (
     <div className="min-h-screen flex bg-background">
@@ -129,9 +159,13 @@ export function Layout() {
               </span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-success animate-pulse flex-shrink-0" />
-              <span className="text-xs sm:text-sm text-gray-400 hidden sm:inline">All Systems Operational</span>
-              <span className="text-xs text-gray-400 sm:hidden">OK</span>
+              <div className={`w-2 h-2 rounded-full flex-shrink-0 ${_globalStatus === 'CRITICAL' ? 'bg-red-500 animate-pulse' : _globalStatus === 'WARNING' ? 'bg-yellow-500 animate-pulse' : 'bg-success animate-pulse'}`} />
+              <span className={`text-xs sm:text-sm hidden sm:inline font-medium ${_globalStatus === 'CRITICAL' ? 'text-red-400' : _globalStatus === 'WARNING' ? 'text-yellow-400' : 'text-gray-400'}`}>
+                {_globalStatus === 'CRITICAL' ? 'Critical Issues Detected' : _globalStatus === 'WARNING' ? 'Degraded Operation' : 'All Systems Operational'}
+              </span>
+              <span className={`text-xs sm:hidden font-medium ${_globalStatus === 'CRITICAL' ? 'text-red-400' : _globalStatus === 'WARNING' ? 'text-yellow-400' : 'text-gray-400'}`}>
+                {_globalStatus === 'CRITICAL' ? 'CRITICAL' : _globalStatus === 'WARNING' ? 'DEGRADED' : 'OK'}
+              </span>
             </div>
           </div>
         </header>
