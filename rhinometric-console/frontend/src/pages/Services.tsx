@@ -94,24 +94,9 @@ interface ServiceGroup {
 }
 
 /* ─── Catalog Type Visual Meta (Task 22) ─────────────────── */
-const CATALOG_META: Record<string, { label: string; color: string; bg: string }> = {
-  REST_API:         { label: 'API',        color: 'text-blue-400',    bg: 'bg-blue-400/10' },
-  DATABASE:         { label: 'Database',   color: 'text-orange-400',  bg: 'bg-orange-400/10' },
-  QUEUE:            { label: 'Queue',      color: 'text-yellow-400',  bg: 'bg-yellow-400/10' },
-  MICROSERVICE:     { label: 'Service',    color: 'text-violet-400',  bg: 'bg-violet-400/10' },
-  EXTERNAL_SERVICE: { label: 'External',   color: 'text-teal-400',    bg: 'bg-teal-400/10' },
-  WEB_APP:          { label: 'Web App',    color: 'text-pink-400',    bg: 'bg-pink-400/10' },
-  INTERNAL_SERVICE: { label: 'Internal',   color: 'text-cyan-400',    bg: 'bg-cyan-400/10' },
-}
+// CATALOG_META removed — replaced by CATALOG_DISPLAY in TypeBadge
 
-function CatalogBadge({ type }: { type: string | null }) {
-  const m = CATALOG_META[type || ''] || { label: type || 'Other', color: 'text-gray-400', bg: 'bg-gray-400/10' }
-  return (
-    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide ${m.bg} ${m.color}`}>
-      {m.label}
-    </span>
-  )
-}
+// CatalogBadge removed — TypeBadge now handles catalog_type display
 
 /* ─── Group Health Badge (Task 22) ──────────────────────────── */
 function GroupHealthBadge({ status }: { status: string }) {
@@ -147,6 +132,22 @@ const TYPE_META: Record<string, { label: string; color: string; Icon: any }> = {
   postgresql: { label: 'PostgreSQL',   color: 'bg-orange-400/10 text-orange-400', Icon: Database },
 }
 
+// Catalog-type display labels (rich classification)
+const CATALOG_DISPLAY: Record<string, { label: string; color: string; Icon: any }> = {
+  REST_API:         { label: 'REST API',     color: 'bg-blue-400/10 text-blue-400', Icon: Network },
+  WEB_APP:          { label: 'Web App',      color: 'bg-pink-400/10 text-pink-400', Icon: Globe },
+  SOAP_API:         { label: 'SOAP API',     color: 'bg-purple-400/10 text-purple-400', Icon: Network },
+  WEBHOOK:          { label: 'Webhook',      color: 'bg-amber-400/10 text-amber-400', Icon: Zap },
+  EXTERNAL_API:     { label: 'External API', color: 'bg-teal-400/10 text-teal-400', Icon: Globe },
+  EXTERNAL_SERVICE: { label: 'External',     color: 'bg-teal-400/10 text-teal-400', Icon: Globe },
+  DATABASE:         { label: 'Database',     color: 'bg-orange-400/10 text-orange-400', Icon: Database },
+  INTERNAL_SERVICE: { label: 'Internal',     color: 'bg-cyan-400/10 text-cyan-400', Icon: Server },
+  MOBILE_API:       { label: 'Mobile API',   color: 'bg-indigo-400/10 text-indigo-400', Icon: Network },
+  MICROSERVICE:     { label: 'Service',      color: 'bg-violet-400/10 text-violet-400', Icon: Server },
+  QUEUE:            { label: 'Queue',        color: 'bg-yellow-400/10 text-yellow-400', Icon: Layers },
+  OTHER:            { label: 'Other',        color: 'bg-gray-400/10 text-gray-400', Icon: HelpCircle },
+}
+
 function StatusBadge({ status }: { status: string }) {
   const s = STATUS_BADGE[status] || STATUS_BADGE.unknown
   return (
@@ -156,7 +157,17 @@ function StatusBadge({ status }: { status: string }) {
   )
 }
 
-function TypeBadge({ type }: { type: string }) {
+function TypeBadge({ type, catalogType }: { type: string; catalogType?: string | null }) {
+  // Prefer catalog classification for display, fallback to monitoring type
+  const ct = catalogType?.toUpperCase()
+  if (ct && CATALOG_DISPLAY[ct]) {
+    const d = CATALOG_DISPLAY[ct]
+    return (
+      <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ${d.color}`}>
+        <d.Icon className="w-3 h-3" /> {d.label}
+      </span>
+    )
+  }
   const t = TYPE_META[type] || TYPE_META.http
   return (
     <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ${t.color}`}>
@@ -2325,7 +2336,7 @@ export default function Services() {
                                     <span className="text-white text-sm font-medium">{svc.name}</span>
                                   </div>
                                 </td>
-                                <td className="px-4 py-3"><CatalogBadge type={svc.catalog_type} /></td>
+                                <td className="px-4 py-3"><TypeBadge type={svc.service_type} catalogType={svc.catalog_type} /></td>
                                 <td className="px-4 py-3 text-sm text-gray-400">{svc.category || <span className="text-gray-600">&ndash;</span>}</td>
                                 <td className="px-4 py-3 text-sm text-gray-400">{svc.environment || <span className="text-gray-600">&ndash;</span>}</td>
                                 <td className="px-4 py-3"><StatusBadge status={svc.enabled ? svc.status : 'unknown'} /></td>
@@ -2369,7 +2380,6 @@ export default function Services() {
                     <tr className="border-b border-gray-700/50">
                       <th className="text-left p-4 text-gray-400 font-medium">Service</th>
                       <th className="text-left p-4 text-gray-400 font-medium">Type</th>
-                      <th className="text-left p-4 text-gray-400 font-medium">Catalog Type</th>
                       <th className="text-left p-4 text-gray-400 font-medium">Category</th>
                       <th className="text-left p-4 text-gray-400 font-medium">Target</th>
                       <th className="text-left p-4 text-gray-400 font-medium">Monitoring</th>
@@ -2381,7 +2391,7 @@ export default function Services() {
                   </thead>
                   <tbody>
                     {filteredServices.length === 0 && hasActiveFilters && (
-                      <tr><td colSpan={10} className="p-8 text-center text-gray-500">
+                      <tr><td colSpan={9} className="p-8 text-center text-gray-500">
                         <Search className="w-8 h-8 mx-auto mb-2 text-gray-600" />
                         <p>No services match the current filters</p>
                         <button onClick={clearFilters} className="text-blue-400 hover:text-blue-300 text-sm mt-1">Clear filters</button>
@@ -2411,8 +2421,7 @@ export default function Services() {
                             </div>
                           </div>
                         </td>
-                        <td className="p-4"><TypeBadge type={svc.service_type} /></td>
-                        <td className="p-4 text-sm text-gray-300">{svc.catalog_type || <span className="text-gray-600">&ndash;</span>}</td>
+                        <td className="p-4"><TypeBadge type={svc.service_type} catalogType={svc.catalog_type} /></td>
                         <td className="p-4 text-sm text-gray-300">{svc.category || <span className="text-gray-600">&ndash;</span>}</td>
                         <td className="p-4">
                           <code className="text-sm text-gray-300 bg-gray-900/50 px-2 py-1 rounded truncate max-w-[200px] inline-block">
@@ -2450,7 +2459,7 @@ export default function Services() {
                       </tr>
                       {expandedServiceId === svc.id && (
                         <tr className="bg-gray-900/40">
-                          <td colSpan={10} className="p-0">
+                          <td colSpan={9} className="p-0">
                             <MonitoringDetailPanel svc={svc} />
                           </td>
                         </tr>
@@ -2616,7 +2625,7 @@ export default function Services() {
                   <details className="text-sm">
                     <summary className="text-gray-400 cursor-pointer hover:text-gray-300">Expected columns &amp; aliases</summary>
                     <div className="mt-2 p-3 bg-gray-900/50 rounded-lg border border-gray-700/50 text-gray-500 text-xs space-y-1">
-                      <p><span className="text-gray-300">Required:</span> name, service_type (http | postgresql)</p>
+                      <p><span className="text-gray-300">Required:</span> name. <span className="text-gray-300">service_type</span> (web_app | rest_api | soap_api | webhook | external_api | database | other | http | postgresql) — defaults to &quot;other&quot; if omitted</p>
                       <p><span className="text-gray-300">HTTP:</span> url, method, health_path, auth_type, auth_value</p>
                       <p><span className="text-gray-300">PostgreSQL:</span> host, port, database_name, username, password</p>
                       <p><span className="text-gray-300">Optional:</span> environment, description, timeout_seconds, check_interval_seconds, enabled, catalog_type, category, tags</p>

@@ -23,6 +23,23 @@ interface ExternalService {
   last_response_time_ms: number | null; enabled: boolean
 }
 
+// Human-readable labels for catalog_type classification
+const TYPE_LABELS: Record<string, string> = {
+  REST_API: 'REST API',
+  WEB_APP: 'Web App',
+  SOAP_API: 'SOAP API',
+  WEBHOOK: 'Webhook',
+  EXTERNAL_API: 'External API',
+  EXTERNAL_SERVICE: 'External',
+  DATABASE: 'Database',
+  INTERNAL_SERVICE: 'Internal',
+  MOBILE_API: 'Mobile API',
+  MICROSERVICE: 'Service',
+  QUEUE: 'Queue',
+  OTHER: 'Other',
+  UNKNOWN: 'Unknown',
+}
+
 /* Reserved for upcoming feature
 function mapSummaryStatus(s: string): 'success' | 'warning' | 'error' {
   if (s === 'OPERATIONAL') return 'success'
@@ -248,7 +265,7 @@ export function HomePage() {
                 .slice(0, 5)
                 .map(([type, count]) => (
                   <div key={type} className="flex items-center justify-between">
-                    <span className="text-xs text-text-muted truncate mr-2">{type}</span>
+                    <span className="text-xs text-text-muted truncate mr-2">{TYPE_LABELS[type] || type}</span>
                     <div className="flex items-center gap-2">
                       <div className="w-16 h-1.5 bg-surface-light rounded-full overflow-hidden">
                         <div

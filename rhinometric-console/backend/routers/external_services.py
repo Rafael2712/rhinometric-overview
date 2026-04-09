@@ -18,6 +18,7 @@ from models.external_service_check import ExternalServiceCheck
 from models.external_service_check import ExternalServiceCheck
 from services.connector_service import test_http_connection, test_postgresql_connection
 from services.config_validation import validate_service_config
+from services.bulk_import_service import normalize_service_type
 from services.bulk_http_service import process_bulk_http
 from services.bulk_import_service import (
     parse_csv, parse_json, process_import,
@@ -44,7 +45,7 @@ admin_only = require_role(["OWNER", "ADMIN"])
 
 class ExternalServiceCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
-    service_type: str = Field(..., pattern="^(http|postgresql)$")
+    service_type: str = Field(..., pattern="^(http|https|postgresql|postgres|pg|web_app|web|frontend|rest_api|rest|api|soap_api|soap|webhook|external_api|external|database|db|other|default)$")
     environment: Optional[str] = None
     description: Optional[str] = None
     enabled: bool = True
@@ -98,7 +99,7 @@ class ExternalServiceUpdate(BaseModel):
 
 
 class TestConnectionRequest(BaseModel):
-    service_type: str = Field(..., pattern="^(http|postgresql)$")
+    service_type: str = Field(..., pattern="^(http|https|postgresql|postgres|pg|web_app|web|frontend|rest_api|rest|api|soap_api|soap|webhook|external_api|external|database|db|other|default)$")
     config: Dict[str, Any] = Field(default_factory=dict)
     timeout_seconds: int = Field(default=10, ge=1, le=120)
 
@@ -211,6 +212,12 @@ def get_external_services_summary(
     down = sum(1 for s in all_svc if s.status in (ServiceStatus.DOWN, ServiceStatus.ERROR) and s.enabled)
     degraded = sum(1 for s in all_svc if s.status == ServiceStatus.DEGRADED and s.enabled)
     unknown = sum(1 for s in all_svc if s.status == ServiceStatus.UNKNOWN and s.enabled)
+    # Type distribution for Coverage by Type card
+    type_distribution = {}
+    for s in all_svc:
+        ct = s.catalog_type or ("DATABASE" if s.service_type == ServiceType.POSTGRESQL else "OTHER")
+        type_distribution[ct] = type_distribution.get(ct, 0) + 1
+
     return {
         "total": total,
         "enabled": enabled,
@@ -218,6 +225,7 @@ def get_external_services_summary(
         "down": down,
         "degraded": degraded,
         "unknown": unknown,
+        "type_distribution": type_distribution,
     }
 
 
@@ -392,9 +400,12 @@ def create_external_service(
     current_user: UserModel = Depends(admin_only),
 ):
     """Create a new external service (HTTP or PostgreSQL)."""
+    # Normalize: user-facing classification type -> internal monitoring type + catalog
+    _internal_type, _inferred_catalog = normalize_service_type(payload.service_type)
+
     # ── Strict config validation ──
     _, val_errors = validate_service_config(
-        payload.service_type, payload.config, service_name=payload.name,
+        _internal_type, payload.config, service_name=payload.name,
     )
     if val_errors:
         raise HTTPException(
@@ -426,14 +437,14 @@ def create_external_service(
 
     svc = ExternalService(
         name=payload.name,
-        service_type=ServiceType(payload.service_type),
+        service_type=ServiceType(_internal_type),
         environment=payload.environment,
         description=payload.description,
         enabled=payload.enabled,
         config=payload.config,
         timeout_seconds=payload.timeout_seconds,
         check_interval_seconds=payload.check_interval_seconds,
-        catalog_type=payload.catalog_type,
+        catalog_type=payload.catalog_type or _inferred_catalog,
         category=payload.category,
         tags=payload.tags,
         group_name=payload.group_name,
@@ -474,8 +485,15 @@ def update_external_service(
 
     # ── Strict config validation (if config is being updated) ──
     if "config" in update_data and update_data["config"] is not None:
-        # Determine effective service_type
-        effective_type = svc.service_type.value
+        # Determine effective service_type (normalize if classification type provided)
+        if payload.service_type:
+            _upd_internal, _upd_catalog = normalize_service_type(payload.service_type)
+            effective_type = _upd_internal
+            if _upd_catalog and not payload.catalog_type:
+                svc.catalog_type = _upd_catalog
+        else:
+            _upd_internal = None
+            effective_type = svc.service_type.value
         # Merge secrets before validation: preserve masked passwords
         merged_cfg = dict(update_data["config"])
         existing_cfg = dict(svc.config) if svc.config else {}
@@ -578,9 +596,11 @@ def test_connection_adhoc(
     current_user: UserModel = Depends(admin_only),
 ):
     """Test a connection without saving (ad-hoc, from the form)."""
+    _test_internal, _ = normalize_service_type(payload.service_type)
+
     # ── Strict config validation before testing ──
     _, val_errors = validate_service_config(
-        payload.service_type, payload.config, service_name="adhoc-test",
+        _test_internal, payload.config, service_name="adhoc-test",
     )
     if val_errors:
         raise HTTPException(
@@ -588,7 +608,7 @@ def test_connection_adhoc(
             detail={"error": "Invalid service configuration", "details": val_errors},
         )
 
-    result = _run_test(payload.service_type, payload.config, payload.timeout_seconds)
+    result = _run_test(_test_internal, payload.config, payload.timeout_seconds)
     return result
 
 

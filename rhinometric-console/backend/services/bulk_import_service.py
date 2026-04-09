@@ -38,9 +38,55 @@ logger = logging.getLogger("rhinometric.bulk_import")
 VALID_CATALOG_TYPES = {
     "REST_API", "SOAP_API", "WEB_APP", "MOBILE_API",
     "DATABASE", "INTERNAL_SERVICE", "EXTERNAL_SERVICE", "OTHER",
+    "WEBHOOK", "EXTERNAL_API",
 }
 
 VALID_SERVICE_TYPES = {"http", "postgresql"}
+
+# ── Service-type classification (v3) ────────────────────────────
+# Maps user-facing service_type values -> (internal_monitoring_type, catalog_type).
+# The internal type controls HOW monitoring runs (http checks vs pg connections).
+# The catalog_type controls WHAT the service is displayed as in the UI.
+SERVICE_TYPE_NORMALIZATION: Dict[str, tuple] = {
+    # Classification types (new)
+    "web_app":      ("http", "WEB_APP"),
+    "web":          ("http", "WEB_APP"),
+    "frontend":     ("http", "WEB_APP"),
+    "rest_api":     ("http", "REST_API"),
+    "rest":         ("http", "REST_API"),
+    "api":          ("http", "REST_API"),
+    "soap_api":     ("http", "SOAP_API"),
+    "soap":         ("http", "SOAP_API"),
+    "webhook":      ("http", "WEBHOOK"),
+    "external_api": ("http", "EXTERNAL_API"),
+    "external":     ("http", "EXTERNAL_API"),
+    "database":     ("postgresql", "DATABASE"),
+    "db":           ("postgresql", "DATABASE"),
+    "other":        ("http", "OTHER"),
+    "default":      ("http", "OTHER"),
+    # Legacy monitoring types (preserved, don't override catalog_type)
+    "http":         ("http", None),
+    "https":        ("http", None),
+    "postgresql":   ("postgresql", None),
+    "postgres":     ("postgresql", None),
+    "pg":           ("postgresql", None),
+}
+
+# All accepted service_type input values (for validation messages)
+ACCEPTED_SERVICE_TYPES = set(SERVICE_TYPE_NORMALIZATION.keys())
+
+
+def normalize_service_type(raw: str) -> tuple:
+    """Normalize user service_type to (internal_monitoring_type, inferred_catalog_type).
+
+    Returns ("http", "OTHER") for unrecognized values (graceful fallback).
+    Case-insensitive.
+    """
+    key = raw.strip().lower()
+    if key in SERVICE_TYPE_NORMALIZATION:
+        return SERVICE_TYPE_NORMALIZATION[key]
+    # Graceful fallback for unknown values
+    return ("http", "OTHER")
 
 # Default values matching the existing create flow
 DEFAULT_TIMEOUT = 10
@@ -237,20 +283,13 @@ def _validate_row(row: Dict[str, Any], row_num: int) -> Tuple[Optional[Dict[str,
     if not name:
         errors.append("name is required")
 
-    # Required: service_type (with alias support)
-    stype_raw = str(normalized.get("service_type") or "").strip().lower()
-    if not stype_raw:
-        errors.append(
-            "service_type is required (http or postgresql). "
-            "Accepted aliases: type, serviceType"
-        )
-    elif stype_raw not in VALID_SERVICE_TYPES:
-        errors.append(f"service_type must be 'http' or 'postgresql', got: '{stype_raw}'")
+    # service_type: accept classification types, legacy types, or default to "other"
+    stype_raw = str(normalized.get("service_type") or "other").strip().lower()
+    internal_type, inferred_catalog = normalize_service_type(stype_raw)
+    service_type = internal_type
 
     if errors:
         return None, errors
-
-    service_type = stype_raw
 
     # Optional fields
     environment = str(normalized.get("environment") or "").strip() or None
@@ -267,6 +306,9 @@ def _validate_row(row: Dict[str, Any], row_num: int) -> Tuple[Optional[Dict[str,
     catalog_type = str(normalized.get("catalog_type") or "").strip().upper() or None
     if catalog_type and catalog_type not in VALID_CATALOG_TYPES:
         errors.append(f"catalog_type must be one of {sorted(VALID_CATALOG_TYPES)}, got: '{catalog_type}'")
+    # Auto-populate catalog_type from service_type classification if not explicitly set
+    if not catalog_type and inferred_catalog:
+        catalog_type = inferred_catalog
     category = str(normalized.get("category") or "").strip() or None
     tags = _parse_tags(normalized.get("tags"))
 
@@ -330,7 +372,7 @@ def _sniff_delimiter(sample: str) -> str:
 # Canonical required columns and their known aliases, for early
 # header-level validation.  Lowercase.
 _REQUIRED_HEADER_MAP = {
-    "service_type": {"service_type", "type", "servicetype"},
+    # service_type is now optional (defaults to "other" if missing)
 }
 
 # Optional but useful to detect: url (required for HTTP but not PG)
@@ -611,13 +653,17 @@ def generate_csv_template() -> str:
         "catalog_type,category,tags,auth_type,auth_value,"
         "host,port,database_name,username,password"
     )
+    # service_type accepts: web_app, rest_api, soap_api, webhook,
+    # external_api, database, other, http, postgresql
     examples = [
-        'Payment Gateway API,http,https://api.payments.example.com/health,GET,production,'
+        'Payment Gateway API,rest_api,https://api.payments.example.com/health,GET,production,'
         'Payment processing API,15,60,true,REST_API,payments,"critical,external,payments",bearer,token-xxxx,,,,,',
-        'User Service,http,https://users.internal.example.com/status,GET,production,'
-        'Internal user service,10,60,true,INTERNAL_SERVICE,backend,"internal,users",,,,,,',
-        'Analytics DB,postgresql,,,,Main analytics database,10,120,true,'
-        'DATABASE,infrastructure,"internal,postgresql",,,db.internal.example.com,5432,'
+        'User Service,web_app,https://users.internal.example.com/status,GET,production,'
+        'Internal user service,10,60,true,,backend,"internal,users",,,,,,',
+        'Webhook Receiver,webhook,https://hooks.example.com/ingest,POST,production,'
+        'Webhook endpoint,10,30,true,,integrations,"webhook,inbound",,,,,,',
+        'Analytics DB,database,,,,Main analytics database,10,120,true,'
+        ',infrastructure,"internal,postgresql",,,db.internal.example.com,5432,'
         'analytics_db,analytics_user,secure_password',
     ]
     return header + "\n" + "\n".join(examples) + "\n"
