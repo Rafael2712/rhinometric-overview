@@ -83,54 +83,90 @@ async def get_alerts(
     severity: Optional[str] = Query(None, description="Filter by severity")
 ):
     """
-    Get alerts from AlertManager (port 9093).
-    Enriches each alert with acknowledgement status from PostgreSQL.
+    Get operational alerts from both sources:
+      1. External Alertmanager -- AI anomaly engine alerts
+      2. Grafana internal alertmanager -- synthetic monitoring rule alerts
+    Merges, deduplicates, and filters to show only external-service alerts.
     """
+    import asyncio as _aio
+
+    alerts_data: list[dict] = []
+
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
-            url = f"{settings.ALERTMANAGER_URL}/api/v2/alerts"
-            response = await client.get(url)
+            # ---- fire both queries concurrently ----
+            am_coro = client.get(f"{settings.ALERTMANAGER_URL}/api/v2/alerts")
+            gf_url = f"{settings.GRAFANA_URL}/api/alertmanager/grafana/api/v2/alerts"
+            gf_coro = client.get(
+                gf_url,
+                auth=(settings.GRAFANA_USER, settings.GRAFANA_PASSWORD),
+            )
+            am_resp, gf_resp = await _aio.gather(
+                am_coro, gf_coro, return_exceptions=True
+            )
 
-            if response.status_code == 200:
-                alerts_data = response.json()
-
+            # -- Source 1: External Alertmanager (AI anomaly engine) --
+            if not isinstance(am_resp, Exception) and am_resp.status_code == 200:
+                am_alerts = am_resp.json()
                 if active:
-                    alerts_data = [
-                        a for a in alerts_data
+                    am_alerts = [
+                        a for a in am_alerts
                         if a.get("status", {}).get("state") == "active"
                     ]
-
-                if severity:
-                    alerts_data = [
-                        a for a in alerts_data
-                        if a.get("labels", {}).get("severity", "").lower() == severity.lower()
-                    ]
-
-                # Filter: only show external service alerts (hide infrastructure/node alerts)
-                alerts_data = [
-                    a for a in alerts_data
+                # Keep only external-service AI anomaly alerts
+                am_alerts = [
+                    a for a in am_alerts
                     if a.get("labels", {}).get("metric", "").startswith("external_service_")
                 ]
+                alerts_data.extend(am_alerts)
 
-                formatted_alerts = []
-                for alert in alerts_data:
-                    formatted_alerts.append(Alert(
-                        fingerprint=alert.get("fingerprint", ""),
-                        status=alert.get("status", {}).get("state", "unknown"),
-                        labels=alert.get("labels", {}),
-                        annotations=alert.get("annotations", {}),
-                        startsAt=alert.get("startsAt", ""),
-                        endsAt=alert.get("endsAt"),
-                        generatorURL=alert.get("generatorURL", ""),
-                        severity=alert.get("labels", {}).get("severity", "unknown")
-                    ))
+            # -- Source 2: Grafana internal alertmanager (synthetic monitoring) --
+            if not isinstance(gf_resp, Exception) and gf_resp.status_code == 200:
+                gf_alerts = gf_resp.json()
+                if active:
+                    gf_alerts = [
+                        a for a in gf_alerts
+                        if a.get("status", {}).get("state") == "active"
+                    ]
+                # Keep only external-service category (hide infra alerts)
+                gf_alerts = [
+                    a for a in gf_alerts
+                    if a.get("labels", {}).get("category") == "external-services"
+                ]
+                alerts_data.extend(gf_alerts)
 
-                return AlertsResponse(alerts=formatted_alerts, total=len(formatted_alerts))
-            else:
-                raise HTTPException(
-                    status_code=response.status_code,
-                    detail=f"AlertManager error: {response.text}"
-                )
+        # -- Severity filter --
+        if severity:
+            alerts_data = [
+                a for a in alerts_data
+                if a.get("labels", {}).get("severity", "").lower() == severity.lower()
+            ]
+
+        # -- Deduplicate by fingerprint --
+        seen: set[str] = set()
+        deduped: list[dict] = []
+        for alert in alerts_data:
+            fp = alert.get("fingerprint", "")
+            if fp and fp in seen:
+                continue
+            if fp:
+                seen.add(fp)
+            deduped.append(alert)
+
+        formatted_alerts = []
+        for alert in deduped:
+            formatted_alerts.append(Alert(
+                fingerprint=alert.get("fingerprint", ""),
+                status=alert.get("status", {}).get("state", "unknown"),
+                labels=alert.get("labels", {}),
+                annotations=alert.get("annotations", {}),
+                startsAt=alert.get("startsAt", ""),
+                endsAt=alert.get("endsAt"),
+                generatorURL=alert.get("generatorURL", ""),
+                severity=alert.get("labels", {}).get("severity", "unknown")
+            ))
+
+        return AlertsResponse(alerts=formatted_alerts, total=len(formatted_alerts))
 
     except httpx.ConnectError:
         return AlertsResponse(alerts=[], total=0)
@@ -608,6 +644,34 @@ async def grafana_webhook(
                     logger.error(f"Post-loop resolution check error: {e}")
 
     db.commit()
+
+    # ---- Forward external-service alerts to Alertmanager for Slack/email notifications ----
+    svc_alerts = [
+        a for a in alerts
+        if a.get("labels", {}).get("category") == "external-services"
+    ]
+    if svc_alerts:
+        try:
+            am_payload = []
+            for a in svc_alerts:
+                entry = {
+                    "labels": a.get("labels", {}),
+                    "annotations": a.get("annotations", {}),
+                    "startsAt": a.get("startsAt", datetime.now(timezone.utc).isoformat()),
+                    "generatorURL": a.get("generatorURL", ""),
+                }
+                if a.get("status") == "resolved":
+                    entry["endsAt"] = a.get("endsAt", datetime.now(timezone.utc).isoformat())
+                am_payload.append(entry)
+            async with httpx.AsyncClient(timeout=5.0) as _fwd:
+                await _fwd.post(
+                    f"{settings.ALERTMANAGER_URL}/api/v2/alerts",
+                    json=am_payload,
+                )
+            logger.info(f"Forwarded {len(am_payload)} service alerts to Alertmanager for notifications")
+        except Exception as _fwd_err:
+            logger.warning(f"Alertmanager forward failed (non-fatal): {_fwd_err}")
+
     logger.info(f"Webhook received {len(alerts)} alerts, stored {stored} history + {events_stored} events")
     return {"status": "ok", "received": len(alerts), "stored": stored, "events": events_stored}
 

@@ -167,30 +167,48 @@ async def get_kpis(current_user: UserModel = Depends(get_current_user)):
                 print(f"Error fetching anomalies from engine V1: {e}")
                 pass  # If engine unavailable, keep at 0
             
-            # Get active alerts count from AlertManager
+            # Get active alerts count from Alertmanager + Grafana
             alerts_count = 0
             alerts_status = "success"
             alerts_change = "Last 24 hours"
             try:
-                # Alertmanager API returns ALL alerts, need to filter client-side
-                alerts_response = await client.get(
+                import asyncio as _aio
+                am_coro = client.get(
                     f"{settings.ALERTMANAGER_URL}/api/v2/alerts",
                     timeout=5.0
                 )
-                if alerts_response.status_code == 200:
-                    alerts_data = alerts_response.json()
-                    # Filter only FIRING alerts for EXTERNAL SERVICES (hide infra)
-                    firing_alerts = [
-                        a for a in alerts_data
-                        if a.get("status", {}).get("state") == "active"
-                        and a.get("labels", {}).get("metric", "").startswith("external_service_")
-                    ]
-                    alerts_count = len(firing_alerts)
-                    if alerts_count > 0:
-                        alerts_status = "warning"
-                        alerts_change = f"{alerts_count} active now"
-                    else:
-                        alerts_change = "No active alerts"
+                gf_coro = client.get(
+                    f"{settings.GRAFANA_URL}/api/alertmanager/grafana/api/v2/alerts",
+                    auth=(settings.GRAFANA_USER, settings.GRAFANA_PASSWORD),
+                    timeout=5.0,
+                )
+                am_resp, gf_resp = await _aio.gather(
+                    am_coro, gf_coro, return_exceptions=True
+                )
+                seen_fps: set = set()
+                # External Alertmanager: AI anomaly external_service_ alerts
+                if not isinstance(am_resp, Exception) and am_resp.status_code == 200:
+                    for a in am_resp.json():
+                        if (a.get("status", {}).get("state") == "active"
+                                and a.get("labels", {}).get("metric", "").startswith("external_service_")):
+                            fp = a.get("fingerprint", "")
+                            if fp not in seen_fps:
+                                seen_fps.add(fp)
+                                alerts_count += 1
+                # Grafana internal alertmanager: synthetic monitoring
+                if not isinstance(gf_resp, Exception) and gf_resp.status_code == 200:
+                    for a in gf_resp.json():
+                        if (a.get("status", {}).get("state") == "active"
+                                and a.get("labels", {}).get("category") == "external-services"):
+                            fp = a.get("fingerprint", "")
+                            if fp not in seen_fps:
+                                seen_fps.add(fp)
+                                alerts_count += 1
+                if alerts_count > 0:
+                    alerts_status = "warning"
+                    alerts_change = f"{alerts_count} active now"
+                else:
+                    alerts_change = "No active alerts"
             except Exception as e:
                 print(f"Error fetching alerts: {e}")
                 pass  # If AlertManager unavailable, keep at 0
