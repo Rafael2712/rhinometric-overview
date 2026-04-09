@@ -1,4 +1,4 @@
-"""
+﻿"""
 Incident AI Service - Phase 3 / 3.1 polish.
 
 Generates incident summaries, investigation hints, and postmortems
@@ -14,6 +14,8 @@ Hard rules:
   - All text is factual and derived from actual telemetry signals.
   - Summaries are concise: 2-3 lines max, referencing real signals.
   - Hints are specific to the detected signal type, max 5.
+  - Explanations MUST reflect operational severity — never describe a
+    DOWN service as "minor degradation" or "low risk".
 """
 
 import httpx
@@ -46,6 +48,47 @@ _SIGNAL_PATTERNS: List[Tuple[str, re.Pattern]] = [
 ]
 
 _DETAIL_EXTRACT = re.compile(r"\(([^)]+)\)")
+
+# Soft-language patterns that must be overridden for severe incidents
+_SOFT_OVERRIDE = re.compile(
+    r"minor\s+degradation|low\s+(predicted\s+)?risk|stable|within\s+normal|"
+    r"no\s+significant|slight\s+deviation|marginal|negligible|normal\s+range",
+    re.I,
+)
+
+
+def _infer_severity_from_evidence(
+    evidence: str,
+    signals: list,
+    anomaly_score: object,
+    severity: str,
+) -> str:
+    """Infer operational severity from evidence signals.
+
+    Returns "DOWN", "SEVERE", "DEGRADED", or "MINOR".
+    """
+    ev_lower = evidence.lower()
+
+    # Hard DOWN indicators in evidence text
+    if any(kw in ev_lower for kw in (
+        "availability 0%", "availability: 0", "completely unavailable",
+        "service down", "all requests failing", "100% failure",
+    )):
+        return "DOWN"
+
+    # Score-based escalation
+    score = anomaly_score if isinstance(anomaly_score, (int, float)) else 0
+    if score >= 80 or severity == "critical":
+        # Check signal types for availability / error signals
+        sig_types = {s["type"] for s in signals}
+        if "availability" in sig_types or "error" in sig_types:
+            return "SEVERE"
+        return "DEGRADED"
+
+    if score >= 50 or severity in ("critical", "warning"):
+        return "DEGRADED"
+
+    return "MINOR"
 
 
 def _parse_evidence_signals(evidence: str) -> List[Dict[str, str]]:
@@ -185,7 +228,12 @@ def generate_incident_summary(
     anomaly_ctx: Optional[Dict[str, Any]] = None,
     alert_summary: Optional[str] = None,
 ) -> str:
-    """Build a concise, signal-driven incident summary (2-3 lines max)."""
+    """Build a concise, signal-driven incident summary (2-3 lines max).
+
+    CRITICAL RULE: explanation MUST match operational severity.
+    If the service is DOWN or severely degraded, the summary must
+    lead with the operational state — never use soft language.
+    """
 
     if not anomaly_ctx:
         if alert_summary:
@@ -198,6 +246,45 @@ def generate_incident_summary(
     confidence = anomaly_ctx.get("confidence")
     risk_level = anomaly_ctx.get("predicted_risk_level") or ""
     explanation = (anomaly_ctx.get("explanation_summary") or "").strip()
+
+    # ── Infer operational severity from evidence ──────────────────
+    inferred = _infer_severity_from_evidence(evidence_raw, signals, anomaly_score, severity)
+
+    # ── Override soft explanation for severe states ────────────────
+    if inferred in ("DOWN", "SEVERE"):
+        # Always override — the engine's explanation is too soft
+        signal_parts = []
+        for sig in signals:
+            if sig["detail"]:
+                signal_parts.append(f"{sig['raw']} ({sig['detail']})")
+            else:
+                signal_parts.append(sig["raw"])
+
+        if inferred == "DOWN":
+            explanation = (
+                f"**SERVICE DOWN** — {service_name} is in a critical failure state. "
+                + (f"Detected: {', '.join(signal_parts)}. " if signal_parts else "")
+                + "Immediate investigation required."
+            )
+        else:  # SEVERE
+            explanation = (
+                f"**SEVERE DEGRADATION** — {service_name} is significantly impaired. "
+                + (f"Detected: {', '.join(signal_parts)}. " if signal_parts else "")
+                + "Immediate attention required."
+            )
+    elif inferred == "DEGRADED":
+        # Override only if explanation contains soft language
+        if explanation and _SOFT_OVERRIDE.search(explanation):
+            signal_parts = []
+            for sig in signals:
+                if sig["detail"]:
+                    signal_parts.append(f"{sig['raw']} ({sig['detail']})")
+                else:
+                    signal_parts.append(sig["raw"])
+            explanation = (
+                f"**DEGRADED** — {service_name} operating below acceptable thresholds. "
+                + (f"Detected: {', '.join(signal_parts)}." if signal_parts else "")
+            )
 
     # Build signal description from parsed evidence
     signal_parts = []
@@ -218,15 +305,18 @@ def generate_incident_summary(
     else:
         lines.append(f"Anomalous behaviour detected for **{service_name}**.")
 
-    # Line 2: Severity + score context (only if meaningful)
+    # Line 2: Severity + score context
     context_bits = []
     if severity in ("critical", "warning"):
-        context_bits.append(f"Severity: {severity}")
+        context_bits.append(f"Severity: **{severity.upper()}**")
     if anomaly_score is not None and anomaly_score > 10:
         context_bits.append(f"anomaly score {anomaly_score}/100")
     if confidence is not None:
         context_bits.append(f"confidence {confidence:.0%}" if isinstance(confidence, float) else f"confidence {confidence}")
-    if risk_level and risk_level not in ("none", "low"):
+    # Show risk level — but for DOWN/SEVERE, override soft risk labels
+    if inferred in ("DOWN", "SEVERE"):
+        context_bits.append(f"operational state: **{inferred}**")
+    elif risk_level and risk_level not in ("none", "low"):
         context_bits.append(f"predicted risk: {risk_level}")
     if context_bits:
         lines.append(" | ".join(context_bits) + ".")
@@ -247,13 +337,28 @@ def generate_investigation_hints(
 
     Each hint tells the operator WHERE to look and WHAT to verify.
     No executable commands. No generic filler.
+
+    For DOWN/SEVERE states, hints are prefixed with urgency context.
     """
     hints: List[str] = []
     seen_types = set()
+    inferred = "MINOR"
 
     if anomaly_ctx:
         evidence_raw = anomaly_ctx.get("evidence_summary") or ""
         signals = _parse_evidence_signals(evidence_raw)
+        anomaly_score = anomaly_ctx.get("anomaly_score")
+        inferred = _infer_severity_from_evidence(evidence_raw, signals, anomaly_score, severity)
+
+        # DOWN: lead with urgency
+        if inferred == "DOWN":
+            hints.append(
+                f"URGENT: {service_name} appears DOWN — confirm availability status and check for total outage."
+            )
+        elif inferred == "SEVERE":
+            hints.append(
+                f"HIGH PRIORITY: {service_name} is severely degraded — assess user-facing impact immediately."
+            )
 
         # Add signal-specific hints (pick first hint per signal type)
         for sig in signals:
@@ -274,15 +379,16 @@ def generate_investigation_hints(
                 continue
             bank = _SIGNAL_HINTS.get(stype, [])
             for hint in bank:
-                if hint not in hints and len(hints) < 4:
+                if hint not in hints and len(hints) < 5:
                     hints.append(hint)
                     break
 
-        # Prediction-based hint
-        pred_summary = (anomaly_ctx.get("prediction_summary") or "").strip()
-        risk_level = anomaly_ctx.get("predicted_risk_level") or ""
-        if risk_level not in ("none", "low", "") and pred_summary:
-            hints.append(f"Prediction: {pred_summary} -- prepare mitigation if the trend continues.")
+        # Prediction-based hint — skip for DOWN/SEVERE (current state matters more)
+        if inferred not in ("DOWN", "SEVERE"):
+            pred_summary = (anomaly_ctx.get("prediction_summary") or "").strip()
+            risk_level = anomaly_ctx.get("predicted_risk_level") or ""
+            if risk_level not in ("none", "low", "") and pred_summary:
+                hints.append(f"Prediction: {pred_summary} -- prepare mitigation if the trend continues.")
 
     # Fallback: ensure at least 2 hints
     if len(hints) < 2:
@@ -321,8 +427,20 @@ def generate_postmortem(
         explanation = (anomaly_ctx.get("explanation_summary") or "").strip()
         evidence_raw = anomaly_ctx.get("evidence_summary") or ""
         signals = _parse_evidence_signals(evidence_raw)
+        anomaly_score = anomaly_ctx.get("anomaly_score")
 
-        if explanation:
+        # Severity-aware override for postmortem
+        inferred = _infer_severity_from_evidence(evidence_raw, signals, anomaly_score, severity)
+        if inferred == "DOWN":
+            sections.append(
+                f"**SERVICE DOWN** — {service_name} experienced a complete or near-complete outage "
+                f"during this incident.\n"
+            )
+        elif inferred == "SEVERE":
+            sections.append(
+                f"**SEVERE DEGRADATION** — {service_name} was significantly impaired during this incident.\n"
+            )
+        elif explanation and not _SOFT_OVERRIDE.search(explanation):
             sections.append(explanation + "\n")
         elif signals:
             signal_desc = ", ".join(

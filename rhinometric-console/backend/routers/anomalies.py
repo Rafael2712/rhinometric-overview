@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+﻿from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from typing import Optional, List, Any, Dict
 import httpx
@@ -15,17 +15,17 @@ from models.user import User as UserModel
 router = APIRouter()
 logger = logging.getLogger("anomalies")
 
-# ── Task 4: Retention ──────────────────────────────────────────
+# ÔöÇÔöÇ Task 4: Retention ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
 MAX_RETENTION_DAYS = 30
 
 
-# ── Customer-facing filter ──────────────────────────────────────
+# ÔöÇÔöÇ Customer-facing filter ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
 # Only "service" and "website" entity types are customer-facing.
 # All "infrastructure" entities (node_exporter, cadvisor, internal
 # monitoring) are internal platform telemetry and must be hidden.
 # Additionally, any entity_name / source matching internal platform
 # services is excluded as a safety net.
-# ────────────────────────────────────────────────────────────────
+# ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
 INTERNAL_SOURCES: set = {
     "node_exporter",
     "cadvisor",
@@ -83,7 +83,7 @@ def _get_existing_service_names() -> set:
     """Return the set of service names that currently exist in external_services.
 
     Task 5 fix: existence-based check.  Returns ALL names (lowercased).
-    If the table is empty, returns an empty set — meaning every
+    If the table is empty, returns an empty set ÔÇö meaning every
     service-type anomaly is orphaned and should be hidden.
     """
     try:
@@ -107,10 +107,10 @@ def _is_existing_service(g: dict) -> bool:
     """
     entity_type = (g.get("entity_type") or "").lower()
     if entity_type not in _SERVICE_ENTITY_TYPES:
-        return True  # not a service → always show
+        return True  # not a service ÔåÆ always show
     existing = _get_existing_service_names_cached()
     entity = (g.get("entity_name") or "").lower()
-    # If existing is empty (no services in DB) → orphan → hide
+    # If existing is empty (no services in DB) ÔåÆ orphan ÔåÆ hide
     if not existing:
         return False
     return entity in existing
@@ -363,6 +363,231 @@ def _enrich_anomaly(normalized: dict) -> dict:
     return normalized
 
 
+# ---------------------------------------------------------------------------
+# Operational Severity Classification — hard rules override ML softness
+# ---------------------------------------------------------------------------
+# The anomaly engine's ML model adapts to sustained failures, marking DOWN
+# services as "low" severity.  These rules enforce operational truth:
+#   availability == 0  →  DOWN / critical
+#   health < 30%       →  DOWN / critical
+#   error_rate >= 95%  →  DOWN / critical
+# The generated explanation is authoritative and replaces the engine's
+# bland statistical text ("Current: 0.00, Expected: 0.00 …").
+# ---------------------------------------------------------------------------
+
+_OP_STATE_DOWN = "DOWN"
+_OP_STATE_SEVERE = "SEVERE_DEGRADATION"
+_OP_STATE_DEGRADED = "DEGRADED"
+_OP_STATE_MINOR = "MINOR"
+_OP_STATE_NORMAL = "NORMAL"
+
+# Forbidden soft phrases that must never appear for DOWN / SEVERE states
+_SOFT_PHRASES = re.compile(
+    r"minor\s+degradation|low\s+risk|stable|within\s+normal|no\s+significant|"
+    r"slight\s+deviation|marginal|negligible|normal\s+range",
+    re.IGNORECASE,
+)
+
+
+def _classify_operational_state(
+    metric_name: str,
+    current_value: float,
+    expected_value: float,
+    deviation_percent: float,
+    raw_severity: str,
+) -> tuple[str, str]:
+    """Hard classification of operational state from metric values.
+
+    Returns (operational_state, corrected_severity).
+    The ML model's severity is overridden when the operational state
+    clearly contradicts it (e.g. availability=0 but severity="low").
+    """
+    ml = metric_name.lower()
+    cv = current_value
+    dev = abs(deviation_percent)
+
+    # ── Availability metrics (0.0 = down, 1.0 = up) ──────────────
+    if "availability" in ml:
+        if cv <= 0.001:
+            return _OP_STATE_DOWN, "critical"
+        if cv < 0.5:
+            return _OP_STATE_SEVERE, "critical"
+        if cv < 0.9:
+            return _OP_STATE_DEGRADED, "high"
+        if cv < 0.95:
+            return _OP_STATE_MINOR, max_severity(raw_severity, "medium")
+        return _OP_STATE_NORMAL, raw_severity
+
+    # ── Health metrics (0-100 percentage) ─────────────────────────
+    if "health" in ml:
+        if cv < 30:
+            return _OP_STATE_DOWN, "critical"
+        if cv < 50:
+            return _OP_STATE_SEVERE, "critical"
+        if cv < 70:
+            return _OP_STATE_DEGRADED, "high"
+        if cv < 85:
+            return _OP_STATE_MINOR, max_severity(raw_severity, "medium")
+        return _OP_STATE_NORMAL, raw_severity
+
+    # ── Error / failure rate metrics (0.0-1.0 or 0-100) ──────────
+    if "error" in ml or "failure" in ml:
+        # Normalise: if value > 1, assume percentage scale
+        rate = cv / 100.0 if cv > 1.0 else cv
+        if rate >= 0.95:
+            return _OP_STATE_DOWN, "critical"
+        if rate >= 0.50:
+            return _OP_STATE_SEVERE, "critical"
+        if rate >= 0.20:
+            return _OP_STATE_DEGRADED, "high"
+        if rate >= 0.10:
+            return _OP_STATE_MINOR, max_severity(raw_severity, "medium")
+        return _OP_STATE_NORMAL, raw_severity
+
+    # ── Latency metrics (deviation-based) ─────────────────────────
+    if "latency" in ml or "response_time" in ml:
+        if dev >= 500:
+            return _OP_STATE_SEVERE, "critical"
+        if dev >= 200:
+            return _OP_STATE_DEGRADED, "high"
+        if dev >= 100:
+            return _OP_STATE_MINOR, max_severity(raw_severity, "medium")
+        return _OP_STATE_NORMAL, raw_severity
+
+    # ── Generic fallback: deviation magnitude ─────────────────────
+    if dev >= 300:
+        return _OP_STATE_SEVERE, max_severity(raw_severity, "high")
+    if dev >= 100:
+        return _OP_STATE_DEGRADED, max_severity(raw_severity, "medium")
+    return _OP_STATE_NORMAL, raw_severity
+
+
+def max_severity(a: str, b: str) -> str:
+    """Return the more severe of two severity strings."""
+    order = {"critical": 0, "high": 1, "medium": 2, "low": 3}
+    return a if order.get(a, 3) <= order.get(b, 3) else b
+
+
+def _generate_severity_explanation(
+    op_state: str,
+    entity_name: str,
+    metric_name: str,
+    current_value: float,
+    expected_value: float,
+    deviation_percent: float,
+    original_explanation: str | None,
+) -> str:
+    """Generate a severity-aware, operationally honest explanation.
+
+    For DOWN / SEVERE states the explanation leads with the operational
+    state in bold, followed by evidence.  For MINOR / NORMAL, the
+    original engine explanation is returned (or enhanced).
+    """
+    ml = metric_name.lower()
+    dev = deviation_percent
+
+    # ── DOWN state explanations ───────────────────────────────────
+    if op_state == _OP_STATE_DOWN:
+        if "availability" in ml:
+            return (
+                f"**SERVICE DOWN** — {entity_name} is completely unavailable. "
+                f"Availability at {current_value*100:.1f}%, deviation {dev:+.1f}% from expected. "
+                f"Immediate investigation required."
+            )
+        if "health" in ml:
+            return (
+                f"**SERVICE DOWN** — {entity_name} health critically low at {current_value:.1f}%. "
+                f"Service is non-functional or severely impaired. "
+                f"Immediate investigation required."
+            )
+        if "error" in ml or "failure" in ml:
+            rate = current_value if current_value <= 1 else current_value / 100
+            return (
+                f"**SERVICE DOWN** — {entity_name} error rate at {rate*100:.1f}%. "
+                f"Nearly all requests are failing. "
+                f"Immediate investigation required."
+            )
+        return (
+            f"**SERVICE DOWN** — {entity_name} is in a critical failure state. "
+            f"Current value: {current_value:.2f}, expected: {expected_value:.2f} "
+            f"(deviation {dev:+.1f}%). Immediate investigation required."
+        )
+
+    # ── SEVERE DEGRADATION explanations ───────────────────────────
+    if op_state == _OP_STATE_SEVERE:
+        if "availability" in ml:
+            return (
+                f"**SEVERE DEGRADATION** — {entity_name} availability at {current_value*100:.1f}%, "
+                f"well below acceptable threshold. Majority of requests are failing."
+            )
+        if "health" in ml:
+            return (
+                f"**SEVERE DEGRADATION** — {entity_name} health at {current_value:.1f}%, "
+                f"significantly below operational threshold. Service is severely impaired."
+            )
+        if "error" in ml or "failure" in ml:
+            rate = current_value if current_value <= 1 else current_value / 100
+            return (
+                f"**SEVERE DEGRADATION** — {entity_name} error rate at {rate*100:.1f}%. "
+                f"Majority of requests failing. Users experiencing widespread failures."
+            )
+        if "latency" in ml or "response_time" in ml:
+            return (
+                f"**SEVERE DEGRADATION** — {entity_name} latency at {current_value:.2f}ms, "
+                f"{abs(dev):.0f}% above baseline of {expected_value:.2f}ms. "
+                f"Service is effectively unusable."
+            )
+        return (
+            f"**SEVERE DEGRADATION** — {entity_name} operating far outside normal parameters. "
+            f"Current: {current_value:.2f}, expected: {expected_value:.2f} (deviation {dev:+.1f}%)."
+        )
+
+    # ── DEGRADED explanations ─────────────────────────────────────
+    if op_state == _OP_STATE_DEGRADED:
+        if "availability" in ml:
+            return (
+                f"**DEGRADED** — {entity_name} availability at {current_value*100:.1f}%, "
+                f"below target. Users are experiencing intermittent failures."
+            )
+        if "health" in ml:
+            return (
+                f"**DEGRADED** — {entity_name} health at {current_value:.1f}%, "
+                f"below operational target. Service reliability is impacted."
+            )
+        if "latency" in ml or "response_time" in ml:
+            return (
+                f"**DEGRADED** — {entity_name} latency at {current_value:.2f}ms, "
+                f"{abs(dev):.0f}% above baseline of {expected_value:.2f}ms. "
+                f"Users are experiencing noticeable delays."
+            )
+        if "error" in ml or "failure" in ml:
+            rate = current_value if current_value <= 1 else current_value / 100
+            return (
+                f"**DEGRADED** — {entity_name} error rate at {rate*100:.1f}%. "
+                f"Significant portion of requests failing."
+            )
+        return (
+            f"**DEGRADED** — {entity_name} operating outside normal parameters. "
+            f"Current: {current_value:.2f}, expected: {expected_value:.2f} (deviation {dev:+.1f}%)."
+        )
+
+    # ── MINOR / NORMAL — return original or enhance ───────────────
+    if original_explanation:
+        # Block forbidden soft phrases for anything above NORMAL
+        if op_state == _OP_STATE_MINOR and _SOFT_PHRASES.search(original_explanation):
+            return (
+                f"{entity_name}: metric deviation detected. "
+                f"Current: {current_value:.2f}, expected: {expected_value:.2f} "
+                f"(deviation {dev:+.1f}%). Monitor for further degradation."
+            )
+        return original_explanation
+
+    return (
+        f"{entity_name}: Current {current_value:.2f}, expected {expected_value:.2f} "
+        f"(deviation {dev:+.1f}%)."
+    )
+
+
 def normalize_anomaly(raw: dict, index: int) -> dict:
     """Normalize any anomaly dict into unified schema + enrichment."""
     metric_name = raw.get("metric_name", "unknown")
@@ -418,7 +643,32 @@ def normalize_anomaly(raw: dict, index: int) -> dict:
     if priority_tag:
         tags.append(f"priority:{priority_tag}")
 
-    analysis = raw.get("baseline_explanation")
+    original_analysis = raw.get("baseline_explanation")
+
+    current_value = float(raw.get("current_value", 0))
+    expected_value = float(raw.get("expected_value", 0))
+    deviation_percent = float(raw.get("deviation_percent", 0))
+
+    # ── Operational severity override ─────────────────────────────
+    # The ML model adapts to sustained failures and may mark DOWN
+    # services as "low".  Hard rules enforce operational truth.
+    op_state, corrected_severity = _classify_operational_state(
+        base_metric, current_value, expected_value,
+        deviation_percent, severity,
+    )
+
+    if SEVERITY_ORDER.get(corrected_severity, 3) < SEVERITY_ORDER.get(severity, 3):
+        logger.info(
+            f"Severity override: {entity_name}/{base_metric} "
+            f"{severity}→{corrected_severity} (op_state={op_state})"
+        )
+        severity = corrected_severity
+
+    analysis = _generate_severity_explanation(
+        op_state, entity_name, base_metric,
+        current_value, expected_value, deviation_percent,
+        original_analysis,
+    )
 
     normalized = {
         "id": anomaly_id,
@@ -428,12 +678,13 @@ def normalize_anomaly(raw: dict, index: int) -> dict:
         "source": source,
         "metric_name": base_metric,
         "severity": severity,
-        "current_value": float(raw.get("current_value", 0)),
-        "expected_value": float(raw.get("expected_value", 0)),
-        "deviation_percent": float(raw.get("deviation_percent", 0)),
+        "current_value": current_value,
+        "expected_value": expected_value,
+        "deviation_percent": deviation_percent,
         "status": raw.get("status", "active"),
         "confidence": raw.get("confidence"),
         "analysis": analysis,
+        "op_state": op_state,
         "tags": tags if tags else None,
         "metadata": raw.get("metadata"),
     }
@@ -483,6 +734,7 @@ def _build_anomaly_groups(normalized_anomalies: list[dict]) -> list[dict]:
             "severity": a["severity"],
             "confidence": a.get("confidence"),
             "analysis": a.get("analysis"),
+            "op_state": a.get("op_state", "NORMAL"),
         }
 
         if fp in groups:
@@ -521,7 +773,7 @@ def _build_anomaly_groups(normalized_anomalies: list[dict]) -> list[dict]:
         g["occurrences"].sort(key=lambda o: o["timestamp"], reverse=True)
         g["status"] = _status_overrides.get(g["fingerprint"], "active")
 
-    # ── Auto-resolution pass ────────────────────────────────────
+    # ÔöÇÔöÇ Auto-resolution pass ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
     # If a group's last_seen is older than AUTO_RESOLVE_WINDOW and its
     # status is eligible, automatically transition it to "resolved".
     now = datetime.utcnow()
@@ -582,13 +834,13 @@ async def get_anomalies(
         normalized = await _fetch_and_normalize(time_range, page_size * 3)
         groups = _build_anomaly_groups(normalized)
 
-        # ── Task 2: strip internal platform telemetry ───────────
+        # ÔöÇÔöÇ Task 2: strip internal platform telemetry ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
         groups = [g for g in groups if _is_customer_facing_group(g)]
 
-        # ── Task 5: existence-based service exclusion ──────────
+        # ÔöÇÔöÇ Task 5: existence-based service exclusion ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
         groups = [g for g in groups if _is_existing_service(g)]
 
-        # ── Task 4: retention policy ────────────────────────────
+        # ÔöÇÔöÇ Task 4: retention policy ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
         groups = _apply_retention_filter(groups)
 
         if entity_type:
@@ -635,6 +887,7 @@ async def get_anomalies(
                 "status": g["status"],
                 "confidence": latest.get("confidence"),
                 "analysis": latest.get("analysis"),
+                "op_state": latest.get("op_state", "NORMAL"),
                 "tags": g.get("tags"),
                 "metadata": g.get("metadata"),
                 "environment": g.get("environment", "unknown"),

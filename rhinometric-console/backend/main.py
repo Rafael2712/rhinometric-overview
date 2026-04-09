@@ -36,6 +36,7 @@ from routers import backups as backups_router
 from routers import admin_purge as admin_purge_router
 from routers import telemetry_ingest as telemetry_ingest_router
 from routers import internal_snapshots_v1 as internal_snapshots_v1_router  # Anomaly Engine V1 signal assembler
+from routers import anomalies_v2_proxy  # Severity-aware V2 anomaly proxy
 
 app = FastAPI(
     title=settings.API_TITLE,
@@ -375,7 +376,8 @@ app.include_router(services_grouped_router.router, prefix=f"{settings.API_PREFIX
 app.include_router(system_router.router, prefix=f"{settings.API_PREFIX}/system", tags=["System"])  # System admin endpoints  # External Services Connector MVP
 app.include_router(backups_router.router, prefix=f"{settings.API_PREFIX}/backups", tags=["Backups"])
 app.include_router(admin_purge_router.router, prefix=f"{settings.API_PREFIX}/admin/purge", tags=["Admin Purge"])  # Task 4: Manual purge
-app.include_router(telemetry_ingest_router.router, prefix=f"{settings.API_PREFIX}/telemetry", tags=["Telemetry Ingestion"])  # Task 10: Collector foundation
+app.include_router(telemetry_ingest_router.router, prefix=f"{settings.API_PREFIX}/telemetry", tags=["Telemetry Ingestion"])
+app.include_router(anomalies_v2_proxy.router, prefix=f"{settings.API_PREFIX}/v2", tags=["Anomalies V2"])  # Severity-aware proxy  # Task 10: Collector foundation
 
 if __name__ == "__main__":
     import uvicorn
