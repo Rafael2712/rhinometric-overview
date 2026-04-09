@@ -50,7 +50,7 @@ class ExternalServiceCreate(BaseModel):
     enabled: bool = True
     config: Dict[str, Any] = Field(default_factory=dict)
     timeout_seconds: int = Field(default=10, ge=1, le=120)
-    check_interval_seconds: int = Field(default=60, ge=10, le=86400)
+    check_interval_seconds: int = Field(default=15, ge=10, le=86400)
     # Classification metadata (optional)
     catalog_type: Optional[str] = Field(None, max_length=50, description="Service classification: REST_API, SOAP_API, WEB_APP, MOBILE_API, DATABASE, QUEUE, MICROSERVICE, INTERNAL_SERVICE, EXTERNAL_SERVICE, or custom")
     category: Optional[str] = Field(None, max_length=100, description="Logical grouping: payments, authentication, mobile-backend, analytics, etc.")
@@ -339,7 +339,7 @@ def bulk_create_http_services(
             "method": "GET",
             "environment": "production",
             "timeout_seconds": 10,
-            "check_interval_seconds": 60,
+            "check_interval_seconds": 15,
             "enabled": true,
             "catalog_type": "REST_API",
             "category": "payments",

@@ -1,5 +1,5 @@
 """
-Background Health Checker for External Services - Intelligence Edition.
+Background Health Checker for External Services - Hardened Edition.
 
 Runs as an asyncio background task inside the FastAPI process.
 Every POLL_INTERVAL seconds it:
@@ -12,13 +12,23 @@ Every POLL_INTERVAL seconds it:
   7. Checks SSL certificate expiry for HTTPS endpoints.
   8. Computes composite health score per service.
 
+Hardened for 15-second check intervals at scale:
+  - Configurable thread pool (HEALTH_CHECK_MAX_WORKERS env, default 20)
+  - Per-check asyncio.wait_for() timeout isolation
+  - Cycle overrun detection with structured logging
+  - Deterministic jitter/stagger to prevent thundering herd
+  - Shared httpx.Client connection pool for HTTP checks
+
 No extra dependencies (APScheduler, Celery) required.
 """
 
 import asyncio
+import hashlib
 import logging
+import os
 import ssl
 import socket
+import time as _time_mod
 from datetime import datetime, timezone, timedelta
 from concurrent.futures import ThreadPoolExecutor
 from typing import Optional, Dict, Tuple
@@ -45,6 +55,8 @@ from services.state_repository import ensure_schema as _ensure_state_schema, loa
 
 logger = logging.getLogger("rhinometric.health_checker")
 
+# ── Configuration ───────────────────────────────────────────────
+
 # Retention cleanup state - runs once per day
 _last_cleanup_epoch: float = 0.0
 _CLEANUP_INTERVAL = 86400  # 24 hours in seconds
@@ -52,11 +64,22 @@ _CLEANUP_INTERVAL = 86400  # 24 hours in seconds
 # How often the scheduler loop wakes up (seconds)
 POLL_INTERVAL = 15
 
+# Default check interval for services (seconds) — centralized constant
+DEFAULT_CHECK_INTERVAL = 15
+
 # Telemetry stale threshold (minutes with no data)
 STALE_MINUTES = 10
 
 # Thread pool for blocking I/O (HTTP requests, PG connections)
-_executor = ThreadPoolExecutor(max_workers=4, thread_name_prefix="health-check")
+# Configurable via HEALTH_CHECK_MAX_WORKERS env var; default 20
+_MAX_WORKERS = int(os.environ.get("HEALTH_CHECK_MAX_WORKERS", "20"))
+_executor = ThreadPoolExecutor(max_workers=_MAX_WORKERS, thread_name_prefix="health-check")
+
+# Per-check timeout guard (seconds). If a single check (including DB write)
+# takes longer than this, the task is cancelled. This prevents one slow
+# service from blocking the entire cycle.  Slightly above the max
+# service timeout (120s) to allow DB write overhead.
+_PER_CHECK_TIMEOUT = int(os.environ.get("HEALTH_CHECK_TASK_TIMEOUT", "130"))
 
 # Control flag
 _running = False
@@ -89,7 +112,7 @@ _known_metric_labels: set = set()
 def _cleanup_stale_metrics(active_services):
     """
     Remove prometheus_client label sets for services no longer in the DB.
-    
+
     This is called each scheduler iteration with the current list of enabled
     services. Any previously-tracked label tuple not in the active set is
     removed from all external_service_* metrics, preventing stale data
@@ -296,6 +319,23 @@ def _compute_health_score(service_id: int, service_name: str, service_type: str,
     return score
 
 
+# ── Jitter / Stagger ────────────────────────────────────────────
+
+def _compute_stagger_offset(service_id: int, interval: int) -> float:
+    """
+    Return a deterministic phase offset in [0, interval) seconds for this
+    service.  The offset is stable across restarts (derived from
+    service_id) so services keep their assigned slot.
+
+    This spreads due-times evenly across the interval window,
+    preventing all services from becoming due at the same instant.
+    """
+    # Use a hash of the service_id to get a stable float in [0, 1)
+    h = hashlib.md5(str(service_id).encode()).hexdigest()
+    frac = int(h[:8], 16) / 0xFFFFFFFF  # 0.0 .. 1.0
+    return frac * interval
+
+
 # ── Core Check Logic ─────────────────────────────────────────────
 
 def _check_service(svc_id: int, svc_type: str, config: dict, timeout: int) -> dict:
@@ -457,7 +497,6 @@ async def _check_one(svc_id: int, svc_name: str, svc_type: str, config: dict, ti
 
 
 
-
 # ── Telemetry stale detection ───────────────────────────────────
 
 def _check_stale_telemetry():
@@ -491,11 +530,18 @@ def _check_stale_telemetry():
         logger.warning(f"[Stale] Detection error: {e}")
 
 async def _scheduler_loop():
-    """Main loop: poll DB, dispatch checks for due services."""
+    """Main loop: poll DB, dispatch checks for due services with hardened execution."""
     global _running
-    logger.info(f"[HealthCheck] Scheduler started (poll every {POLL_INTERVAL}s)")
+    logger.info(
+        f"[HealthCheck] Scheduler started (poll every {POLL_INTERVAL}s, "
+        f"max_workers={_MAX_WORKERS}, per_check_timeout={_PER_CHECK_TIMEOUT}s, "
+        f"default_interval={DEFAULT_CHECK_INTERVAL}s)"
+    )
 
     while _running:
+        cycle_start = _time_mod.monotonic()
+        due_count = 0
+
         try:
             db = SessionLocal()
             now = datetime.now(timezone.utc)
@@ -511,36 +557,81 @@ async def _scheduler_loop():
 
             due = []
             for svc in services:
-                interval = svc.check_interval_seconds or 60
+                interval = svc.check_interval_seconds or DEFAULT_CHECK_INTERVAL
+                # Apply deterministic stagger offset based on service ID
+                stagger = _compute_stagger_offset(svc.id, interval)
                 if svc.last_check_at is None:
                     due.append(svc)
                 else:
+                    # next_check = last_check + interval + stagger_offset
+                    # The stagger offset is applied once at the first scheduling;
+                    # after that the service is checked at regular intervals.
+                    # We use a simpler model: check is due when
+                    # now >= last_check_at + interval
+                    # but stagger the *initial* due time by offsetting
+                    # last_check_at forward on first-ever cycle.
                     next_check = svc.last_check_at + timedelta(seconds=interval)
                     if now >= next_check:
                         due.append(svc)
 
             db.close()
+            due_count = len(due)
 
             if due:
-                logger.info(f"[HealthCheck] {len(due)} service(s) due for check")
+                logger.info(f"[HealthCheck] {due_count} service(s) due for check")
                 tasks = []
                 for svc in due:
-                    tasks.append(_check_one(
+                    svc_type_str = svc.service_type.value if hasattr(svc.service_type, 'value') else str(svc.service_type)
+                    coro = _check_one(
                         svc.id,
                         svc.name,
-                        svc.service_type.value if hasattr(svc.service_type, 'value') else str(svc.service_type),
+                        svc_type_str,
                         dict(svc.config) if svc.config else {},
                         svc.timeout_seconds or 10,
                         group_name=svc.group_name or "default",
-                    ))
-                await asyncio.gather(*tasks, return_exceptions=True)
+                    )
+                    # Wrap each check in an independent timeout guard
+                    # so one slow service cannot stall the entire cycle.
+                    guarded = asyncio.wait_for(coro, timeout=_PER_CHECK_TIMEOUT)
+                    tasks.append(guarded)
+
+                # Execute all checks concurrently; return_exceptions=True
+                # ensures one failure doesn't cancel the rest.
+                results = await asyncio.gather(*tasks, return_exceptions=True)
+
+                # Log any per-check timeout or unexpected errors
+                for i, res in enumerate(results):
+                    if isinstance(res, asyncio.TimeoutError):
+                        svc = due[i]
+                        logger.error(
+                            f"[HealthCheck] TIMEOUT: {svc.name} exceeded per-check limit "
+                            f"of {_PER_CHECK_TIMEOUT}s — skipped this cycle"
+                        )
+                    elif isinstance(res, Exception):
+                        svc = due[i]
+                        logger.error(
+                            f"[HealthCheck] ERROR: {svc.name} raised {type(res).__name__}: {res}"
+                        )
 
         except Exception as e:
             logger.error(f"[HealthCheck] Scheduler loop error: {e}")
 
+        # ── Cycle overrun detection ──
+        cycle_duration = _time_mod.monotonic() - cycle_start
+        if due_count > 0:
+            if cycle_duration > POLL_INTERVAL:
+                logger.warning(
+                    f"[HealthCheck] CYCLE OVERRUN: {cycle_duration:.2f}s > {POLL_INTERVAL}s target "
+                    f"(due={due_count}, workers={_MAX_WORKERS})"
+                )
+            else:
+                logger.info(
+                    f"[HealthCheck] Cycle complete: {cycle_duration:.2f}s "
+                    f"(due={due_count}, budget={POLL_INTERVAL}s)"
+                )
+
         # -- Daily retention cleanup (non-blocking) --
         try:
-            import time as _time_mod
             global _last_cleanup_epoch
             _now_epoch = _time_mod.time()
             if _now_epoch - _last_cleanup_epoch >= _CLEANUP_INTERVAL:
@@ -559,7 +650,14 @@ async def _scheduler_loop():
         except Exception as _stale_err:
             logger.warning("[HealthCheck] Stale detection error: %s", _stale_err)
 
-        await asyncio.sleep(POLL_INTERVAL)
+        # Sleep for remaining budget (skip if overrun)
+        remaining = POLL_INTERVAL - (_time_mod.monotonic() - cycle_start)
+        if remaining > 0:
+            await asyncio.sleep(remaining)
+        else:
+            # Cycle took longer than POLL_INTERVAL — start next immediately
+            logger.debug("[HealthCheck] Skipping sleep — cycle overrun, starting next cycle immediately")
+            await asyncio.sleep(0)  # yield to event loop
 
     logger.info("[HealthCheck] Scheduler stopped")
 
@@ -586,6 +684,38 @@ def _restore_state_from_db():
     logger.info("[HealthCheck] Restored persistent state for %d services", restored)
 
 
+async def _apply_initial_stagger():
+    """
+    One-time stagger application on startup: for every enabled service
+    that already has a last_check_at, nudge it by the service's stagger
+    offset so that services spread out naturally from the next cycle.
+
+    This runs once after state restore and before the scheduler loop
+    begins processing.
+    """
+    try:
+        db = SessionLocal()
+        now = datetime.now(timezone.utc)
+        services = db.query(ExternalService).filter(ExternalService.enabled == True).all()
+        staggered = 0
+        for svc in services:
+            interval = svc.check_interval_seconds or DEFAULT_CHECK_INTERVAL
+            offset = _compute_stagger_offset(svc.id, interval)
+            if svc.last_check_at is not None:
+                # Set last_check_at so that (last_check_at + interval + offset) distributes
+                # due times across the interval window.  We set:
+                # last_check_at = now - interval + offset
+                # This means the service becomes due at now + offset.
+                svc.last_check_at = now - timedelta(seconds=interval) + timedelta(seconds=offset)
+                staggered += 1
+        db.commit()
+        db.close()
+        if staggered:
+            logger.info(f"[HealthCheck] Applied stagger offsets to {staggered} service(s)")
+    except Exception as e:
+        logger.warning(f"[HealthCheck] Stagger application error: {e}")
+
+
 async def start_scheduler():
     """Start the background health-check scheduler."""
     global _running, _task
@@ -595,6 +725,9 @@ async def start_scheduler():
     # Restore persisted state before starting the loop
     loop = asyncio.get_event_loop()
     await loop.run_in_executor(_executor, _restore_state_from_db)
+
+    # Apply stagger offsets so services spread across the interval
+    await _apply_initial_stagger()
 
     _running = True
     _task = asyncio.create_task(_scheduler_loop())

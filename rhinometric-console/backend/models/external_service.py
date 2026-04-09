@@ -73,7 +73,7 @@ class ExternalService(Base):
 
     # Check settings
     timeout_seconds = Column(Integer, default=10, nullable=False)
-    check_interval_seconds = Column(Integer, default=60, nullable=False)
+    check_interval_seconds = Column(Integer, default=15, nullable=False)
 
     # ── Monitoring-mode & telemetry flags ──
     monitoring_mode = Column(

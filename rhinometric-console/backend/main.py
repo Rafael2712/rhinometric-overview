@@ -342,6 +342,8 @@ async def shutdown_event():
     try:
         from services.health_checker import stop_scheduler
         await stop_scheduler()
+        from services.connector_service import shutdown_http_clients
+        shutdown_http_clients()
         logger.info("External services health checker stopped")
     except Exception as e:
         logger.warning(f"Could not stop health checker: {e}")

@@ -44,7 +44,7 @@ VALID_SERVICE_TYPES = {"http", "postgresql"}
 
 # Default values matching the existing create flow
 DEFAULT_TIMEOUT = 10
-DEFAULT_INTERVAL = 60
+DEFAULT_INTERVAL = 15
 
 # ── Field alias mapping ─────────────────────────────────────────
 # All keys are lowercase (applied AFTER lowercasing raw keys).
@@ -650,7 +650,7 @@ def generate_json_template() -> str:
                 "environment": "production",
                 "description": "Payment processing API",
                 "timeout_seconds": 15,
-                "check_interval_seconds": 60,
+                "check_interval_seconds": 15,
                 "enabled": True,
                 "catalog_type": "REST_API",
                 "category": "payments",
@@ -669,7 +669,7 @@ def generate_json_template() -> str:
                 "environment": "production",
                 "description": "Internal user management",
                 "timeout_seconds": 10,
-                "check_interval_seconds": 60,
+                "check_interval_seconds": 15,
                 "enabled": True,
                 "catalog_type": "INTERNAL_SERVICE",
                 "category": "backend",

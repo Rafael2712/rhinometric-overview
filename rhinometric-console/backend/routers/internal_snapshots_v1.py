@@ -356,7 +356,7 @@ def get_signal_snapshots(db: Session = Depends(get_db)):
                 COALESCE(service_type::text, 'http') as service_type,
                 COALESCE(group_name, 'Default') as group_name,
                 COALESCE(environment, 'production') as environment,
-                COALESCE(check_interval_seconds, 60) as check_interval_seconds,
+                COALESCE(check_interval_seconds, 15) as check_interval_seconds,
                 COALESCE(consecutive_failures, 0) as consecutive_failures,
                 COALESCE(last_response_time_ms, 0) as last_response_time_ms,
                 status::text as status
