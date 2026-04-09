@@ -113,9 +113,18 @@ def _apply_retention_and_exclusion(query, db: Session, time_range: str = None):
         )
 
 
-    # ?? Infrastructure alert exclusion: only show external service alerts ??
+    # Infrastructure alert exclusion: only show external-service alerts.
+    # Grafana alert rules use human-readable names like "External Service Down",
+    # "SSL Certificate Critical", etc.  The reliable discriminator is entity_type
+    # which the webhook sets from the Grafana "category" label.
+    _ALLOWED_ENTITY_TYPES = {"external-services"}
+    _ALLOWED_ALERT_PREFIXES = ("External Service", "SSL Certificate")
     query = query.filter(
-        AlertEvent.alert_name.like("external_service_%")
+        or_(
+            AlertEvent.entity_type.in_(list(_ALLOWED_ENTITY_TYPES)),
+            AlertEvent.alert_name.like("External Service%"),
+            AlertEvent.alert_name.like("SSL Certificate%"),
+        )
     )
 
     return query
