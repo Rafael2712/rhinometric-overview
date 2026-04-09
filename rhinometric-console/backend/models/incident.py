@@ -20,7 +20,7 @@ class Incident(Base):
     __tablename__ = "incidents"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    incident_key = Column(String(255), nullable=False, index=True, unique=True)
+    incident_key = Column(String(255), nullable=False, index=True)  # partial unique via ix_incidents_incident_key_active
     entity_name = Column(String(255), nullable=False, index=True)
     entity_type = Column(String(50), nullable=False, default="service")
     severity = Column(String(20), nullable=False, default="warning")

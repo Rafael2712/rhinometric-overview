@@ -332,7 +332,73 @@ function PurgeModal({ module, isOpen, onClose, token }: {
   )
 }
 
-export function IncidentsPage() {
+export 
+/* -- Simple Markdown renderer for AI content -- */
+function SimpleMarkdown({ text, className = '' }: { text: string; className?: string }) {
+  const lines = text.split('\n')
+  const elements: React.ReactNode[] = []
+  let listItems: string[] = []
+  let key = 0
+
+  const flushList = () => {
+    if (listItems.length > 0) {
+      elements.push(
+        <ul key={key++} className="list-disc list-inside space-y-1 my-2 text-gray-300">
+          {listItems.map((item, i) => (
+            <li key={i} className="leading-relaxed">{renderInline(item)}</li>
+          ))}
+        </ul>
+      )
+      listItems = []
+    }
+  }
+
+  const renderInline = (line: string): React.ReactNode => {
+    const parts = line.split(/(\*\*[^*]+\*\*)/)
+    return parts.map((part, i) => {
+      if (part.startsWith('**') && part.endsWith('**')) {
+        return <strong key={i} className="text-gray-100 font-semibold">{part.slice(2, -2)}</strong>
+      }
+      return <span key={i}>{part}</span>
+    })
+  }
+
+  for (const line of lines) {
+    const trimmed = line.trim()
+
+    if (!trimmed) {
+      flushList()
+      continue
+    }
+
+    if (trimmed.startsWith('## ')) {
+      flushList()
+      elements.push(
+        <h3 key={key++} className="text-sm font-bold text-gray-200 mt-4 mb-2 first:mt-0">
+          {renderInline(trimmed.slice(3))}
+        </h3>
+      )
+      continue
+    }
+
+    if (trimmed.startsWith('- ')) {
+      listItems.push(trimmed.slice(2))
+      continue
+    }
+
+    flushList()
+    elements.push(
+      <p key={key++} className="text-sm text-gray-300 leading-relaxed mb-1">
+        {renderInline(trimmed)}
+      </p>
+    )
+  }
+
+  flushList()
+  return <div className={className}>{elements}</div>
+}
+
+function IncidentsPage() {
   const { token } = useAuthStore()
   const isAdmin = useAuthStore((state) => state.isAdmin)
   const queryClient = useQueryClient()
@@ -884,9 +950,7 @@ function IncidentDetailPanel({ detail }: { detail: IncidentDetail }) {
                   {regenerating ? 'Regenerating...' : 'Refresh'}
                 </button>
               </div>
-              <div className="text-sm text-gray-300 leading-relaxed whitespace-pre-wrap">
-                {inc.summary}
-              </div>
+              <SimpleMarkdown text={inc.summary} />
             </div>
           ) : (
             <div className="rounded-lg border border-gray-700/50 bg-gray-800/20 p-4 text-center">
@@ -928,9 +992,7 @@ function IncidentDetailPanel({ detail }: { detail: IncidentDetail }) {
                 <BookOpen size={14} className="text-green-400" />
                 Postmortem
               </h4>
-              <div className="text-sm text-gray-300 leading-relaxed whitespace-pre-wrap">
-                {inc.postmortem}
-              </div>
+              <SimpleMarkdown text={inc.postmortem} />
             </div>
           )}
 
@@ -1201,4 +1263,5 @@ function MobileIncidentCard({
   )
 }
 
+export { IncidentsPage }
 export default IncidentsPage
