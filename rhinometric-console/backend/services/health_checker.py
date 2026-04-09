@@ -75,11 +75,17 @@ STALE_MINUTES = 10
 _MAX_WORKERS = int(os.environ.get("HEALTH_CHECK_MAX_WORKERS", "20"))
 _executor = ThreadPoolExecutor(max_workers=_MAX_WORKERS, thread_name_prefix="health-check")
 
+# Asyncio semaphore gates concurrent check dispatch so tasks only
+# start their timeout countdown after acquiring a worker slot.
+# This prevents queue-induced timeouts when services >> workers.
+_concurrency_gate: Optional[asyncio.Semaphore] = None  # initialized in event loop
+
 # Per-check timeout guard (seconds). If a single check (including DB write)
 # takes longer than this, the task is cancelled. This prevents one slow
-# service from blocking the entire cycle.  Slightly above the max
-# service timeout (120s) to allow DB write overhead.
-_PER_CHECK_TIMEOUT = int(os.environ.get("HEALTH_CHECK_TASK_TIMEOUT", "130"))
+# service from blocking the entire cycle.
+# Set tight (8s) for 300-endpoint scale. Per-service HTTP/PG
+# timeout is capped to (_PER_CHECK_TIMEOUT - 1) so transport times out first.
+_PER_CHECK_TIMEOUT = int(os.environ.get("HEALTH_CHECK_TASK_TIMEOUT", "8"))
 
 # Control flag
 _running = False
@@ -529,9 +535,22 @@ def _check_stale_telemetry():
     except Exception as e:
         logger.warning(f"[Stale] Detection error: {e}")
 
+async def _run_guarded(svc_name: str, coro):
+    """Acquire concurrency slot, then run check with timeout guard.
+
+    The semaphore prevents tasks from starting their timeout countdown
+    while waiting in queue — only tasks with a worker slot begin the clock.
+    This is critical at scale: with 300 services and 20 workers, tasks
+    15-300 would otherwise timeout before even starting.
+    """
+    async with _concurrency_gate:
+        return await asyncio.wait_for(coro, timeout=_PER_CHECK_TIMEOUT)
+
+
 async def _scheduler_loop():
     """Main loop: poll DB, dispatch checks for due services with hardened execution."""
-    global _running
+    global _running, _concurrency_gate
+    _concurrency_gate = asyncio.Semaphore(_MAX_WORKERS)
     logger.info(
         f"[HealthCheck] Scheduler started (poll every {POLL_INTERVAL}s, "
         f"max_workers={_MAX_WORKERS}, per_check_timeout={_PER_CHECK_TIMEOUT}s, "
@@ -587,13 +606,11 @@ async def _scheduler_loop():
                         svc.name,
                         svc_type_str,
                         dict(svc.config) if svc.config else {},
-                        svc.timeout_seconds or 10,
+                        min(svc.timeout_seconds or 10, _PER_CHECK_TIMEOUT - 1),
                         group_name=svc.group_name or "default",
                     )
-                    # Wrap each check in an independent timeout guard
-                    # so one slow service cannot stall the entire cycle.
-                    guarded = asyncio.wait_for(coro, timeout=_PER_CHECK_TIMEOUT)
-                    tasks.append(guarded)
+                    # Semaphore-gated: fair slot acquisition before timeout clock starts.
+                    tasks.append(_run_guarded(svc.name, coro))
 
                 # Execute all checks concurrently; return_exceptions=True
                 # ensures one failure doesn't cancel the rest.
