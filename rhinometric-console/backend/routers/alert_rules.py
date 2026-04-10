@@ -344,6 +344,19 @@ def _fire_rule_alert(db: Session, rule: AlertRule, current_value: float):
     if existing:
         return  # Already firing, skip
 
+    # ── Noise filter: streak, cooldown, dedup ──
+    from services.alert_noise_filter import (
+        should_create_alert, escalate_severity, should_create_incident,
+    )
+    _should_alert, _nf_reason = should_create_alert(entity_name, fingerprint, db)
+    if not _should_alert:
+        logger.info("[NoiseFilter] Rule alert suppressed: %s for %s — %s",
+                     rule.name, entity_name, _nf_reason)
+        return
+
+    # Severity escalation based on failure streak
+    effective_severity = escalate_severity(entity_name, rule.severity)
+
     now = datetime.now(timezone.utc)
     event = AlertEvent(
         id=uuid.uuid4(),
@@ -356,7 +369,7 @@ def _fire_rule_alert(db: Session, rule: AlertRule, current_value: float):
         started_at=now,
         fingerprint=fingerprint,
         labels={"alertname": alert_name, "service_name": entity_name,
-                "severity": rule.severity, "metric_name": rule.metric,
+                "severity": effective_severity, "metric_name": rule.metric,
                 "source": "alert_rule", "rule_id": str(rule.id)},
         annotations={"summary": f"{rule.name}: {rule.metric} {rule.operator} {rule.threshold} (current: {current_value})"},
         summary=f"{rule.name}: {rule.metric} = {current_value} ({rule.operator} {rule.threshold})",
@@ -366,12 +379,16 @@ def _fire_rule_alert(db: Session, rule: AlertRule, current_value: float):
     db.add(event)
     db.flush()
 
-    # Link to incident pipeline
-    try:
-        inc = find_or_create_incident(db, entity_type, entity_name, rule.severity, now)
-        event.incident_id = inc.id
-    except Exception as e:
-        logger.warning(f"Incident linkage for rule alert failed: {e}")
+    # Link to incident pipeline (noise-gated)
+    _should_inc, _inc_reason = should_create_incident(entity_name, effective_severity)
+    if _should_inc:
+        try:
+            inc = find_or_create_incident(db, entity_type, entity_name, effective_severity, now)
+            event.incident_id = inc.id
+        except Exception as e:
+            logger.warning(f"Incident linkage for rule alert failed: {e}")
+    else:
+        logger.info("[NoiseFilter] Incident gated for rule %s: %s", rule.name, _inc_reason)
 
     logger.info(f"Rule alert fired: {rule.name} → {rule.metric}={current_value}")
 

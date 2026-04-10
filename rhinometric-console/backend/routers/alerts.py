@@ -465,6 +465,11 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+from services.alert_noise_filter import (
+    should_create_alert, should_create_incident,
+    escalate_severity, on_recovery, get_filter_stats,
+)
+
 
 @router.post("/webhook")
 async def grafana_webhook(
@@ -560,6 +565,7 @@ async def grafana_webhook(
             pass
 
         if a_status == "resolved":
+            on_recovery(entity_name)  # Noise filter: track recovery
             # Try to update existing firing event
             existing = db.query(AlertEvent).filter(
                 AlertEvent.fingerprint == event_fp,
@@ -593,6 +599,16 @@ async def grafana_webhook(
                 events_stored += 1
                 continue
 
+        # ── Noise filter: suppress transient / duplicate / cooldown alerts ──
+        _should_alert, _nf_reason = should_create_alert(entity_name, event_fp, db)
+        if not _should_alert:
+            logger.info("[NoiseFilter] Alert suppressed: %s — %s", entity_name, _nf_reason)
+            events_stored += 1
+            continue
+
+        # Severity escalation based on failure streak
+        severity = escalate_severity(entity_name, severity)
+
         # Create new event row
         import uuid
         event = AlertEvent(
@@ -615,12 +631,16 @@ async def grafana_webhook(
         db.add(event)
         db.flush()
 
-        # Phase 2.3: Link alert event to incident
-        try:
-            inc = find_or_create_incident(db, entity_type, entity_name, severity, event.started_at)
-            event.incident_id = inc.id
-        except Exception as _inc_err:
-            logger.warning(f"Incident linkage failed: {_inc_err}")
+        # Phase 2.3: Link alert event to incident (noise-gated)
+        _should_inc, _inc_reason = should_create_incident(entity_name, severity)
+        if _should_inc:
+            try:
+                inc = find_or_create_incident(db, entity_type, entity_name, severity, event.started_at)
+                event.incident_id = inc.id
+            except Exception as _inc_err:
+                logger.warning(f"Incident linkage failed: {_inc_err}")
+        else:
+            logger.info("[NoiseFilter] Incident gated: %s — %s", entity_name, _inc_reason)
 
         events_stored += 1
 
@@ -727,3 +747,12 @@ async def get_alert_history(
             for r in records
         ],
     }
+
+# ================================================================
+# GET /api/alerts/noise-filter/stats — Noise filter diagnostics
+# ================================================================
+
+@router.get("/noise-filter/stats")
+async def noise_filter_stats(current_user: UserModel = Depends(get_current_user)):
+    """Get alert noise filter statistics, configuration, and current state."""
+    return get_filter_stats()
