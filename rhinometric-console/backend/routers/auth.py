@@ -26,6 +26,12 @@ import logging
 
 logger = logging.getLogger('rhinometric.auth')
 
+# Phase 1: Keycloak OIDC support
+from core.oidc import (
+    is_keycloak_token, validate_keycloak_token,
+    extract_user_info, map_keycloak_roles, OIDC_ENABLED
+)
+
 router = APIRouter()
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.API_PREFIX}/auth/login", auto_error=False)
 
@@ -91,36 +97,65 @@ async def get_current_user(
 ) -> UserModel:
     """
     Verify JWT token and return current user from database.
-    Validates token, checks user exists and is active.
+    Supports dual-mode: Keycloak RS256 tokens + local HS256 tokens.
     """
-    
+
     if not token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Not authenticated",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
+
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
-    
-    try:
-        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-        username: str = payload.get("sub")
-        if username is None:
+
+    username = None
+    user = None
+
+    # --- Path A: Keycloak RS256 token ---
+    if OIDC_ENABLED and is_keycloak_token(token):
+        try:
+            claims = validate_keycloak_token(token)
+            user_info = extract_user_info(claims)
+            username = user_info.get("username")
+            logger.info(f"[OIDC] Keycloak token validated for user: {username}")
+
+            if not username:
+                raise credentials_exception
+
+            # JIT provision or fetch existing user
+            user = db.query(UserModel).filter(UserModel.username == username).first()
+            if user is None:
+                user = _jit_provision_user(db, user_info)
+                logger.info(f"[OIDC] JIT provisioned user: {username}")
+            else:
+                # Sync roles from Keycloak on each login
+                if user.sso_provider == "keycloak":
+                    _sync_keycloak_roles(db, user, user_info.get("roles", []))
+
+        except JWTError as e:
+            logger.warning(f"[OIDC] Keycloak token validation failed: {str(e)}")
             raise credentials_exception
-    except JWTError:
-        raise credentials_exception
-    
-    # Fetch user from database
-    user = db.query(UserModel).filter(UserModel.username == username).first()
-    
+
+    # --- Path B: Local HS256 token ---
+    else:
+        try:
+            payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+            username = payload.get("sub")
+            if not username:
+                raise credentials_exception
+        except JWTError:
+            raise credentials_exception
+
+        user = db.query(UserModel).filter(UserModel.username == username).first()
+
     if user is None:
         raise credentials_exception
-    
+
     if not user.is_active:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -133,8 +168,73 @@ async def get_current_user(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="User account is disabled"
         )
-    
+
     return user
+
+
+def _jit_provision_user(db: Session, user_info: dict) -> UserModel:
+    """
+    Just-In-Time provision a user from Keycloak claims.
+    Creates a local DB record for a Keycloak-authenticated user.
+    """
+    from models.role import UserRole
+
+    kc_roles = user_info.get("roles", [])
+    local_role_names = map_keycloak_roles(kc_roles)
+
+    user = UserModel(
+        username=user_info["username"],
+        email=user_info.get("email") or f"{user_info['username']}@keycloak.local",
+        full_name=user_info.get("full_name") or user_info["username"],
+        password_hash="KEYCLOAK_SSO_USER",
+        sso_provider="keycloak",
+        sso_subject_id=user_info.get("keycloak_sub"),
+        is_active=True,
+        must_change_password=False,
+    )
+    db.add(user)
+    db.flush()  # Get user.id
+
+    # Assign mapped roles
+    for role_name in local_role_names:
+        role = db.query(RoleModel).filter(RoleModel.name == role_name).first()
+        if role:
+            user_role = UserRole(user_id=user.id, role_id=role.id)
+            db.add(user_role)
+
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+def _sync_keycloak_roles(db: Session, user: UserModel, kc_roles: list):
+    """
+    Sync Keycloak realm roles to local user roles.
+    Only modifies roles for users with sso_provider=keycloak.
+    """
+    from models.role import UserRole
+
+    local_role_names = map_keycloak_roles(kc_roles)
+    current_roles = set(user.get_roles())
+    desired_roles = set(local_role_names)
+
+    if current_roles == desired_roles:
+        return  # No change needed
+
+    # Remove existing roles
+    db.query(UserRole).filter(UserRole.user_id == user.id).delete()
+
+    # Add new roles
+    for role_name in desired_roles:
+        role = db.query(RoleModel).filter(RoleModel.name == role_name).first()
+        if role:
+            user_role = UserRole(user_id=user.id, role_id=role.id)
+            db.add(user_role)
+
+    db.commit()
+    logger.info(f"[OIDC] Synced roles for {user.username}: {current_roles} -> {desired_roles}")
+
+
 
 def require_role(allowed_roles: List[str]):
     """
@@ -590,4 +690,29 @@ async def reset_password(
         pass
 
     return {"message": "Password has been reset successfully. You can now log in with your new password."}
+
+
+# ================================================================
+# OIDC Configuration Endpoint (Phase 1: Keycloak)
+# ================================================================
+
+@router.get("/oidc/config")
+async def get_oidc_config():
+    """
+    Returns OIDC/Keycloak configuration for the frontend.
+    This is a PUBLIC endpoint (no auth required).
+    The frontend uses this to initialize keycloak-js.
+    """
+    from core.oidc import (
+        KEYCLOAK_PUBLIC_URL, KEYCLOAK_REALM,
+        KEYCLOAK_CLIENT_ID, OIDC_ENABLED
+    )
+
+    return {
+        "enabled": OIDC_ENABLED,
+        "keycloak_url": f"{KEYCLOAK_PUBLIC_URL}/auth",
+        "realm": KEYCLOAK_REALM,
+        "client_id": KEYCLOAK_CLIENT_ID,
+    }
+
 

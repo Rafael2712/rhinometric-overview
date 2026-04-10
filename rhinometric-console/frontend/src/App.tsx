@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { useState, useEffect } from 'react'
 import { LoginPage } from './pages/Login'
 import { ChangePasswordPage } from './pages/ChangePassword'
 import { ResetPasswordPage } from './pages/ResetPassword'
@@ -41,12 +42,21 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
 
 function App() {
   const hasHydrated = useHasHydrated()
+  const { initOidc } = useAuthStore()
+  const [oidcReady, setOidcReady] = useState(false)
 
-  // Block all rendering (routes + fetches) until Zustand persist has restored auth state
-  if (!hasHydrated) {
+  // Block all rendering until Zustand persist has restored auth state
+  // and OIDC initialization is complete
+  useEffect(() => {
+    if (hasHydrated && !oidcReady) {
+      initOidc().finally(() => setOidcReady(true))
+    }
+  }, [hasHydrated])
+
+  if (!hasHydrated || !oidcReady) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="animate-pulse text-gray-400 text-sm">Loading sessionâ€¦</div>
+        <div className="animate-pulse text-gray-400 text-sm">Loading session…</div>
       </div>
     )
   }
@@ -80,7 +90,7 @@ function App() {
           <Route path="users" element={<UsersPage />} />
           <Route path="settings" element={<AdminRoute><SettingsPage /></AdminRoute>} />
           <Route path="roadmap" element={<RoadmapPage />} />
-            <Route path="integrations" element={<IntegrationsPage />} />
+          <Route path="integrations" element={<IntegrationsPage />} />
           <Route path="reports" element={<ReportsPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />

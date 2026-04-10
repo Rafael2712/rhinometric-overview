@@ -573,6 +573,12 @@ services:
       RHINO_PUBLIC_CONSOLE_URL: https://console-staging.rhinometric.com
       RHINO_ENV: staging
       FRONTEND_URL: https://console-staging.rhinometric.com
+      # Keycloak OIDC Configuration (Phase 1)
+      OIDC_ENABLED: "true"
+      KEYCLOAK_URL: http://keycloak:8080
+      KEYCLOAK_PUBLIC_URL: http://46.225.231.117:80
+      KEYCLOAK_REALM: rhinometric
+      KEYCLOAK_CLIENT_ID: rhinometric-console
     volumes:
     - ${HOME}/rhinometric_data_v2.5/console-backend/logs:/app/logs
     - ${HOME}/rhinometric_data_v2.5/console-backend/data:/app/data
@@ -718,6 +724,53 @@ services:
     restart: unless-stopped
 
   # ============================================
+
+  # ============================================
+  # KEYCLOAK - OIDC Identity Provider (Phase 1)
+  # ============================================
+  keycloak:
+    image: quay.io/keycloak/keycloak:24.0
+    container_name: rhinometric-keycloak
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
+      KC_DB_USERNAME: rhinometric
+      KC_DB_PASSWORD: ${POSTGRES_PASSWORD:-rhinometric}
+      KC_HOSTNAME: 46.225.231.117
+      KC_HOSTNAME_PORT: "80"
+      KC_HOSTNAME_STRICT: "false"
+      KC_HTTP_ENABLED: "true"
+      KC_HTTP_RELATIVE_PATH: /auth
+      KC_PROXY_HEADERS: xforwarded
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-Rh1n0K3ycl0ak2026!}
+    command:
+      - start-dev
+      - --import-realm
+    volumes:
+      - ./keycloak/import:/opt/keycloak/data/import:ro
+    networks:
+      - rhinometric_network
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/8080; echo -e 'GET /health/ready HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n' >&3; cat <&3 | grep -q '200 OK'"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 120s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    deploy:
+      resources:
+        limits:
+          cpus: '0.8'
+          memory: 1024M
+    restart: unless-stopped
   # NGINX Reverse Proxy (single public entry point)
   # ============================================
   nginx:
