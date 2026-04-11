@@ -16,7 +16,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional, List
 
 from database import get_db
-from routers.auth import get_current_user
+from routers.auth import get_current_user, require_role
 from models.user import User as UserModel
 from models.external_service import ExternalService
 from models.external_service_check import ExternalServiceCheck

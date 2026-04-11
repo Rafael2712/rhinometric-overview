@@ -576,7 +576,7 @@ services:
       # Keycloak OIDC Configuration (Phase 1)
       OIDC_ENABLED: "true"
       KEYCLOAK_URL: http://keycloak:8080
-      KEYCLOAK_PUBLIC_URL: http://46.225.231.117:80
+      KEYCLOAK_PUBLIC_URL: https://console-staging.rhinometric.com
       KEYCLOAK_REALM: rhinometric
       KEYCLOAK_CLIENT_ID: rhinometric-console
     volumes:
@@ -736,8 +736,7 @@ services:
       KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
       KC_DB_USERNAME: rhinometric
       KC_DB_PASSWORD: ${POSTGRES_PASSWORD:-rhinometric}
-      KC_HOSTNAME: 46.225.231.117
-      KC_HOSTNAME_PORT: "80"
+      KC_HOSTNAME: console-staging.rhinometric.com
       KC_HOSTNAME_STRICT: "false"
       KC_HTTP_ENABLED: "true"
       KC_HTTP_RELATIVE_PATH: /auth

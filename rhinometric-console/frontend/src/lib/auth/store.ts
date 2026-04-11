@@ -1,7 +1,6 @@
 /**
  * Auth state management (Zustand).
- * Phase 1: Dual-mode - supports both Keycloak OIDC and legacy local login.
- * After full cutover, legacy login code can be removed.
+ * Keycloak-only mode — all legacy local auth has been removed.
  */
 import { create } from 'zustand'
 import { useState, useEffect } from 'react'
@@ -27,20 +26,18 @@ interface User {
   sso_provider?: string
 }
 
-type AuthMode = 'initializing' | 'oidc' | 'legacy' | 'disabled'
+type AuthMode = 'initializing' | 'oidc'
 
 interface AuthState {
   user: User | null
   token: string | null
   isAuthenticated: boolean
-  mustChangePassword: boolean
   authMode: AuthMode
   oidcConfig: KeycloakConfig | null
 
   // Actions
   initOidc: () => Promise<void>
   loginWithKeycloak: () => void
-  login: (username: string, password: string) => Promise<void>
   logout: () => void
   refreshToken: () => Promise<string | undefined>
   fetchUserProfile: (accessToken: string) => Promise<User>
@@ -49,7 +46,10 @@ interface AuthState {
   hasRole: (role: string) => boolean
   isOwner: () => boolean
   isAdmin: () => boolean
+  isOperator: () => boolean
+  isViewer: () => boolean
   canManageUsers: () => boolean
+  canWrite: () => boolean
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -58,7 +58,6 @@ export const useAuthStore = create<AuthState>()(
       user: null,
       token: null,
       isAuthenticated: false,
-      mustChangePassword: false,
       authMode: 'initializing' as AuthMode,
       oidcConfig: null,
 
@@ -69,15 +68,9 @@ export const useAuthStore = create<AuthState>()(
       initOidc: async () => {
         try {
           const config = await fetchOidcConfig()
-          set({ oidcConfig: config })
-
-          if (!config.enabled) {
-            set({ authMode: 'legacy' })
-            return
-          }
+          set({ oidcConfig: config, authMode: 'oidc' })
 
           const authenticated = await initKeycloak(config)
-          set({ authMode: 'oidc' })
 
           if (authenticated) {
             const kc = getKeycloak()
@@ -88,7 +81,6 @@ export const useAuthStore = create<AuthState>()(
                   user,
                   token: kc.token,
                   isAuthenticated: true,
-                  mustChangePassword: user.must_change_password || false,
                 })
               } catch (err) {
                 console.error('[Auth] Failed to fetch user profile after SSO:', err)
@@ -97,8 +89,8 @@ export const useAuthStore = create<AuthState>()(
             }
           }
         } catch (err) {
-          console.warn('[Auth] OIDC init failed, falling back to legacy:', err)
-          set({ authMode: 'legacy' })
+          console.error('[Auth] OIDC init failed:', err)
+          set({ authMode: 'oidc' })
         }
       },
 
@@ -110,66 +102,26 @@ export const useAuthStore = create<AuthState>()(
       },
 
       /**
-       * Legacy local login (username/password).
-       */
-      login: async (username: string, password: string) => {
-        try {
-          const response = await fetch('/api/auth/login', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/x-www-form-urlencoded',
-            },
-            body: new URLSearchParams({ username, password }),
-          })
-
-          if (!response.ok) {
-            throw new Error('Invalid credentials')
-          }
-
-          const data = await response.json()
-          const user = await get().fetchUserProfile(data.access_token)
-
-          set({
-            user,
-            token: data.access_token,
-            isAuthenticated: true,
-            mustChangePassword: data.must_change_password || false,
-          })
-        } catch {
-          throw new Error('Invalid credentials')
-        }
-      },
-
-      /**
-       * Logout: clear state + Keycloak session if OIDC mode.
+       * Logout: clear state + Keycloak session.
        */
       logout: () => {
-        const { authMode } = get()
         set({
           user: null,
           token: null,
           isAuthenticated: false,
-          mustChangePassword: false,
         })
-
-        if (authMode === 'oidc') {
-          keycloakLogout()
-        }
+        keycloakLogout()
       },
 
       /**
        * Refresh token and return new access token.
        */
       refreshToken: async () => {
-        const { authMode } = get()
-        if (authMode === 'oidc') {
-          const newToken = await getAccessToken()
-          if (newToken) {
-            set({ token: newToken })
-          }
-          return newToken
+        const newToken = await getAccessToken()
+        if (newToken) {
+          set({ token: newToken })
         }
-        return get().token || undefined
+        return newToken
       },
 
       /**
@@ -185,7 +137,7 @@ export const useAuthStore = create<AuthState>()(
         return resp.json()
       },
 
-      // Role helpers (unchanged)
+      // Role helpers
       hasRole: (role: string) => {
         const { user } = get()
         return user?.roles?.includes(role) || false
@@ -200,21 +152,41 @@ export const useAuthStore = create<AuthState>()(
           user?.roles?.includes('ADMIN') || user?.roles?.includes('OWNER') || false
         )
       },
+      isOperator: () => {
+        const { user } = get()
+        return (
+          user?.roles?.includes('OPERATOR') ||
+          user?.roles?.includes('ADMIN') ||
+          user?.roles?.includes('OWNER') ||
+          false
+        )
+      },
+      isViewer: () => {
+        const { user } = get()
+        return user?.roles?.length ? true : false
+      },
       canManageUsers: () => {
         const { user } = get()
         return (
           user?.roles?.includes('OWNER') || user?.roles?.includes('ADMIN') || false
         )
       },
+      canWrite: () => {
+        const { user } = get()
+        return (
+          user?.roles?.includes('OWNER') ||
+          user?.roles?.includes('ADMIN') ||
+          user?.roles?.includes('OPERATOR') ||
+          false
+        )
+      },
     }),
     {
       name: 'rhinometric-auth',
-      // Only persist these fields (not authMode/oidcConfig which are runtime)
       partialize: (state) => ({
         user: state.user,
         token: state.token,
         isAuthenticated: state.isAuthenticated,
-        mustChangePassword: state.mustChangePassword,
       }),
     }
   )

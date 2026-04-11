@@ -32,7 +32,7 @@ from typing import Optional
 import httpx
 import logging
 from config import settings
-from routers.auth import get_current_user
+from routers.auth import get_current_user, require_role
 from models.user import User as UserModel
 from utils.rust_license_validator import (
     validate_license as rust_validate,
@@ -415,7 +415,7 @@ async def _legacy_license_status(hosts_used: int) -> LicenseStatusResponse:
 @router.post("/activate")
 async def activate_license(
     request: LicenseActivationRequest,
-    current_user: UserModel = Depends(get_current_user)
+    current_user: UserModel = Depends(require_role(["OWNER"]))
 ):
     """
     Activate a license key in this Rhinometric instance.

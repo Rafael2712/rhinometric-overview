@@ -17,7 +17,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel, Field
 from typing import List, Optional
 from config import settings
-from routers.auth import get_current_user
+from routers.auth import get_current_user, require_role
 from models.user import User as UserModel
 import httpx
 import json
@@ -173,7 +173,7 @@ async def get_settings(current_user: UserModel = Depends(get_current_user)):
 @router.put("/ai-alerts", response_model=AIAlertsConfig)
 async def update_ai_alerts(
     config: AIAlertsConfig,
-    current_user: UserModel = Depends(get_current_user)
+    current_user: UserModel = Depends(require_role(["OWNER", "ADMIN"]))
 ):
     """Toggle AI alerting on/off with defense in depth."""
     user_roles = current_user.get_roles()
@@ -227,7 +227,7 @@ async def get_notification_channels(current_user: UserModel = Depends(get_curren
 @router.post("/notification-channels")
 async def save_notification_channels(
     config: NotificationChannelsConfig,
-    current_user: UserModel = Depends(get_current_user)
+    current_user: UserModel = Depends(require_role(["OWNER", "ADMIN"]))
 ):
     """
     Save notification channel configuration.
@@ -288,7 +288,7 @@ async def save_notification_channels(
 
 
 @router.post("/notification-channels/test/slack")
-async def test_slack(current_user: UserModel = Depends(get_current_user)):
+async def test_slack(current_user: UserModel = Depends(require_role(["OWNER", "ADMIN"]))):
     """
     Send a test message to Slack using the configured webhook.
     """
@@ -324,7 +324,7 @@ async def test_slack(current_user: UserModel = Depends(get_current_user)):
 
 
 @router.post("/notification-channels/test/email")
-async def test_email(current_user: UserModel = Depends(get_current_user)):
+async def test_email(current_user: UserModel = Depends(require_role(["OWNER", "ADMIN"]))):
     """
     Send a test email using SMTP or Zoho API fallback.
     Uses email_service._send_mime (same path as real emails).
@@ -437,7 +437,6 @@ async def get_email_status(
     Performs TCP pre-check against configured SMTP host/port.
     Returns: {available: bool, reason: str, config_summary: {...}}
     """
-    from routers.auth import require_role
     # Manual role check (OWNER/ADMIN only)
     user_roles = current_user.get_roles()
     if not any(r in user_roles for r in ["OWNER", "ADMIN"]):

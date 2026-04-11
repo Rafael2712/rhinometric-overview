@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from typing import List, Optional, Dict, Any
 from pydantic import BaseModel
 from config import settings
-from routers.auth import get_current_user
+from routers.auth import get_current_user, require_role
 import logging
 import httpx
 

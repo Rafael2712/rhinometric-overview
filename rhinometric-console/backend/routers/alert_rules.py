@@ -10,7 +10,7 @@ from sqlalchemy import text
 import uuid
 
 from database import get_db
-from routers.auth import get_current_user
+from routers.auth import get_current_user, require_role
 from models.user import User as UserModel
 from models.alert_rule import AlertRule
 from models.external_service import ExternalService
@@ -155,7 +155,7 @@ async def list_alert_rules(
 async def create_alert_rule(
     body: AlertRuleCreate,
     db: Session = Depends(get_db),
-    current_user: UserModel = Depends(get_current_user),
+    current_user: UserModel = Depends(require_role(["OWNER", "ADMIN"])),
 ):
     """Create a new alert rule."""
     # Validate service exists
@@ -201,7 +201,7 @@ async def update_alert_rule(
     rule_id: str,
     body: AlertRuleUpdate,
     db: Session = Depends(get_db),
-    current_user: UserModel = Depends(get_current_user),
+    current_user: UserModel = Depends(require_role(["OWNER", "ADMIN"])),
 ):
     """Update an existing alert rule."""
     rule = db.query(AlertRule).filter(AlertRule.id == rule_id).first()
@@ -231,7 +231,7 @@ async def update_alert_rule(
 async def delete_alert_rule(
     rule_id: str,
     db: Session = Depends(get_db),
-    current_user: UserModel = Depends(get_current_user),
+    current_user: UserModel = Depends(require_role(["OWNER", "ADMIN"])),
 ):
     """Delete an alert rule."""
     rule = db.query(AlertRule).filter(AlertRule.id == rule_id).first()

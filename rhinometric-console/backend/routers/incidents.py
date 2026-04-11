@@ -21,7 +21,7 @@ from sqlalchemy import func as sa_func, case, and_, or_
 import re
 
 from database import get_db
-from routers.auth import get_current_user
+from routers.auth import get_current_user, require_role
 from models.user import User as UserModel
 from models.incident import Incident
 from models.alert_event import AlertEvent
@@ -298,7 +298,7 @@ def _serialize_incident(inc: Incident, alert_count: int = 0) -> dict:
 @router.post("")
 async def create_incident(
     body: IncidentCreate,
-    current_user: UserModel = Depends(get_current_user),
+    current_user: UserModel = Depends(require_role(["OWNER", "ADMIN", "OPERATOR"])),
     db: Session = Depends(get_db),
 ):
     """Phase 3: Create an incident from alert/anomaly context.
@@ -548,7 +548,7 @@ async def get_incident(
 async def update_incident_status(
     incident_id: str,
     body: IncidentStatusUpdate,
-    current_user: UserModel = Depends(get_current_user),
+    current_user: UserModel = Depends(require_role(["OWNER", "ADMIN", "OPERATOR"])),
     db: Session = Depends(get_db),
 ):
     """Update incident status. Phase 3: generates postmortem on resolve."""
@@ -696,7 +696,7 @@ async def get_incident_comments(
 async def add_incident_comment(
     incident_id: str,
     body: CommentCreate,
-    current_user: UserModel = Depends(get_current_user),
+    current_user: UserModel = Depends(require_role(["OWNER", "ADMIN", "OPERATOR"])),
     db: Session = Depends(get_db),
 ):
     import uuid as _uuid
@@ -737,7 +737,7 @@ async def add_incident_comment(
 async def update_incident_tags(
     incident_id: str,
     body: TagsUpdate,
-    current_user: UserModel = Depends(get_current_user),
+    current_user: UserModel = Depends(require_role(["OWNER", "ADMIN", "OPERATOR"])),
     db: Session = Depends(get_db),
 ):
     import uuid as _uuid
@@ -793,7 +793,7 @@ async def get_incident_root_cause(
 @router.post("/{incident_id}/regenerate-ai")
 async def regenerate_ai_content(
     incident_id: str,
-    current_user: UserModel = Depends(get_current_user),
+    current_user: UserModel = Depends(require_role(["OWNER", "ADMIN", "OPERATOR"])),
     db: Session = Depends(get_db),
 ):
     """Re-fetch anomaly context and regenerate summary + hints."""

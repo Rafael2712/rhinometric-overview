@@ -20,7 +20,7 @@ from database import get_db
 from models.alert_event import AlertEvent
 from models.incident import Incident
 from models.user import User as UserModel
-from routers.auth import get_current_user
+from routers.auth import get_current_user, require_role
 
 logger = logging.getLogger(__name__)
 
@@ -43,29 +43,12 @@ class PurgeResponse(BaseModel):
 
 # ── Helpers ─────────────────────────────────────────────────────
 
-def _require_admin(user: UserModel):
-    """Raise 403 if the user is not an admin."""
-    is_admin = False
-    if hasattr(user, 'role') and user.role == 'admin':
-        is_admin = True
-    if hasattr(user, 'roles'):
-        roles = user.roles
-        if isinstance(roles, str):
-            is_admin = is_admin or roles == 'admin'
-        elif isinstance(roles, (list, tuple)):
-            is_admin = is_admin or 'admin' in roles
-    if hasattr(user, 'is_admin') and user.is_admin:
-        is_admin = True
-    if not is_admin:
-        raise HTTPException(status_code=403, detail="Admin role required for purge operations")
-
-
 # ── POST /api/admin/purge/alerts ────────────────────────────────
 
 @router.post("/alerts", response_model=PurgeResponse)
 async def purge_alerts(
     body: PurgeRequest,
-    current_user: UserModel = Depends(get_current_user),
+    current_user: UserModel = Depends(require_role(["OWNER"])),
     db: Session = Depends(get_db),
 ):
     """Purge resolved alert events older than N days.
@@ -74,8 +57,6 @@ async def purge_alerts(
     - Firing/acknowledged alerts are NEVER deleted.
     - Requires admin role + confirm=true.
     """
-    _require_admin(current_user)
-
     if not body.confirm:
         raise HTTPException(
             status_code=400,
@@ -105,7 +86,7 @@ async def purge_alerts(
 @router.post("/incidents", response_model=PurgeResponse)
 async def purge_incidents(
     body: PurgeRequest,
-    current_user: UserModel = Depends(get_current_user),
+    current_user: UserModel = Depends(require_role(["OWNER"])),
     db: Session = Depends(get_db),
 ):
     """Purge resolved incidents older than N days.
@@ -115,8 +96,6 @@ async def purge_incidents(
     - Related timeline events and comments are cascaded by FK.
     - Requires admin role + confirm=true.
     """
-    _require_admin(current_user)
-
     if not body.confirm:
         raise HTTPException(
             status_code=400,
@@ -163,7 +142,7 @@ async def purge_incidents(
 @router.post("/anomalies", response_model=PurgeResponse)
 async def purge_anomalies(
     body: PurgeRequest,
-    current_user: UserModel = Depends(get_current_user),
+    current_user: UserModel = Depends(require_role(["OWNER"])),
 ):
     """Purge anomaly status overrides (in-memory lifecycle data).
 
@@ -174,8 +153,6 @@ async def purge_anomalies(
     - Active/acknowledged statuses are NOT cleared.
     - Requires admin role + confirm=true.
     """
-    _require_admin(current_user)
-
     if not body.confirm:
         raise HTTPException(
             status_code=400,

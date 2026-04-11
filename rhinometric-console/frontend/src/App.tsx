@@ -1,8 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import { LoginPage } from './pages/Login'
-import { ChangePasswordPage } from './pages/ChangePassword'
-import { ResetPasswordPage } from './pages/ResetPassword'
 import { Layout } from './components/Layout'
 import { HomePage } from './pages/Home'
 import { DashboardsPage } from './pages/Dashboards'
@@ -40,13 +38,12 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
   return isAdmin() ? <>{children}</> : <Navigate to="/" replace />
 }
 
+
 function App() {
   const hasHydrated = useHasHydrated()
   const { initOidc } = useAuthStore()
   const [oidcReady, setOidcReady] = useState(false)
 
-  // Block all rendering until Zustand persist has restored auth state
-  // and OIDC initialization is complete
   useEffect(() => {
     if (hasHydrated && !oidcReady) {
       initOidc().finally(() => setOidcReady(true))
@@ -65,8 +62,6 @@ function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/reset-password" element={<ResetPasswordPage />} />
-        <Route path="/change-password" element={<ProtectedRoute><ChangePasswordPage /></ProtectedRoute>} />
         <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
           <Route index element={<HomePage />} />
           <Route path="dashboards" element={<DashboardsPage />} />
@@ -86,8 +81,8 @@ function App() {
           <Route path="trace-analytics" element={<TraceAnalyticsPage />} />
           <Route path="ai-anomalies-v2" element={<AiAnomaliesV2Page />} />
           <Route path="license" element={<LicensePage />} />
-          <Route path="backup-recovery" element={<BackupRecoveryPage />} />
-          <Route path="users" element={<UsersPage />} />
+          <Route path="backup-recovery" element={<AdminRoute><BackupRecoveryPage /></AdminRoute>} />
+          <Route path="users" element={<AdminRoute><UsersPage /></AdminRoute>} />
           <Route path="settings" element={<AdminRoute><SettingsPage /></AdminRoute>} />
           <Route path="roadmap" element={<RoadmapPage />} />
           <Route path="integrations" element={<IntegrationsPage />} />

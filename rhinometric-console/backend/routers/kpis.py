@@ -4,7 +4,7 @@ from typing import List
 import httpx
 from datetime import datetime, timedelta
 from config import settings
-from routers.auth import get_current_user
+from routers.auth import get_current_user, require_role
 from models.user import User as UserModel
 from database import SessionLocal
 from models.external_service import ExternalService
