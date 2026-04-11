@@ -14,7 +14,7 @@ const navigation = [
   { name: 'Alert History', href: '/alert-history', icon: ClipboardList },
   { name: 'Incidents', href: '/incidents', icon: Flame },
   { name: 'SLO / SLA', href: '/slo', icon: Target },
-  { name: 'Alert Rules', href: '/alert-rules', icon: Shield },
+  { name: 'Alert Policies', href: '/alert-rules', icon: Shield },
   { name: 'Logs', href: '/logs', icon: FileText },
   { name: 'Traces', href: '/traces', icon: Network },
   { name: 'Trace Analytics', href: '/trace-analytics', icon: BarChart3 },
