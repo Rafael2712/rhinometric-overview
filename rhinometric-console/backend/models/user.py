@@ -163,15 +163,16 @@ class User(Base):
     
     def has_permission(self, resource: str, action: str, db_session) -> bool:
         """
-        Check if user has a specific permission
-        Uses database function user_has_permission()
+        Check if user has a specific permission via ORM.
+        Walks user -> roles -> role_permissions -> permission to find a match.
         """
-        from sqlalchemy import text
-        result = db_session.execute(
-            text("SELECT user_has_permission(:user_id, :resource, :action)"),
-            {"user_id": self.id, "resource": resource, "action": action}
-        )
-        return result.scalar()
+        for user_role in self.roles:
+            role = user_role.role
+            for role_perm in role.permissions:
+                perm = role_perm.permission
+                if perm.resource == resource and perm.action == action:
+                    return True
+        return False
     
     def can_create(self, resource: str, db_session) -> bool:
         """Check if user can create resource"""
