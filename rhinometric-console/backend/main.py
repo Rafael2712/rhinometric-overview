@@ -1,3 +1,4 @@
+import os
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from config import settings
@@ -38,10 +39,15 @@ from routers import telemetry_ingest as telemetry_ingest_router
 from routers import internal_snapshots_v1 as internal_snapshots_v1_router  # Anomaly Engine V1 signal assembler
 from routers import anomalies_v2_proxy  # Severity-aware V2 anomaly proxy
 
+# Disable Swagger/OpenAPI docs in production
+_is_production = os.environ.get("RHINO_ENV", "").lower() in ("production", "staging")
 app = FastAPI(
     title=settings.API_TITLE,
     version=settings.API_VERSION,
-    description="API Gateway for Rhinometric Console - Enterprise Observability Platform"
+    description="API Gateway for Rhinometric Console - Enterprise Observability Platform",
+    docs_url=None if _is_production else "/docs",
+    redoc_url=None if _is_production else "/redoc",
+    openapi_url=None if _is_production else "/openapi.json",
 )
 
 # ============================================================================
@@ -233,8 +239,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "Accept", "X-Requested-With"],
 )
 
 # ============================================================================
@@ -310,26 +316,13 @@ async def logging_correlation_middleware(request: Request, call_next):
 
 @app.get("/")
 async def root():
-    """Health check endpoint"""
-    return {
-        "service": "Rhinometric Console API Gateway",
-        "version": settings.API_VERSION,
-        "status": "operational"
-    }
+    """Root endpoint"""
+    return {"status": "operational"}
 
 @app.get("/health")
 async def health():
-    """Detailed health check with DB pool metrics"""
-    update_db_pool_metrics(engine)  # Update metrics on health check
-    return {
-        "status": "healthy",
-        "services": {
-            "prometheus": settings.PROMETHEUS_URL,
-            "anomaly_engine_v1": "http://rhinometric-anomaly-engine-v1:8091",
-            "license_validator": settings.LICENSE_VALIDATOR_URL,
-            "alertmanager": settings.ALERTMANAGER_URL
-        }
-    }
+    """Health check — no internal details exposed"""
+    return {"status": "healthy"}
 
 @app.get("/metrics")
 async def metrics(request: Request):

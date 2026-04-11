@@ -27,7 +27,9 @@ import re
 from typing import Optional
 
 import httpx
-from fastapi import APIRouter, Request, Response
+from fastapi import APIRouter, Request, Response, Depends
+from routers.auth import get_current_user
+from models.user import User as UserModel
 
 logger = logging.getLogger("anomalies_v2_proxy")
 
@@ -268,7 +270,7 @@ def _enrich_response(data: dict) -> dict:
 
 @router.api_route("/anomalies", methods=["GET"])
 @router.api_route("/anomalies/{path:path}", methods=["GET"])
-async def proxy_anomalies(request: Request, path: str = ""):
+async def proxy_anomalies(request: Request, path: str = "", current_user: UserModel = Depends(get_current_user)):
     """Proxy GET /api/v2/anomalies to the Go engine with severity enrichment."""
     target_path = f"/api/v2/anomalies"
     if path:
@@ -328,7 +330,7 @@ async def proxy_anomalies(request: Request, path: str = ""):
 
 
 @router.api_route("/anomalies/{path:path}", methods=["POST", "PUT", "PATCH", "DELETE"])
-async def proxy_anomalies_write(request: Request, path: str = ""):
+async def proxy_anomalies_write(request: Request, path: str = "", current_user: UserModel = Depends(get_current_user)):
     """Proxy write operations to the Go engine without enrichment."""
     target_path = f"/api/v2/anomalies"
     if path:

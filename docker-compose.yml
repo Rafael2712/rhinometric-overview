@@ -541,7 +541,7 @@ services:
       SECRET_KEY: k3y_f1x3d_rh1n0m3tr1c_s3cur3_2026
       ALGORITHM: HS256
       ACCESS_TOKEN_EXPIRE_MINUTES: '1440'
-      CORS_ORIGINS: '["http://localhost:3002","http://rhinometric-console-frontend:3002","http://46.225.231.117","http://46.225.231.117:80","http://console.rhinometric.com","https://console.rhinometric.com","http://console-staging.rhinometric.com","https://console-staging.rhinometric.com"]'
+      CORS_ORIGINS: '["https://console-staging.rhinometric.com","https://console.rhinometric.com","http://rhinometric-console-frontend:3002"]'
       PROMETHEUS_URL: http://prometheus:9090
       AI_ANOMALY_URL: http://rhinometric-ai-anomaly:8085
       LICENSE_VALIDATOR_URL: http://license-server-v2:5000
@@ -554,8 +554,6 @@ services:
       JAEGER_URL: http://jaeger:16686
       DATABASE_URL: postgresql://rhinometric:${POSTGRES_PASSWORD}@postgres:5432/rhinometric
       RHINOMETRIC_BACKUP_DIR: /app/backups
-      ADMIN_USERNAME: admin
-      ADMIN_PASSWORD: admin
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
       OTEL_SERVICE_NAME: rhinometric-console-backend
       OTEL_TRACES_EXPORTER: otlp
@@ -744,7 +742,7 @@ services:
       KEYCLOAK_ADMIN: admin
       KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-Rh1n0K3ycl0ak2026!}
     command:
-      - start-dev
+      - start
       - --import-realm
     volumes:
       - ./keycloak/import:/opt/keycloak/data/import:ro
