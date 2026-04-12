@@ -1,4 +1,4 @@
-import { Server, Bell, XCircle, BarChart3, Clock, ShieldAlert } from 'lucide-react'
+import { Server, Bell, XCircle, BarChart3, ShieldAlert, Target } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useAuthStore } from '../lib/auth/store'
@@ -22,6 +22,17 @@ interface ExternalService {
   status: string; status_message: string; last_check_at: string | null
   last_response_time_ms: number | null; enabled: boolean
 }
+interface SLOSummary {
+  availability_pct: number | null
+  latency_p95_ms: number | null
+  health_score_avg: number | null
+  error_budget_availability: number | null
+  overall_status: string
+  services_healthy: number
+  services_at_risk: number
+  services_breached: number
+  total_services: number
+}
 
 // Human-readable labels for catalog_type classification
 const TYPE_LABELS: Record<string, string> = {
@@ -39,20 +50,6 @@ const TYPE_LABELS: Record<string, string> = {
   OTHER: 'Other',
   UNKNOWN: 'Unknown',
 }
-
-/* Reserved for upcoming feature
-function mapSummaryStatus(s: string): 'success' | 'warning' | 'error' {
-  if (s === 'OPERATIONAL') return 'success'
-  if (s === 'CRITICAL') return 'error'
-  return 'warning'
-}
-function mapSummaryLabel(s: string): string {
-  if (s === 'OPERATIONAL') return 'Operational'
-  if (s === 'DEGRADED') return 'Degraded'
-  if (s === 'CRITICAL') return 'Critical'
-  return s
-}
-*/
 
 export function HomePage() {
   const navigate = useNavigate()
@@ -100,8 +97,20 @@ export function HomePage() {
     refetchInterval: 10000,
   })
 
+  // === DATA: SLO Summary ===
+  const { data: sloSummary } = useQuery<SLOSummary>({
+    queryKey: ['slo-summary-home', token],
+    queryFn: async () => {
+      if (!token) throw new Error('No token')
+      const r = await fetch('/api/slo/summary?time_range=24h', { headers: { Authorization: `Bearer ${token}` } })
+      if (!r.ok) throw new Error('Failed')
+      return r.json()
+    },
+    enabled: !!token,
+    refetchInterval: 30000,
+  })
+
   const ext = summaryData?.monitored_services ?? null
-  // const pla = summaryData?.platform_components ?? null  // Reserved for upcoming feature
 
   // Sparkline for monitored services
   useEffect(() => {
@@ -119,12 +128,17 @@ export function HomePage() {
       catalogTypes[ct] = (catalogTypes[ct] || 0) + 1
     }
   }
-  const uptimePct = ext && ext.total > 0 ? Math.round((ext.healthy / ext.total) * 100) : null
 
   // === GLOBAL SEVERITY STATE ===
   const alertsCount = parseInt(kpisData?.alerts_24h?.value ?? '0', 10) || 0
   const globalStatus: 'CRITICAL' | 'WARNING' | 'HEALTHY' =
     downServices.length > 0 ? 'CRITICAL' : alertsCount > 0 ? 'WARNING' : 'HEALTHY'
+
+  // === SLO status helpers ===
+  const sloStatus = sloSummary?.overall_status || 'no_data'
+  const sloColor = sloStatus === 'healthy' ? 'text-green-400' : sloStatus === 'at_risk' ? 'text-yellow-400' : sloStatus === 'breached' ? 'text-red-400' : 'text-gray-500'
+  const sloBadgeColor = sloStatus === 'healthy' ? 'bg-success/10 text-success' : sloStatus === 'at_risk' ? 'bg-warning/10 text-warning' : sloStatus === 'breached' ? 'bg-red-500/10 text-red-400' : 'bg-gray-700/30 text-gray-500'
+  const sloLabel = sloStatus === 'healthy' ? 'Meeting SLO' : sloStatus === 'at_risk' ? 'At Risk' : sloStatus === 'breached' ? 'Breached' : 'No Data'
 
   // ========== RENDER ==========
   return (
@@ -286,23 +300,51 @@ export function HomePage() {
           )}
         </div>
 
-        {/* CARD 8: Uptime Snapshot */}
-        <div className="card p-4 sm:p-5">
+        {/* CARD 8: SLO Status (replaces Uptime Snapshot) */}
+        <div
+          className="card cursor-pointer transition-all duration-200 hover:border-primary/50 hover:shadow-lg hover:shadow-primary/20 p-4 sm:p-5"
+          onClick={() => navigate('/slo')}
+        >
           <div className="flex items-start justify-between mb-3">
-            <div className="p-2 bg-primary/10 rounded-lg">
-              <Clock className="w-5 h-5 text-primary" />
+            <div className={`p-2 rounded-lg ${sloStatus === 'breached' ? 'bg-red-500/20' : sloStatus === 'at_risk' ? 'bg-yellow-500/20' : 'bg-primary/10'}`}>
+              <Target className={`w-5 h-5 ${sloStatus === 'breached' ? 'text-red-400' : sloStatus === 'at_risk' ? 'text-yellow-400' : 'text-primary'}`} />
             </div>
-            <span className={`text-xs px-2 py-1 rounded-full ${uptimePct !== null && uptimePct >= 95 ? 'bg-success/10 text-success' : uptimePct !== null && uptimePct >= 80 ? 'bg-warning/10 text-warning' : uptimePct !== null ? 'bg-red-500/10 text-red-400' : 'bg-success/10 text-success'}`}>
-              {uptimePct !== null && uptimePct >= 95 ? 'Good' : uptimePct !== null && uptimePct >= 80 ? 'Fair' : uptimePct !== null ? 'Poor' : '...'}
+            <span className={`text-xs px-2 py-1 rounded-full font-semibold ${sloBadgeColor}`}>
+              {sloLabel}
             </span>
           </div>
-          <p className="text-text-muted text-sm mb-1">Uptime Snapshot</p>
-          <p className="text-2xl font-bold text-white mb-2">
-            {uptimePct !== null ? `${uptimePct}%` : '...'}
-          </p>
-          <p className="text-xs text-text-muted">
-            {ext ? `Based on ${ext.healthy}/${ext.total} services currently up` : ''}
-          </p>
+          <p className="text-text-muted text-sm mb-1">SLO Status</p>
+          {sloSummary && sloSummary.availability_pct !== null ? (
+            <>
+              <p className={`text-2xl font-bold mb-2 ${sloColor}`}>
+                {sloSummary.availability_pct}%
+              </p>
+              <div className="space-y-1">
+                {sloSummary.error_budget_availability !== null && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] text-text-muted w-16">Budget</span>
+                    <div className="flex-1 h-1.5 bg-gray-700 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full ${sloSummary.error_budget_availability >= 50 ? 'bg-green-500' : sloSummary.error_budget_availability >= 20 ? 'bg-yellow-500' : 'bg-red-500'}`}
+                        style={{ width: `${Math.min(sloSummary.error_budget_availability, 100)}%` }}
+                      />
+                    </div>
+                    <span className="text-[10px] text-gray-400 w-8 text-right">{sloSummary.error_budget_availability.toFixed(0)}%</span>
+                  </div>
+                )}
+                <p className="text-[10px] text-text-muted">
+                  {sloSummary.services_healthy} healthy
+                  {sloSummary.services_at_risk > 0 && <> · {sloSummary.services_at_risk} at risk</>}
+                  {sloSummary.services_breached > 0 && <> · <span className="text-red-400">{sloSummary.services_breached} breached</span></>}
+                </p>
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="text-2xl font-bold text-gray-500 mb-2">—</p>
+              <p className="text-xs text-text-muted">Add services to start tracking SLOs</p>
+            </>
+          )}
         </div>
 
       </div>

@@ -13,7 +13,7 @@ const navigation = [
   { name: 'Alerts', href: '/alerts', icon: Bell },
   { name: 'Alert History', href: '/alert-history', icon: ClipboardList },
   { name: 'Incidents', href: '/incidents', icon: Flame },
-  { name: 'SLO / SLA', href: '/slo', icon: Target },
+  { name: 'Service Levels', href: '/slo', icon: Target },
   { name: 'Alert Policies', href: '/alert-rules', icon: Shield },
   { name: 'Logs', href: '/logs', icon: FileText },
   { name: 'Traces', href: '/traces', icon: Network },
