@@ -130,9 +130,9 @@ export function HomePage() {
   }
 
   // === GLOBAL SEVERITY STATE ===
-  const alertsCount = parseInt(kpisData?.alerts_24h?.value ?? '0', 10) || 0
+  const degradedCount = ext?.degraded ?? 0
   const globalStatus: 'CRITICAL' | 'WARNING' | 'HEALTHY' =
-    downServices.length > 0 ? 'CRITICAL' : alertsCount > 0 ? 'WARNING' : 'HEALTHY'
+    downServices.length > 0 ? 'CRITICAL' : degradedCount > 0 ? 'WARNING' : 'HEALTHY'
 
   // === SLO status helpers ===
   const sloStatus = sloSummary?.overall_status || 'no_data'
@@ -148,7 +148,7 @@ export function HomePage() {
         <h1 className="text-2xl sm:text-3xl font-bold text-white mb-1 sm:mb-2">Welcome to Rhinometric</h1>
         <p className="text-text-muted text-sm sm:text-base">AI-Powered Observability & Anomaly Detection Platform</p>
         {!token && <p className="text-warning text-sm mt-2">{'\u26a0\ufe0f'} No authentication token</p>}
-        {error && <p className="text-error text-sm mt-2">{'\u274c'} Error: {(error as Error).message}</p>}
+        {error && <p className="text-yellow-500/80 text-sm mt-2">Dashboard data temporarily unavailable. Retrying automatically...</p>}
       </div>
 
       {/* ===== CRITICAL BANNER ===== */}

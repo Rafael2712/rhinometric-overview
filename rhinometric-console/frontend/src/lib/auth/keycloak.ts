@@ -8,6 +8,18 @@ import Keycloak from 'keycloak-js'
 let _keycloak: Keycloak | null = null
 let _initPromise: Promise<boolean> | null = null
 
+// Token refresh callback - allows auth store to sync refreshed tokens
+type TokenRefreshCb = (token: string) => void
+let _onTokenRefreshed: TokenRefreshCb | null = null
+
+/**
+ * Register a callback invoked whenever the Keycloak adapter refreshes the token.
+ * Used by the auth store to keep its copy of the token in sync.
+ */
+export function onTokenRefreshed(cb: TokenRefreshCb): void {
+  _onTokenRefreshed = cb
+}
+
 export interface KeycloakConfig {
   enabled: boolean
   keycloak_url: string
@@ -114,6 +126,13 @@ function _setupTokenRefresh(): void {
       }
     }
   }, 60000)
+
+  // Sync refreshed token to auth store on auto-refresh
+  _keycloak.onAuthRefreshSuccess = () => {
+    if (_keycloak?.token && _onTokenRefreshed) {
+      _onTokenRefreshed(_keycloak.token)
+    }
+  }
 
   // Handle token expiry events
   _keycloak.onTokenExpired = () => {

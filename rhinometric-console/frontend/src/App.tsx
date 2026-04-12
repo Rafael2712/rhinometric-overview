@@ -11,20 +11,20 @@ import { AlertHistoryPage } from './pages/AlertHistory'
 import { IncidentsPage } from './pages/Incidents'
 import { SLOPage } from './pages/SLO'
 import { AlertRulesPage } from './pages/AlertRules'
-import { LogsPage } from './pages/Logs'
-import { TracesPage } from './pages/Traces'
-import { TraceDetailPage } from './pages/TraceDetail'
+// [synthetic-edition] import { LogsPage } from './pages/Logs'
+// [synthetic-edition] import { TracesPage } from './pages/Traces'
+// [synthetic-edition] import { TraceDetailPage } from './pages/TraceDetail'
 import { LicensePage } from './pages/License'
 import { SettingsPage } from './pages/Settings'
 import { IntegrationsPage } from './pages/Integrations'
 import { ReportsPage } from './pages/Reports'
 import { UsersPage } from './pages/Users'
 import ServicesPage from './pages/Services'
-import { ServiceMapPage } from './pages/ServiceMap'
+// [synthetic-edition] import { ServiceMapPage } from './pages/ServiceMap'
 import { SystemHealthPage } from './pages/SystemHealth'
 import { RoadmapPage } from './pages/Roadmap'
 import { BackupRecoveryPage } from './pages/BackupRecovery'
-import { TraceAnalyticsPage } from './pages/TraceAnalytics'
+// [synthetic-edition] import { TraceAnalyticsPage } from './pages/TraceAnalytics'
 import { AiAnomaliesV2Page } from './pages/AiAnomaliesV2'
 import { useAuthStore, useHasHydrated } from './lib/auth/store'
 
@@ -67,7 +67,7 @@ function App() {
           <Route path="dashboards" element={<DashboardsPage />} />
           <Route path="dashboards/:uid/view" element={<DashboardViewer />} />
           <Route path="services" element={<ServicesPage />} />
-          <Route path="service-map" element={<ServiceMapPage />} />
+          <Route path="service-map" element={<Navigate to="/" replace />} />
           <Route path="system-health" element={<SystemHealthPage />} />
           <Route path="correlations/:id" element={<CorrelationView />} />
           <Route path="alerts" element={<AlertsPage />} />
@@ -75,10 +75,10 @@ function App() {
           <Route path="incidents" element={<IncidentsPage />} />
           <Route path="slo" element={<SLOPage />} />
           <Route path="alert-rules" element={<AlertRulesPage />} />
-          <Route path="logs" element={<LogsPage />} />
-          <Route path="traces" element={<TracesPage />} />
-          <Route path="traces/:traceId" element={<TraceDetailPage />} />
-          <Route path="trace-analytics" element={<TraceAnalyticsPage />} />
+          <Route path="logs" element={<Navigate to="/" replace />} />
+          <Route path="traces" element={<Navigate to="/" replace />} />
+          <Route path="traces/:traceId" element={<Navigate to="/" replace />} />
+          <Route path="trace-analytics" element={<Navigate to="/" replace />} />
           <Route path="ai-anomalies-v2" element={<AiAnomaliesV2Page />} />
           <Route path="license" element={<LicensePage />} />
           <Route path="backup-recovery" element={<AdminRoute><BackupRecoveryPage /></AdminRoute>} />

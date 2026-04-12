@@ -1,13 +1,13 @@
 import { useState } from 'react'
 import { Link, useLocation, Outlet } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Home, LayoutDashboard, AlertTriangle, Bell, FileText, Network, CreditCard, Settings, LogOut, Menu, X, Users, Map, Globe, ClipboardList, Flame, Target, Shield, Share2, HardDrive, BarChart3 } from 'lucide-react'
+import { Home, LayoutDashboard, AlertTriangle, Bell, CreditCard, Settings, LogOut, Menu, X, Users, Map, Globe, ClipboardList, Flame, Target, Shield, HardDrive } from 'lucide-react'
 import { useAuthStore } from '../lib/auth/store'
 
 const navigation = [
   { name: 'Home', href: '/', icon: Home },
   { name: 'Services', href: '/services', icon: Globe },
-  { name: 'Service Map', href: '/service-map', icon: Share2 },
+  // [synthetic-edition] { name: 'Service Map', href: '/service-map', icon: Share2 },
   { name: 'Dashboards', href: '/dashboards', icon: LayoutDashboard },
   { name: 'AI Anomalies', href: '/ai-anomalies-v2', icon: AlertTriangle },
   { name: 'Alerts', href: '/alerts', icon: Bell },
@@ -15,9 +15,9 @@ const navigation = [
   { name: 'Incidents', href: '/incidents', icon: Flame },
   { name: 'Service Levels', href: '/slo', icon: Target },
   { name: 'Alert Policies', href: '/alert-rules', icon: Shield },
-  { name: 'Logs', href: '/logs', icon: FileText },
-  { name: 'Traces', href: '/traces', icon: Network },
-  { name: 'Trace Analytics', href: '/trace-analytics', icon: BarChart3 },
+  // [synthetic-edition] { name: 'Logs', href: '/logs', icon: FileText },
+  // [synthetic-edition] { name: 'Traces', href: '/traces', icon: Network },
+  // [synthetic-edition] { name: 'Trace Analytics', href: '/trace-analytics', icon: BarChart3 },
   { name: 'License', href: '/license', icon: CreditCard },
   { name: 'Backup & Recovery', href: '/backup-recovery', icon: HardDrive },
   { name: 'Users', href: '/users', icon: Users, requiresAdmin: true },
@@ -44,27 +44,24 @@ export function Layout() {
     queryFn: async () => {
       if (!token) throw new Error('No token')
       const r = await fetch('/api/services/summary', { headers: { Authorization: `Bearer ${token}` } })
-      if (!r.ok) throw new Error('Failed')
+      if (r.status === 401) {
+        const nt = await useAuthStore.getState().refreshToken()
+        if (nt) {
+          const r2 = await fetch('/api/services/summary', { headers: { Authorization: `Bearer ${nt}` } })
+          if (r2.ok) return r2.json()
+        }
+      }
+      if (!r.ok) return null
       return r.json()
     },
     enabled: !!token,
     refetchInterval: 5000,
   })
-  const { data: _kpisData } = useQuery({
-    queryKey: ['kpis', token],
-    queryFn: async () => {
-      if (!token) throw new Error('No token')
-      const r = await fetch('/api/kpis', { headers: { Authorization: `Bearer ${token}` } })
-      if (!r.ok) throw new Error('Failed')
-      return r.json()
-    },
-    enabled: !!token,
-    refetchInterval: 5000,
-  })
+  // Global status: derived from actual service health, not AI anomaly alert counts
   const _downCount = _summaryData?.monitored_services?.down ?? 0
-  const _alertCount = parseInt(_kpisData?.alerts_24h?.value ?? '0', 10) || 0
+  const _degradedCount = _summaryData?.monitored_services?.degraded ?? 0
   const _globalStatus: 'CRITICAL' | 'WARNING' | 'HEALTHY' =
-    _downCount > 0 ? 'CRITICAL' : _alertCount > 0 ? 'WARNING' : 'HEALTHY'
+    _downCount > 0 ? 'CRITICAL' : _degradedCount > 0 ? 'WARNING' : 'HEALTHY'
 
   return (
     <div className="min-h-screen flex bg-background">

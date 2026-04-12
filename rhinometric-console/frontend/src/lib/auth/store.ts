@@ -13,6 +13,7 @@ import {
   getAccessToken,
   getKeycloak,
   type KeycloakConfig,
+  onTokenRefreshed,
 } from './keycloak'
 
 interface User {
@@ -71,6 +72,9 @@ export const useAuthStore = create<AuthState>()(
           set({ oidcConfig: config, authMode: 'oidc' })
 
           const authenticated = await initKeycloak(config)
+
+          // Keep Zustand token in sync with Keycloak auto-refresh
+          onTokenRefreshed((newToken) => set({ token: newToken }))
 
           if (authenticated) {
             const kc = getKeycloak()
