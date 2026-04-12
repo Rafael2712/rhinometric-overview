@@ -630,6 +630,15 @@ async def _scheduler_loop():
                             f"[HealthCheck] ERROR: {svc.name} raised {type(res).__name__}: {res}"
                         )
 
+            # ── Alert rule evaluation against recent check data ──
+            try:
+                from routers.alert_rules import evaluate_alert_rules as _eval_rules
+                _alert_db = SessionLocal()
+                _eval_rules(_alert_db)
+                _alert_db.close()
+            except Exception as _alert_err:
+                logger.error(f"[HealthCheck] Alert rule evaluation error: {_alert_err}")
+
         except Exception as e:
             logger.error(f"[HealthCheck] Scheduler loop error: {e}")
 

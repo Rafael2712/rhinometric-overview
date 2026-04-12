@@ -80,7 +80,8 @@ class AckStatusResponse(BaseModel):
 async def get_alerts(
     current_user: UserModel = Depends(get_current_user),
     active: Optional[bool] = Query(True, description="Filter active alerts"),
-    severity: Optional[str] = Query(None, description="Filter by severity")
+    severity: Optional[str] = Query(None, description="Filter by severity"),
+    db: Session = Depends(get_db),
 ):
     """
     Get operational alerts from both sources:
@@ -114,9 +115,14 @@ async def get_alerts(
                         if a.get("status", {}).get("state") == "active"
                     ]
                 # Keep only external-service AI anomaly alerts
+                # Match by: metric label starting with external_service_
+                # OR alertname containing external_service (AI anomaly engine format)
                 am_alerts = [
                     a for a in am_alerts
-                    if a.get("labels", {}).get("metric", "").startswith("external_service_")
+                    if (
+                        a.get("labels", {}).get("metric", "").startswith("external_service_")
+                        or "external_service" in a.get("labels", {}).get("alertname", "").lower()
+                    )
                 ]
                 alerts_data.extend(am_alerts)
 
@@ -134,6 +140,38 @@ async def get_alerts(
                     if a.get("labels", {}).get("category") == "external-services"
                 ]
                 alerts_data.extend(gf_alerts)
+
+        # -- Source 3: Platform alert events from database --
+        # Include firing alerts from the platform's own alert rule evaluation
+        try:
+            from models.alert_event import AlertEvent as _AE
+            _service_types = {"service", "external-services"}
+            db_firing = db.query(_AE).filter(
+                _AE.status == "firing",
+                _AE.entity_type.in_(list(_service_types)),
+            ).all()
+            for ev in db_firing:
+                fp = ev.fingerprint or ""
+                alerts_data.append({
+                    "fingerprint": f"db-{fp}",
+                    "status": {"state": "active"},
+                    "labels": ev.labels if ev.labels else {
+                        "alertname": ev.alert_name or "",
+                        "service_name": ev.entity_name or "",
+                        "severity": ev.severity or "warning",
+                        "source": ev.source or "alert_policy",
+                        "category": "external-services",
+                    },
+                    "annotations": ev.annotations if ev.annotations else {
+                        "summary": ev.summary or "",
+                    },
+                    "startsAt": ev.started_at.isoformat() if ev.started_at else "",
+                    "endsAt": ev.ended_at.isoformat() if ev.ended_at else None,
+                    "generatorURL": ev.generator_url or "",
+                })
+        except Exception as _db_err:
+            import logging as _lg
+            _lg.getLogger(__name__).warning(f"DB alert events query failed: {_db_err}")
 
         # -- Severity filter --
         if severity:

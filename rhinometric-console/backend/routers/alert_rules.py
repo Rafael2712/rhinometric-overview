@@ -321,6 +321,72 @@ async def delete_alert_rule(
     return None
 
 
+
+
+# ────────────────────────────────────────────────────────────────
+# Auto-resolution: resolve alerts for recovered services
+# ────────────────────────────────────────────────────────────────
+
+def _resolve_recovered_services(db: Session):
+    """Resolve alert events for services that have recovered.
+
+    For each enabled service currently UP, find any firing AlertEvent
+    from alert_policy source and resolve it. Then check linked incidents.
+    Also resolves orphaned incidents for deleted services.
+    """
+    from models.alert_event import AlertEvent
+    from routers.incidents import check_incident_resolution
+    from services.alert_noise_filter import on_recovery
+
+    now = datetime.now(timezone.utc)
+
+    # ── 1. Resolve alerts for services that are UP ──
+    up_services = db.query(ExternalService).filter(
+        ExternalService.enabled == True,
+        ExternalService.status.in_(["up", "degraded"]),
+    ).all()
+    up_names = {svc.name for svc in up_services}
+
+    if up_names:
+        firing_events = db.query(AlertEvent).filter(
+            AlertEvent.status == "firing",
+            AlertEvent.source == "alert_policy",
+            AlertEvent.entity_name.in_(list(up_names)),
+        ).all()
+
+        for event in firing_events:
+            event.status = "resolved"
+            event.ended_at = now
+            if event.incident_id:
+                try:
+                    check_incident_resolution(db, event.incident_id)
+                except Exception as e:
+                    logger.error(f"Resolution check error: {e}")
+            on_recovery(event.entity_name)
+
+        if firing_events:
+            logger.info(f"Auto-resolved {len(firing_events)} alert(s) for recovered services")
+
+    # ── 2. Resolve orphaned incidents for deleted services ──
+    from models.incident import Incident
+    existing_names = {svc.name.lower() for svc in db.query(ExternalService).all()}
+    orphan_incidents = db.query(Incident).filter(
+        Incident.status.in_(["open", "investigating"]),
+        Incident.entity_type.in_(["service", "external-services"]),
+    ).all()
+
+    orphan_resolved = 0
+    for inc in orphan_incidents:
+        if inc.entity_name.lower() not in existing_names:
+            inc.status = "resolved"
+            inc.resolved_at = now
+            inc.updated_at = now
+            orphan_resolved += 1
+            logger.info(f"Auto-resolved orphan incident {inc.id} for deleted service '{inc.entity_name}'")
+
+    if orphan_resolved:
+        logger.info(f"Resolved {orphan_resolved} orphan incident(s) for deleted services")
+
 # ────────────────────────────────────────────────────────────────
 # Default rules seeding
 # ────────────────────────────────────────────────────────────────
@@ -433,8 +499,15 @@ def evaluate_alert_rules(db: Session):
         except Exception as e:
             logger.error(f"Error evaluating rule {rule.name}: {e}")
 
+    # Always resolve alerts for recovered services
+    try:
+        _resolve_recovered_services(db)
+    except Exception as _res_err:
+        logger.error(f"Error resolving recovered services: {_res_err}")
+
+    db.commit()
+
     if fired:
-        db.commit()
         logger.info(f"Alert rules: {fired} of {len(rules)} triggered")
 
 
@@ -511,33 +584,50 @@ def _evaluate_high_latency(db: Session, rule: AlertRule) -> int:
 
 
 def _evaluate_degraded_health(db: Session, rule: AlertRule) -> int:
-    """Evaluate DEGRADED_HEALTH rule."""
+    """Evaluate DEGRADED_HEALTH rule using health checker state.
+
+    The external_service_checks table does NOT have a health_score column.
+    Instead, we compute health from the health checker's in-memory state
+    (uptime ratio, latency, stability) or fall back to recent check status.
+    """
     services = _get_target_services(db, rule)
     fired = 0
     score_threshold = rule.anomaly_score_threshold or 70.0
     sustained = rule.sustained_checks or 3
 
     for svc in services:
-        rows = db.execute(text("""
-            SELECT health_score FROM external_service_checks
-            WHERE service_id = :sid AND health_score IS NOT NULL
-            ORDER BY checked_at DESC
-            LIMIT :limit
-        """), {"sid": svc.id, "limit": sustained}).fetchall()
+        # Primary: use health checker's computed health score
+        health_score = None
+        try:
+            from services.health_checker import _compute_health_score, _recent_checks
+            if svc.id in _recent_checks and len(_recent_checks[svc.id]) >= sustained:
+                svc_type_str = svc.service_type.value if hasattr(svc.service_type, 'value') else str(svc.service_type)
+                health_score = _compute_health_score(
+                    svc.id, svc.name, svc_type_str, svc.group_name or "default"
+                )
+        except Exception:
+            pass
 
-        if len(rows) < sustained:
-            continue
+        # Fallback: compute from recent check statuses
+        if health_score is None:
+            rows = db.execute(text("""
+                SELECT status FROM external_service_checks
+                WHERE service_id = :sid
+                ORDER BY checked_at DESC
+                LIMIT :limit
+            """), {"sid": svc.id, "limit": sustained}).fetchall()
 
-        # health_score is 0-100 where lower = worse.
+            if len(rows) < sustained:
+                continue
+
+            up_count = sum(1 for r in rows if r.status == 'up')
+            health_score = (up_count / len(rows)) * 100.0
+
         # anomaly_score = 100 - health_score (higher = more anomalous)
-        all_degraded = all(
-            (100.0 - r.health_score) >= score_threshold
-            for r in rows
-        )
-        if all_degraded:
-            avg_anomaly = sum(100.0 - r.health_score for r in rows) / len(rows)
-            _fire_rule_alert(db, rule, avg_anomaly, service=svc,
-                             detail=f"Anomaly score {avg_anomaly:.0f} >= {score_threshold} for {sustained} checks")
+        anomaly_score = 100.0 - health_score
+        if anomaly_score >= score_threshold:
+            _fire_rule_alert(db, rule, anomaly_score, service=svc,
+                             detail=f"Health score {health_score:.0f}% (anomaly {anomaly_score:.0f} >= {score_threshold})")
             fired += 1
 
     return fired
