@@ -57,7 +57,7 @@ export const DashboardSelector: React.FC<Props> = ({ activeDashboards, onChange 
   };
 
   const resetDefaults = () => {
-    const defaults = ['ext-svc-overview', 'ext-svc-detail', 'ext-svc-sla'];
+    const defaults = ['ext-svc-intelligence', 'ext-svc-overview', 'ext-svc-detail', 'ext-svc-sla'];
     setDraft(defaults);
   };
 

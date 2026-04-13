@@ -19,6 +19,13 @@ export interface DashboardEntry {
 export const DASHBOARD_LIBRARY: DashboardEntry[] = [
   // ── Core (Tier 1) ──────────────────────────────────────────────
   {
+    uid: 'ext-svc-intelligence',
+    name: 'Fleet Intelligence',
+    description: 'Aggregated health, SLA, latency, incidents and performance across all monitored services.',
+    tier: 1,
+    icon: 'brain',
+  },
+  {
     uid: 'ext-svc-overview',
     name: 'Fleet Overview',
     description: 'Aggregated health, latency, uptime and incident counts across all monitored services.',
@@ -81,6 +88,7 @@ export const DASHBOARD_LIBRARY: DashboardEntry[] = [
 const STORAGE_KEY = 'dashboard_selection';
 
 const DEFAULT_SELECTION: string[] = [
+  'ext-svc-intelligence',
   'ext-svc-overview',
   'ext-svc-detail',
   'ext-svc-sla',
