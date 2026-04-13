@@ -6,8 +6,7 @@ import {
   ShieldAlert,
   ShieldX,
   AlertTriangle,
-  Server,
-  Calendar,
+  Globe,
   ChevronDown,
   ChevronRight,
   Package,
@@ -15,92 +14,20 @@ import {
   Building2,
   Info,
   XCircle,
-  FileQuestion,
+  Users,
+  Crown,
+  Shield,
+  Wrench,
+  Eye,
+  Zap,
 } from 'lucide-react'
-import type {
-  LicensePayload,
-  LicenseStatusResponse,
-  LicenseStatus,
-  LicenseEdition,
-  LicenseModule,
-} from '../types/license'
+import type { LicenseStatusResponse } from '../types/license'
 
-// ================================================================
-// ADAPTER: Maps current backend response -> LicenseStatusResponse
-// TODO: Remove when backend returns the new schema directly.
-// ================================================================
-
-const KNOWN_MODULES: LicenseModule[] = ['core', 'ai_anomalies', 'dashboards', 'veriverde']
-
-function mapBackendResponse(raw: Record<string, unknown>): LicenseStatusResponse {
-  let status: LicenseStatus
-  const rawStatus = raw.status as string
-  const isValid = raw.is_valid as boolean
-
-  if (isValid && rawStatus === 'active') {
-    const days = raw.days_remaining as number | null
-    status = (days != null && days <= 30) ? 'about_to_expire' : 'valid'
-  } else if (rawStatus === 'expired') {
-    status = 'expired'
-  } else if (['invalid_signature', 'fingerprint_mismatch', 'parse_error'].includes(rawStatus)) {
-    status = 'invalid'
-  } else if (rawStatus === 'over_limit') {
-    status = 'valid'
-  } else {
-    status = 'error'
-  }
-
-  const rawFeatures = raw.features as string[] | null
-  const modules: LicenseModule[] =
-    Array.isArray(rawFeatures) && rawFeatures.length > 0
-      ? (rawFeatures.filter((f) => KNOWN_MODULES.includes(f as LicenseModule)) as LicenseModule[])
-      : ['core'] // TODO: fallback until backend sends modules
-
-  const license: LicensePayload = {
-    license_id: (raw.tenant_id || raw.license_key || '') as string,
-    customer_name: (raw.organization || '') as string,
-    customer_contact: raw.organization_email as string | undefined,
-    edition: ((raw.tier || 'trial') as LicenseEdition),
-    max_hosts: (raw.max_hosts ?? 0) as number,
-    modules,
-    issued_at: (raw.issued_at || '') as string,
-    valid_from: (raw.issued_at || '') as string,     // TODO: use valid_from when available
-    valid_until: (raw.expires_at || '') as string,
-    install_id: raw.tenant_id as string | undefined,
-  }
-
-  return {
-    status,
-    reason: raw.message as string | undefined,
-    license,
-    hosts_used: (raw.hosts_used ?? 0) as number,
-    hosts_available: (raw.hosts_available ?? 0) as number,
-    days_remaining: raw.days_remaining as number | undefined,
-    hours_remaining: raw.hours_remaining as number | undefined,
-    warning: raw.warning as string | undefined,
-    validator: raw.validator as string | undefined,
-  }
-}
-
-// ================================================================
+// =================================================================
 // HELPERS
-// ================================================================
+// =================================================================
 
-const EDITION_LABELS: Record<string, string> = {
-  demo_cloud: 'Demo Cloud',
-  trial: 'Trial',
-  annual_standard: 'Annual Standard',
-  enterprise: 'Enterprise',
-}
-
-const MODULE_LABELS: Record<LicenseModule, string> = {
-  core: 'Core',
-  ai_anomalies: 'AI Anomalies',
-  dashboards: 'Dashboards',
-  veriverde: 'VeriVerde',
-}
-
-function formatDate(iso: string | undefined): string {
+function formatDate(iso: string | null | undefined): string {
   if (!iso) return 'N/A'
   try {
     return new Date(iso).toLocaleDateString('en-US', {
@@ -111,7 +38,7 @@ function formatDate(iso: string | undefined): string {
   }
 }
 
-function getHostBarColor(used: number, max: number): string {
+function getBarColor(used: number, max: number): string {
   if (max <= 0) return 'bg-primary'
   const ratio = used / max
   if (ratio >= 1) return 'bg-error'
@@ -119,9 +46,22 @@ function getHostBarColor(used: number, max: number): string {
   return 'bg-primary'
 }
 
-// ================================================================
-// STATUS-SPECIFIC UI CONFIGS
-// ================================================================
+function getBarPercent(used: number, max: number): number {
+  if (max <= 0) return 0
+  return Math.min((used / max) * 100, 100)
+}
+
+function getStatusColor(used: number, limit: number): string {
+  if (limit <= 0) return 'text-text-muted'
+  const ratio = used / limit
+  if (ratio >= 1) return 'text-error'
+  if (ratio >= 0.8) return 'text-warning'
+  return 'text-success'
+}
+
+// =================================================================
+// STATUS CONFIG
+// =================================================================
 
 interface StatusConfig {
   icon: React.ReactNode
@@ -132,12 +72,13 @@ interface StatusConfig {
   textClass: string
 }
 
-function getStatusConfig(status: LicenseStatus, reason?: string): StatusConfig {
+function getStatusConfig(status: string, reason?: string): StatusConfig {
   switch (status) {
+    case 'active':
     case 'valid':
       return {
         icon: <ShieldCheck className="w-6 h-6 text-success" />,
-        title: 'Active license',
+        title: 'Active License',
         description: reason || 'License is valid and operational.',
         borderClass: 'border-success/30',
         bgClass: 'bg-success/10',
@@ -155,8 +96,8 @@ function getStatusConfig(status: LicenseStatus, reason?: string): StatusConfig {
     case 'expired':
       return {
         icon: <ShieldX className="w-6 h-6 text-error" />,
-        title: 'Expired license',
-        description: reason || 'License has expired. System operates in degraded mode.',
+        title: 'Expired License',
+        description: reason || 'License has expired.',
         borderClass: 'border-error/30',
         bgClass: 'bg-error/10',
         textClass: 'text-error',
@@ -164,22 +105,12 @@ function getStatusConfig(status: LicenseStatus, reason?: string): StatusConfig {
     case 'invalid':
       return {
         icon: <XCircle className="w-6 h-6 text-error" />,
-        title: 'Invalid license',
+        title: 'Invalid License',
         description: reason || 'Incorrect signature or unrecognized format.',
         borderClass: 'border-error/30',
         bgClass: 'bg-error/10',
         textClass: 'text-error',
       }
-    case 'missing':
-      return {
-        icon: <FileQuestion className="w-6 h-6 text-warning" />,
-        title: 'License not found',
-        description: reason || 'No valid license found installed.',
-        borderClass: 'border-warning/30',
-        bgClass: 'bg-warning/10',
-        textClass: 'text-warning',
-      }
-    case 'error':
     default:
       return {
         icon: <AlertTriangle className="w-6 h-6 text-warning" />,
@@ -192,24 +123,20 @@ function getStatusConfig(status: LicenseStatus, reason?: string): StatusConfig {
   }
 }
 
-// ================================================================
-// COMPONENT
-// ================================================================
+// =================================================================
+// MAIN COMPONENT
+// =================================================================
 
 export function LicensePage() {
   useEffect(() => {
     document.title = 'Rhinometric - License Management'
   }, [])
 
-  const token = useAuthStore((state) => state.token)
-  const isAdmin = useAuthStore((state) => state.isAdmin)
+  const token = useAuthStore((s) => s.token)
+  const isAdmin = useAuthStore((s) => s.isAdmin)
   const [techOpen, setTechOpen] = useState(false)
 
-  const {
-    data: rawData,
-    isLoading,
-    error,
-  } = useQuery({
+  const { data, isLoading, error } = useQuery<LicenseStatusResponse>({
     queryKey: ['license', token],
     queryFn: async () => {
       if (!token) throw new Error('No token available')
@@ -226,6 +153,7 @@ export function LicensePage() {
     retry: 1,
   })
 
+  // Loading
   if (isLoading) {
     return (
       <div className="space-y-6">
@@ -234,7 +162,7 @@ export function LicensePage() {
           <div className="flex items-center justify-center py-12">
             <div className="text-center">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4" />
-              <p className="text-text-muted">Checking license…</p>
+              <p className="text-text-muted">Checking license...</p>
             </div>
           </div>
         </div>
@@ -242,14 +170,15 @@ export function LicensePage() {
     )
   }
 
-  if (error || !rawData) {
+  // Error
+  if (error || !data) {
     const cfg = getStatusConfig('error')
     return (
       <div className="space-y-6">
         <PageHeader />
         <StatusCard config={cfg}>
           <ul className="list-disc list-inside text-warning/80 space-y-1 mb-4 text-sm">
-            <li>The license validator (port 8091) is not responding</li>
+            <li>The license validator is not responding</li>
             <li>Network connectivity issues</li>
           </ul>
           <ContactSupportButton
@@ -261,114 +190,97 @@ export function LicensePage() {
     )
   }
 
-  const data = mapBackendResponse(rawData as Record<string, unknown>)
-  const { license } = data
-
-  if (data.status === 'invalid') {
-    const cfg = getStatusConfig('invalid', data.reason)
+  // Expired
+  if (data.status === 'expired') {
+    const cfg = getStatusConfig('expired', data.message)
     return (
       <div className="space-y-6">
         <PageHeader />
         <StatusCard config={cfg}>
+          <div className="grid grid-cols-2 gap-3 text-sm mb-4">
+            <div>
+              <p className="text-text-muted">Organization</p>
+              <p className="text-white font-medium">{data.organization || '?'}</p>
+            </div>
+            <div>
+              <p className="text-text-muted">Plan</p>
+              <p className="text-white font-medium">{data.plan_display}</p>
+            </div>
+            <div>
+              <p className="text-text-muted">Expired on</p>
+              <p className="text-error font-medium">{formatDate(data.expires_at)}</p>
+            </div>
+          </div>
           <p className="text-error/80 text-sm mb-4">
-            The cryptographic signature does not match or the license file has an unrecognized format.
-            Verify that the <code className="bg-surface-light px-1 rounded">license.key</code> no
-            haya sido modificado manualmente.
+            System operates in degraded mode. Contact support to renew your license.
           </p>
           <ContactSupportButton
-            subject="Invalid license"
-            body={`Reason: ${data.reason || 'Signature or unrecognized format'}`}
+            subject="Expired license renewal"
+            body={`Tenant: ${data.tenant_id || 'N/A'}\nExpired: ${formatDate(data.expires_at)}`}
           />
         </StatusCard>
       </div>
     )
   }
 
-  if (data.status === 'expired') {
-    const cfg = getStatusConfig('expired', data.reason)
-    return (
-      <div className="space-y-6">
-        <PageHeader />
-        <StatusCard config={cfg}>
-          {license && (
-            <div className="grid grid-cols-2 gap-3 text-sm mb-4">
-              <div>
-                <p className="text-text-muted">Customer</p>
-                <p className="text-white font-medium">{license.customer_name || "—"}</p>
-              </div>
-              <div>
-                <p className="text-text-muted">Edition</p>
-                <p className="text-white font-medium">
-                  {EDITION_LABELS[license.edition] || license.edition}
-                </p>
-              </div>
-              <div>
-                <p className="text-text-muted">Expired on</p>
-                <p className="text-error font-medium">{formatDate(license.valid_until)}</p>
-              </div>
-              <div>
-                <p className="text-text-muted">Max Hosts</p>
-                <p className="text-white font-medium">{license.max_hosts}</p>
-              </div>
-            </div>
-          )}
-          <p className="text-error/80 text-sm mb-4">
-            System operates in degraded mode. Contact support to renew your license.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-2">
-            <ContactSupportButton
-              subject="Expired license renewal"
-              body={`License: ${license?.license_id || 'N/A'}\nExpired: ${formatDate(license?.valid_until)}`}
-            />
-          </div>
-        </StatusCard>
-        {isAdmin() && license && (
-          <TechnicalDetails license={license} data={data} rawData={rawData} techOpen={techOpen} setTechOpen={setTechOpen} />
-        )}
-      </div>
-    )
-  }
-
-  const cfg = getStatusConfig(data.status, data.reason)
+  // Normalize status for display
+  const displayStatus = data.days_remaining != null && data.days_remaining <= 30 && data.is_valid
+    ? 'about_to_expire'
+    : (data.is_valid ? 'active' : data.status)
+  const cfg = getStatusConfig(displayStatus, data.message)
 
   return (
     <div className="space-y-4 sm:space-y-6">
       <PageHeader />
 
-      {data.warning && (
-        <div className="card bg-warning/10 border-warning/30">
-          <div className="flex items-center gap-3">
-            <AlertTriangle className="text-warning flex-shrink-0" size={24} />
-            <p className="text-warning font-medium text-sm sm:text-base">{data.warning}</p>
+      {/* Warnings / Breaches */}
+      {data.breaches && data.breaches.length > 0 && (
+        <div className="card bg-error/10 border-error/30">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="text-error flex-shrink-0 mt-0.5" size={20} />
+            <div>
+              <p className="text-error font-semibold text-sm mb-1">Limit Exceeded</p>
+              {data.breaches.map((b, i) => (
+                <p key={i} className="text-error/80 text-sm">{b}</p>
+              ))}
+            </div>
           </div>
         </div>
       )}
 
-      {data.status === 'about_to_expire' && !data.warning && (
+      {data.warning && !data.breaches && (
         <div className="card bg-warning/10 border-warning/30">
           <div className="flex items-center gap-3">
-            <Clock className="text-warning flex-shrink-0" size={24} />
-            <p className="text-warning font-medium text-sm sm:text-base">
+            <AlertTriangle className="text-warning flex-shrink-0" size={20} />
+            <p className="text-warning font-medium text-sm">{data.warning}</p>
+          </div>
+        </div>
+      )}
+
+      {displayStatus === 'about_to_expire' && !data.warning && (
+        <div className="card bg-warning/10 border-warning/30">
+          <div className="flex items-center gap-3">
+            <Clock className="text-warning flex-shrink-0" size={20} />
+            <p className="text-warning font-medium text-sm">
               License expires in {data.days_remaining} days. Contact sales to renew.
             </p>
           </div>
         </div>
       )}
 
+      {/* ?? Card 1: Plan Info ?? */}
       <div className="card">
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-6 gap-3">
           <div className="min-w-0">
             <div className="flex items-center gap-2 mb-2">
               {cfg.icon}
               <h2 className="text-xl sm:text-2xl font-bold text-white">
-                {EDITION_LABELS[license?.edition ?? ''] || license?.edition || 'License'}{' '}
-                <span className="text-base font-normal text-text-muted">License</span>
+                {data.plan_display}{' '}
+                <span className="text-base font-normal text-text-muted">Plan</span>
               </h2>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
-              <span
-                className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${cfg.bgClass} ${cfg.textClass}`}
-              >
+              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${cfg.bgClass} ${cfg.textClass}`}>
                 {cfg.title}
               </span>
               {data.validator && (
@@ -377,13 +289,10 @@ export function LicensePage() {
                 </span>
               )}
             </div>
-            {license?.customer_name && (
+            {data.organization && (
               <div className="flex items-center gap-1.5 mt-2 text-sm text-text-muted">
                 <Building2 className="w-4 h-4 flex-shrink-0" />
-                <span>{license.customer_name}</span>
-                {license.customer_contact && (
-                  <span className="text-text-muted/70">({license.customer_contact})</span>
-                )}
+                <span>{data.organization}</span>
               </div>
             )}
           </div>
@@ -392,120 +301,196 @@ export function LicensePage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
-          <div className="space-y-2">
-            <div className="flex items-center text-text-muted text-sm mb-2">
-              <Server className="w-4 h-4 mr-2 flex-shrink-0" />
-              <span>Host Usage</span>
-            </div>
-            <div className="flex items-baseline space-x-2">
-              <span className="text-2xl sm:text-3xl font-bold text-white">{data.hosts_used}</span>
-              <span className="text-text-muted">/ {license?.max_hosts ?? 0}</span>
-            </div>
-            <div className="w-full bg-surface-light rounded-full h-2">
-              <div
-                className={`h-2 rounded-full transition-all duration-300 ${getHostBarColor(data.hosts_used, license?.max_hosts ?? 0)}`}
-                style={{
-                  width: `${Math.min(((data.hosts_used / (license?.max_hosts || 1)) * 100), 100)}%`,
-                }}
-              />
-            </div>
-            <p className="text-xs text-text-muted">{data.hosts_available} hosts available</p>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
+          <div className="space-y-1">
+            <p className="text-text-muted text-sm">Plan</p>
+            <p className="text-white text-lg font-semibold">{data.plan_display}</p>
           </div>
-
-          <div className="space-y-2">
-            <div className="flex items-center text-text-muted text-sm mb-2">
-              <Calendar className="w-4 h-4 mr-2 flex-shrink-0" />
-              <span>Expiration Date</span>
-            </div>
-            <p className="text-lg sm:text-xl font-semibold text-white">
-              {formatDate(license?.valid_until)}
-            </p>
-            {license?.edition === 'demo_cloud' && data.hours_remaining != null ? (
-              <p className={`text-sm ${(data.hours_remaining ?? 0) > 2 ? 'text-success' : 'text-error'}`}>
-                {data.hours_remaining} hours remaining
+          <div className="space-y-1">
+            <p className="text-text-muted text-sm">Expiration</p>
+            <p className="text-white text-lg font-semibold">{formatDate(data.expires_at)}</p>
+            {data.days_remaining != null && (
+              <p className={`text-xs ${(data.days_remaining ?? 0) > 30 ? 'text-success' : (data.days_remaining ?? 0) > 7 ? 'text-warning' : 'text-error'}`}>
+                {data.days_remaining} days remaining
               </p>
-            ) : (
-              data.days_remaining != null && (
-                <p
-                  className={`text-sm ${(data.days_remaining ?? 0) > 30 ? 'text-success' : (data.days_remaining ?? 0) > 7 ? 'text-warning' : 'text-error'}`}
-                >
-                  {data.days_remaining} days remaining
-                </p>
-              )
             )}
           </div>
-
-          <div className="space-y-2">
-            <div className="flex items-center text-text-muted text-sm mb-2">
-              <Package className="w-4 h-4 mr-2 flex-shrink-0" />
-              <span>Enabled Modules</span>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {(license?.modules ?? ['core']).map((mod) => (
-                <span
-                  key={mod}
-                  className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-primary/10 text-primary border border-primary/20"
-                >
-                  {MODULE_LABELS[mod] || mod}
-                </span>
-              ))}
-            </div>
+          <div className="space-y-1">
+            <p className="text-text-muted text-sm">Edition</p>
+            <p className="text-white text-lg font-semibold">{data.edition}</p>
           </div>
         </div>
       </div>
 
+      {/* ?? Card 2: Endpoint Usage ?? */}
       <div className="card">
-        <h3 className="text-base sm:text-lg font-semibold text-white mb-4">
-          License Information
-        </h3>
-        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 text-sm">
+        <div className="flex items-center gap-2 mb-4">
+          <Globe className="w-5 h-5 text-primary" />
+          <h3 className="text-base sm:text-lg font-semibold text-white">Endpoint Usage</h3>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
           <div>
-            <p className="text-text-muted">Edition</p>
-            <p className="text-white font-medium">
-              {EDITION_LABELS[license?.edition ?? ''] || license?.edition || '—'}
+            <p className="text-text-muted text-xs mb-1">Used</p>
+            <p className="text-2xl font-bold text-white">{data.services_used}</p>
+          </div>
+          <div>
+            <p className="text-text-muted text-xs mb-1">Included</p>
+            <p className="text-2xl font-bold text-white">{data.max_services}</p>
+          </div>
+          <div>
+            <p className="text-text-muted text-xs mb-1">Remaining</p>
+            <p className={`text-2xl font-bold ${data.remaining_services > 0 ? 'text-success' : 'text-error'}`}>
+              {data.remaining_services}
             </p>
           </div>
           <div>
-            <p className="text-text-muted">Status</p>
-            <p className={`font-medium ${cfg.textClass}`}>{cfg.title}</p>
-          </div>
-          <div>
-            <p className="text-text-muted">Issue Date</p>
-            <p className="text-white">{formatDate(license?.issued_at)}</p>
-          </div>
-          <div>
-            <p className="text-text-muted">Max Hosts</p>
-            <p className="text-white font-medium">{license?.max_hosts ?? "—"}</p>
+            <p className="text-text-muted text-xs mb-1">Extra in use</p>
+            <p className={`text-2xl font-bold ${data.extra_services_used > 0 ? 'text-warning' : 'text-text-muted'}`}>
+              {data.extra_services_used}
+            </p>
           </div>
         </div>
-      </div>
 
-      <div className="card bg-primary/5 border-primary/20">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          {license?.customer_name && (
-            <p className="text-sm text-text-muted">
-              <span className="font-semibold text-primary">Licensed to:</span>{" "}
-              {license.customer_name}
-              {license.customer_contact && (
-                <span className="text-text-muted/70 ml-1">({license.customer_contact})</span>
-              )}
-            </p>
+        {/* Progress bar */}
+        <div className="w-full bg-surface-light rounded-full h-2.5 mb-2">
+          <div
+            className={`h-2.5 rounded-full transition-all duration-300 ${getBarColor(data.services_used, data.max_services)}`}
+            style={{ width: `${getBarPercent(data.services_used, data.max_services)}%` }}
+          />
+        </div>
+        <div className="flex justify-between text-xs text-text-muted">
+          <span>{data.services_used} / {data.max_services} endpoints</span>
+          {data.extra_services_used > 0 && (
+            <span className="text-warning">
+              Est. extra cost: {(data.extra_services_used * data.price_per_extra_service).toFixed(2)} EUR/mo
+            </span>
           )}
-
         </div>
       </div>
 
-      {isAdmin() && license && (
-        <TechnicalDetails license={license} data={data} rawData={rawData} techOpen={techOpen} setTechOpen={setTechOpen} />
+      {/* ?? Card 3: Users ?? */}
+      <div className="card">
+        <div className="flex items-center gap-2 mb-4">
+          <Users className="w-5 h-5 text-primary" />
+          <h3 className="text-base sm:text-lg font-semibold text-white">User Limits</h3>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          {/* Owner */}
+          <UserRoleCard
+            icon={<Crown className="w-4 h-4 text-amber-400" />}
+            label="Owner"
+            used={data.users.owner}
+            limit={data.users.owner_limit}
+          />
+          {/* Admin */}
+          <UserRoleCard
+            icon={<Shield className="w-4 h-4 text-blue-400" />}
+            label="Admins"
+            used={data.users.admins_used}
+            limit={data.users.admins_limit}
+          />
+          {/* Operator */}
+          <UserRoleCard
+            icon={<Wrench className="w-4 h-4 text-green-400" />}
+            label="Operators"
+            used={data.users.operators_used}
+            limit={data.users.operators_limit}
+          />
+          {/* Viewer */}
+          <UserRoleCard
+            icon={<Eye className="w-4 h-4 text-gray-400" />}
+            label="Viewers"
+            used={data.users.viewers_used}
+            limit={data.users.viewers_limit}
+          />
+        </div>
+      </div>
+
+      {/* ?? Card 4: Features ?? */}
+      <div className="card">
+        <div className="flex items-center gap-2 mb-4">
+          <Package className="w-5 h-5 text-primary" />
+          <h3 className="text-base sm:text-lg font-semibold text-white">Enabled Modules</h3>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {data.features.map((mod) => (
+            <span
+              key={mod}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-primary/10 text-primary border border-primary/20"
+            >
+              <Zap className="w-3 h-3" />
+              {mod}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      {/* Licensed to */}
+      {data.organization && (
+        <div className="card bg-primary/5 border-primary/20">
+          <p className="text-sm text-text-muted">
+            <span className="font-semibold text-primary">Licensed to:</span>{' '}
+            {data.organization}
+          </p>
+        </div>
+      )}
+
+      {/* Technical details (admin only) */}
+      {isAdmin() && (
+        <div className="card">
+          <button
+            type="button"
+            className="flex items-center gap-2 w-full text-left"
+            onClick={() => setTechOpen(!techOpen)}
+          >
+            {techOpen ? <ChevronDown className="w-4 h-4 text-text-muted" /> : <ChevronRight className="w-4 h-4 text-text-muted" />}
+            <Info className="w-4 h-4 text-text-muted" />
+            <span className="text-sm font-medium text-text-muted">Technical Details</span>
+            <span className="text-xs text-text-muted/50 ml-auto">Only visible to Admin / Owner</span>
+          </button>
+          {techOpen && (
+            <div className="mt-4 space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                <div>
+                  <p className="text-text-muted">Tenant ID</p>
+                  <code className="block bg-surface-light px-3 py-1.5 rounded text-xs text-primary font-mono break-all mt-1">
+                    {data.tenant_id || '?'}
+                  </code>
+                </div>
+                <div>
+                  <p className="text-text-muted">Validator</p>
+                  <p className="text-white font-medium">
+                    {data.validator === 'rust' ? 'Rust Ed25519 (rhino-lic)' : 'Legacy Server v2'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-text-muted">Status</p>
+                  <p className="text-white font-medium">{data.status}</p>
+                </div>
+                <div>
+                  <p className="text-text-muted">Price per extra endpoint</p>
+                  <p className="text-white font-medium">{data.price_per_extra_service} EUR</p>
+                </div>
+              </div>
+              <div>
+                <p className="text-text-muted text-sm mb-2">Raw backend response</p>
+                <pre className="bg-surface-light rounded p-3 text-xs text-text-muted font-mono overflow-x-auto max-h-60 overflow-y-auto">
+                  {JSON.stringify(data, null, 2)}
+                </pre>
+              </div>
+            </div>
+          )}
+        </div>
       )}
     </div>
   )
 }
 
-// ================================================================
+// =================================================================
 // SUB-COMPONENTS
-// ================================================================
+// =================================================================
 
 function PageHeader() {
   return (
@@ -520,13 +505,7 @@ function PageHeader() {
   )
 }
 
-function StatusCard({
-  config,
-  children,
-}: {
-  config: StatusConfig
-  children?: React.ReactNode
-}) {
+function StatusCard({ config, children }: { config: StatusConfig; children?: React.ReactNode }) {
   return (
     <div className={`card ${config.bgClass} ${config.borderClass}`}>
       <div className="flex items-start gap-3 sm:gap-4">
@@ -543,86 +522,38 @@ function StatusCard({
   )
 }
 
-function TechnicalDetails({
-  license,
-  data,
-  rawData,
-  techOpen,
-  setTechOpen,
+function UserRoleCard({
+  icon,
+  label,
+  used,
+  limit,
 }: {
-  license: LicensePayload
-  data: LicenseStatusResponse
-  rawData: unknown
-  techOpen: boolean
-  setTechOpen: (v: boolean) => void
+  icon: React.ReactNode
+  label: string
+  used: number
+  limit: number
 }) {
   return (
-    <div className="card">
-      <button
-        type="button"
-        className="flex items-center gap-2 w-full text-left"
-        onClick={() => setTechOpen(!techOpen)}
-      >
-        {techOpen ? (
-          <ChevronDown className="w-4 h-4 text-text-muted" />
-        ) : (
-          <ChevronRight className="w-4 h-4 text-text-muted" />
-        )}
-        <Info className="w-4 h-4 text-text-muted" />
-        <span className="text-sm font-medium text-text-muted">
-          Technical Details
-        </span>
-        <span className="text-xs text-text-muted/50 ml-auto">Only visible to Admin / Owner</span>
-      </button>
-
-      {techOpen && (
-        <div className="mt-4 space-y-3">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-            <div>
-              <p className="text-text-muted">License ID</p>
-              <code className="block bg-surface-light px-3 py-1.5 rounded text-xs text-primary font-mono break-all mt-1">
-                {license.license_id || "—"}
-              </code>
-            </div>
-            <div>
-              <p className="text-text-muted">Install ID</p>
-              <code className="block bg-surface-light px-3 py-1.5 rounded text-xs text-primary font-mono break-all mt-1">
-                {license.install_id || "—"}
-              </code>
-            </div>
-            <div>
-              <p className="text-text-muted">Validator</p>
-              <p className="text-white font-medium">
-                {data.validator === 'rust' ? 'Rust Ed25519 (rhino-lic)' : 'Legacy Server v2'}
-              </p>
-            </div>
-            <div>
-              <p className="text-text-muted">Status normalizado</p>
-              <p className="text-white font-medium">{data.status}</p>
-            </div>
-          </div>
-
-          <div>
-            <p className="text-text-muted text-sm mb-2">Raw backend response</p>
-            <pre className="bg-surface-light rounded p-3 text-xs text-text-muted font-mono overflow-x-auto max-h-60 overflow-y-auto">
-              {JSON.stringify(rawData, null, 2)}
-            </pre>
-          </div>
-        </div>
-      )}
+    <div className="bg-surface-light/50 rounded-lg p-3">
+      <div className="flex items-center gap-1.5 mb-2">
+        {icon}
+        <span className="text-text-muted text-xs">{label}</span>
+      </div>
+      <div className="flex items-baseline gap-1">
+        <span className={`text-xl font-bold ${getStatusColor(used, limit)}`}>{used}</span>
+        <span className="text-text-muted text-sm">/ {limit}</span>
+      </div>
+      <div className="w-full bg-surface-light rounded-full h-1.5 mt-2">
+        <div
+          className={`h-1.5 rounded-full transition-all duration-300 ${getBarColor(used, limit)}`}
+          style={{ width: `${getBarPercent(used, limit)}%` }}
+        />
+      </div>
     </div>
   )
 }
 
-
-
-function ContactSupportButton({
-  subject,
-  body,
-}: {
-  subject: string
-  body: string
-}) {
+function ContactSupportButton({ subject, body }: { subject: string; body: string }) {
   const s = encodeURIComponent(subject)
   const b = encodeURIComponent(`Hello,\n\n${body}\n\nThank you.`)
   return (
@@ -634,4 +565,3 @@ function ContactSupportButton({
     </a>
   )
 }
-
