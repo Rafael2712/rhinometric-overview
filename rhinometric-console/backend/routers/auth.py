@@ -90,12 +90,27 @@ async def get_current_user(
         if not username:
             raise credentials_exception
 
-        # JIT provision or fetch existing user
-        user = db.query(UserModel).filter(UserModel.username == username).first()
+        # JIT provision or fetch existing user (try sub, then username, then email)
+        kc_sub = user_info.get("keycloak_sub")
+        user = None
+        if kc_sub:
+            user = db.query(UserModel).filter(UserModel.sso_external_id == kc_sub).first()
+        if user is None:
+            user = db.query(UserModel).filter(UserModel.username == username).first()
+        if user is None:
+            email = user_info.get("email")
+            if email:
+                user = db.query(UserModel).filter(UserModel.email == email).first()
+
         if user is None:
             user = _jit_provision_user(db, user_info)
             logger.info(f"[OIDC] JIT provisioned user: {username}")
         else:
+            # Bind KC sub if missing
+            if kc_sub and not user.sso_external_id:
+                user.sso_external_id = kc_sub
+                user.sso_provider = "keycloak"
+                db.commit()
             # Sync roles from Keycloak on each request
             if user.sso_provider == "keycloak":
                 _sync_keycloak_roles(db, user, user_info.get("roles", []))
@@ -138,7 +153,7 @@ def _jit_provision_user(db: Session, user_info: dict) -> UserModel:
         full_name=user_info.get("full_name") or user_info["username"],
         password_hash="KEYCLOAK_SSO_USER",
         sso_provider="keycloak",
-        sso_subject_id=user_info.get("keycloak_sub"),
+        sso_external_id=user_info.get("keycloak_sub"),
         is_active=True,
         must_change_password=False,
     )

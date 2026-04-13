@@ -190,7 +190,7 @@ def extract_user_info(claims: Dict[str, Any]) -> Dict[str, Any]:
         realm_roles = realm_access.get("roles", [])
     
     # Filter to our known roles only
-    known_roles = {"admin", "operator", "viewer"}
+    known_roles = {"owner", "admin", "operator", "viewer"}
     user_roles = [r for r in realm_roles if r.lower() in known_roles]
     
     return {
@@ -208,7 +208,8 @@ def extract_user_info(claims: Dict[str, Any]) -> Dict[str, Any]:
 # ============================================================
 
 ROLE_MAP = {
-    "admin": "OWNER",     # Keycloak 'admin' -> local OWNER
+    "owner": "OWNER",
+    "admin": "ADMIN",
     "operator": "OPERATOR",
     "viewer": "VIEWER",
 }
