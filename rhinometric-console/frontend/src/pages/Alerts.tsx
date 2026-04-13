@@ -95,7 +95,6 @@ export function AlertsPage() {
   const token = useAuthStore((state) => state.token)
   const queryClient = useQueryClient()
   const [severityFilter, setSeverityFilter] = useState<string>('all')
-  const [statusFilter, setStatusFilter] = useState<string>('all')
   const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null)
   const [silenceDuration, setSilenceDuration] = useState<string>('1h')
   const [silenceLoading, setSilenceLoading] = useState(false)
@@ -286,9 +285,7 @@ export function AlertsPage() {
 
   // Filter alerts
   const filteredAlerts = alertsData?.alerts?.filter(alert => {
-    const severityMatch = severityFilter === 'all' || alert.severity === severityFilter
-    const statusMatch = statusFilter === 'all' || alert.status === statusFilter
-    return severityMatch && statusMatch
+    return severityFilter === 'all' || alert.severity === severityFilter
   }) || []
 
   // Export filtered alerts as CSV
@@ -307,7 +304,7 @@ export function AlertsPage() {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `alerts-${severityFilter}-${statusFilter}-${new Date().toISOString().slice(0, 10)}.csv`
+    a.download = `alerts-${severityFilter}-${new Date().toISOString().slice(0, 10)}.csv`
     a.click()
     URL.revokeObjectURL(url)
   }
@@ -368,24 +365,12 @@ export function AlertsPage() {
             >
               <option value="all">All Severities</option>
               <option value="critical">Critical</option>
-              <option value="warning">Warning</option>
-              <option value="info">Info</option>
+              <option value="high">High</option>
+              <option value="medium">Medium</option>
+              <option value="low">Low</option>
             </select>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-400 hidden sm:inline">Status:</span>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="bg-surface-light border border-gray-700 text-white rounded px-2 sm:px-3 py-1.5 text-sm"
-            >
-              <option value="all">All States</option>
-              <option value="firing">Firing</option>
-              <option value="active">Active</option>
-              <option value="suppressed">Suppressed</option>
-              <option value="resolved">Resolved</option>
-            </select>
-          </div>
+
         </div>
       </div>
 
