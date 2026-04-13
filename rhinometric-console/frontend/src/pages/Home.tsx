@@ -1,11 +1,13 @@
-import { Server, Bell, XCircle, BarChart3, ShieldAlert, Target } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useAuthStore } from '../lib/auth/store'
-import { LineChart, Line, ResponsiveContainer } from 'recharts'
 import { useNavigate } from 'react-router-dom'
+import {
+  Bell, XCircle, Server, BarChart3, Target, AlertTriangle,
+  ArrowRight, Flame,
+} from 'lucide-react'
 
-interface SparklinePoint { time: number; value: number }
+// ??? Types ???????????????????????????????????????????????????
 
 interface MonitoredServices {
   total: number; healthy: number; degraded: number; down: number; status: string
@@ -33,32 +35,40 @@ interface SLOSummary {
   services_breached: number
   total_services: number
 }
-
-// Human-readable labels for catalog_type classification
-const TYPE_LABELS: Record<string, string> = {
-  REST_API: 'REST API',
-  WEB_APP: 'Web App',
-  SOAP_API: 'SOAP API',
-  WEBHOOK: 'Webhook',
-  EXTERNAL_API: 'External API',
-  EXTERNAL_SERVICE: 'External',
-  DATABASE: 'Database',
-  INTERNAL_SERVICE: 'Internal',
-  MOBILE_API: 'Mobile API',
-  MICROSERVICE: 'Service',
-  QUEUE: 'Queue',
-  OTHER: 'Other',
-  UNKNOWN: 'Unknown',
+interface Incident {
+  id: string; status: string; severity: string; title: string
 }
+interface IncidentsResponse {
+  incidents: Incident[]; total: number
+}
+
+const TYPE_LABELS: Record<string, string> = {
+  REST_API: 'REST API', WEB_APP: 'Web App', SOAP_API: 'SOAP API',
+  WEBHOOK: 'Webhook', EXTERNAL_API: 'External API', EXTERNAL_SERVICE: 'External',
+  DATABASE: 'Database', INTERNAL_SERVICE: 'Internal', MOBILE_API: 'Mobile API',
+  MICROSERVICE: 'Service', QUEUE: 'Queue', OTHER: 'Other', UNKNOWN: 'Unknown',
+}
+
+// ??? Helpers ?????????????????????????????????????????????????
+
+function handleKeyDown(navigate: ReturnType<typeof useNavigate>, route: string) {
+  return (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault()
+      navigate(route)
+    }
+  }
+}
+
+// ??? Component ???????????????????????????????????????????????
 
 export function HomePage() {
   const navigate = useNavigate()
   const token = useAuthStore((s) => s.token)
-  const [sparkline, setSparkline] = useState<SparklinePoint[]>([])
 
   useEffect(() => { document.title = 'Rhinometric - Home' }, [])
 
-  // === DATA: Service Summary (external + platform) ===
+  // DATA: Service Summary
   const { data: summaryData } = useQuery<ServiceSummary>({
     queryKey: ['services-summary', token],
     queryFn: async () => {
@@ -71,8 +81,8 @@ export function HomePage() {
     refetchInterval: 5000,
   })
 
-  // === DATA: KPIs (anomalies + alerts) ===
-  const { data: kpisData, error } = useQuery({
+  // DATA: KPIs
+  const { data: kpisData } = useQuery({
     queryKey: ['kpis', token],
     queryFn: async () => {
       if (!token) throw new Error('No token')
@@ -84,7 +94,7 @@ export function HomePage() {
     refetchInterval: 5000,
   })
 
-  // === DATA: External services list (for down names + catalog types) ===
+  // DATA: External services
   const { data: extServices } = useQuery<ExternalService[]>({
     queryKey: ['external-services', token],
     queryFn: async () => {
@@ -97,7 +107,7 @@ export function HomePage() {
     refetchInterval: 10000,
   })
 
-  // === DATA: SLO Summary ===
+  // DATA: SLO Summary
   const { data: sloSummary } = useQuery<SLOSummary>({
     queryKey: ['slo-summary-home', token],
     queryFn: async () => {
@@ -110,17 +120,28 @@ export function HomePage() {
     refetchInterval: 30000,
   })
 
+  // DATA: Incidents
+  const { data: incidentsData } = useQuery<IncidentsResponse>({
+    queryKey: ['incidents-home', token],
+    queryFn: async () => {
+      if (!token) throw new Error('No token')
+      const r = await fetch('/api/incidents', { headers: { Authorization: `Bearer ${token}` } })
+      if (!r.ok) throw new Error('Failed')
+      return r.json()
+    },
+    enabled: !!token,
+    refetchInterval: 15000,
+  })
+
+  // ??? Derived ?????????????????????????????????????????????
+
   const ext = summaryData?.monitored_services ?? null
-
-  // Sparkline for monitored services
-  useEffect(() => {
-    if (ext) {
-      setSparkline(prev => [...prev, { time: Date.now(), value: ext.total }].slice(-20))
-    }
-  }, [ext?.total, ext?.healthy])
-
-  // === Derived data for Row 2 cards ===
   const downServices = extServices?.filter(s => s.status?.toLowerCase() === 'down' || s.status?.toLowerCase() === 'critical') ?? []
+  const alertsCount = Number(kpisData?.alerts_24h?.value ?? 0)
+  const anomaliesCount = Number(kpisData?.active_anomalies?.value ?? 0)
+  const servicesDown = downServices.length
+
+  // Catalog type distribution
   const catalogTypes: Record<string, number> = {}
   if (extServices) {
     for (const s of extServices) {
@@ -129,159 +150,191 @@ export function HomePage() {
     }
   }
 
-  // === GLOBAL SEVERITY STATE ===
-  const degradedCount = ext?.degraded ?? 0
+  // Incidents
+  const allIncidents = incidentsData?.incidents ?? []
+  const openIncidents = allIncidents.filter(i => i.status === 'open' || i.status === 'investigating' || i.status === 'triggered')
+
+  // Global status
   const globalStatus: 'CRITICAL' | 'WARNING' | 'HEALTHY' =
-    downServices.length > 0 ? 'CRITICAL' : degradedCount > 0 ? 'WARNING' : 'HEALTHY'
+    servicesDown > 0 ? 'CRITICAL'
+    : (alertsCount > 0 || anomaliesCount > 0) ? 'WARNING'
+    : 'HEALTHY'
 
-  // === SLO status helpers ===
+  const statusConfig = {
+    CRITICAL: { bg: 'bg-red-500/10', border: 'border-red-500/40', text: 'text-red-400', label: 'CRITICAL', dot: 'bg-red-400' },
+    WARNING: { bg: 'bg-yellow-500/10', border: 'border-yellow-500/40', text: 'text-yellow-400', label: 'WARNING', dot: 'bg-yellow-400' },
+    HEALTHY: { bg: 'bg-green-500/10', border: 'border-green-500/40', text: 'text-green-400', label: 'HEALTHY', dot: 'bg-green-400' },
+  }[globalStatus]
+
+  // SLO helpers
   const sloStatus = sloSummary?.overall_status || 'no_data'
-  const sloColor = sloStatus === 'healthy' ? 'text-green-400' : sloStatus === 'at_risk' ? 'text-yellow-400' : sloStatus === 'breached' ? 'text-red-400' : 'text-gray-500'
-  const sloBadgeColor = sloStatus === 'healthy' ? 'bg-success/10 text-success' : sloStatus === 'at_risk' ? 'bg-warning/10 text-warning' : sloStatus === 'breached' ? 'bg-red-500/10 text-red-400' : 'bg-gray-700/30 text-gray-500'
+  const sloAvail = sloSummary?.availability_pct
   const sloLabel = sloStatus === 'healthy' ? 'Meeting SLO' : sloStatus === 'at_risk' ? 'At Risk' : sloStatus === 'breached' ? 'Breached' : 'No Data'
+  const sloColor = sloStatus === 'healthy' ? 'text-green-400' : sloStatus === 'at_risk' ? 'text-yellow-400' : sloStatus === 'breached' ? 'text-red-400' : 'text-gray-500'
 
-  // ========== RENDER ==========
+  // ??? RENDER ??????????????????????????????????????????????
+
   return (
-    <div className="space-y-4 sm:space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl sm:text-3xl font-bold text-white mb-1 sm:mb-2">Welcome to Rhinometric</h1>
-        <p className="text-text-muted text-sm sm:text-base">AI-Powered Observability & Anomaly Detection Platform</p>
-        {!token && <p className="text-warning text-sm mt-2">{'\u26a0\ufe0f'} No authentication token</p>}
-        {error && <p className="text-yellow-500/80 text-sm mt-2">Dashboard data temporarily unavailable. Retrying automatically...</p>}
-      </div>
+    <div className="space-y-6">
 
-      {/* ===== CRITICAL BANNER ===== */}
-      {globalStatus === 'CRITICAL' && (
-        <div className="bg-red-600/20 border-2 border-red-500/60 rounded-xl p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-pulse-slow">
+      {/* ??? 1. GLOBAL STATUS BAR ??? */}
+      <div className={`rounded-lg border ${statusConfig.border} ${statusConfig.bg} p-4 sm:p-5`}>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="p-2 bg-red-500/20 rounded-lg flex-shrink-0">
-              <ShieldAlert className="w-7 h-7 text-red-400" />
-            </div>
+            <span className={`w-3 h-3 rounded-full flex-shrink-0 ${statusConfig.dot}`} />
             <div className="min-w-0">
-              <p className="text-lg sm:text-xl font-bold text-red-300">CRITICAL: {downServices.length} service{downServices.length !== 1 ? 's' : ''} currently DOWN</p>
-              <p className="text-sm text-red-400/80 mt-0.5">Immediate investigation required — platform operational integrity is compromised</p>
+              <span className={`text-lg font-bold ${statusConfig.text}`}>{statusConfig.label}</span>
+              <p className="text-sm text-gray-400 mt-0.5">
+                {servicesDown} service{servicesDown !== 1 ? 's' : ''} down
+                {' \u00b7 '}{alertsCount} alert{alertsCount !== 1 ? 's' : ''}
+                {' \u00b7 '}{anomaliesCount} anomal{anomaliesCount !== 1 ? 'ies' : 'y'}
+              </p>
             </div>
           </div>
-          <div className="flex items-center gap-2 flex-shrink-0 w-full sm:w-auto">
-            <button onClick={() => navigate('/services')} className="flex-1 sm:flex-none px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-lg text-sm font-semibold transition-colors">
-              View Services
-            </button>
-            <button onClick={() => navigate('/alerts')} className="flex-1 sm:flex-none px-4 py-2 bg-red-600/40 hover:bg-red-600/60 text-red-200 border border-red-500/40 rounded-lg text-sm font-semibold transition-colors">
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <button
+              onClick={() => navigate('/alerts')}
+              className="px-3 py-1.5 text-sm font-medium rounded-md bg-gray-700/50 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors"
+            >
               View Alerts
             </button>
+            <button
+              onClick={() => navigate('/services')}
+              className="px-3 py-1.5 text-sm font-medium rounded-md bg-gray-700/50 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors"
+            >
+              View Services
+            </button>
           </div>
-        </div>
-      )}
-
-      {/* ===== ROW 1: Main KPI Cards ===== */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 lg:gap-5">
-
-        {/* CARD 1: Monitored Services - PRINCIPAL (2-col span) */}
-        <div
-          className="card col-span-2 hover:border-primary/50 cursor-pointer transition-all duration-200 hover:shadow-lg hover:shadow-primary/20 p-4 sm:p-5 lg:p-6"
-          onClick={() => navigate('/services')}
-        >
-          <div className="flex items-start justify-between mb-3">
-            <div className="p-2.5 bg-primary/10 rounded-lg">
-              <Server className="w-7 h-7 text-primary" />
-            </div>
-            <span className={`text-xs px-2 py-1 rounded-full font-semibold ${globalStatus === 'CRITICAL' ? 'bg-red-500/20 text-red-400 border border-red-500/30' : globalStatus === 'WARNING' ? 'bg-warning/20 text-warning border border-warning/30' : 'bg-success/10 text-success'}`}>
-              {globalStatus === 'CRITICAL' ? 'CRITICAL' : globalStatus === 'WARNING' ? 'WARNING' : 'Healthy'}
-            </span>
-          </div>
-          <p className="text-text-muted text-sm mb-1">Monitored Services</p>
-          <p className="text-3xl sm:text-4xl font-bold text-white mb-2">{ext ? String(ext.total) : '...'}</p>
-          {sparkline.length > 1 && (
-            <div className="h-10 -mx-2 mb-2">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={sparkline}>
-                  <Line type="monotone" dataKey="value" stroke={globalStatus === 'CRITICAL' ? '#ef4444' : globalStatus === 'WARNING' ? '#f59e0b' : '#10b981'} strokeWidth={2} dot={false} isAnimationActive={false} />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          )}
-          <p className="text-xs text-text-muted">
-            {ext ? (
-              <>
-                {ext.healthy} up
-                {ext.degraded > 0 && <> &middot; {ext.degraded} degraded</>}
-                {ext.down > 0 && <> &middot; <span className="text-red-400 font-bold">{ext.down} down</span></>}
-              </>
-            ) : ''}
-          </p>
-        </div>
-
-        {/* CARD 5: Alerts (24h) */}
-        <div
-          className="card hover:border-primary/50 cursor-pointer transition-all duration-200 hover:shadow-lg hover:shadow-primary/20 p-3 sm:p-4 lg:p-5"
-          onClick={() => navigate('/alerts')}
-        >
-          <div className="flex items-start justify-between mb-2 sm:mb-3">
-            <div className="p-1.5 sm:p-2 bg-primary/10 rounded-lg">
-              <Bell className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
-            </div>
-            <span className={`text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full ${kpisData?.alerts_24h?.status === 'success' ? 'bg-success/10 text-success' : kpisData?.alerts_24h?.status === 'error' ? 'bg-red-500/10 text-red-400' : 'bg-warning/10 text-warning'}`}>
-              {kpisData?.alerts_24h?.status === 'success' ? 'Healthy' : kpisData?.alerts_24h?.status === 'error' ? 'Critical' : 'Warning'}
-            </span>
-          </div>
-          <p className="text-text-muted text-xs sm:text-sm mb-0.5 sm:mb-1">Alerts (24h)</p>
-          <p className="text-lg sm:text-2xl font-bold text-white mb-2">{kpisData?.alerts_24h?.value ?? '...'}</p>
-          <p className="text-[10px] sm:text-xs text-text-muted">{kpisData?.alerts_24h?.change || 'No active alerts'}</p>
         </div>
       </div>
 
-      {/* ===== ROW 2: Detail Cards ===== */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4 lg:gap-5">
+      {/* ??? 2. PRIMARY ACTION ROW ??? */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
 
-        {/* CARD 6: Services Down */}
+        {/* Alerts */}
         <div
-          className={`card cursor-pointer transition-all duration-200 p-4 sm:p-5 ${downServices.length > 0 ? 'border-2 border-red-500/50 hover:border-red-500/80 bg-red-500/5 hover:shadow-lg hover:shadow-red-500/20' : 'hover:border-primary/50 hover:shadow-lg hover:shadow-primary/20'}`}
-          onClick={() => navigate('/services')}
+          role="button"
+          tabIndex={0}
+          aria-label={`${alertsCount} active alerts. View Alerts.`}
+          onClick={() => navigate('/alerts')}
+          onKeyDown={handleKeyDown(navigate, '/alerts')}
+          className={`rounded-lg border p-5 cursor-pointer transition-colors focus:outline-none focus:ring-2 focus:ring-primary/50 ${
+            alertsCount > 0
+              ? 'border-yellow-500/40 bg-yellow-500/5 hover:bg-yellow-500/10'
+              : 'border-gray-700/50 bg-gray-800/50 hover:bg-gray-700/40'
+          }`}
         >
-          <div className="flex items-start justify-between mb-3">
-            <div className={`p-2 rounded-lg ${downServices.length > 0 ? 'bg-red-500/20' : 'bg-primary/10'}`}>
-              <XCircle className={`w-5 h-5 ${downServices.length > 0 ? 'text-red-400' : 'text-primary'}`} />
+          <div className="flex items-center gap-3 mb-4">
+            <div className={`p-2 rounded-lg ${alertsCount > 0 ? 'bg-yellow-500/15' : 'bg-gray-700/50'}`}>
+              <Bell className={`w-5 h-5 ${alertsCount > 0 ? 'text-yellow-400' : 'text-gray-400'}`} />
             </div>
-            <span className={`text-xs px-2 py-1 rounded-full font-semibold ${downServices.length > 0 ? 'bg-red-500/20 text-red-400 border border-red-500/30' : 'bg-success/10 text-success'}`}>
-              {downServices.length > 0 ? 'CRITICAL' : 'Healthy'}
-            </span>
+            <h3 className="text-sm font-medium text-gray-400">Alerts</h3>
           </div>
-          <p className={`text-sm mb-1 ${downServices.length > 0 ? 'text-red-300 font-medium' : 'text-text-muted'}`}>Services Down</p>
-          <p className={`text-2xl font-bold mb-1 ${downServices.length > 0 ? 'text-red-400' : 'text-white'}`}>{extServices ? String(downServices.length) : '...'}</p>
-          {downServices.length > 0 && (
-            <p className="text-xs text-red-400/80 font-semibold mb-2">Immediate Attention Required</p>
-          )}
-          <p className="text-xs text-text-muted">
-            {extServices
-              ? downServices.length > 0
-                ? downServices.slice(0, 3).map(s => s.name).join(', ') + (downServices.length > 3 ? ` +${downServices.length - 3} more` : '')
-                : 'All services operational'
-              : ''}
+          <p className={`text-3xl font-bold mb-3 ${alertsCount > 0 ? 'text-yellow-400' : 'text-white'}`}>
+            {kpisData ? alertsCount : '\u2026'}
           </p>
+          <span className="inline-flex items-center gap-1 text-xs font-medium text-primary">
+            View Alerts <ArrowRight className="w-3 h-3" />
+          </span>
         </div>
 
-        {/* CARD 7: Coverage by Type */}
-        <div className="card p-4 sm:p-5">
-          <div className="flex items-start justify-between mb-3">
-            <div className="p-2 bg-primary/10 rounded-lg">
+        {/* AI Anomalies */}
+        <div
+          role="button"
+          tabIndex={0}
+          aria-label={`${anomaliesCount} active anomalies. Investigate.`}
+          onClick={() => navigate('/ai-anomalies-v2')}
+          onKeyDown={handleKeyDown(navigate, '/ai-anomalies-v2')}
+          className={`rounded-lg border p-5 cursor-pointer transition-colors focus:outline-none focus:ring-2 focus:ring-primary/50 ${
+            anomaliesCount > 0
+              ? 'border-yellow-500/40 bg-yellow-500/5 hover:bg-yellow-500/10'
+              : 'border-gray-700/50 bg-gray-800/50 hover:bg-gray-700/40'
+          }`}
+        >
+          <div className="flex items-center gap-3 mb-4">
+            <div className={`p-2 rounded-lg ${anomaliesCount > 0 ? 'bg-yellow-500/15' : 'bg-gray-700/50'}`}>
+              <AlertTriangle className={`w-5 h-5 ${anomaliesCount > 0 ? 'text-yellow-400' : 'text-gray-400'}`} />
+            </div>
+            <h3 className="text-sm font-medium text-gray-400">AI Anomalies</h3>
+          </div>
+          <p className={`text-3xl font-bold mb-3 ${anomaliesCount > 0 ? 'text-yellow-400' : 'text-white'}`}>
+            {kpisData ? anomaliesCount : '\u2026'}
+          </p>
+          <span className="inline-flex items-center gap-1 text-xs font-medium text-primary">
+            Investigate <ArrowRight className="w-3 h-3" />
+          </span>
+        </div>
+
+        {/* Services Down */}
+        <div
+          role="button"
+          tabIndex={0}
+          aria-label={`${servicesDown} services down. View Services.`}
+          onClick={() => navigate('/services')}
+          onKeyDown={handleKeyDown(navigate, '/services')}
+          className={`rounded-lg border p-5 cursor-pointer transition-colors focus:outline-none focus:ring-2 focus:ring-primary/50 ${
+            servicesDown > 0
+              ? 'border-red-500/40 bg-red-500/5 hover:bg-red-500/10'
+              : 'border-gray-700/50 bg-gray-800/50 hover:bg-gray-700/40'
+          }`}
+        >
+          <div className="flex items-center gap-3 mb-4">
+            <div className={`p-2 rounded-lg ${servicesDown > 0 ? 'bg-red-500/15' : 'bg-gray-700/50'}`}>
+              <XCircle className={`w-5 h-5 ${servicesDown > 0 ? 'text-red-400' : 'text-gray-400'}`} />
+            </div>
+            <h3 className="text-sm font-medium text-gray-400">Services Down</h3>
+          </div>
+          <p className={`text-3xl font-bold mb-3 ${servicesDown > 0 ? 'text-red-400' : 'text-white'}`}>
+            {extServices ? servicesDown : '\u2026'}
+          </p>
+          <span className="inline-flex items-center gap-1 text-xs font-medium text-primary">
+            View Services <ArrowRight className="w-3 h-3" />
+          </span>
+        </div>
+      </div>
+
+      {/* ??? 3. SECONDARY SECTION ??? */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+
+        {/* Monitored Services */}
+        <div
+          role="button"
+          tabIndex={0}
+          aria-label={`${ext?.total ?? 0} monitored services. Open Services.`}
+          onClick={() => navigate('/services')}
+          onKeyDown={handleKeyDown(navigate, '/services')}
+          className="rounded-lg border border-gray-700/50 bg-gray-800/50 p-5 cursor-pointer transition-colors hover:bg-gray-700/40 focus:outline-none focus:ring-2 focus:ring-primary/50"
+        >
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-2 rounded-lg bg-gray-700/50">
+              <Server className="w-5 h-5 text-primary" />
+            </div>
+            <h3 className="text-sm font-medium text-gray-400">Monitored Services</h3>
+          </div>
+          <p className="text-3xl font-bold text-white mb-3">{ext ? ext.total : '\u2026'}</p>
+          <span className="inline-flex items-center gap-1 text-xs font-medium text-primary">
+            Open Services <ArrowRight className="w-3 h-3" />
+          </span>
+        </div>
+
+        {/* Coverage by Type (NOT clickable) */}
+        <div className="rounded-lg border border-gray-700/50 bg-gray-800/50 p-5">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-2 rounded-lg bg-gray-700/50">
               <BarChart3 className="w-5 h-5 text-primary" />
             </div>
-            <span className="text-xs px-2 py-1 rounded-full bg-primary/10 text-primary">
-              {Object.keys(catalogTypes).length} types
-            </span>
+            <h3 className="text-sm font-medium text-gray-400">Coverage by Type</h3>
           </div>
-          <p className="text-text-muted text-sm mb-3">Coverage by Type</p>
           {extServices ? (
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               {Object.entries(catalogTypes)
                 .sort((a, b) => b[1] - a[1])
                 .slice(0, 5)
                 .map(([type, count]) => (
                   <div key={type} className="flex items-center justify-between">
-                    <span className="text-xs text-text-muted truncate mr-2">{TYPE_LABELS[type] || type}</span>
+                    <span className="text-xs text-gray-400 truncate mr-2">{TYPE_LABELS[type] || type}</span>
                     <div className="flex items-center gap-2">
-                      <div className="w-16 h-1.5 bg-surface-light rounded-full overflow-hidden">
+                      <div className="w-16 h-1.5 bg-gray-700 rounded-full overflow-hidden">
                         <div
                           className="h-full bg-primary rounded-full"
                           style={{ width: `${(count / (extServices?.length || 1)) * 100}%` }}
@@ -292,62 +345,77 @@ export function HomePage() {
                   </div>
                 ))}
               {Object.keys(catalogTypes).length > 5 && (
-                <p className="text-[10px] text-text-muted mt-1">+{Object.keys(catalogTypes).length - 5} more types</p>
+                <p className="text-[10px] text-gray-500 mt-1">+{Object.keys(catalogTypes).length - 5} more</p>
               )}
             </div>
           ) : (
-            <p className="text-xs text-text-muted">Loading...</p>
+            <p className="text-xs text-gray-500">Loading\u2026</p>
           )}
         </div>
 
-        {/* CARD 8: SLO Status (replaces Uptime Snapshot) */}
+        {/* Service Levels (SLO) */}
         <div
-          className="card cursor-pointer transition-all duration-200 hover:border-primary/50 hover:shadow-lg hover:shadow-primary/20 p-4 sm:p-5"
+          role="button"
+          tabIndex={0}
+          aria-label={`SLO status: ${sloLabel}. View details.`}
           onClick={() => navigate('/slo')}
+          onKeyDown={handleKeyDown(navigate, '/slo')}
+          className="rounded-lg border border-gray-700/50 bg-gray-800/50 p-5 cursor-pointer transition-colors hover:bg-gray-700/40 focus:outline-none focus:ring-2 focus:ring-primary/50"
         >
-          <div className="flex items-start justify-between mb-3">
-            <div className={`p-2 rounded-lg ${sloStatus === 'breached' ? 'bg-red-500/20' : sloStatus === 'at_risk' ? 'bg-yellow-500/20' : 'bg-primary/10'}`}>
-              <Target className={`w-5 h-5 ${sloStatus === 'breached' ? 'text-red-400' : sloStatus === 'at_risk' ? 'text-yellow-400' : 'text-primary'}`} />
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div className={`p-2 rounded-lg ${sloStatus === 'breached' ? 'bg-red-500/15' : sloStatus === 'at_risk' ? 'bg-yellow-500/15' : 'bg-gray-700/50'}`}>
+                <Target className={`w-5 h-5 ${sloStatus === 'breached' ? 'text-red-400' : sloStatus === 'at_risk' ? 'text-yellow-400' : 'text-primary'}`} />
+              </div>
+              <h3 className="text-sm font-medium text-gray-400">Service Levels</h3>
             </div>
-            <span className={`text-xs px-2 py-1 rounded-full font-semibold ${sloBadgeColor}`}>
+            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+              sloStatus === 'healthy' ? 'bg-green-500/10 text-green-400'
+              : sloStatus === 'at_risk' ? 'bg-yellow-500/10 text-yellow-400'
+              : sloStatus === 'breached' ? 'bg-red-500/10 text-red-400'
+              : 'bg-gray-700/30 text-gray-500'
+            }`}>
               {sloLabel}
             </span>
           </div>
-          <p className="text-text-muted text-sm mb-1">SLO Status</p>
-          {sloSummary && sloSummary.availability_pct !== null ? (
-            <>
-              <p className={`text-2xl font-bold mb-2 ${sloColor}`}>
-                {sloSummary.availability_pct}%
-              </p>
-              <div className="space-y-1">
-                {sloSummary.error_budget_availability !== null && (
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] text-text-muted w-16">Budget</span>
-                    <div className="flex-1 h-1.5 bg-gray-700 rounded-full overflow-hidden">
-                      <div
-                        className={`h-full rounded-full ${sloSummary.error_budget_availability >= 50 ? 'bg-green-500' : sloSummary.error_budget_availability >= 20 ? 'bg-yellow-500' : 'bg-red-500'}`}
-                        style={{ width: `${Math.min(sloSummary.error_budget_availability, 100)}%` }}
-                      />
-                    </div>
-                    <span className="text-[10px] text-gray-400 w-8 text-right">{sloSummary.error_budget_availability.toFixed(0)}%</span>
-                  </div>
-                )}
-                <p className="text-[10px] text-text-muted">
-                  {sloSummary.services_healthy} healthy
-                  {sloSummary.services_at_risk > 0 && <> · {sloSummary.services_at_risk} at risk</>}
-                  {sloSummary.services_breached > 0 && <> · <span className="text-red-400">{sloSummary.services_breached} breached</span></>}
-                </p>
-              </div>
-            </>
-          ) : (
-            <>
-              <p className="text-2xl font-bold text-gray-500 mb-2">—</p>
-              <p className="text-xs text-text-muted">Add services to start tracking SLOs</p>
-            </>
-          )}
+          <p className={`text-3xl font-bold mb-3 ${sloColor}`}>
+            {sloAvail != null ? `${sloAvail}%` : '\u2014'}
+          </p>
+          <span className="inline-flex items-center gap-1 text-xs font-medium text-primary">
+            View details <ArrowRight className="w-3 h-3" />
+          </span>
         </div>
-
       </div>
+
+      {/* ??? 4. INCIDENTS (optional ? data available) ??? */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div
+          role="button"
+          tabIndex={0}
+          aria-label={`${openIncidents.length} open incidents. View Incidents.`}
+          onClick={() => navigate('/incidents')}
+          onKeyDown={handleKeyDown(navigate, '/incidents')}
+          className={`rounded-lg border p-5 cursor-pointer transition-colors focus:outline-none focus:ring-2 focus:ring-primary/50 ${
+            openIncidents.length > 0
+              ? 'border-red-500/40 bg-red-500/5 hover:bg-red-500/10'
+              : 'border-gray-700/50 bg-gray-800/50 hover:bg-gray-700/40'
+          }`}
+        >
+          <div className="flex items-center gap-3 mb-4">
+            <div className={`p-2 rounded-lg ${openIncidents.length > 0 ? 'bg-red-500/15' : 'bg-gray-700/50'}`}>
+              <Flame className={`w-5 h-5 ${openIncidents.length > 0 ? 'text-red-400' : 'text-gray-400'}`} />
+            </div>
+            <h3 className="text-sm font-medium text-gray-400">Open Incidents</h3>
+          </div>
+          <p className={`text-3xl font-bold mb-3 ${openIncidents.length > 0 ? 'text-red-400' : 'text-white'}`}>
+            {incidentsData ? openIncidents.length : '\u2026'}
+          </p>
+          <span className="inline-flex items-center gap-1 text-xs font-medium text-primary">
+            View Incidents <ArrowRight className="w-3 h-3" />
+          </span>
+        </div>
+      </div>
+
     </div>
   )
 }

@@ -5,24 +5,28 @@ import { Home, LayoutDashboard, AlertTriangle, Bell, CreditCard, Settings, LogOu
 import { useAuthStore } from '../lib/auth/store'
 
 const navigation = [
+  // ?? Primary (operational) ??
   { name: 'Home', href: '/', icon: Home },
-  { name: 'Services', href: '/services', icon: Globe },
-  // [synthetic-edition] { name: 'Service Map', href: '/service-map', icon: Share2 },
-  { name: 'Dashboards', href: '/dashboards', icon: LayoutDashboard },
-  { name: 'AI Anomalies', href: '/ai-anomalies-v2', icon: AlertTriangle },
   { name: 'Alerts', href: '/alerts', icon: Bell },
-  { name: 'Alert History', href: '/alert-history', icon: ClipboardList },
+  { name: 'AI Anomalies', href: '/ai-anomalies-v2', icon: AlertTriangle },
   { name: 'Incidents', href: '/incidents', icon: Flame },
+  { name: 'Services', href: '/services', icon: Globe },
   { name: 'Service Levels', href: '/slo', icon: Target },
   { name: 'Alert Policies', href: '/alert-rules', icon: Shield },
-  // [synthetic-edition] { name: 'Logs', href: '/logs', icon: FileText },
-  // [synthetic-edition] { name: 'Traces', href: '/traces', icon: Network },
-  // [synthetic-edition] { name: 'Trace Analytics', href: '/trace-analytics', icon: BarChart3 },
+  { name: 'Dashboards', href: '/dashboards', icon: LayoutDashboard },
+  // ?? separator ??
+  { name: 'separator', href: '', icon: Home, isSeparator: true },
+  // ?? Secondary ??
+  { name: 'Alert History', href: '/alert-history', icon: ClipboardList },
   { name: 'License', href: '/license', icon: CreditCard },
   { name: 'Backup & Recovery', href: '/backup-recovery', icon: HardDrive },
   { name: 'Users', href: '/users', icon: Users, requiresAdmin: true },
-  { name: 'Roadmap', href: '/roadmap', icon: Map },
   { name: 'Settings', href: '/settings', icon: Settings, requiresAdmin: true },
+  { name: 'Roadmap', href: '/roadmap', icon: Map },
+  // [synthetic-edition] { name: 'Service Map', href: '/service-map', icon: Share2 },
+  // [synthetic-edition] { name: 'Logs', href: '/logs', icon: FileText },
+  // [synthetic-edition] { name: 'Traces', href: '/traces', icon: Network },
+  // [synthetic-edition] { name: 'Trace Analytics', href: '/trace-analytics', icon: BarChart3 },
 ]
 
 export function Layout() {
@@ -101,6 +105,9 @@ export function Layout() {
 
         <nav className="flex-1 px-3 sm:px-4 py-4 sm:py-6 space-y-1 overflow-y-auto">
           {navigation.map((item) => {
+            if ((item as any).isSeparator) {
+              return <div key="separator" className="my-2 mx-3 border-t border-gray-700/50" />
+            }
             if (item.requiresAdmin && !canManageUsers()) {
               return null
             }
