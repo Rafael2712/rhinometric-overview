@@ -114,7 +114,7 @@ function GroupHealthBadge({ status }: { status: string }) {
   )
 }
 
-type Tab = 'external' | 'platform'
+// type Tab removed - platform tab hidden
 type View = 'list' | 'grouped' | 'create' | 'edit' | 'bulk-http'
 
 /* ─── Helpers ────────────────────────────────────────────────── */
@@ -970,11 +970,11 @@ const CATALOG_TYPE_OPTIONS = [
 
 export default function Services() {
   const { token, isAdmin } = useAuthStore()
-  const [activeTab, setActiveTab] = useState<Tab>('external')
+  // Platform tab removed - always show external services
   const [view, setView] = useState<View>('list')
   const [extServices, setExtServices] = useState<ExternalServiceData[]>([])
   const [extSummary, setExtSummary] = useState<ExtSummary>({ total:0, enabled:0, up:0, down:0, degraded:0, unknown:0 })
-  const [platformData, setPlatformData] = useState<PlatformData | null>(null)
+  const [_platformData, setPlatformData] = useState<PlatformData | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
   // Form state
@@ -1419,7 +1419,7 @@ export default function Services() {
     setImportLoading(false)
   }
 
-  const platform = platformData?.platform ?? { services: [], total: 0, up: 0, down: 0 }
+  // platform variable removed - tab hidden from UI
 
   // ── Create/Edit Form View ──────────────────────────────────────
 
@@ -2124,7 +2124,6 @@ export default function Services() {
           <h1 className="text-3xl font-bold text-white">Services</h1>
           <p className="text-gray-400 mt-1">Manage and monitor your connected services</p>
         </div>
-        {activeTab === 'external' && (
           <div className="flex items-center gap-3">
             {/* View mode toggle (Task 22) */}
             <div className="flex items-center bg-gray-800/60 rounded-lg p-0.5">
@@ -2150,33 +2149,10 @@ export default function Services() {
               <Plus className="w-4 h-4" /> Connect Service
             </button>
           </div>
-        )}
-      </div>
-
-      {/* Tabs */}
-      <div className="flex gap-1 bg-gray-800/60 rounded-lg p-1 w-fit">
-        <button onClick={() => setActiveTab('external')}
-          className={`flex items-center gap-2 px-5 py-2.5 rounded-md text-sm font-medium transition-colors ${
-            activeTab === 'external' ? 'bg-emerald-500/20 text-emerald-400 shadow-sm' : 'text-gray-400 hover:text-gray-200 hover:bg-gray-700/40'
-          }`}>
-          <Globe className="w-4 h-4" /> External Services
-          <span className={`ml-1 px-2 py-0.5 rounded-full text-xs ${activeTab === 'external' ? 'bg-emerald-400/20 text-emerald-300' : 'bg-gray-700 text-gray-400'}`}>
-            {extSummary.total}
-          </span>
-        </button>
-        <button onClick={() => setActiveTab('platform')}
-          className={`flex items-center gap-2 px-5 py-2.5 rounded-md text-sm font-medium transition-colors ${
-            activeTab === 'platform' ? 'bg-blue-500/20 text-blue-400 shadow-sm' : 'text-gray-400 hover:text-gray-200 hover:bg-gray-700/40'
-          }`}>
-          <Server className="w-4 h-4" /> Platform Services
-          <span className={`ml-1 px-2 py-0.5 rounded-full text-xs ${activeTab === 'platform' ? 'bg-blue-400/20 text-blue-300' : 'bg-gray-700 text-gray-400'}`}>
-            {platform.total}
-          </span>
-        </button>
       </div>
 
       {/* ── EXTERNAL SERVICES TAB ──────────────────────────────── */}
-      {activeTab === 'external' && (
+      {/* External Services Content */}
         <>
           {/* Stats */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -2472,87 +2448,8 @@ export default function Services() {
             </div>
           ))}
         </>
-      )}
 
-      {/* ── PLATFORM SERVICES TAB ───────────────────────────────── */}
-      {activeTab === 'platform' && (
-        <>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-gray-800/50 rounded-lg p-6 border border-gray-700/50">
-              <div className="flex items-center gap-4">
-                <div className="p-3 bg-blue-400/10 rounded-lg"><Server className="w-6 h-6 text-blue-400" /></div>
-                <div><p className="text-gray-400 text-sm">Platform Services</p><p className="text-2xl font-bold text-white">{platform.total}</p></div>
-              </div>
-            </div>
-            <div className="bg-gray-800/50 rounded-lg p-6 border border-gray-700/50">
-              <div className="flex items-center gap-4">
-                <div className="p-3 bg-green-400/10 rounded-lg"><CheckCircle className="w-6 h-6 text-green-400" /></div>
-                <div><p className="text-gray-400 text-sm">Healthy</p><p className="text-2xl font-bold text-green-400">{platform.up}</p></div>
-              </div>
-            </div>
-            <div className="bg-gray-800/50 rounded-lg p-6 border border-gray-700/50">
-              <div className="flex items-center gap-4">
-                <div className="p-3 bg-red-400/10 rounded-lg"><AlertCircle className="w-6 h-6 text-red-400" /></div>
-                <div><p className="text-gray-400 text-sm">Down</p><p className="text-2xl font-bold text-red-400">{platform.down}</p></div>
-              </div>
-            </div>
-          </div>
-
-          {platform.total === 0 ? (
-            <div className="bg-gray-800/50 rounded-lg border border-gray-700/50 p-12 text-center">
-              <Server className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold text-gray-300">No platform services detected</h3>
-              <p className="text-gray-500 mt-2">Platform services will appear here once Prometheus is scraping them.</p>
-            </div>
-          ) : (
-            <div className="bg-gray-800/50 rounded-lg border border-gray-700/50 overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-gray-700/50">
-                      <th className="text-left p-4 text-gray-400 font-medium">Service</th>
-                      <th className="text-left p-4 text-gray-400 font-medium">Instance</th>
-                      <th className="text-left p-4 text-gray-400 font-medium">Status</th>
-                      <th className="text-left p-4 text-gray-400 font-medium">Tier</th>
-                      <th className="text-left p-4 text-gray-400 font-medium">Version</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {platform.services.map((svc, i) => (
-                      <tr key={`${svc.name}-${svc.instance}-${i}`} className="border-b border-gray-700/30 hover:bg-gray-700/30 transition-colors">
-                        <td className="p-4">
-                          <div className="flex items-center gap-3">
-                            <div className={`p-2 rounded ${svc.status === 'up' ? 'bg-green-400/10' : 'bg-red-400/10'}`}>
-                              <Server className={`w-4 h-4 ${svc.status === 'up' ? 'text-green-400' : 'text-red-400'}`} />
-                            </div>
-                            <div>
-                              <p className="text-white font-medium">{svc.name}</p>
-                              <p className="text-gray-400 text-sm">{svc.service_type}</p>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="p-4"><code className="text-sm text-gray-300 bg-gray-900/50 px-2 py-1 rounded">{svc.instance}</code></td>
-                        <td className="p-4">
-                          <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium ${svc.status === 'up' ? 'bg-green-400/10 text-green-400' : 'bg-red-400/10 text-red-400'}`}>
-                            {svc.status === 'up' ? <CheckCircle className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
-                            {svc.status.toUpperCase()}
-                          </span>
-                        </td>
-                        <td className="p-4"><span className="px-3 py-1 rounded-full text-xs font-medium bg-blue-400/10 text-blue-400">{svc.tier}</span></td>
-                        <td className="p-4 text-gray-300">{svc.version}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-
-          <div className="text-center text-gray-500 text-sm">
-            Last updated: {platformData ? new Date(platformData.timestamp).toLocaleString() : 'N/A'}
-          </div>
-        </>
-      )}
+      {/* ── PLATFORM SERVICES TAB (HIDDEN) ───────────────────────────────── */}
 
       {/* ── BULK IMPORT MODAL ────────────────────────────────── */}
       {showImportModal && (
