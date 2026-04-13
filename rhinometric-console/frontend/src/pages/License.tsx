@@ -20,12 +20,14 @@ import {
   Wrench,
   Eye,
   Zap,
+  TrendingUp,
+  DollarSign,
 } from 'lucide-react'
 import type { LicenseStatusResponse } from '../types/license'
 
-// =================================================================
+// ==================================================================
 // HELPERS
-// =================================================================
+// ==================================================================
 
 function formatDate(iso: string | null | undefined): string {
   if (!iso) return 'N/A'
@@ -59,9 +61,27 @@ function getStatusColor(used: number, limit: number): string {
   return 'text-success'
 }
 
-// =================================================================
+function getPlanLabel(data: LicenseStatusResponse): string {
+  if (data.edition === 'community_trial') {
+    return `${data.plan_display} (Trial)`
+  }
+  return data.plan_display
+}
+
+function getUsageBadge(status: string): { label: string; cls: string } {
+  switch (status) {
+    case 'exceeded':
+      return { label: 'Limit exceeded', cls: 'bg-error/15 text-error border-error/30' }
+    case 'warning':
+      return { label: 'Approaching limit', cls: 'bg-warning/15 text-warning border-warning/30' }
+    default:
+      return { label: 'Within plan', cls: 'bg-success/15 text-success border-success/30' }
+  }
+}
+
+// ==================================================================
 // STATUS CONFIG
-// =================================================================
+// ==================================================================
 
 interface StatusConfig {
   icon: React.ReactNode
@@ -123,9 +143,9 @@ function getStatusConfig(status: string, reason?: string): StatusConfig {
   }
 }
 
-// =================================================================
+// ==================================================================
 // MAIN COMPONENT
-// =================================================================
+// ==================================================================
 
 export function LicensePage() {
   useEffect(() => {
@@ -200,11 +220,11 @@ export function LicensePage() {
           <div className="grid grid-cols-2 gap-3 text-sm mb-4">
             <div>
               <p className="text-text-muted">Organization</p>
-              <p className="text-white font-medium">{data.organization || '?'}</p>
+              <p className="text-white font-medium">{data.organization || '\u2014'}</p>
             </div>
             <div>
               <p className="text-text-muted">Plan</p>
-              <p className="text-white font-medium">{data.plan_display}</p>
+              <p className="text-white font-medium">{getPlanLabel(data)}</p>
             </div>
             <div>
               <p className="text-text-muted">Expired on</p>
@@ -228,6 +248,7 @@ export function LicensePage() {
     ? 'about_to_expire'
     : (data.is_valid ? 'active' : data.status)
   const cfg = getStatusConfig(displayStatus, data.message)
+  const usageBadge = getUsageBadge(data.usage_status)
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -268,14 +289,14 @@ export function LicensePage() {
         </div>
       )}
 
-      {/* ?? Card 1: Plan Info ?? */}
+      {/* CARD 1: Plan Info */}
       <div className="card">
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-6 gap-3">
           <div className="min-w-0">
             <div className="flex items-center gap-2 mb-2">
               {cfg.icon}
               <h2 className="text-xl sm:text-2xl font-bold text-white">
-                {data.plan_display}{' '}
+                {getPlanLabel(data)}{' '}
                 <span className="text-base font-normal text-text-muted">Plan</span>
               </h2>
             </div>
@@ -301,10 +322,16 @@ export function LicensePage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 sm:gap-6">
           <div className="space-y-1">
             <p className="text-text-muted text-sm">Plan</p>
-            <p className="text-white text-lg font-semibold">{data.plan_display}</p>
+            <p className="text-white text-lg font-semibold">{getPlanLabel(data)}</p>
+          </div>
+          <div className="space-y-1">
+            <p className="text-text-muted text-sm">Monthly price</p>
+            <p className="text-white text-lg font-semibold">
+              {data.plan_price_monthly}{data.currency === 'EUR' ? '\u20AC' : ` ${data.currency}`}/month
+            </p>
           </div>
           <div className="space-y-1">
             <p className="text-text-muted text-sm">Expiration</p>
@@ -322,11 +349,16 @@ export function LicensePage() {
         </div>
       </div>
 
-      {/* ?? Card 2: Endpoint Usage ?? */}
+      {/* CARD 2: Endpoint Usage */}
       <div className="card">
-        <div className="flex items-center gap-2 mb-4">
-          <Globe className="w-5 h-5 text-primary" />
-          <h3 className="text-base sm:text-lg font-semibold text-white">Endpoint Usage</h3>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <Globe className="w-5 h-5 text-primary" />
+            <h3 className="text-base sm:text-lg font-semibold text-white">Endpoint Usage</h3>
+          </div>
+          <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border ${usageBadge.cls}`}>
+            {usageBadge.label}
+          </span>
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
@@ -359,56 +391,49 @@ export function LicensePage() {
             style={{ width: `${getBarPercent(data.services_used, data.max_services)}%` }}
           />
         </div>
-        <div className="flex justify-between text-xs text-text-muted">
-          <span>{data.services_used} / {data.max_services} endpoints</span>
+        <p className="text-sm text-text-muted mb-3">
+          {data.services_used} / {data.max_services} endpoints used
+        </p>
+
+        {/* Pricing info */}
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6 text-sm border-t border-border/30 pt-3">
+          <div className="flex items-center gap-1.5 text-text-muted">
+            <DollarSign className="w-4 h-4 flex-shrink-0" />
+            <span>Extra endpoints: <span className="text-white font-medium">{data.price_per_extra_service}{data.currency === 'EUR' ? '\u20AC' : ` ${data.currency}`} / endpoint</span></span>
+          </div>
           {data.extra_services_used > 0 && (
-            <span className="text-warning">
-              Est. extra cost: {(data.extra_services_used * data.price_per_extra_service).toFixed(2)} EUR/mo
-            </span>
+            <div className="flex items-center gap-1.5 text-warning">
+              <TrendingUp className="w-4 h-4 flex-shrink-0" />
+              <span className="font-medium">
+                Estimated extra cost: {data.estimated_extra_cost}{data.currency === 'EUR' ? '\u20AC' : ` ${data.currency}`}/month
+              </span>
+            </div>
           )}
         </div>
+
+        {/* Upgrade hint */}
+        {(data.usage_status === 'warning' || data.usage_status === 'exceeded') && (
+          <p className="text-xs text-text-muted mt-3 italic">
+            Consider upgrading your plan to avoid additional costs.
+          </p>
+        )}
       </div>
 
-      {/* ?? Card 3: Users ?? */}
+      {/* CARD 3: Users */}
       <div className="card">
         <div className="flex items-center gap-2 mb-4">
           <Users className="w-5 h-5 text-primary" />
           <h3 className="text-base sm:text-lg font-semibold text-white">User Limits</h3>
         </div>
-
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          {/* Owner */}
-          <UserRoleCard
-            icon={<Crown className="w-4 h-4 text-amber-400" />}
-            label="Owner"
-            used={data.users.owner}
-            limit={data.users.owner_limit}
-          />
-          {/* Admin */}
-          <UserRoleCard
-            icon={<Shield className="w-4 h-4 text-blue-400" />}
-            label="Admins"
-            used={data.users.admins_used}
-            limit={data.users.admins_limit}
-          />
-          {/* Operator */}
-          <UserRoleCard
-            icon={<Wrench className="w-4 h-4 text-green-400" />}
-            label="Operators"
-            used={data.users.operators_used}
-            limit={data.users.operators_limit}
-          />
-          {/* Viewer */}
-          <UserRoleCard
-            icon={<Eye className="w-4 h-4 text-gray-400" />}
-            label="Viewers"
-            used={data.users.viewers_used}
-            limit={data.users.viewers_limit}
-          />
+          <UserRoleCard icon={<Crown className="w-4 h-4 text-amber-400" />} label="Owner" used={data.users.owner} limit={data.users.owner_limit} />
+          <UserRoleCard icon={<Shield className="w-4 h-4 text-blue-400" />} label="Admins" used={data.users.admins_used} limit={data.users.admins_limit} />
+          <UserRoleCard icon={<Wrench className="w-4 h-4 text-green-400" />} label="Operators" used={data.users.operators_used} limit={data.users.operators_limit} />
+          <UserRoleCard icon={<Eye className="w-4 h-4 text-gray-400" />} label="Viewers" used={data.users.viewers_used} limit={data.users.viewers_limit} />
         </div>
       </div>
 
-      {/* ?? Card 4: Features ?? */}
+      {/* CARD 4: Features */}
       <div className="card">
         <div className="flex items-center gap-2 mb-4">
           <Package className="w-5 h-5 text-primary" />
@@ -452,11 +477,11 @@ export function LicensePage() {
           </button>
           {techOpen && (
             <div className="mt-4 space-y-3">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
                 <div>
                   <p className="text-text-muted">Tenant ID</p>
                   <code className="block bg-surface-light px-3 py-1.5 rounded text-xs text-primary font-mono break-all mt-1">
-                    {data.tenant_id || '?'}
+                    {data.tenant_id || '\u2014'}
                   </code>
                 </div>
                 <div>
@@ -468,10 +493,6 @@ export function LicensePage() {
                 <div>
                   <p className="text-text-muted">Status</p>
                   <p className="text-white font-medium">{data.status}</p>
-                </div>
-                <div>
-                  <p className="text-text-muted">Price per extra endpoint</p>
-                  <p className="text-white font-medium">{data.price_per_extra_service} EUR</p>
                 </div>
               </div>
               <div>
@@ -488,9 +509,9 @@ export function LicensePage() {
   )
 }
 
-// =================================================================
+// ==================================================================
 // SUB-COMPONENTS
-// =================================================================
+// ==================================================================
 
 function PageHeader() {
   return (
@@ -523,15 +544,9 @@ function StatusCard({ config, children }: { config: StatusConfig; children?: Rea
 }
 
 function UserRoleCard({
-  icon,
-  label,
-  used,
-  limit,
+  icon, label, used, limit,
 }: {
-  icon: React.ReactNode
-  label: string
-  used: number
-  limit: number
+  icon: React.ReactNode; label: string; used: number; limit: number
 }) {
   return (
     <div className="bg-surface-light/50 rounded-lg p-3">

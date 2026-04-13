@@ -1,15 +1,9 @@
 // ------------------------------------------------------------------
-// Rhinometric License Contract v3.0 ? SERVICE-BASED MODEL
+// Rhinometric License Contract v3.1 ? SERVICE-BASED MODEL + PRICING
 // ------------------------------------------------------------------
 
-/**
- * License plans: starter | growth | scale
- */
 export type LicensePlan = 'starter' | 'growth' | 'scale';
 
-/**
- * License status from the backend.
- */
 export type LicenseStatus =
   | 'valid'
   | 'active'
@@ -19,9 +13,8 @@ export type LicenseStatus =
   | 'missing'
   | 'error';
 
-/**
- * User/role usage sub-object from the API.
- */
+export type UsageStatus = 'ok' | 'warning' | 'exceeded';
+
 export interface LicenseUsers {
   owner: number;
   owner_limit: number;
@@ -33,13 +26,12 @@ export interface LicenseUsers {
   viewers_limit: number;
 }
 
-/**
- * Full license status response from GET /api/license/status
- */
 export interface LicenseStatusResponse {
   // Plan
   plan: string;
   plan_display: string;
+  plan_price_monthly: number;
+  currency: string;
 
   // Services
   max_services: number;
@@ -47,6 +39,8 @@ export interface LicenseStatusResponse {
   remaining_services: number;
   extra_services_used: number;
   price_per_extra_service: number;
+  estimated_extra_cost: number;
+  usage_status: UsageStatus;
 
   // Users
   users: LicenseUsers;
@@ -70,7 +64,7 @@ export interface LicenseStatusResponse {
   breaches: string[] | null;
 }
 
-// Keep legacy types for compat ? not used by new code
+// Legacy compat types (not used by new code)
 export type LicenseEdition = 'trial' | 'annual_standard' | 'enterprise' | 'demo_cloud';
 export type LicenseModule = 'core' | 'ai_anomalies' | 'dashboards' | 'veriverde';
 export interface LicensePayload {

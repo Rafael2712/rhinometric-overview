@@ -22,6 +22,7 @@ PLAN_DEFINITIONS = {
     "starter": {
         "max_services": 25,
         "price_per_extra_service": 3.0,
+        "plan_price_monthly": 109,
         "max_admins": 2,
         "max_operators": 3,
         "max_viewers": 5,
@@ -29,6 +30,7 @@ PLAN_DEFINITIONS = {
     "growth": {
         "max_services": 100,
         "price_per_extra_service": 2.5,
+        "plan_price_monthly": 299,
         "max_admins": 5,
         "max_operators": 10,
         "max_viewers": 20,
@@ -36,6 +38,7 @@ PLAN_DEFINITIONS = {
     "scale": {
         "max_services": 200,
         "price_per_extra_service": 2.0,
+        "plan_price_monthly": 599,
         "max_admins": 10,
         "max_operators": 25,
         "max_viewers": 50,
@@ -214,6 +217,8 @@ def get_license_status_payload(db: Session) -> Dict[str, Any]:
         # Plan
         "plan": plan_name,
         "plan_display": plan_name.capitalize(),
+        "plan_price_monthly": plan_def["plan_price_monthly"],
+        "currency": "EUR",
 
         # Services
         "max_services": max_services,
@@ -221,6 +226,8 @@ def get_license_status_payload(db: Session) -> Dict[str, Any]:
         "remaining_services": remaining_services,
         "extra_services_used": extra_services_used,
         "price_per_extra_service": plan_def["price_per_extra_service"],
+        "estimated_extra_cost": round(extra_services_used * plan_def["price_per_extra_service"], 2),
+        "usage_status": "exceeded" if services_used > max_services else ("warning" if max_services > 0 and services_used > 0.8 * max_services else "ok"),
 
         # Users
         "users": {
