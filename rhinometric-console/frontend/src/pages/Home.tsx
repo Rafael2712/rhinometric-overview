@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useAuthStore } from '../lib/auth/store'
 import { useNavigate } from 'react-router-dom'
 import {
-  Bell, XCircle, Server, BarChart3, Target, AlertTriangle,
+  Bell, XCircle, Server, Target, AlertTriangle,
   ArrowRight, Flame,
 } from 'lucide-react'
 
@@ -42,12 +42,6 @@ interface IncidentsResponse {
   incidents: Incident[]; total: number
 }
 
-const TYPE_LABELS: Record<string, string> = {
-  REST_API: 'REST API', WEB_APP: 'Web App', SOAP_API: 'SOAP API',
-  WEBHOOK: 'Webhook', EXTERNAL_API: 'External API', EXTERNAL_SERVICE: 'External',
-  DATABASE: 'Database', INTERNAL_SERVICE: 'Internal', MOBILE_API: 'Mobile API',
-  MICROSERVICE: 'Service', QUEUE: 'Queue', OTHER: 'Other', UNKNOWN: 'Unknown',
-}
 
 // ??? Helpers ?????????????????????????????????????????????????
 
@@ -141,14 +135,7 @@ export function HomePage() {
   const anomaliesCount = Number(kpisData?.active_anomalies?.value ?? 0)
   const servicesDown = downServices.length
 
-  // Catalog type distribution
-  const catalogTypes: Record<string, number> = {}
-  if (extServices) {
-    for (const s of extServices) {
-      const ct = s.catalog_type || 'UNKNOWN'
-      catalogTypes[ct] = (catalogTypes[ct] || 0) + 1
-    }
-  }
+
 
   // Incidents
   const allIncidents = incidentsData?.incidents ?? []
@@ -238,7 +225,7 @@ export function HomePage() {
           </span>
         </div>
 
-        {/* AI Anomalies */}
+        {/* AI Anomalies ? highlighted (yellow) when count > 0, neutral otherwise (mirrors Alerts logic) */}
         <div
           role="button"
           tabIndex={0}
@@ -317,40 +304,31 @@ export function HomePage() {
           </span>
         </div>
 
-        {/* Coverage by Type (NOT clickable) */}
-        <div className="rounded-lg border border-gray-700/50 bg-gray-800/50 p-5">
+        {/* Open Incidents ? moved here from section 4 */}
+        <div
+          role="button"
+          tabIndex={0}
+          aria-label={`${openIncidents.length} open incidents. View Incidents.`}
+          onClick={() => navigate('/incidents')}
+          onKeyDown={handleKeyDown(navigate, '/incidents')}
+          className={`rounded-lg border p-5 cursor-pointer transition-colors focus:outline-none focus:ring-2 focus:ring-primary/50 ${
+            openIncidents.length > 0
+              ? 'border-red-500/40 bg-red-500/5 hover:bg-red-500/10'
+              : 'border-gray-700/50 bg-gray-800/50 hover:bg-gray-700/40'
+          }`}
+        >
           <div className="flex items-center gap-3 mb-4">
-            <div className="p-2 rounded-lg bg-gray-700/50">
-              <BarChart3 className="w-5 h-5 text-primary" />
+            <div className={`p-2 rounded-lg ${openIncidents.length > 0 ? 'bg-red-500/15' : 'bg-gray-700/50'}`}>
+              <Flame className={`w-5 h-5 ${openIncidents.length > 0 ? 'text-red-400' : 'text-gray-400'}`} />
             </div>
-            <h3 className="text-sm font-medium text-gray-400">Coverage by Type</h3>
+            <h3 className="text-sm font-medium text-gray-400">Open Incidents</h3>
           </div>
-          {extServices ? (
-            <div className="space-y-2">
-              {Object.entries(catalogTypes)
-                .sort((a, b) => b[1] - a[1])
-                .slice(0, 5)
-                .map(([type, count]) => (
-                  <div key={type} className="flex items-center justify-between">
-                    <span className="text-xs text-gray-400 truncate mr-2">{TYPE_LABELS[type] || type}</span>
-                    <div className="flex items-center gap-2">
-                      <div className="w-16 h-1.5 bg-gray-700 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-primary rounded-full"
-                          style={{ width: `${(count / (extServices?.length || 1)) * 100}%` }}
-                        />
-                      </div>
-                      <span className="text-xs font-medium text-white w-5 text-right">{count}</span>
-                    </div>
-                  </div>
-                ))}
-              {Object.keys(catalogTypes).length > 5 && (
-                <p className="text-[10px] text-gray-500 mt-1">+{Object.keys(catalogTypes).length - 5} more</p>
-              )}
-            </div>
-          ) : (
-            <p className="text-xs text-gray-500">Loading\u2026</p>
-          )}
+          <p className={`text-3xl font-bold mb-3 ${openIncidents.length > 0 ? 'text-red-400' : 'text-white'}`}>
+            {incidentsData ? openIncidents.length : '…'}
+          </p>
+          <span className="inline-flex items-center gap-1 text-xs font-medium text-primary">
+            View Incidents <ArrowRight className="w-3 h-3" />
+          </span>
         </div>
 
         {/* Service Levels (SLO) */}
@@ -387,34 +365,6 @@ export function HomePage() {
         </div>
       </div>
 
-      {/* ??? 4. INCIDENTS (optional ? data available) ??? */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        <div
-          role="button"
-          tabIndex={0}
-          aria-label={`${openIncidents.length} open incidents. View Incidents.`}
-          onClick={() => navigate('/incidents')}
-          onKeyDown={handleKeyDown(navigate, '/incidents')}
-          className={`rounded-lg border p-5 cursor-pointer transition-colors focus:outline-none focus:ring-2 focus:ring-primary/50 ${
-            openIncidents.length > 0
-              ? 'border-red-500/40 bg-red-500/5 hover:bg-red-500/10'
-              : 'border-gray-700/50 bg-gray-800/50 hover:bg-gray-700/40'
-          }`}
-        >
-          <div className="flex items-center gap-3 mb-4">
-            <div className={`p-2 rounded-lg ${openIncidents.length > 0 ? 'bg-red-500/15' : 'bg-gray-700/50'}`}>
-              <Flame className={`w-5 h-5 ${openIncidents.length > 0 ? 'text-red-400' : 'text-gray-400'}`} />
-            </div>
-            <h3 className="text-sm font-medium text-gray-400">Open Incidents</h3>
-          </div>
-          <p className={`text-3xl font-bold mb-3 ${openIncidents.length > 0 ? 'text-red-400' : 'text-white'}`}>
-            {incidentsData ? openIncidents.length : '\u2026'}
-          </p>
-          <span className="inline-flex items-center gap-1 text-xs font-medium text-primary">
-            View Incidents <ArrowRight className="w-3 h-3" />
-          </span>
-        </div>
-      </div>
 
     </div>
   )
