@@ -41,7 +41,7 @@ interface PreviewData {
   platform_version: string | null
   created_by: string | null
   checksum: string | null
-  contents: { external_services: number; service_dependencies: number }
+  contents: { external_services: number; service_dependencies: number; alert_rules?: number; slo_targets?: number; incidents?: number; incident_comments?: number; incident_events?: number }
   service_names: string[]
 }
 
@@ -69,6 +69,19 @@ interface LastRestoreData {
   services_restored?: number
   dependencies_restored?: number
   message?: string
+}
+
+interface BackupScopeItem {
+  category: string
+  description: string
+}
+
+interface BackupScope {
+  included: BackupScopeItem[]
+  excluded: BackupScopeItem[]
+  retention_days: number
+  retention_mode: string
+  storage_format: string
 }
 
 function formatBytes(bytes: number | null | undefined): string {
@@ -178,6 +191,18 @@ export function BackupRecoveryPage() {
     enabled: !!token,
     refetchInterval: 30000,
   })
+
+  const { data: scopeData } = useQuery<BackupScope>({
+    queryKey: ['backups-scope', token],
+    queryFn: async () => {
+      const r = await fetch('/api/backups/scope', { headers: { Authorization: `Bearer ${token}` } })
+      if (!r.ok) throw new Error('Failed')
+      return r.json()
+    },
+    enabled: !!token,
+    staleTime: 300000,
+  })
+
 
   const createMutation = useMutation({
     mutationFn: async () => {
@@ -297,7 +322,7 @@ export function BackupRecoveryPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-white">Backup & Recovery</h1>
-          <p className="text-gray-400 text-sm">Backup, preview, and restore platform configuration</p>
+          <p className="text-gray-400 text-sm">Backup, preview, and restore platform configuration — services, alert policies, SLO targets, and incidents</p>
         </div>
         <button onClick={handleCreate} disabled={!canManage || creating || createMutation.isPending}
           className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-colors ${canManage ? 'bg-primary hover:bg-primary/80 text-white' : 'bg-gray-700 text-gray-500 cursor-not-allowed'}`}>
@@ -414,6 +439,47 @@ export function BackupRecoveryPage() {
           )}
         </div>
       </div>
+
+
+      {/* Backup Scope */}
+      {scopeData && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="card p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <CheckCircle className="w-4 h-4 text-success" />
+              <span className="text-sm font-medium text-white">Included in Backup</span>
+            </div>
+            <div className="space-y-2">
+              {scopeData.included.map((item, i) => (
+                <div key={i} className="flex items-start gap-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-success mt-1.5 flex-shrink-0" />
+                  <div>
+                    <span className="text-sm text-white">{item.category}</span>
+                    <p className="text-xs text-gray-500">{item.description}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="card p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <Info className="w-4 h-4 text-gray-400" />
+              <span className="text-sm font-medium text-white">Not Included</span>
+            </div>
+            <div className="space-y-2">
+              {scopeData.excluded.map((item, i) => (
+                <div key={i} className="flex items-start gap-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-gray-600 mt-1.5 flex-shrink-0" />
+                  <div>
+                    <span className="text-sm text-gray-400">{item.category}</span>
+                    <p className="text-xs text-gray-600">{item.description}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Backup History Table */}
       <div className="card overflow-hidden">
@@ -537,8 +603,17 @@ export function BackupRecoveryPage() {
                 <div><span className="text-gray-400 block text-xs">Created At</span><span className="text-white">{formatDate(previewData.created_at)}</span></div>
                 <div><span className="text-gray-400 block text-xs">Platform Version</span><span className="text-white">{previewData.platform_version || '-'}</span></div>
                 <div><span className="text-gray-400 block text-xs">Created By</span><span className="text-white">{previewData.created_by || '-'}</span></div>
-                <div><span className="text-gray-400 block text-xs">External Services</span><span className="text-white text-lg font-semibold">{previewData.contents.external_services}</span></div>
-                <div><span className="text-gray-400 block text-xs">Service Dependencies</span><span className="text-white text-lg font-semibold">{previewData.contents.service_dependencies}</span></div>
+              </div>
+              <div className="mt-3 p-3 rounded-lg bg-surface-raised border border-border">
+                <span className="text-gray-400 text-xs block mb-2">Backup Contents</span>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-sm">
+                  <div className="flex justify-between"><span className="text-gray-400">Services</span><span className="text-white font-semibold">{previewData.contents.external_services}</span></div>
+                  <div className="flex justify-between"><span className="text-gray-400">Dependencies</span><span className="text-white font-semibold">{previewData.contents.service_dependencies}</span></div>
+                  <div className="flex justify-between"><span className="text-gray-400">Alert Rules</span><span className="text-white font-semibold">{previewData.contents.alert_rules ?? 0}</span></div>
+                  <div className="flex justify-between"><span className="text-gray-400">SLO Targets</span><span className="text-white font-semibold">{previewData.contents.slo_targets ?? 0}</span></div>
+                  <div className="flex justify-between"><span className="text-gray-400">Incidents</span><span className="text-white font-semibold">{previewData.contents.incidents ?? 0}</span></div>
+                  <div className="flex justify-between"><span className="text-gray-400">Comments</span><span className="text-white font-semibold">{previewData.contents.incident_comments ?? 0}</span></div>
+                </div>
               </div>
               {previewData.checksum && (
                 <div><span className="text-gray-400 block text-xs">SHA256 Checksum</span><span className="text-green-400/80 font-mono text-[11px] break-all">{previewData.checksum}</span></div>
@@ -580,7 +655,7 @@ export function BackupRecoveryPage() {
             </div>
             <div className="bg-red-500/5 border border-red-500/20 rounded-lg p-3 mb-4">
               <p className="text-red-300 text-sm font-medium mb-1">Warning: This will overwrite current configuration</p>
-              <p className="text-red-400/70 text-xs">All existing External Services and Service Dependencies will be replaced with data from this backup. Users, roles, alerts, logs, and metrics are NOT affected.</p>
+              <p className="text-red-400/70 text-xs">All existing Services, Alert Policies, SLO Targets, and Incidents will be replaced with data from this backup. Users (Keycloak), logs, traces, and metrics are NOT affected.</p>
             </div>
             <div className="text-sm space-y-1 mb-4">
               <p className="text-gray-300"><span className="text-gray-500">File:</span> <span className="font-mono text-xs">{restoreTarget.filename}</span></p>

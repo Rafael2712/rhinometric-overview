@@ -19,6 +19,11 @@ from models.external_service import ExternalService
 from models.service_dependency import ServiceDependency
 from models.backup_artifact import BackupArtifact
 from models.restore_log import RestoreLog
+from models.alert_rule import AlertRule
+from models.slo_target import SLOTarget
+from models.incident import Incident
+from models.incident_comment import IncidentComment
+from models.incident_event import IncidentEvent
 
 logger = logging.getLogger("rhinometric.backup_service")
 
@@ -202,6 +207,73 @@ def create_backup(db: Session, created_by: str) -> BackupArtifact:
             })
         total_records += len(deps_data)
 
+        # ── Alert Rules ─────────────────────────────────────
+        rules = db.query(AlertRule).all()
+        rules_data = []
+        for r in rules:
+            rules_data.append({
+                "id": str(r.id), "name": r.name, "rule_type": r.rule_type,
+                "service_id": r.service_id,
+                "consecutive_failures": r.consecutive_failures,
+                "critical_escalation_failures": r.critical_escalation_failures,
+                "incident_after_seconds": r.incident_after_seconds,
+                "latency_threshold_ms": r.latency_threshold_ms,
+                "latency_deviation_pct": r.latency_deviation_pct,
+                "anomaly_score_threshold": r.anomaly_score_threshold,
+                "sustained_checks": r.sustained_checks,
+                "severity": r.severity, "cooldown_seconds": r.cooldown_seconds,
+                "enabled": r.enabled, "is_default": r.is_default,
+                "description": r.description,
+                "config": r.config,
+            })
+        total_records += len(rules_data)
+
+        # ── SLO Targets ─────────────────────────────────────
+        slos = db.query(SLOTarget).all()
+        slos_data = []
+        for s in slos:
+            slos_data.append({
+                "id": s.id, "service_id": s.service_id,
+                "slo_type": s.slo_type, "target_value": s.target_value,
+            })
+        total_records += len(slos_data)
+
+        # ── Incidents + Comments + Events ────────────────────
+        incidents = db.query(Incident).all()
+        incidents_data = []
+        for inc in incidents:
+            incidents_data.append({
+                "id": str(inc.id), "incident_key": inc.incident_key,
+                "entity_name": inc.entity_name, "entity_type": inc.entity_type,
+                "severity": inc.severity, "status": inc.status,
+                "started_at": inc.started_at.isoformat() if inc.started_at else None,
+                "resolved_at": inc.resolved_at.isoformat() if inc.resolved_at else None,
+                "title": inc.title, "summary": inc.summary,
+                "tags": inc.tags,
+            })
+        total_records += len(incidents_data)
+
+        comments = db.query(IncidentComment).all()
+        comments_data = []
+        for c in comments:
+            comments_data.append({
+                "id": str(c.id), "incident_id": str(c.incident_id),
+                "author": c.author, "comment": c.comment,
+                "created_at": c.created_at.isoformat() if c.created_at else None,
+            })
+        total_records += len(comments_data)
+
+        events = db.query(IncidentEvent).all()
+        events_data = []
+        for e in events:
+            events_data.append({
+                "id": str(e.id), "incident_id": str(e.incident_id),
+                "event_type": e.event_type, "description": e.description,
+                "created_by": e.created_by,
+                "created_at": e.created_at.isoformat() if e.created_at else None,
+            })
+        total_records += len(events_data)
+
         manifest = {
             "timestamp": ts.isoformat(),
             "platform_version": PLATFORM_VERSION,
@@ -211,6 +283,11 @@ def create_backup(db: Session, created_by: str) -> BackupArtifact:
             "contents": {
                 "external_services": len(services_data),
                 "service_dependencies": len(deps_data),
+                "alert_rules": len(rules_data),
+                "slo_targets": len(slos_data),
+                "incidents": len(incidents_data),
+                "incident_comments": len(comments_data),
+                "incident_events": len(events_data),
             },
         }
 
@@ -218,6 +295,11 @@ def create_backup(db: Session, created_by: str) -> BackupArtifact:
             zf.writestr("manifest.json", json.dumps(manifest, indent=2, default=str))
             zf.writestr("external_services.json", json.dumps(services_data, indent=2, default=str))
             zf.writestr("service_dependencies.json", json.dumps(deps_data, indent=2, default=str))
+            zf.writestr("alert_rules.json", json.dumps(rules_data, indent=2, default=str))
+            zf.writestr("slo_targets.json", json.dumps(slos_data, indent=2, default=str))
+            zf.writestr("incidents.json", json.dumps(incidents_data, indent=2, default=str))
+            zf.writestr("incident_comments.json", json.dumps(comments_data, indent=2, default=str))
+            zf.writestr("incident_events.json", json.dumps(events_data, indent=2, default=str))
 
         # Integrity validation
         try:
@@ -272,6 +354,13 @@ def preview_backup(db: Session, backup_id: str) -> dict:
             manifest = json.loads(zf.read("manifest.json"))
             services_data = json.loads(zf.read("external_services.json"))
             deps_data = json.loads(zf.read("service_dependencies.json"))
+            # Read extended tables (graceful fallback for old backups)
+            names = zf.namelist()
+            rules_data = json.loads(zf.read("alert_rules.json")) if "alert_rules.json" in names else []
+            slos_data = json.loads(zf.read("slo_targets.json")) if "slo_targets.json" in names else []
+            incidents_data = json.loads(zf.read("incidents.json")) if "incidents.json" in names else []
+            comments_data = json.loads(zf.read("incident_comments.json")) if "incident_comments.json" in names else []
+            events_data = json.loads(zf.read("incident_events.json")) if "incident_events.json" in names else []
     except Exception as e:
         raise BackupError(f"Could not read backup ZIP: {e}", error_type="integrity_error")
 
@@ -285,6 +374,11 @@ def preview_backup(db: Session, backup_id: str) -> dict:
         "contents": {
             "external_services": len(services_data),
             "service_dependencies": len(deps_data),
+            "alert_rules": len(rules_data),
+            "slo_targets": len(slos_data),
+            "incidents": len(incidents_data),
+            "incident_comments": len(comments_data),
+            "incident_events": len(events_data),
         },
         "service_names": [s.get("name", "?") for s in services_data[:50]],
     }
@@ -329,6 +423,12 @@ def restore_backup(db: Session, backup_id: str, restored_by: str) -> dict:
             manifest = json.loads(zf.read("manifest.json"))
             services_data = json.loads(zf.read("external_services.json"))
             deps_data = json.loads(zf.read("service_dependencies.json"))
+            names = zf.namelist()
+            rules_data = json.loads(zf.read("alert_rules.json")) if "alert_rules.json" in names else []
+            slos_data = json.loads(zf.read("slo_targets.json")) if "slo_targets.json" in names else []
+            incidents_data = json.loads(zf.read("incidents.json")) if "incidents.json" in names else []
+            comments_data = json.loads(zf.read("incident_comments.json")) if "incident_comments.json" in names else []
+            events_data = json.loads(zf.read("incident_events.json")) if "incident_events.json" in names else []
     except Exception as e:
         raise BackupError(f"Could not read backup ZIP: {e}", error_type="integrity_error")
 
@@ -338,6 +438,11 @@ def restore_backup(db: Session, backup_id: str, restored_by: str) -> dict:
 
     # Delete current data (order matters: deps first due to FK)
     try:
+        db.query(IncidentEvent).delete()
+        db.query(IncidentComment).delete()
+        db.query(Incident).delete()
+        db.query(SLOTarget).delete()
+        db.query(AlertRule).delete()
         db.query(ServiceDependency).delete()
         db.query(ExternalService).delete()
         db.flush()
@@ -383,6 +488,95 @@ def restore_backup(db: Session, backup_id: str, restored_by: str) -> dict:
         except Exception as e:
             logger.warning(f"Skipped dependency: {e}")
 
+    # Insert restored alert rules
+    restored_rules = 0
+    for r_data in rules_data:
+        try:
+            rule = AlertRule(
+                id=r_data.get("id"), name=r_data["name"],
+                rule_type=r_data.get("rule_type", "SERVICE_DOWN"),
+                service_id=r_data.get("service_id"),
+                consecutive_failures=r_data.get("consecutive_failures", 3),
+                critical_escalation_failures=r_data.get("critical_escalation_failures", 6),
+                incident_after_seconds=r_data.get("incident_after_seconds", 120),
+                latency_threshold_ms=r_data.get("latency_threshold_ms"),
+                latency_deviation_pct=r_data.get("latency_deviation_pct"),
+                anomaly_score_threshold=r_data.get("anomaly_score_threshold"),
+                sustained_checks=r_data.get("sustained_checks", 3),
+                severity=r_data.get("severity", "warning"),
+                cooldown_seconds=r_data.get("cooldown_seconds", 120),
+                enabled=r_data.get("enabled", True),
+                is_default=r_data.get("is_default", False),
+                description=r_data.get("description"),
+                config=r_data.get("config"),
+            )
+            db.add(rule)
+            restored_rules += 1
+        except Exception as e:
+            logger.warning(f"Skipped alert rule '{r_data.get('name', '?')}': {e}")
+
+    # Insert restored SLO targets
+    restored_slos = 0
+    for s_data in slos_data:
+        try:
+            slo = SLOTarget(
+                service_id=s_data["service_id"],
+                slo_type=s_data["slo_type"],
+                target_value=s_data["target_value"],
+            )
+            db.add(slo)
+            restored_slos += 1
+        except Exception as e:
+            logger.warning(f"Skipped SLO target: {e}")
+
+    # Insert restored incidents
+    restored_incidents = 0
+    for i_data in incidents_data:
+        try:
+            inc = Incident(
+                id=i_data.get("id"), incident_key=i_data["incident_key"],
+                entity_name=i_data["entity_name"],
+                entity_type=i_data.get("entity_type", "service"),
+                severity=i_data.get("severity", "warning"),
+                status=i_data.get("status", "open"),
+                title=i_data.get("title"), summary=i_data.get("summary"),
+                tags=i_data.get("tags"),
+            )
+            db.add(inc)
+            restored_incidents += 1
+        except Exception as e:
+            logger.warning(f"Skipped incident: {e}")
+
+    db.flush()  # Flush so incident FKs are available
+
+    # Insert restored incident comments
+    restored_comments = 0
+    for c_data in comments_data:
+        try:
+            comment_obj = IncidentComment(
+                id=c_data.get("id"), incident_id=c_data["incident_id"],
+                author=c_data["author"], comment=c_data["comment"],
+            )
+            db.add(comment_obj)
+            restored_comments += 1
+        except Exception as e:
+            logger.warning(f"Skipped incident comment: {e}")
+
+    # Insert restored incident events
+    restored_events = 0
+    for e_data in events_data:
+        try:
+            evt = IncidentEvent(
+                id=e_data.get("id"), incident_id=e_data["incident_id"],
+                event_type=e_data["event_type"],
+                description=e_data.get("description"),
+                created_by=e_data.get("created_by"),
+            )
+            db.add(evt)
+            restored_events += 1
+        except Exception as e:
+            logger.warning(f"Skipped incident event: {e}")
+
     # Write restore audit log
     restore_entry = RestoreLog(
         backup_id=artifact.id,
@@ -401,8 +595,9 @@ def restore_backup(db: Session, backup_id: str, restored_by: str) -> dict:
 
     logger.info(
         f"Restore completed from {artifact.filename}: "
-        f"{restored_services} services, {restored_deps} dependencies "
-        f"(replaced {old_services_count} services, {old_deps_count} dependencies)"
+        f"{restored_services} services, {restored_deps} deps, "
+        f"{restored_rules} rules, {restored_slos} SLOs, "
+        f"{restored_incidents} incidents"
     )
 
     return {
@@ -417,6 +612,11 @@ def restore_backup(db: Session, backup_id: str, restored_by: str) -> dict:
         "restored": {
             "external_services": restored_services,
             "service_dependencies": restored_deps,
+            "alert_rules": restored_rules,
+            "slo_targets": restored_slos,
+            "incidents": restored_incidents,
+            "incident_comments": restored_comments,
+            "incident_events": restored_events,
         },
     }
 
@@ -494,6 +694,36 @@ def get_last_restore(db: Session) -> dict | None:
 # ---------------------------------------------------------------------------
 # Queries
 # ---------------------------------------------------------------------------
+
+
+# -----------------------------------------------------------------------
+# Backup Scope
+# -----------------------------------------------------------------------
+
+BACKUP_SCOPE = {
+    "included": [
+        {"category": "Services Configuration", "description": "External service definitions, endpoints, check intervals, and configurations"},
+        {"category": "Service Dependencies", "description": "Service dependency mappings and relationship types"},
+        {"category": "Alert Policies", "description": "Alert rules including thresholds, severities, and escalation settings"},
+        {"category": "SLO Targets", "description": "Service Level Objective targets for availability, latency, and health score"},
+        {"category": "Incidents", "description": "Incident records including timeline events, comments, and resolution data"},
+    ],
+    "excluded": [
+        {"category": "Logs", "description": "Application and infrastructure logs (stored in Loki)"},
+        {"category": "Traces", "description": "Distributed traces and spans (stored in Jaeger)"},
+        {"category": "Raw Telemetry", "description": "Prometheus/VictoriaMetrics time-series metrics"},
+        {"category": "Grafana Dashboards", "description": "Dashboard definitions (managed separately in Grafana)"},
+        {"category": "Keycloak Users & Roles", "description": "Authentication data (managed in Keycloak)"},
+    ],
+    "retention_days": 30,
+    "retention_mode": "manual",
+    "storage_format": "ZIP (JSON per table, SHA256 checksum)",
+}
+
+
+def get_backup_scope() -> dict:
+    """Return backup scope information."""
+    return BACKUP_SCOPE
 
 def list_backups(db: Session, limit: int = 50, offset: int = 0):
     return (

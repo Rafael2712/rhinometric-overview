@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from database import get_db
 from routers.auth import get_current_user, require_role
 from services.backup_service import (
+    get_backup_scope,
     BackupError,
     create_backup,
     list_backups,
@@ -34,6 +35,12 @@ class RestoreRequest(BaseModel):
 class DeleteRequest(BaseModel):
     confirm: bool = False
 
+
+
+@router.get("/scope")
+def get_scope_endpoint():
+    """Return backup scope — what is included and excluded."""
+    return get_backup_scope()
 
 @router.post("/create")
 def create_backup_endpoint(
