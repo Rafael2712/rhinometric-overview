@@ -1,4 +1,4 @@
-import { Bell, Filter, Download, Clock, AlertTriangle, CheckCircle2, XCircle, VolumeX, UserCheck, Trash2, Brain, TrendingUp, Flame } from 'lucide-react'
+import { Bell, Filter, Download, Clock, AlertTriangle, CheckCircle2, XCircle, VolumeX, UserCheck, Brain, TrendingUp, Flame } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuthStore } from '../lib/auth/store'
@@ -87,129 +87,12 @@ function getAlertServiceName(alert: { labels: { alertname?: string; service_name
   return ''
 }
 
-/* -- Task 4: Purge Modal -- */
-function PurgeModal({ module, isOpen, onClose, token }: {
-  module: 'alerts' | 'incidents' | 'anomalies'
-  isOpen: boolean
-  onClose: (purged: boolean) => void
-  token: string | null
-}) {
-  const [days, setDays] = useState(30)
-  const [confirming, setConfirming] = useState(false)
-  const [result, setResult] = useState<{ deleted_count: number; message: string } | null>(null)
-  const [error, setError] = useState<string | null>(null)
-
-  if (!isOpen) return null
-
-  const handlePurge = async () => {
-    setError(null)
-    setResult(null)
-    try {
-      const res = await fetch(`/api/admin/purge/${module}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ confirm: true, older_than_days: days }),
-      })
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ detail: res.statusText }))
-        throw new Error(err.detail || 'Purge failed')
-      }
-      const data = await res.json()
-      setResult(data)
-      setConfirming(false)
-    } catch (e: any) {
-      setError(e.message || 'Purge failed')
-      setConfirming(false)
-    }
-  }
-
-  const labels: Record<string, string> = {
-    alerts: 'resolved/suppressed alert events',
-    incidents: 'resolved incidents',
-    anomalies: 'resolved/suppressed anomaly overrides',
-  }
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-      <div className="bg-surface border border-gray-700 rounded-xl p-6 w-full max-w-md shadow-2xl">
-        <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-          <Trash2 size={20} className="text-red-400" />
-          Clear {module.charAt(0).toUpperCase() + module.slice(1)} History
-        </h3>
-
-        {result ? (
-          <div className="space-y-4">
-            <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-3 text-green-400 text-sm">
-              {result.message}
-            </div>
-            <button onClick={() => onClose(true)}
-              className="w-full px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg text-sm">
-              Close
-            </button>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            <p className="text-sm text-gray-300">
-              Permanently delete <strong>{labels[module]}</strong> older than:
-            </p>
-            <div className="flex items-center gap-3">
-              <input type="number" min={1} max={365} value={days}
-                onChange={(e) => setDays(Math.max(1, Math.min(365, parseInt(e.target.value) || 30)))}
-                className="w-24 px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white text-sm" />
-              <span className="text-sm text-gray-400">days</span>
-            </div>
-
-            {error && (
-              <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3 text-red-400 text-sm">
-                {error}
-              </div>
-            )}
-
-            {!confirming ? (
-              <div className="flex gap-3">
-                <button onClick={() => onClose(false)}
-                  className="flex-1 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg text-sm">
-                  Cancel
-                </button>
-                <button onClick={() => setConfirming(true)}
-                  className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-lg text-sm">
-                  Purge
-                </button>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3 text-red-300 text-sm">
-                  Warning: This action is irreversible. Are you sure?
-                </div>
-                <div className="flex gap-3">
-                  <button onClick={() => setConfirming(false)}
-                    className="flex-1 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg text-sm">
-                    Cancel
-                  </button>
-                  <button onClick={handlePurge}
-                    className="flex-1 px-4 py-2 bg-red-700 hover:bg-red-600 text-white rounded-lg text-sm font-semibold">
-                    Confirm Purge
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-    </div>
-  )
-}
-
 export function AlertsPage() {
   useEffect(() => {
     document.title = 'Rhinometric - Operational Alerts'
   }, [])
 
   const token = useAuthStore((state) => state.token)
-  const isAdmin = useAuthStore((state) => state.isAdmin)
   const queryClient = useQueryClient()
   const [severityFilter, setSeverityFilter] = useState<string>('all')
   const [statusFilter, setStatusFilter] = useState<string>('all')
@@ -218,7 +101,6 @@ export function AlertsPage() {
   const [silenceLoading, setSilenceLoading] = useState(false)
   const [ackLoading, setAckLoading] = useState(false)
   const [actionMessage, setActionMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
-  const [showPurge, setShowPurge] = useState(false)
   // Phase 3: Create Incident state
   const [incidentLoading, setIncidentLoading] = useState(false)
   const [existingIncidentId, setExistingIncidentId] = useState<string | null>(null)
@@ -404,12 +286,31 @@ export function AlertsPage() {
 
   // Filter alerts
   const filteredAlerts = alertsData?.alerts?.filter(alert => {
-    const serviceName = getAlertServiceName(alert)
-    if (!serviceName) return false
     const severityMatch = severityFilter === 'all' || alert.severity === severityFilter
     const statusMatch = statusFilter === 'all' || alert.status === statusFilter
     return severityMatch && statusMatch
   }) || []
+
+  // Export filtered alerts as CSV
+  const exportCSV = () => {
+    const headers = ['Alert Name', 'Service', 'Severity', 'Status', 'Instance', 'Started At']
+    const rows = filteredAlerts.map(a => [
+      a.labels.alertname || '',
+      getAlertServiceName(a),
+      a.severity,
+      a.status,
+      a.labels.instance || a.labels.job || '',
+      a.startsAt ? new Date(a.startsAt).toLocaleString() : '',
+    ].map(v => `"${String(v).replace(/"/g, '""')}"`))
+    const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n')
+    const blob = new Blob([csv], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `alerts-${severityFilter}-${statusFilter}-${new Date().toISOString().slice(0, 10)}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
 
   const getSeverityColor = (severity: string) => {
     switch (severity.toLowerCase()) {
@@ -434,7 +335,6 @@ export function AlertsPage() {
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      <PurgeModal module="alerts" isOpen={showPurge} onClose={(purged) => { setShowPurge(false); if (purged) queryClient.invalidateQueries({ queryKey: ['alert-history'] }) }} token={token} />
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-2 sm:mb-6">
         <div>
@@ -448,14 +348,7 @@ export function AlertsPage() {
               {silencesData.total} silence{silencesData.total > 1 ? 's' : ''}
             </span>
           )}
-          {isAdmin() && (
-            <button onClick={() => setShowPurge(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-red-600/20 hover:bg-red-600/30 text-red-400 border border-red-500/30 rounded-lg text-sm transition-colors">
-              <Trash2 size={14} />
-              <span className="hidden sm:inline">Clear History</span>
-            </button>
-          )}
-          <button className="btn btn-secondary flex items-center gap-2 text-sm">
+          <button onClick={exportCSV} className="btn btn-secondary flex items-center gap-2 text-sm">
             <Download size={18} />
             <span className="hidden sm:inline">Export</span>
           </button>
@@ -519,16 +412,16 @@ export function AlertsPage() {
           <>
             {/* Desktop table view */}
             <div className="hidden md:block overflow-x-auto">
-              <table className="w-full">
+              <table className="w-full table-fixed">
                 <thead>
                   <tr className="border-b border-gray-700">
-                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-400 whitespace-nowrap">Status</th>
-                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-400 whitespace-nowrap">Alert</th>
-                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-400 whitespace-nowrap">Severity</th>
-                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-400 whitespace-nowrap">Instance</th>
-                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-400 whitespace-nowrap">AI</th>
-                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-400 whitespace-nowrap">Started</th>
-                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-400 whitespace-nowrap">Actions</th>
+                    <th className="text-left py-2.5 px-3 text-xs font-semibold text-gray-400 uppercase w-[72px]">Status</th>
+                    <th className="text-left py-2.5 px-3 text-xs font-semibold text-gray-400 uppercase" style={{width:'35%'}}>Alert</th>
+                    <th className="text-left py-2.5 px-3 text-xs font-semibold text-gray-400 uppercase w-[88px]">Severity</th>
+                    <th className="text-left py-2.5 px-3 text-xs font-semibold text-gray-400 uppercase" style={{width:'14%'}}>Instance</th>
+                    <th className="text-left py-2.5 px-3 text-xs font-semibold text-gray-400 uppercase w-[52px]">AI</th>
+                    <th className="text-left py-2.5 px-3 text-xs font-semibold text-gray-400 uppercase" style={{width:'14%'}}>Started</th>
+                    <th className="text-left py-2.5 px-3 text-xs font-semibold text-gray-400 uppercase w-[72px]">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -541,8 +434,8 @@ export function AlertsPage() {
                         className="border-b border-gray-700/50 hover:bg-surface-light cursor-pointer transition-colors"
                         onClick={() => { setSelectedAlert(alert); setActionMessage(null) }}
                       >
-                        <td className="py-3 px-4">
-                          <div className="flex items-center gap-2">
+                        <td className="py-2.5 px-3">
+                          <div className="flex items-center gap-1.5">
                             {getStatusIcon(alert.status)}
                             {ackInfo?.acknowledged && (
                               <span className="text-xs px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400 border border-blue-500/30" title={`Acknowledged by ${ackInfo.ack_by}`}>
@@ -552,33 +445,32 @@ export function AlertsPage() {
                             )}
                           </div>
                         </td>
-                        <td className="py-3 px-4">
-                          <div>
-                            <p className="text-white font-medium">{alert.labels.alertname}</p>
-                            <p className="text-sm text-gray-400 truncate max-w-md">
+                        <td className="py-2.5 px-3">
+                          <div className="min-w-0">
+                            <p className="text-white text-sm font-medium break-words">{alert.labels.alertname}</p>
+                            <p className="text-xs text-gray-400 line-clamp-1 break-all">
                               {alert.annotations.summary || alert.annotations.description || 'No description'}
                             </p>
                           </div>
                         </td>
-                        <td className="py-3 px-4">
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getSeverityColor(alert.severity)}`}>
+                        <td className="py-2.5 px-3">
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${getSeverityColor(alert.severity)}`}>
                             {alert.severity.toUpperCase()}
                           </span>
                         </td>
-                        <td className="py-3 px-4">
-                          <code className="text-sm text-blue-400">{alert.labels.instance || alert.labels.job || '-'}</code>
+                        <td className="py-2.5 px-3">
+                          <code className="text-xs text-blue-400 break-all">{alert.labels.instance || alert.labels.job || '-'}</code>
                         </td>
-                        <td className="py-3 px-4">
+                        <td className="py-2.5 px-3">
                           <AiScoreBadge ctx={aiCtx} />
                         </td>
-                        <td className="py-3 px-4">
-                          <div className="flex items-center gap-1 text-sm text-gray-400">
-                            <Clock size={14} />
-                            {new Date(alert.startsAt).toLocaleString()}
+                        <td className="py-2.5 px-3">
+                          <div className="text-xs text-gray-400">
+                            {new Date(alert.startsAt).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                           </div>
                         </td>
-                        <td className="py-3 px-4">
-                          <button className="text-primary hover:text-primary-light text-sm font-medium">
+                        <td className="py-2.5 px-3">
+                          <button className="text-primary hover:text-primary-light text-xs font-medium">
                             Details
                           </button>
                         </td>
