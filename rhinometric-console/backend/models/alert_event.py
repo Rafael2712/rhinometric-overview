@@ -1,13 +1,18 @@
 """
 SQLAlchemy model for Alert Events.
-Phase 2.2 — Alert Event Store (Alert History Foundation).
 
-Stores every alert lifecycle transition so that the platform maintains
-a complete history of alert activity even after Alertmanager resolves them.
+Canonical Alert Model (v2) with full lifecycle support.
 
-Canonical Alert Model (v2):
   ONE active alert per (entity_name + alert_type fingerprint).
   Severity is UPDATED in-place; no duplicate rows for the same problem.
+
+Status lifecycle:
+  firing -> acknowledged -> resolved
+  firing -> resolved  (auto or manual)
+  firing -> dismissed  (false positive / irrelevant)
+  firing -> silenced   (temporarily muted)
+  acknowledged -> resolved
+  silenced -> firing   (when silence expires, reverts conceptually)
 """
 
 import uuid
@@ -24,8 +29,7 @@ class AlertEvent(Base):
     The fingerprint = sha256(alert_name|entity_name|rule_type)[:16]
     guarantees ONE ACTIVE ROW per (service + alert_type).
 
-    Lifecycle: firing -> (acknowledged) -> resolved
-    Severity is updated in-place via escalation; escalation_count tracks bumps.
+    Statuses: firing | acknowledged | resolved | dismissed | silenced
     """
     __tablename__ = "alert_events"
 
@@ -47,12 +51,23 @@ class AlertEvent(Base):
     incident_id = Column(UUID(as_uuid=True), ForeignKey("incidents.id"), nullable=True, index=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
-    # ── v2 lifecycle fields ───────────────────────────────────────
+    # -- v2 dedup lifecycle fields --
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     escalation_count = Column(Integer, nullable=False, default=0,
         doc="Number of times severity was escalated while alert remained active")
     last_evaluated_at = Column(DateTime(timezone=True), nullable=True,
         doc="Timestamp of last rule-evaluation pass that touched this alert")
+
+    # -- v3 user-action lifecycle fields --
+    acknowledged_by = Column(String(150), nullable=True)
+    acknowledged_at = Column(DateTime(timezone=True), nullable=True)
+    resolved_by = Column(String(150), nullable=True,
+        doc="Username who manually resolved; NULL = auto-resolved")
+    resolved_at = Column(DateTime(timezone=True), nullable=True)
+    dismissed_by = Column(String(150), nullable=True)
+    dismissed_at = Column(DateTime(timezone=True), nullable=True)
+    silenced_until = Column(DateTime(timezone=True), nullable=True,
+        doc="Alert is silenced (hidden from notifications) until this timestamp")
 
     # Composite index for efficient history queries
     __table_args__ = (

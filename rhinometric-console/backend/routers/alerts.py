@@ -146,15 +146,16 @@ async def get_alerts(
         try:
             from models.alert_event import AlertEvent as _AE
             _service_types = {"service", "external-services"}
+            _active_statuses = ["firing", "acknowledged", "silenced"]
             db_firing = db.query(_AE).filter(
-                _AE.status == "firing",
+                _AE.status.in_(_active_statuses),
                 _AE.entity_type.in_(list(_service_types)),
             ).all()
             for ev in db_firing:
                 fp = ev.fingerprint or ""
                 alerts_data.append({
                     "fingerprint": f"db-{fp}",
-                    "status": {"state": "active"},
+                    "status": {"state": "active" if ev.status == "firing" else ev.status},
                     "labels": ev.labels if ev.labels else {
                         "alertname": ev.alert_name or "",
                         "service_name": ev.entity_name or "",
@@ -488,6 +489,195 @@ async def resolve_alert(
     db.flush()
 
     return {"status": "resolved", "fingerprint": fingerprint, "resolved_by": current_user.username}
+
+
+
+# ==============================================================================
+# Alert Lifecycle Endpoints (operate on AlertEvent by UUID id)
+# ==============================================================================
+
+from pydantic import Field as _Field
+
+
+class LifecycleNoteRequest(BaseModel):
+    note: Optional[str] = None
+
+
+class SilenceByIdRequest(BaseModel):
+    duration: str = "1h"
+    note: Optional[str] = None
+
+
+class AlertEventResponse(BaseModel):
+    id: str
+    alert_name: str
+    entity_name: str
+    severity: str
+    status: str
+    started_at: str
+    fingerprint: str
+    summary: Optional[str] = None
+    acknowledged_by: Optional[str] = None
+    acknowledged_at: Optional[str] = None
+    resolved_by: Optional[str] = None
+    resolved_at: Optional[str] = None
+    dismissed_by: Optional[str] = None
+    dismissed_at: Optional[str] = None
+    silenced_until: Optional[str] = None
+    escalation_count: int = 0
+    source: Optional[str] = None
+
+
+def _alert_event_response(ev) -> AlertEventResponse:
+    """Build a uniform AlertEventResponse from an AlertEvent row."""
+    return AlertEventResponse(
+        id=str(ev.id),
+        alert_name=ev.alert_name or "",
+        entity_name=ev.entity_name or "",
+        severity=ev.severity or "warning",
+        status=ev.status or "firing",
+        started_at=ev.started_at.isoformat() if ev.started_at else "",
+        fingerprint=ev.fingerprint or "",
+        summary=ev.summary,
+        acknowledged_by=ev.acknowledged_by,
+        acknowledged_at=ev.acknowledged_at.isoformat() if ev.acknowledged_at else None,
+        resolved_by=ev.resolved_by,
+        resolved_at=ev.resolved_at.isoformat() if ev.resolved_at else None,
+        dismissed_by=ev.dismissed_by,
+        dismissed_at=ev.dismissed_at.isoformat() if ev.dismissed_at else None,
+        silenced_until=ev.silenced_until.isoformat() if ev.silenced_until else None,
+        escalation_count=ev.escalation_count or 0,
+        source=ev.source,
+    )
+
+
+def _get_alert_event(db, alert_id: str):
+    """Fetch AlertEvent by UUID or raise 404."""
+    from models.alert_event import AlertEvent as _AE
+    import uuid as _uuid
+    try:
+        uid = _uuid.UUID(alert_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid alert id (must be UUID)")
+    ev = db.query(_AE).filter(_AE.id == uid).first()
+    if not ev:
+        raise HTTPException(status_code=404, detail=f"Alert {alert_id} not found")
+    return ev
+
+
+@router.put("/{alert_id}/ack", response_model=AlertEventResponse)
+async def lifecycle_acknowledge(
+    alert_id: str,
+    body: LifecycleNoteRequest = LifecycleNoteRequest(),
+    current_user: UserModel = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Acknowledge an alert -- marks it as being handled by a user."""
+    ev = _get_alert_event(db, alert_id)
+    if ev.status not in ("firing", "silenced"):
+        raise HTTPException(
+            status_code=409,
+            detail=f"Cannot acknowledge alert in '{ev.status}' status (must be firing or silenced)",
+        )
+    now = datetime.now(timezone.utc)
+    ev.status = "acknowledged"
+    ev.acknowledged_by = current_user.username
+    ev.acknowledged_at = now
+    if body.note:
+        ann = dict(ev.annotations) if ev.annotations else {}
+        ann["ack_note"] = body.note
+        ev.annotations = ann
+    db.commit()
+    return _alert_event_response(ev)
+
+
+@router.put("/{alert_id}/resolve", response_model=AlertEventResponse)
+async def lifecycle_resolve(
+    alert_id: str,
+    body: LifecycleNoteRequest = LifecycleNoteRequest(),
+    current_user: UserModel = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Manually resolve an alert."""
+    ev = _get_alert_event(db, alert_id)
+    if ev.status in ("resolved", "dismissed"):
+        raise HTTPException(
+            status_code=409,
+            detail=f"Alert is already '{ev.status}'",
+        )
+    now = datetime.now(timezone.utc)
+    ev.status = "resolved"
+    ev.resolved_by = current_user.username
+    ev.resolved_at = now
+    ev.ended_at = now
+    if body.note:
+        ann = dict(ev.annotations) if ev.annotations else {}
+        ann["resolve_note"] = body.note
+        ev.annotations = ann
+    # Check linked incident resolution
+    if ev.incident_id:
+        try:
+            from routers.incidents import check_incident_resolution as _cir
+            _cir(db, ev.incident_id)
+        except Exception:
+            pass
+    db.commit()
+    return _alert_event_response(ev)
+
+
+@router.put("/{alert_id}/dismiss", response_model=AlertEventResponse)
+async def lifecycle_dismiss(
+    alert_id: str,
+    body: LifecycleNoteRequest = LifecycleNoteRequest(),
+    current_user: UserModel = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Dismiss an alert (false positive / irrelevant)."""
+    ev = _get_alert_event(db, alert_id)
+    if ev.status in ("resolved", "dismissed"):
+        raise HTTPException(
+            status_code=409,
+            detail=f"Alert is already '{ev.status}'",
+        )
+    now = datetime.now(timezone.utc)
+    ev.status = "dismissed"
+    ev.dismissed_by = current_user.username
+    ev.dismissed_at = now
+    ev.ended_at = now
+    if body.note:
+        ann = dict(ev.annotations) if ev.annotations else {}
+        ann["dismiss_note"] = body.note
+        ev.annotations = ann
+    db.commit()
+    return _alert_event_response(ev)
+
+
+@router.put("/{alert_id}/silence", response_model=AlertEventResponse)
+async def lifecycle_silence(
+    alert_id: str,
+    body: SilenceByIdRequest = SilenceByIdRequest(),
+    current_user: UserModel = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Silence an alert for a duration. Prevents notifications but keeps it visible."""
+    ev = _get_alert_event(db, alert_id)
+    if ev.status in ("resolved", "dismissed"):
+        raise HTTPException(
+            status_code=409,
+            detail=f"Cannot silence alert in '{ev.status}' status",
+        )
+    now = datetime.now(timezone.utc)
+    delta = parse_duration(body.duration)
+    ev.status = "silenced"
+    ev.silenced_until = now + delta
+    if body.note:
+        ann = dict(ev.annotations) if ev.annotations else {}
+        ann["silence_note"] = body.note
+        ev.annotations = ann
+    db.commit()
+    return _alert_event_response(ev)
+
+
 
 
 # ==================================================================
