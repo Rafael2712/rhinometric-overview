@@ -31,6 +31,10 @@ class Alert(BaseModel):
     endsAt: Optional[str] = None
     generatorURL: str
     severity: str
+    id: Optional[str] = None
+    acknowledged_by: Optional[str] = None
+    acknowledged_at: Optional[str] = None
+    silenced_until: Optional[str] = None
 
 
 class AlertsResponse(BaseModel):
@@ -154,6 +158,7 @@ async def get_alerts(
             for ev in db_firing:
                 fp = ev.fingerprint or ""
                 alerts_data.append({
+                    "id": str(ev.id),
                     "fingerprint": f"db-{fp}",
                     "status": {"state": "active" if ev.status == "firing" else ev.status},
                     "labels": ev.labels if ev.labels else {
@@ -169,6 +174,9 @@ async def get_alerts(
                     "startsAt": ev.started_at.isoformat() if ev.started_at else "",
                     "endsAt": ev.ended_at.isoformat() if ev.ended_at else None,
                     "generatorURL": ev.generator_url or "",
+                    "acknowledged_by": ev.acknowledged_by,
+                    "acknowledged_at": ev.acknowledged_at.isoformat() if ev.acknowledged_at else None,
+                    "silenced_until": ev.silenced_until.isoformat() if ev.silenced_until else None,
                 })
         except Exception as _db_err:
             import logging as _lg
@@ -202,7 +210,11 @@ async def get_alerts(
                 startsAt=alert.get("startsAt", ""),
                 endsAt=alert.get("endsAt"),
                 generatorURL=alert.get("generatorURL", ""),
-                severity=alert.get("labels", {}).get("severity", "unknown")
+                severity=alert.get("labels", {}).get("severity", "unknown"),
+                id=alert.get("id"),
+                acknowledged_by=alert.get("acknowledged_by"),
+                acknowledged_at=alert.get("acknowledged_at"),
+                silenced_until=alert.get("silenced_until"),
             ))
 
         return AlertsResponse(alerts=formatted_alerts, total=len(formatted_alerts))

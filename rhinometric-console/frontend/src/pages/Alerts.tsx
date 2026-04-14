@@ -1,9 +1,10 @@
-import { Bell, Filter, Download, Clock, AlertTriangle, CheckCircle2, XCircle, VolumeX, UserCheck, Brain, TrendingUp, Flame } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { Bell, Filter, Download, Clock, AlertTriangle, CheckCircle2, XCircle, VolumeX, UserCheck, Brain, TrendingUp } from 'lucide-react'
+import { useEffect, useState, useCallback } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuthStore } from '../lib/auth/store'
 
 interface Alert {
+  id?: string
   fingerprint: string
   status: string
   labels: {
@@ -22,19 +23,14 @@ interface Alert {
   endsAt?: string
   generatorURL?: string
   severity: string
+  acknowledged_by?: string
+  acknowledged_at?: string
+  silenced_until?: string
 }
 
 interface AlertsResponse {
   alerts: Alert[]
-}
-
-interface AckInfo {
-  fingerprint: string
-  acknowledged: boolean
-  ack_by?: string
-  ack_at?: string
-  status?: string
-  note?: string
+  total: number
 }
 
 /* -- AI Context Types (V1.7 Alert Integration) -- */
@@ -71,9 +67,36 @@ function AiScoreBadge({ ctx }: { ctx: ServiceAiContext | undefined }) {
     score >= 15 ? 'bg-blue-500/20 text-blue-400 border-blue-500/30' :
     'bg-gray-500/20 text-gray-400 border-gray-700/50'
   return (
-    <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium border ${color}`} title={`AI Score: ${score}/100 -- ${ctx.severity}`}>
+    <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium border ${color}`} title={`AI Score: ${score}/100 – ${ctx.severity}`}>
       <Brain size={10} />
       {score}
+    </span>
+  )
+}
+
+/* -- Status Badge -- */
+function StatusBadge({ status }: { status: string }) {
+  const s = status?.toLowerCase() || 'active'
+  if (s === 'acknowledged') {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold bg-amber-500/20 text-amber-400 border border-amber-500/30">
+        <UserCheck size={10} />
+        ACKNOWLEDGED
+      </span>
+    )
+  }
+  if (s === 'silenced') {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold bg-gray-500/20 text-gray-400 border border-gray-600/40">
+        <VolumeX size={10} />
+        SILENCED
+      </span>
+    )
+  }
+  return (
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold bg-red-500/20 text-red-400 border border-red-500/30">
+      <AlertTriangle size={10} />
+      ACTIVE
     </span>
   )
 }
@@ -89,7 +112,7 @@ function getAlertServiceName(alert: { labels: { alertname?: string; service_name
 
 export function AlertsPage() {
   useEffect(() => {
-    document.title = 'Rhinometric - Operational Alerts'
+    document.title = 'Rhinometric – Operational Alerts'
   }, [])
 
   const token = useAuthStore((state) => state.token)
@@ -97,12 +120,8 @@ export function AlertsPage() {
   const [severityFilter, setSeverityFilter] = useState<string>('all')
   const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null)
   const [silenceDuration, setSilenceDuration] = useState<string>('1h')
-  const [silenceLoading, setSilenceLoading] = useState(false)
-  const [ackLoading, setAckLoading] = useState(false)
+  const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [actionMessage, setActionMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
-  // Phase 3: Create Incident state
-  const [incidentLoading, setIncidentLoading] = useState(false)
-  const [existingIncidentId, setExistingIncidentId] = useState<string | null>(null)
 
   // Fetch alerts
   const { data: alertsData, isLoading, error } = useQuery({
@@ -116,22 +135,6 @@ export function AlertsPage() {
       return response.json() as Promise<AlertsResponse>
     },
     enabled: !!token,
-    refetchInterval: 30000,
-  })
-
-  // Fetch ack status for all alerts
-  const fingerprints = alertsData?.alerts?.map(a => a.fingerprint).join(',') || ''
-  const { data: ackData } = useQuery({
-    queryKey: ['ack-status', fingerprints],
-    queryFn: async () => {
-      if (!token || !fingerprints) return {}
-      const response = await fetch(`/api/alerts/ack-status?fingerprints=${encodeURIComponent(fingerprints)}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      })
-      if (!response.ok) return {}
-      return response.json() as Promise<Record<string, AckInfo>>
-    },
-    enabled: !!token && !!fingerprints,
     refetchInterval: 30000,
   })
 
@@ -168,125 +171,62 @@ export function AlertsPage() {
     refetchInterval: 30000,
   })
 
-  // Phase 3: Check for existing incident when alert is selected
-  useEffect(() => {
-    if (!selectedAlert || !token) { setExistingIncidentId(null); return }
-    const svcName = getAlertServiceName(selectedAlert)
-    if (!svcName) { setExistingIncidentId(null); return }
-    fetch(`/api/incidents/check?service_name=${encodeURIComponent(svcName)}`, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    })
-      .then(r => r.ok ? r.json() : null)
-      .then(data => {
-        if (data?.exists) setExistingIncidentId(data.incident_id)
-        else setExistingIncidentId(null)
-      })
-      .catch(() => setExistingIncidentId(null))
-  }, [selectedAlert, token])
-
-  // Phase 3: Create Incident handler
-  const handleCreateIncident = async (alert: Alert) => {
-    if (!token) return
-    setIncidentLoading(true)
+  // ── Lifecycle action handler ──
+  const handleLifecycleAction = useCallback(async (
+    alert: Alert,
+    action: 'ack' | 'resolve' | 'dismiss' | 'silence',
+    body?: Record<string, unknown>,
+  ) => {
+    if (!token || !alert.id) return
+    setActionLoading(action)
     setActionMessage(null)
-    const svcName = getAlertServiceName(alert)
-    const ctx = aiContextData?.contexts?.[svcName]
     try {
-      const res = await fetch('/api/incidents', {
-        method: 'POST',
+      const response = await fetch(`/api/alerts/${alert.id}/${action}`, {
+        method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          service_name: svcName,
-          severity: alert.severity || 'warning',
-          title: `Incident: ${svcName}`,
-          alert_fingerprint: alert.fingerprint,
-          anomaly_id: ctx?.anomaly_id || null,
-        }),
-      })
-      const data = await res.json()
-      if (res.ok) {
-        const incId = data.incident?.id
-        if (data.created) {
-          setActionMessage({ type: 'success', text: `Incident created with AI analysis.` })
-        } else {
-          setActionMessage({ type: 'success', text: data.message || 'An open incident already exists.' })
-        }
-        if (incId) setExistingIncidentId(incId)
-        queryClient.invalidateQueries({ queryKey: ['incidents'] })
-      } else {
-        setActionMessage({ type: 'error', text: data.detail || 'Failed to create incident' })
-      }
-    } catch (e: any) {
-      setActionMessage({ type: 'error', text: e.message || 'Failed to create incident' })
-    } finally {
-      setIncidentLoading(false)
-    }
-  }
-
-  // Silence mutation
-  const handleSilence = async (fingerprint: string) => {
-    if (!token) return
-    setSilenceLoading(true)
-    setActionMessage(null)
-    try {
-      const response = await fetch(`/api/alerts/${fingerprint}/silence`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ duration: silenceDuration })
+        body: JSON.stringify(body || {}),
       })
       const data = await response.json()
       if (response.ok) {
-        setActionMessage({ type: 'success', text: `Alert silenced for ${silenceDuration}` })
+        const labels: Record<string, string> = {
+          ack: 'acknowledged', resolve: 'resolved', dismiss: 'dismissed', silence: 'silenced',
+        }
+        setActionMessage({ type: 'success', text: `Alert ${labels[action]} successfully` })
         queryClient.invalidateQueries({ queryKey: ['alerts'] })
         queryClient.invalidateQueries({ queryKey: ['silences'] })
+        // Resolve / Dismiss → close modal (alert removed from list)
+        if (action === 'resolve' || action === 'dismiss') {
+          setTimeout(() => setSelectedAlert(null), 600)
+        }
       } else {
-        setActionMessage({ type: 'error', text: data.detail || 'Failed to silence alert' })
+        setActionMessage({ type: 'error', text: data.detail || `Failed to ${action} alert` })
       }
-    } catch (e) {
-      setActionMessage({ type: 'error', text: 'Failed to silence alert' })
+    } catch (e: any) {
+      setActionMessage({ type: 'error', text: e.message || `Failed to ${action} alert` })
     } finally {
-      setSilenceLoading(false)
+      setActionLoading(null)
     }
-  }
+  }, [token, queryClient])
 
-  // Acknowledge mutation
-  const handleAcknowledge = async (fingerprint: string) => {
-    if (!token) return
-    setAckLoading(true)
-    setActionMessage(null)
-    try {
-      const response = await fetch(`/api/alerts/${fingerprint}/ack`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({})
-      })
-      const data = await response.json()
-      if (response.ok) {
-        setActionMessage({ type: 'success', text: `Alert acknowledged by ${data.ack_by}` })
-        queryClient.invalidateQueries({ queryKey: ['ack-status'] })
-      } else {
-        setActionMessage({ type: 'error', text: data.detail || 'Failed to acknowledge alert' })
-      }
-    } catch (e) {
-      setActionMessage({ type: 'error', text: 'Failed to acknowledge alert' })
-    } finally {
-      setAckLoading(false)
-    }
-  }
+  // ── Deduplicate by fingerprint (belt-and-suspenders, backend already deduplicates) ──
+  const dedupedAlerts = (() => {
+    const alerts = alertsData?.alerts || []
+    const seen = new Set<string>()
+    return alerts.filter(a => {
+      const fp = a.fingerprint
+      if (!fp || seen.has(fp)) return false
+      seen.add(fp)
+      return true
+    })
+  })()
 
-  // Filter alerts
-  const filteredAlerts = alertsData?.alerts?.filter(alert => {
+  // Filter alerts by severity
+  const filteredAlerts = dedupedAlerts.filter(alert => {
     return severityFilter === 'all' || alert.severity === severityFilter
-  }) || []
+  })
 
   // Export filtered alerts as CSV
   const exportCSV = () => {
@@ -320,15 +260,18 @@ export function AlertsPage() {
 
   const getStatusIcon = (state: string) => {
     const s = state?.toLowerCase() || ''
-    if (s.includes('active') || s.includes('firing')) {
+    if (s === 'acknowledged') {
+      return <UserCheck className="text-amber-400" size={20} />
+    } else if (s === 'silenced') {
+      return <VolumeX className="text-gray-400" size={20} />
+    } else if (s.includes('active') || s.includes('firing')) {
       return <AlertTriangle className="text-error" size={20} />
-    } else if (s.includes('suppress') || s.includes('silence')) {
-      return <XCircle className="text-warning" size={20} />
-    } else if (s.includes('resolve')) {
-      return <CheckCircle2 className="text-success" size={20} />
     }
     return <Bell className="text-gray-400" size={20} />
   }
+
+  /* ── Can the alert use lifecycle actions? (needs DB id) ── */
+  const canAct = (alert: Alert) => !!alert.id
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -336,7 +279,7 @@ export function AlertsPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-2 sm:mb-6">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-white mb-1 sm:mb-2">Operational Alerts</h1>
-          <p className="text-text-muted text-sm sm:text-base">Alerts requiring attention ? generated when anomaly scores or predicted risk exceed operational thresholds</p>
+          <p className="text-text-muted text-sm sm:text-base">Alerts requiring attention – generated when anomaly scores or predicted risk exceed operational thresholds</p>
         </div>
         <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
           {silencesData?.total > 0 && (
@@ -400,18 +343,17 @@ export function AlertsPage() {
               <table className="w-full table-fixed">
                 <thead>
                   <tr className="border-b border-gray-700">
-                    <th className="text-left py-2.5 px-3 text-xs font-semibold text-gray-400 uppercase w-[72px]">Status</th>
-                    <th className="text-left py-2.5 px-3 text-xs font-semibold text-gray-400 uppercase" style={{width:'35%'}}>Alert</th>
+                    <th className="text-left py-2.5 px-3 text-xs font-semibold text-gray-400 uppercase w-[60px]">Status</th>
+                    <th className="text-left py-2.5 px-3 text-xs font-semibold text-gray-400 uppercase" style={{width:'22%'}}>Alert</th>
                     <th className="text-left py-2.5 px-3 text-xs font-semibold text-gray-400 uppercase w-[88px]">Severity</th>
-                    <th className="text-left py-2.5 px-3 text-xs font-semibold text-gray-400 uppercase" style={{width:'14%'}}>Instance</th>
+                    <th className="text-left py-2.5 px-3 text-xs font-semibold text-gray-400 uppercase w-[140px]">State</th>
                     <th className="text-left py-2.5 px-3 text-xs font-semibold text-gray-400 uppercase w-[52px]">AI</th>
-                    <th className="text-left py-2.5 px-3 text-xs font-semibold text-gray-400 uppercase" style={{width:'14%'}}>Started</th>
-                    <th className="text-left py-2.5 px-3 text-xs font-semibold text-gray-400 uppercase w-[72px]">Actions</th>
+                    <th className="text-left py-2.5 px-3 text-xs font-semibold text-gray-400 uppercase" style={{width:'12%'}}>Started</th>
+                    <th className="text-left py-2.5 px-3 text-xs font-semibold text-gray-400 uppercase" style={{width:'26%'}}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredAlerts.map((alert) => {
-                    const ackInfo = ackData?.[alert.fingerprint]
                     const aiCtx = aiContextData?.contexts?.[getAlertServiceName(alert)]
                     return (
                       <tr
@@ -420,15 +362,7 @@ export function AlertsPage() {
                         onClick={() => { setSelectedAlert(alert); setActionMessage(null) }}
                       >
                         <td className="py-2.5 px-3">
-                          <div className="flex items-center gap-1.5">
-                            {getStatusIcon(alert.status)}
-                            {ackInfo?.acknowledged && (
-                              <span className="text-xs px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400 border border-blue-500/30" title={`Acknowledged by ${ackInfo.ack_by}`}>
-                                <UserCheck size={10} className="inline mr-0.5" />
-                                ACK
-                              </span>
-                            )}
-                          </div>
+                          {getStatusIcon(alert.status)}
                         </td>
                         <td className="py-2.5 px-3">
                           <div className="min-w-0">
@@ -444,7 +378,7 @@ export function AlertsPage() {
                           </span>
                         </td>
                         <td className="py-2.5 px-3">
-                          <code className="text-xs text-blue-400 break-all">{alert.labels.instance || alert.labels.job || '-'}</code>
+                          <StatusBadge status={alert.status} />
                         </td>
                         <td className="py-2.5 px-3">
                           <AiScoreBadge ctx={aiCtx} />
@@ -454,10 +388,42 @@ export function AlertsPage() {
                             {new Date(alert.startsAt).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                           </div>
                         </td>
-                        <td className="py-2.5 px-3">
-                          <button className="text-primary hover:text-primary-light text-xs font-medium">
-                            Details
-                          </button>
+                        <td className="py-2.5 px-3" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex items-center gap-1">
+                            {canAct(alert) && alert.status !== 'acknowledged' && (
+                              <button
+                                onClick={() => handleLifecycleAction(alert, 'ack')}
+                                className="px-2 py-1 text-xs rounded bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 border border-amber-500/20 transition-colors"
+                                title="Acknowledge"
+                              >
+                                ACK
+                              </button>
+                            )}
+                            {canAct(alert) && (
+                              <button
+                                onClick={() => handleLifecycleAction(alert, 'resolve')}
+                                className="px-2 py-1 text-xs rounded bg-green-500/10 text-green-400 hover:bg-green-500/20 border border-green-500/20 transition-colors"
+                                title="Resolve"
+                              >
+                                Resolve
+                              </button>
+                            )}
+                            {canAct(alert) && (
+                              <button
+                                onClick={() => handleLifecycleAction(alert, 'dismiss')}
+                                className="px-2 py-1 text-xs rounded bg-gray-500/10 text-gray-400 hover:bg-gray-500/20 border border-gray-600/30 transition-colors"
+                                title="Dismiss"
+                              >
+                                Dismiss
+                              </button>
+                            )}
+                            <button
+                              onClick={() => { setSelectedAlert(alert); setActionMessage(null) }}
+                              className="px-2 py-1 text-xs rounded text-primary hover:text-primary-light hover:bg-primary/10 transition-colors"
+                            >
+                              Details
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     )
@@ -469,7 +435,6 @@ export function AlertsPage() {
             {/* Mobile card view */}
             <div className="md:hidden divide-y divide-gray-700/50">
               {filteredAlerts.map((alert) => {
-                const ackInfo = ackData?.[alert.fingerprint]
                 const aiCtx = aiContextData?.contexts?.[getAlertServiceName(alert)]
                 return (
                   <div
@@ -498,9 +463,7 @@ export function AlertsPage() {
                         {new Date(alert.startsAt).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                       </div>
                       <div className="flex items-center gap-2">
-                        {ackInfo?.acknowledged && (
-                          <span className="text-xs px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400 border border-blue-500/30">ACK</span>
-                        )}
+                        <StatusBadge status={alert.status} />
                         <span className="text-primary text-xs font-medium">Details &rarr;</span>
                       </div>
                     </div>
@@ -535,23 +498,30 @@ export function AlertsPage() {
                   {actionMessage.text}
                 </div>
               )}
-              {ackData?.[selectedAlert.fingerprint]?.acknowledged && (
-                <div className="p-3 rounded-lg border bg-blue-500/10 border-blue-500/30 text-sm text-blue-400 flex items-center gap-2 flex-wrap">
+
+              {/* Acknowledged info banner */}
+              {selectedAlert.status === 'acknowledged' && selectedAlert.acknowledged_by && (
+                <div className="p-3 rounded-lg border bg-amber-500/10 border-amber-500/30 text-sm text-amber-400 flex items-center gap-2 flex-wrap">
                   <UserCheck size={16} className="flex-shrink-0" />
-                  <span>Acknowledged by <strong>{ackData[selectedAlert.fingerprint].ack_by}</strong> at {new Date(ackData[selectedAlert.fingerprint].ack_at!).toLocaleString()}</span>
-                  {ackData[selectedAlert.fingerprint].note && (
-                    <span className="text-gray-400 break-words">{ackData[selectedAlert.fingerprint].note}</span>
-                  )}
+                  <span>Acknowledged by <strong>{selectedAlert.acknowledged_by}</strong>
+                    {selectedAlert.acknowledged_at && ` at ${new Date(selectedAlert.acknowledged_at).toLocaleString()}`}
+                  </span>
                 </div>
               )}
+
+              {/* Silenced info banner */}
+              {selectedAlert.status === 'silenced' && selectedAlert.silenced_until && (
+                <div className="p-3 rounded-lg border bg-gray-500/10 border-gray-600/30 text-sm text-gray-400 flex items-center gap-2 flex-wrap">
+                  <VolumeX size={16} className="flex-shrink-0" />
+                  <span>Silenced until <strong>{new Date(selectedAlert.silenced_until).toLocaleString()}</strong></span>
+                </div>
+              )}
+
               {/* Status / Severity grid */}
               <div className="grid grid-cols-2 gap-2 sm:gap-3">
                 <div className="card bg-surface-light p-3">
                   <p className="text-xs text-gray-400 mb-1">Status</p>
-                  <div className="flex items-center gap-2">
-                    {getStatusIcon(selectedAlert.status)}
-                    <span className="text-base sm:text-lg text-white font-semibold capitalize">{selectedAlert.status}</span>
-                  </div>
+                  <StatusBadge status={selectedAlert.status} />
                 </div>
                 <div className="card bg-surface-light p-3">
                   <p className="text-xs text-gray-400 mb-1">Severity</p>
@@ -632,46 +602,6 @@ export function AlertsPage() {
                 )
               })()}
 
-              {/* Phase 3: Create Incident / View Incident button */}
-              {(() => {
-                const svcName = getAlertServiceName(selectedAlert)
-                if (!svcName) return null
-                return (
-                  <div className="card p-3 sm:p-4 border-orange-500/20">
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-2">
-                        <Flame size={16} className="text-orange-400" />
-                        <span className="text-sm font-medium text-gray-200">Incident Management</span>
-                      </div>
-                      {existingIncidentId ? (
-                        <a
-                          href={`/incidents?expand=${existingIncidentId}`}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 border border-blue-500/30 transition-colors"
-                        >
-                          <Flame size={12} />
-                          View Open Incident
-                        </a>
-                      ) : (
-                        <button
-                          onClick={() => handleCreateIncident(selectedAlert)}
-                          disabled={incidentLoading}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-orange-500/20 text-orange-400 hover:bg-orange-500/30 border border-orange-500/30 transition-colors disabled:opacity-50"
-                        >
-                          <Flame size={12} />
-                          {incidentLoading ? 'Creating...' : 'Create Incident'}
-                        </button>
-                      )}
-                    </div>
-                    {existingIncidentId && (
-                      <p className="text-xs text-gray-500 mt-2">An open incident exists for this service. View it to track investigation progress.</p>
-                    )}
-                    {!existingIncidentId && (
-                      <p className="text-xs text-gray-500 mt-2">Create an incident to track investigation with AI-generated summary and hints.</p>
-                    )}
-                  </div>
-                )
-              })()}
-
               <div className="card p-3 sm:p-4">
                 <h3 className="text-base sm:text-lg font-semibold text-white mb-3">Labels</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
@@ -683,44 +613,73 @@ export function AlertsPage() {
                   ))}
                 </div>
               </div>
-              {/* Action buttons */}
-              <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
 
-                <div className="flex-1 flex gap-2">
-                  <select
-                    value={silenceDuration}
-                    onChange={(e) => setSilenceDuration(e.target.value)}
-                    className="bg-surface-light border border-gray-700 text-white rounded px-2 py-1.5 text-sm w-20 flex-shrink-0"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <option value="30m">30m</option>
-                    <option value="1h">1h</option>
-                    <option value="4h">4h</option>
-                    <option value="24h">24h</option>
-                  </select>
-                  <button
-                    className="btn btn-secondary flex-1 flex items-center justify-center gap-2 min-h-[44px]"
-                    disabled={silenceLoading}
-                    onClick={() => handleSilence(selectedAlert.fingerprint)}
-                  >
-                    <VolumeX size={16} />
-                    <span className="hidden sm:inline">{silenceLoading ? 'Silencing...' : 'Silence Alert'}</span>
-                    <span className="sm:hidden">{silenceLoading ? '...' : 'Silence'}</span>
-                  </button>
+              {/* ── Lifecycle Action Buttons ── */}
+              {canAct(selectedAlert) ? (
+                <div className="card p-3 sm:p-4 border-gray-600/50">
+                  <h3 className="text-sm font-semibold text-gray-300 mb-3">Alert Actions</h3>
+                  <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+                    {/* Acknowledge */}
+                    {selectedAlert.status !== 'acknowledged' && (
+                      <button
+                        className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 border border-amber-500/20 transition-colors disabled:opacity-50 min-h-[44px]"
+                        disabled={actionLoading !== null}
+                        onClick={() => handleLifecycleAction(selectedAlert, 'ack')}
+                      >
+                        <UserCheck size={16} />
+                        {actionLoading === 'ack' ? 'Acknowledging...' : 'Acknowledge'}
+                      </button>
+                    )}
+
+                    {/* Silence with duration */}
+                    <div className="flex-1 flex gap-2">
+                      <select
+                        value={silenceDuration}
+                        onChange={(e) => setSilenceDuration(e.target.value)}
+                        className="bg-surface-light border border-gray-700 text-white rounded px-2 py-1.5 text-sm w-20 flex-shrink-0"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <option value="30m">30m</option>
+                        <option value="1h">1h</option>
+                        <option value="4h">4h</option>
+                        <option value="24h">24h</option>
+                      </select>
+                      <button
+                        className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium bg-gray-500/10 text-gray-300 hover:bg-gray-500/20 border border-gray-600/30 transition-colors disabled:opacity-50 min-h-[44px]"
+                        disabled={actionLoading !== null}
+                        onClick={() => handleLifecycleAction(selectedAlert, 'silence', { duration: silenceDuration })}
+                      >
+                        <VolumeX size={16} />
+                        {actionLoading === 'silence' ? 'Silencing...' : 'Silence'}
+                      </button>
+                    </div>
+
+                    {/* Resolve */}
+                    <button
+                      className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium bg-green-500/10 text-green-400 hover:bg-green-500/20 border border-green-500/20 transition-colors disabled:opacity-50 min-h-[44px]"
+                      disabled={actionLoading !== null}
+                      onClick={() => handleLifecycleAction(selectedAlert, 'resolve')}
+                    >
+                      <CheckCircle2 size={16} />
+                      {actionLoading === 'resolve' ? 'Resolving...' : 'Resolve'}
+                    </button>
+
+                    {/* Dismiss */}
+                    <button
+                      className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-red-500/20 transition-colors disabled:opacity-50 min-h-[44px]"
+                      disabled={actionLoading !== null}
+                      onClick={() => handleLifecycleAction(selectedAlert, 'dismiss')}
+                    >
+                      <XCircle size={16} />
+                      {actionLoading === 'dismiss' ? 'Dismissing...' : 'Dismiss'}
+                    </button>
+                  </div>
                 </div>
-                <button
-                  className="btn btn-secondary flex-1 flex items-center justify-center gap-2 min-h-[44px]"
-                  disabled={ackLoading || ackData?.[selectedAlert.fingerprint]?.acknowledged}
-                  onClick={() => handleAcknowledge(selectedAlert.fingerprint)}
-                >
-                  <UserCheck size={16} />
-                  <span className="truncate">
-                  {ackData?.[selectedAlert.fingerprint]?.acknowledged
-                    ? `Ack'd`
-                    : ackLoading ? 'Ack...' : 'Acknowledge'}
-                  </span>
-                </button>
-              </div>
+              ) : (
+                <div className="card p-3 sm:p-4 border-gray-700/50">
+                  <p className="text-xs text-gray-500 text-center">Lifecycle actions are available for platform-generated alerts only.</p>
+                </div>
+              )}
             </div>
           </div>
         </div>
