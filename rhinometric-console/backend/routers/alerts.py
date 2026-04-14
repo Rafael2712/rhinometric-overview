@@ -204,51 +204,26 @@ async def get_alerts(
                 ev = _existing_map.get(_cfp)
 
                 # --- DISMISSED: user explicitly discarded this alert ---
-                # ALWAYS suppress while Alertmanager keeps firing the same
-                # fingerprint.  The user said "I don't care about this" —
-                # honour that until AM stops sending it entirely.
-                # If AM stops and later re-fires (new startsAt after the
-                # dismiss timestamp), the dismissed record will be stale
-                # and the new occurrence will get a fresh AlertEvent.
+                # ALWAYS suppress while the same fingerprint exists in AM.
+                # Alertmanager can change startsAt on re-evaluation, so we
+                # CANNOT use timestamp comparison.  The dismiss is permanent
+                # for this fingerprint until AM stops sending the alert AND
+                # a genuinely new alert fires (which won't match because
+                # AM will have resolved the old one first).
                 if ev and ev.status == "dismissed":
-                    _am_starts_str = _alert_group[0].get("startsAt", "")
-                    _suppress = True  # default: suppress
-                    # Only allow a genuinely NEW occurrence through:
-                    # AM startsAt must be AFTER the dismiss timestamp.
-                    if _am_starts_str and ev.dismissed_at:
-                        try:
-                            _am_dt = datetime.fromisoformat(
-                                _am_starts_str.replace("Z", "+00:00"))
-                            if _am_dt > ev.dismissed_at:
-                                _suppress = False  # new occurrence after dismiss
-                        except Exception:
-                            pass  # err on side of suppression
-                    if _suppress:
-                        for _a in _alert_group:
-                            _a["_suppress"] = True
-                        _covered_canonical_fps.add(_cfp)
-                        continue
-                    # New occurrence after dismiss → fall through to CREATE
-                    ev = None
+                    for _a in _alert_group:
+                        _a["_suppress"] = True
+                    _covered_canonical_fps.add(_cfp)
+                    continue
 
-                # --- RESOLVED (manually): suppress same occurrence ---
+                # --- RESOLVED (manually): always suppress same fingerprint ---
+                # Same logic: if the user manually resolved it, don't let
+                # the sync recreate it while AM keeps firing.
                 if ev and ev.status == "resolved" and ev.resolved_by:
-                    _am_starts_str = _alert_group[0].get("startsAt", "")
-                    _suppress = True
-                    if _am_starts_str and ev.resolved_at:
-                        try:
-                            _am_dt = datetime.fromisoformat(
-                                _am_starts_str.replace("Z", "+00:00"))
-                            if _am_dt > ev.resolved_at:
-                                _suppress = False
-                        except Exception:
-                            pass
-                    if _suppress:
-                        for _a in _alert_group:
-                            _a["_suppress"] = True
-                        _covered_canonical_fps.add(_cfp)
-                        continue
-                    ev = None
+                    for _a in _alert_group:
+                        _a["_suppress"] = True
+                    _covered_canonical_fps.add(_cfp)
+                    continue
 
                 # --- RESOLVED (auto) or old resolved: treat as no record ---
                 if ev and ev.status == "resolved":
@@ -1035,11 +1010,22 @@ async def grafana_webhook(
         # Severity escalation (always computed)
         severity = escalate_severity(entity_name, severity)
 
-        # Check for existing firing event
+        # Check for existing event (any lifecycle status)
+        # Must respect dismissed/resolved — do NOT recreate.
         existing = db.query(AlertEvent).filter(
             AlertEvent.fingerprint == event_fp,
-            AlertEvent.status == "firing",
-        ).first()
+            AlertEvent.status.in_(["firing", "acknowledged", "silenced",
+                                    "dismissed", "resolved"]),
+        ).order_by(AlertEvent.created_at.desc()).first()
+
+        # If dismissed or resolved: skip — do not recreate
+        if existing and existing.status in ("dismissed", "resolved"):
+            events_stored += 1
+            continue
+
+        # Narrow to firing for the update path below
+        if existing and existing.status not in ("firing", "acknowledged", "silenced"):
+            existing = None
 
         if existing:
             # UPDATE PATH: escalate severity in-place, touch timestamp

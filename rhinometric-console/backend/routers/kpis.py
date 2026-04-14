@@ -6,8 +6,9 @@ from datetime import datetime, timedelta
 from config import settings
 from routers.auth import get_current_user, require_role
 from models.user import User as UserModel
-from database import SessionLocal
+from database import SessionLocal, get_db
 from models.external_service import ExternalService
+from sqlalchemy.orm import Session
 # NEW AI: anomaly counts fetched directly from Rust engine V1 via HTTP
 
 router = APIRouter()
@@ -71,7 +72,10 @@ class KPIHistoricalResponse(BaseModel):
     alerts_24h: List[TimeSeriesPoint]
 
 @router.get("", response_model=KPIResponse)
-async def get_kpis(current_user: UserModel = Depends(get_current_user)):
+async def get_kpis(
+    current_user: UserModel = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
     # TODO-RBAC: KPI counts should reflect only services visible to current_user role/tenant
     """
     Aggregate KPIs from Prometheus and other services
@@ -168,11 +172,15 @@ async def get_kpis(current_user: UserModel = Depends(get_current_user)):
                 pass  # If engine unavailable, keep at 0
             
             # Get active alerts count from Alertmanager + Grafana
+            # MUST respect DB lifecycle: dismissed/resolved alerts are excluded.
             alerts_count = 0
             alerts_status = "success"
             alerts_change = "Last 24 hours"
             try:
                 import asyncio as _aio
+                import hashlib as _hl
+                from models.alert_event import AlertEvent as _AE
+
                 am_coro = client.get(
                     f"{settings.ALERTMANAGER_URL}/api/v2/alerts",
                     timeout=5.0
@@ -185,16 +193,20 @@ async def get_kpis(current_user: UserModel = Depends(get_current_user)):
                 am_resp, gf_resp = await _aio.gather(
                     am_coro, gf_coro, return_exceptions=True
                 )
+
+                # Collect candidate alerts from both sources
+                _candidate_alerts = []
                 seen_fps: set = set()
                 # External Alertmanager: AI anomaly external_service_ alerts
                 if not isinstance(am_resp, Exception) and am_resp.status_code == 200:
                     for a in am_resp.json():
                         if (a.get("status", {}).get("state") == "active"
-                                and a.get("labels", {}).get("metric", "").startswith("external_service_")):
+                                and a.get("labels", {}).get("alertname", "")
+                                    .startswith("AnomalyDetected_external_service_")):
                             fp = a.get("fingerprint", "")
                             if fp not in seen_fps:
                                 seen_fps.add(fp)
-                                alerts_count += 1
+                                _candidate_alerts.append(a)
                 # Grafana internal alertmanager: synthetic monitoring
                 if not isinstance(gf_resp, Exception) and gf_resp.status_code == 200:
                     for a in gf_resp.json():
@@ -203,7 +215,40 @@ async def get_kpis(current_user: UserModel = Depends(get_current_user)):
                             fp = a.get("fingerprint", "")
                             if fp not in seen_fps:
                                 seen_fps.add(fp)
-                                alerts_count += 1
+                                _candidate_alerts.append(a)
+
+                # Compute canonical fingerprints and check DB for dismissed/resolved
+                _suppressed_fps = set()
+                if _candidate_alerts:
+                    _all_cfps = {}
+                    for a in _candidate_alerts:
+                        lbl = a.get("labels", {})
+                        _an = lbl.get("alertname", "unknown")
+                        _en = lbl.get("service_name", "") or lbl.get("instance", "unknown")
+                        _mn = lbl.get("metric_name", "") or lbl.get("__name__", "")
+                        cfp = _hl.sha256(f"{_an}|{_en}|{_mn}".encode()).hexdigest()[:16]
+                        _all_cfps[cfp] = a
+
+                    # Query DB for dismissed/resolved records
+                    _cfp_list = list(_all_cfps.keys())
+                    _rows = (
+                        db.query(_AE)
+                        .filter(
+                            _AE.fingerprint.in_(_cfp_list),
+                            _AE.status.in_(["dismissed", "resolved"]),
+                        )
+                        .all()
+                    )
+                    for row in _rows:
+                        if row.status == "dismissed":
+                            _suppressed_fps.add(row.fingerprint)
+                        elif row.status == "resolved" and row.resolved_by:
+                            _suppressed_fps.add(row.fingerprint)
+
+                    alerts_count = sum(
+                        1 for cfp in _all_cfps if cfp not in _suppressed_fps
+                    )
+
                 if alerts_count > 0:
                     alerts_status = "warning"
                     alerts_change = f"{alerts_count} active now"
