@@ -140,12 +140,12 @@ async def get_alerts(
                         a for a in am_alerts
                         if a.get("status", {}).get("state") == "active"
                     ]
+                # Only show external-service alerts; exclude
+                # platform infrastructure (node_*) alerts.
                 am_alerts = [
                     a for a in am_alerts
-                    if (
-                        a.get("labels", {}).get("metric", "").startswith("external_service_")
-                        or "external_service" in a.get("labels", {}).get("alertname", "").lower()
-                    )
+                    if a.get("labels", {}).get("alertname", "")
+                       .startswith("AnomalyDetected_external_service_")
                 ]
                 alerts_data.extend(am_alerts)
 
@@ -167,6 +167,7 @@ async def get_alerts(
         # SYNC Source 1/2 alerts → canonical AlertEvent records in DB
         # Guarantees: every alert gets a UUID id, strict idempotency,
         #             lifecycle state (ack/silence) is never overwritten.
+        #             Dismissed/resolved alerts are suppressed from response.
         # =================================================================
         _active_statuses_set = ["firing", "acknowledged", "silenced"]
 
@@ -178,25 +179,82 @@ async def get_alerts(
                 _a["_cfp"] = _cfp  # temporary key, removed later
                 _fp_to_alerts.setdefault(_cfp, []).append(_a)
 
-            # Step 2 — batch-query existing ACTIVE AlertEvents by fingerprint
+            # Step 2 — batch-query the MOST RECENT AlertEvent per fingerprint
+            # We query ALL statuses so we can detect dismissed/resolved and
+            # suppress them instead of accidentally creating duplicates.
             _all_fps = list(_fp_to_alerts.keys())
             _existing_map: dict[str, object] = {}
             if _all_fps:
-                _rows = db.query(_AE).filter(
-                    _AE.fingerprint.in_(_all_fps),
-                    _AE.status.in_(_active_statuses_set),
-                ).all()
+                _rows = (
+                    db.query(_AE)
+                    .filter(_AE.fingerprint.in_(_all_fps))
+                    .order_by(_AE.created_at.desc())
+                    .all()
+                )
                 for _row in _rows:
-                    _existing_map[_row.fingerprint] = _row
+                    # Keep first (newest) per fingerprint
+                    if _row.fingerprint not in _existing_map:
+                        _existing_map[_row.fingerprint] = _row
 
-            # Step 3 — enrich existing / create missing
+            # Step 3 — enrich existing / suppress dismissed / create missing
             _now = datetime.now(timezone.utc)
             _SEV_ORDER = {"info": 0, "warning": 1, "critical": 2}
 
             for _cfp, _alert_group in _fp_to_alerts.items():
                 ev = _existing_map.get(_cfp)
 
-                if ev:
+                # --- DISMISSED: user explicitly discarded this alert ---
+                # ALWAYS suppress while Alertmanager keeps firing the same
+                # fingerprint.  The user said "I don't care about this" —
+                # honour that until AM stops sending it entirely.
+                # If AM stops and later re-fires (new startsAt after the
+                # dismiss timestamp), the dismissed record will be stale
+                # and the new occurrence will get a fresh AlertEvent.
+                if ev and ev.status == "dismissed":
+                    _am_starts_str = _alert_group[0].get("startsAt", "")
+                    _suppress = True  # default: suppress
+                    # Only allow a genuinely NEW occurrence through:
+                    # AM startsAt must be AFTER the dismiss timestamp.
+                    if _am_starts_str and ev.dismissed_at:
+                        try:
+                            _am_dt = datetime.fromisoformat(
+                                _am_starts_str.replace("Z", "+00:00"))
+                            if _am_dt > ev.dismissed_at:
+                                _suppress = False  # new occurrence after dismiss
+                        except Exception:
+                            pass  # err on side of suppression
+                    if _suppress:
+                        for _a in _alert_group:
+                            _a["_suppress"] = True
+                        _covered_canonical_fps.add(_cfp)
+                        continue
+                    # New occurrence after dismiss → fall through to CREATE
+                    ev = None
+
+                # --- RESOLVED (manually): suppress same occurrence ---
+                if ev and ev.status == "resolved" and ev.resolved_by:
+                    _am_starts_str = _alert_group[0].get("startsAt", "")
+                    _suppress = True
+                    if _am_starts_str and ev.resolved_at:
+                        try:
+                            _am_dt = datetime.fromisoformat(
+                                _am_starts_str.replace("Z", "+00:00"))
+                            if _am_dt > ev.resolved_at:
+                                _suppress = False
+                        except Exception:
+                            pass
+                    if _suppress:
+                        for _a in _alert_group:
+                            _a["_suppress"] = True
+                        _covered_canonical_fps.add(_cfp)
+                        continue
+                    ev = None
+
+                # --- RESOLVED (auto) or old resolved: treat as no record ---
+                if ev and ev.status == "resolved":
+                    ev = None
+
+                if ev and ev.status in _active_statuses_set:
                     # ---------- UPDATE PATH ----------
                     # Touch timestamp; escalate severity upward only.
                     # NEVER overwrite acknowledged_by/at, silenced_until.
@@ -206,56 +264,58 @@ async def get_alerts(
                         ev.severity = _new_sev
                         ev.escalation_count = (ev.escalation_count or 0) + 1
                 else:
-                    # ---------- CREATE PATH ----------
-                    _repr = _alert_group[0]
-                    _lbl = _repr.get("labels", {})
-                    _ann = _repr.get("annotations", {})
+                    if ev is None:
+                        # ---------- CREATE PATH ----------
+                        _repr = _alert_group[0]
+                        _lbl = _repr.get("labels", {})
+                        _ann = _repr.get("annotations", {})
 
-                    _starts = None
-                    try:
-                        _raw_ts = _repr.get("startsAt", "")
-                        if _raw_ts:
-                            _starts = datetime.fromisoformat(
-                                _raw_ts.replace("Z", "+00:00"))
-                    except Exception:
-                        pass
+                        _starts = None
+                        try:
+                            _raw_ts = _repr.get("startsAt", "")
+                            if _raw_ts:
+                                _starts = datetime.fromisoformat(
+                                    _raw_ts.replace("Z", "+00:00"))
+                        except Exception:
+                            pass
 
-                    ev = _AE(
-                        id=_uuid.uuid4(),
-                        alert_name=_lbl.get("alertname", "unknown"),
-                        entity_type=_lbl.get("category", "service"),
-                        entity_name=(_lbl.get("service_name", "")
-                                     or _lbl.get("instance", "unknown")),
-                        metric_name=(_lbl.get("metric_name", "")
-                                     or _lbl.get("__name__", "")),
-                        severity=_lbl.get("severity", "warning"),
-                        status="firing",
-                        started_at=_starts or _now,
-                        fingerprint=_cfp,
-                        labels=_lbl,
-                        annotations=_ann,
-                        summary=_ann.get("summary", ""),
-                        source="alertmanager",
-                        generator_url=_repr.get("generatorURL", ""),
-                        escalation_count=0,
-                        last_evaluated_at=_now,
-                    )
-                    db.add(ev)
-                    db.flush()  # materialise id
+                        ev = _AE(
+                            id=_uuid.uuid4(),
+                            alert_name=_lbl.get("alertname", "unknown"),
+                            entity_type=_lbl.get("category", "service"),
+                            entity_name=(_lbl.get("service_name", "")
+                                         or _lbl.get("instance", "unknown")),
+                            metric_name=(_lbl.get("metric_name", "")
+                                         or _lbl.get("__name__", "")),
+                            severity=_lbl.get("severity", "warning"),
+                            status="firing",
+                            started_at=_starts or _now,
+                            fingerprint=_cfp,
+                            labels=_lbl,
+                            annotations=_ann,
+                            summary=_ann.get("summary", ""),
+                            source="alertmanager",
+                            generator_url=_repr.get("generatorURL", ""),
+                            escalation_count=0,
+                            last_evaluated_at=_now,
+                        )
+                        db.add(ev)
+                        db.flush()  # materialise id
 
                 # ---- Enrich every alert in this fingerprint group ----
-                for _a in _alert_group:
-                    _a["id"] = str(ev.id)
-                    # DB is authoritative for lifecycle status
-                    if ev.status in ("acknowledged", "silenced"):
-                        _a["status"] = {"state": ev.status}
-                    _a["acknowledged_by"] = ev.acknowledged_by
-                    _a["acknowledged_at"] = (
-                        ev.acknowledged_at.isoformat()
-                        if ev.acknowledged_at else None)
-                    _a["silenced_until"] = (
-                        ev.silenced_until.isoformat()
-                        if ev.silenced_until else None)
+                if ev:
+                    for _a in _alert_group:
+                        _a["id"] = str(ev.id)
+                        # DB is authoritative for lifecycle status
+                        if ev.status in ("acknowledged", "silenced"):
+                            _a["status"] = {"state": ev.status}
+                        _a["acknowledged_by"] = ev.acknowledged_by
+                        _a["acknowledged_at"] = (
+                            ev.acknowledged_at.isoformat()
+                            if ev.acknowledged_at else None)
+                        _a["silenced_until"] = (
+                            ev.silenced_until.isoformat()
+                            if ev.silenced_until else None)
 
                 _covered_canonical_fps.add(_cfp)
 
@@ -268,17 +328,23 @@ async def get_alerts(
             except Exception:
                 pass
 
-        # Clean temporary key
+        # Clean temporary keys & filter suppressed (dismissed/resolved)
+        alerts_data = [
+            _a for _a in alerts_data if not _a.get("_suppress")
+        ]
         for _a in alerts_data:
             _a.pop("_cfp", None)
+            _a.pop("_suppress", None)
 
         # -- Source 3: DB-only alert events (policy / webhook originated) --
         # Skip any fingerprint already backed by Source 1/2 to avoid dupes.
+        # Also exclude platform infrastructure alerts (node_*) from DB.
         try:
             _service_types = {"service", "external-services"}
             db_firing = db.query(_AE).filter(
                 _AE.status.in_(_active_statuses_set),
                 _AE.entity_type.in_(list(_service_types)),
+                _AE.alert_name.like("AnomalyDetected_external_service_%"),
             ).all()
             for ev in db_firing:
                 fp = ev.fingerprint or ""
