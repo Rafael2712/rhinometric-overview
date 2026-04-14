@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { Link, useLocation, Outlet } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Home, LayoutDashboard, AlertTriangle, Bell, CreditCard, Settings, LogOut, Menu, X, Users, Map, Globe, ClipboardList, Flame, Target, Shield, HardDrive } from 'lucide-react'
@@ -12,16 +12,16 @@ const navigation = [
   { name: 'Incidents', href: '/incidents', icon: Flame },
   { name: 'Services', href: '/services', icon: Globe },
   { name: 'Service Levels', href: '/slo', icon: Target },
-  { name: 'Alert Policies', href: '/alert-rules', icon: Shield },
+  { name: 'Alert Policies', href: '/alert-rules', icon: Shield, requiredRoles: ['OWNER', 'ADMIN'] },
   { name: 'Dashboards', href: '/dashboards', icon: LayoutDashboard },
   // ?? separator ??
   { name: 'separator', href: '', icon: Home, isSeparator: true },
   // ?? Secondary ??
   { name: 'Alert History', href: '/alert-history', icon: ClipboardList },
-  { name: 'License', href: '/license', icon: CreditCard },
-  { name: 'Backup & Recovery', href: '/backup-recovery', icon: HardDrive },
-  { name: 'Users', href: '/users', icon: Users, requiresAdmin: true },
-  { name: 'Settings', href: '/settings', icon: Settings, requiresAdmin: true },
+  { name: 'License', href: '/license', icon: CreditCard, requiredRoles: ['OWNER'] },
+  { name: 'Backup & Recovery', href: '/backup-recovery', icon: HardDrive, requiredRoles: ['OWNER', 'ADMIN'] },
+  { name: 'Users', href: '/users', icon: Users, requiredRoles: ['OWNER', 'ADMIN'] },
+  { name: 'Settings', href: '/settings', icon: Settings, requiredRoles: ['OWNER', 'ADMIN'] },
   { name: 'Roadmap', href: '/roadmap', icon: Map },
   // [synthetic-edition] { name: 'Service Map', href: '/service-map', icon: Share2 },
   // [synthetic-edition] { name: 'Logs', href: '/logs', icon: FileText },
@@ -31,7 +31,7 @@ const navigation = [
 
 export function Layout() {
   const location = useLocation()
-  const { user, logout, canManageUsers } = useAuthStore()
+  const { user, logout, hasRole } = useAuthStore()
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   // Environment detection
@@ -108,7 +108,7 @@ export function Layout() {
             if ((item as any).isSeparator) {
               return <div key="separator" className="my-2 mx-3 border-t border-gray-700/50" />
             }
-            if (item.requiresAdmin && !canManageUsers()) {
+            if ((item as any).requiredRoles && !(item as any).requiredRoles.some((r: string) => hasRole(r))) {
               return null
             }
 

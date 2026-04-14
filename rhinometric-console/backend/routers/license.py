@@ -1,4 +1,4 @@
-"""
+﻿"""
 LICENSE ROUTER - RHINOMETRIC CONSOLE BACKEND v3.0.0
 
 SERVICE-BASED LICENSE MODEL.
@@ -78,7 +78,7 @@ class LicenseActivationRequest(BaseModel):
 
 @router.get("/status")
 async def get_license_status(
-    current_user: UserModel = Depends(get_current_user),
+    current_user: UserModel = Depends(require_role(["OWNER"])),
     db: Session = Depends(get_db),
 ):
     """
@@ -147,7 +147,7 @@ async def activate_license(
 
 @router.get("/limits")
 async def get_license_limits(
-    current_user: UserModel = Depends(get_current_user),
+    current_user: UserModel = Depends(require_role(["OWNER"])),
     db: Session = Depends(get_db),
 ):
     """

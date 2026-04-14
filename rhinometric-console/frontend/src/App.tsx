@@ -38,6 +38,11 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
   return isAdmin() ? <>{children}</> : <Navigate to="/" replace />
 }
 
+function OwnerRoute({ children }: { children: React.ReactNode }) {
+  const { isOwner } = useAuthStore()
+  return isOwner() ? <>{children}</> : <Navigate to="/" replace />
+}
+
 
 function App() {
   const hasHydrated = useHasHydrated()
@@ -53,7 +58,7 @@ function App() {
   if (!hasHydrated || !oidcReady) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="animate-pulse text-gray-400 text-sm">Loading session…</div>
+        <div className="animate-pulse text-gray-400 text-sm">Loading sessionÔÇª</div>
       </div>
     )
   }
@@ -74,13 +79,13 @@ function App() {
           <Route path="alert-history" element={<AlertHistoryPage />} />
           <Route path="incidents" element={<IncidentsPage />} />
           <Route path="slo" element={<SLOPage />} />
-          <Route path="alert-rules" element={<AlertRulesPage />} />
+          <Route path="alert-rules" element={<AdminRoute><AlertRulesPage /></AdminRoute>} />
           <Route path="logs" element={<Navigate to="/" replace />} />
           <Route path="traces" element={<Navigate to="/" replace />} />
           <Route path="traces/:traceId" element={<Navigate to="/" replace />} />
           <Route path="trace-analytics" element={<Navigate to="/" replace />} />
           <Route path="ai-anomalies-v2" element={<AiAnomaliesV2Page />} />
-          <Route path="license" element={<LicensePage />} />
+          <Route path="license" element={<OwnerRoute><LicensePage /></OwnerRoute>} />
           <Route path="backup-recovery" element={<AdminRoute><BackupRecoveryPage /></AdminRoute>} />
           <Route path="users" element={<AdminRoute><UsersPage /></AdminRoute>} />
           <Route path="settings" element={<AdminRoute><SettingsPage /></AdminRoute>} />

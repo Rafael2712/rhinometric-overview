@@ -36,16 +36,20 @@ class DeleteRequest(BaseModel):
     confirm: bool = False
 
 
+admin_only = require_role(["OWNER", "ADMIN"])
+
 
 @router.get("/scope")
-def get_scope_endpoint():
+def get_scope_endpoint(
+    current_user=Depends(admin_only),
+):
     """Return backup scope — what is included and excluded."""
     return get_backup_scope()
 
 @router.post("/create")
 def create_backup_endpoint(
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
+    current_user=Depends(admin_only),
 ):
     """Create a new backup. Returns artifact (even on failure)."""
     artifact = create_backup(db, created_by=current_user.username)
@@ -60,7 +64,7 @@ def get_backup_history(
     limit: int = 50,
     offset: int = 0,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
+    current_user=Depends(admin_only),
 ):
     """Get paginated backup history."""
     backups = list_backups(db, limit=limit, offset=offset)
@@ -76,7 +80,7 @@ def get_backup_history(
 @router.get("/summary")
 def get_backup_summary(
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
+    current_user=Depends(admin_only),
 ):
     """Get backup summary stats for dashboard cards."""
     total = count_backups(db)
@@ -95,7 +99,7 @@ def get_backup_summary(
 @router.get("/storage")
 def get_storage_endpoint(
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
+    current_user=Depends(admin_only),
 ):
     """Get backup storage usage stats."""
     return get_storage_usage(db)
@@ -104,7 +108,7 @@ def get_storage_endpoint(
 @router.get("/last-restore")
 def get_last_restore_endpoint(
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
+    current_user=Depends(admin_only),
 ):
     """Get most recent restore audit info."""
     result = get_last_restore(db)
@@ -115,7 +119,7 @@ def get_last_restore_endpoint(
 def preview_backup_endpoint(
     backup_id: str,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
+    current_user=Depends(admin_only),
 ):
     """Preview contents of a backup without restoring."""
     try:
@@ -179,7 +183,7 @@ def delete_backup_endpoint(
 def get_backup_detail(
     backup_id: str,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
+    current_user=Depends(admin_only),
 ):
     """Get details of a specific backup."""
     backup = get_backup_by_id(db, backup_id)

@@ -1,5 +1,5 @@
-"""
-Synthetic Monitoring Alert Policies — CRUD and evaluation.
+﻿"""
+Synthetic Monitoring Alert Policies ÔÇö CRUD and evaluation.
 
 Product-oriented alert configuration for synthetic monitoring.
 Three rule types: SERVICE_DOWN, HIGH_LATENCY, DEGRADED_HEALTH.
@@ -23,9 +23,9 @@ logger = get_logger("alert_rules")
 
 router = APIRouter()
 
-# ────────────────────────────────────────────────────────────────
+# ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
 # Constants
-# ────────────────────────────────────────────────────────────────
+# ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
 VALID_RULE_TYPES = {"SERVICE_DOWN", "HIGH_LATENCY", "DEGRADED_HEALTH"}
 VALID_SEVERITIES = {"info", "warning", "critical"}
 
@@ -33,9 +33,9 @@ VALID_SEVERITIES = {"info", "warning", "critical"}
 VALID_METRICS = {"latency_ms", "error_rate", "availability_pct", "response_time_p95"}
 VALID_OPERATORS = {">", "<", ">=", "<="}
 
-# ────────────────────────────────────────────────────────────────
+# ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
 # Schemas
-# ────────────────────────────────────────────────────────────────
+# ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
 
 class AlertPolicyCreate(BaseModel):
     name: str
@@ -79,14 +79,14 @@ class AlertPolicyCreate(BaseModel):
     @classmethod
     def validate_failures(cls, v):
         if v < 1 or v > 100:
-            raise ValueError("consecutive_failures must be 1–100")
+            raise ValueError("consecutive_failures must be 1ÔÇô100")
         return v
 
     @field_validator("cooldown_seconds")
     @classmethod
     def validate_cooldown(cls, v):
         if v < 0 or v > 86400:
-            raise ValueError("cooldown_seconds must be 0–86400")
+            raise ValueError("cooldown_seconds must be 0ÔÇô86400")
         return v
 
 
@@ -121,9 +121,9 @@ class AlertPolicyUpdate(BaseModel):
         return v
 
 
-# ────────────────────────────────────────────────────────────────
+# ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
 # Helpers
-# ────────────────────────────────────────────────────────────────
+# ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
 
 def _rule_to_dict(rule: AlertRule, service_name: str = "") -> dict:
     return {
@@ -158,9 +158,12 @@ def _rule_to_dict(rule: AlertRule, service_name: str = "") -> dict:
     }
 
 
-# ────────────────────────────────────────────────────────────────
+# ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
 # CRUD Endpoints
-# ────────────────────────────────────────────────────────────────
+# ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+
+admin_only = require_role(["OWNER", "ADMIN"])
+
 
 @router.get("")
 async def list_alert_rules(
@@ -168,7 +171,7 @@ async def list_alert_rules(
     rule_type: Optional[str] = Query(None),
     enabled: Optional[bool] = Query(None),
     db: Session = Depends(get_db),
-    current_user: UserModel = Depends(get_current_user),
+    current_user: UserModel = Depends(admin_only),
 ):
     """List all alert policies with optional filtering."""
     query = db.query(AlertRule)
@@ -201,7 +204,7 @@ async def list_alert_rules(
 @router.get("/services/list")
 async def list_services_for_rules(
     db: Session = Depends(get_db),
-    current_user: UserModel = Depends(get_current_user),
+    current_user: UserModel = Depends(admin_only),
 ):
     """Return simplified list of services for rule creation dropdown."""
     svcs = db.query(ExternalService.id, ExternalService.name).filter(
@@ -255,7 +258,7 @@ async def create_alert_rule(
 async def get_alert_rule(
     rule_id: str,
     db: Session = Depends(get_db),
-    current_user: UserModel = Depends(get_current_user),
+    current_user: UserModel = Depends(admin_only),
 ):
     """Get a single alert policy."""
     rule = db.query(AlertRule).filter(AlertRule.id == rule_id).first()
@@ -323,9 +326,9 @@ async def delete_alert_rule(
 
 
 
-# ────────────────────────────────────────────────────────────────
+# ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
 # Auto-resolution: resolve alerts for recovered services
-# ────────────────────────────────────────────────────────────────
+# ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
 
 def _resolve_recovered_services(db: Session):
     """Resolve alert events for services that have recovered.
@@ -340,7 +343,7 @@ def _resolve_recovered_services(db: Session):
 
     now = datetime.now(timezone.utc)
 
-    # ── 1. Resolve alerts for services that are UP ──
+    # ÔöÇÔöÇ 1. Resolve alerts for services that are UP ÔöÇÔöÇ
     up_services = db.query(ExternalService).filter(
         ExternalService.enabled == True,
         ExternalService.status.in_(["up", "degraded"]),
@@ -367,7 +370,7 @@ def _resolve_recovered_services(db: Session):
         if firing_events:
             logger.info(f"Auto-resolved {len(firing_events)} alert(s) for recovered services")
 
-    # ── 2. Resolve orphaned incidents for deleted services ──
+    # ÔöÇÔöÇ 2. Resolve orphaned incidents for deleted services ÔöÇÔöÇ
     from models.incident import Incident
     existing_names = {svc.name.lower() for svc in db.query(ExternalService).all()}
     orphan_incidents = db.query(Incident).filter(
@@ -387,9 +390,9 @@ def _resolve_recovered_services(db: Session):
     if orphan_resolved:
         logger.info(f"Resolved {orphan_resolved} orphan incident(s) for deleted services")
 
-# ────────────────────────────────────────────────────────────────
+# ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
 # Default rules seeding
-# ────────────────────────────────────────────────────────────────
+# ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
 
 DEFAULT_POLICIES = [
     {
@@ -442,7 +445,7 @@ def seed_default_policies(db: Session) -> int:
             id=uuid.uuid4(),
             is_default=True,
             enabled=True,
-            service_id=None,  # Global — applies to all services
+            service_id=None,  # Global ÔÇö applies to all services
             **policy,
         )
         db.add(rule)
@@ -465,9 +468,9 @@ async def seed_defaults_endpoint(
     return {"message": f"Created {count} default alert policies", "created": count}
 
 
-# ────────────────────────────────────────────────────────────────
+# ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
 # Rule Evaluation (called by health checker cycle)
-# ────────────────────────────────────────────────────────────────
+# ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
 
 def evaluate_alert_rules(db: Session):
     """
@@ -633,7 +636,7 @@ def _evaluate_degraded_health(db: Session, rule: AlertRule) -> int:
     return fired
 
 
-# ── Legacy metric evaluation (backward compat) ──────────────────
+# ÔöÇÔöÇ Legacy metric evaluation (backward compat) ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
 
 def _compute_metric(db: Session, service_id: int, metric: str, window_minutes: int) -> float:
     """Compute a metric value from recent checks (legacy path)."""
@@ -718,7 +721,7 @@ def _fire_rule_alert(db: Session, rule: AlertRule, current_value: float,
     ).first()
 
     if existing:
-        # ── UPDATE PATH: severity escalation + touch timestamp ──
+        # ÔöÇÔöÇ UPDATE PATH: severity escalation + touch timestamp ÔöÇÔöÇ
         old_severity = existing.severity
         existing.last_evaluated_at = now
 

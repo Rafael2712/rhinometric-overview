@@ -1,4 +1,4 @@
-"""
+﻿"""
 Settings router for Rhinometric Console.
 Manage global system settings including AI alerting toggle
 and notification channel configuration (Slack + Email).
@@ -158,8 +158,11 @@ class NotificationChannelsResponse(BaseModel):
 # AI Alerting Toggle Endpoints
 # =====================================================================
 
+admin_only = require_role(["OWNER", "ADMIN"])
+
+
 @router.get("", response_model=SystemSettings)
-async def get_settings(current_user: UserModel = Depends(get_current_user)):
+async def get_settings(current_user: UserModel = Depends(admin_only)):
     """Get current system settings."""
     data = _load_settings()
     return SystemSettings(
@@ -198,15 +201,11 @@ async def update_ai_alerts(
 # =====================================================================
 
 @router.get("/notification-channels")
-async def get_notification_channels(current_user: UserModel = Depends(get_current_user)):
+async def get_notification_channels(current_user: UserModel = Depends(admin_only)):
     """
     Get notification channel configuration.
     Secrets (webhook_url, smtp_password) are redacted.
     """
-    user_roles = current_user.get_roles()
-    if "ADMIN" not in user_roles and "OWNER" not in user_roles:
-        raise HTTPException(status_code=403, detail="Admin or Owner role required")
-
     channels = load_channels()
     redacted = redact_channels(channels)
 
@@ -236,7 +235,7 @@ async def save_notification_channels(
     - Regenerates alertmanager.yml from template
     - Reloads Alertmanager
     
-    If smtp_password is "••••••••" (redacted), keeps the existing password.
+    If smtp_password is "ÔÇóÔÇóÔÇóÔÇóÔÇóÔÇóÔÇóÔÇó" (redacted), keeps the existing password.
     If webhook_url ends with "..." (redacted), keeps the existing webhook.
     """
     user_roles = current_user.get_roles()
@@ -249,7 +248,7 @@ async def save_notification_channels(
     # Preserve secrets if redacted values are sent back
     if "..." in new_data["slack"]["webhook_url"] or new_data["slack"]["webhook_url"] == "***configured***":
         new_data["slack"]["webhook_url"] = existing.get("slack", {}).get("webhook_url", "")
-    if new_data["email"]["smtp_password"] == "••••••••":
+    if new_data["email"]["smtp_password"] == "ÔÇóÔÇóÔÇóÔÇóÔÇóÔÇóÔÇóÔÇó":
         new_data["email"]["smtp_password"] = existing.get("email", {}).get("smtp_password", "")
 
     # Preserve extra sections (zoho_api, etc.) that the UI doesn't manage
@@ -400,7 +399,7 @@ async def test_email(current_user: UserModel = Depends(require_role(["OWNER", "A
 # =====================================================================
 
 @router.get("/system-info")
-async def get_system_info(current_user: UserModel = Depends(get_current_user)):
+async def get_system_info(current_user: UserModel = Depends(admin_only)):
     """Get system information and service health."""
     services = {
         "prometheus": {"url": settings.PROMETHEUS_URL, "healthy": False},
@@ -430,18 +429,13 @@ async def get_system_info(current_user: UserModel = Depends(get_current_user)):
 
 @router.get("/email/status")
 async def get_email_status(
-    current_user: UserModel = Depends(get_current_user),
+    current_user: UserModel = Depends(admin_only),
 ):
     """
     Admin-only: Check email delivery service availability.
     Performs TCP pre-check against configured SMTP host/port.
     Returns: {available: bool, reason: str, config_summary: {...}}
     """
-    # Manual role check (OWNER/ADMIN only)
-    user_roles = current_user.get_roles()
-    if not any(r in user_roles for r in ["OWNER", "ADMIN"]):
-        raise HTTPException(status_code=403, detail="Insufficient permissions")
-
     from services.email_service import is_email_service_available, _load_email_config
 
     available, reason = is_email_service_available()
@@ -468,12 +462,12 @@ async def get_email_status(
 from fastapi import Request
 
 
-# ── Email cooldown deduplication ──
+# ÔöÇÔöÇ Email cooldown deduplication ÔöÇÔöÇ
 # Prevents repeated email alerts for the same metric+severity within a cooldown window.
 # Defense-in-depth alongside Alertmanager group_interval increase.
 import time as _time
 
-_EMAIL_COOLDOWN: dict = {}          # key=(metric,severity) → last_sent_ts
+_EMAIL_COOLDOWN: dict = {}          # key=(metric,severity) ÔåÆ last_sent_ts
 EMAIL_COOLDOWN_SECONDS = 3600       # 1 hour cooldown per unique alert
 
 
@@ -550,14 +544,14 @@ async def alertmanager_email_webhook(request: Request):
             # Map metric to correct Grafana dashboard/panel
             grafana_base = "http://46.225.231.117/grafana"
             metric_raw = labels.get("metric", labels.get("alertname", "unknown"))
-            # ── Parse metric label (format: metric_name::entity_name or just metric_name) ──
+            # ÔöÇÔöÇ Parse metric label (format: metric_name::entity_name or just metric_name) ÔöÇÔöÇ
             if "::" in metric_raw:
                 metric_key, entity_name_parsed = metric_raw.split("::", 1)
             else:
                 metric_key = metric_raw
                 entity_name_parsed = ""
 
-            # ── Grafana deep link: correct dashboard + panel + time range + entity filter ──
+            # ÔöÇÔöÇ Grafana deep link: correct dashboard + panel + time range + entity filter ÔöÇÔöÇ
             _time_range = "from=now-1h&to=now"
             _svc_filter = f"&var-service_name={_url_quote(entity_name_parsed)}" if entity_name_parsed else ""
 
@@ -580,7 +574,7 @@ async def alertmanager_email_webhook(request: Request):
             else:
                 grafana_url = f"{grafana_base}/d/ai-anomaly-service/ai-anomaly-service?{_time_range}&theme=dark"
 
-            # ── Console deep link: /anomalies with metric + entity query params ──
+            # ÔöÇÔöÇ Console deep link: /anomalies with metric + entity query params ÔöÇÔöÇ
             console_params = f"metric={_url_quote(metric_key)}"
             if entity_name_parsed:
                 console_params += f"&entity={_url_quote(entity_name_parsed)}"
@@ -615,7 +609,7 @@ async def alertmanager_email_webhook(request: Request):
                 console_dash=console_dash_path
             )
             
-            # ── Cooldown guard: skip if recently emailed for this metric+severity ──
+            # ÔöÇÔöÇ Cooldown guard: skip if recently emailed for this metric+severity ÔöÇÔöÇ
             if not _email_cooldown_ok(metric, severity.lower()):
                 logger.info("Email cooldown: skipping %s (sev=%s)", metric, severity)
                 continue

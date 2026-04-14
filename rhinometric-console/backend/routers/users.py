@@ -355,7 +355,7 @@ async def list_users(
     role_filter: Optional[str] = None,
     active_only: bool = True,
     include_deleted: bool = Query(False),
-    current_user: UserModel = Depends(require_role(["OWNER", "ADMIN", "OPERATOR"])),
+    current_user: UserModel = Depends(require_role(["OWNER", "ADMIN"])),
     db: Session = Depends(get_db),
 ):
     query = db.query(UserModel)
@@ -383,7 +383,7 @@ async def list_users(
 @router.get("/{user_id}", response_model=UserResponse)
 async def get_user(
     user_id: int,
-    current_user: UserModel = Depends(require_role(["OWNER", "ADMIN", "OPERATOR"])),
+    current_user: UserModel = Depends(require_role(["OWNER", "ADMIN"])),
     db: Session = Depends(get_db),
 ):
     user = db.query(UserModel).filter(UserModel.id == user_id).first()
@@ -699,7 +699,7 @@ async def change_user_role(
 @router.get("/{user_id}/permissions")
 async def get_user_permissions(
     user_id: int,
-    current_user: UserModel = Depends(require_role(["OWNER", "ADMIN", "OPERATOR"])),
+    current_user: UserModel = Depends(require_role(["OWNER", "ADMIN"])),
     db: Session = Depends(get_db),
 ):
     user = db.query(UserModel).filter(UserModel.id == user_id).first()
