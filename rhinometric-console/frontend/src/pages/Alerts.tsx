@@ -1,6 +1,7 @@
-import { Bell, Filter, Download, Clock, AlertTriangle, CheckCircle2, XCircle, VolumeX, UserCheck, Brain, TrendingUp } from 'lucide-react'
+import { Bell, Filter, Download, Clock, AlertTriangle, CheckCircle2, XCircle, VolumeX, UserCheck, Brain, TrendingUp, Siren, ExternalLink, Trash2 } from 'lucide-react'
 import { useEffect, useState, useCallback } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../lib/auth/store'
 
 interface Alert {
@@ -26,6 +27,7 @@ interface Alert {
   acknowledged_by?: string
   acknowledged_at?: string
   silenced_until?: string
+  incident_id?: string
 }
 
 interface AlertsResponse {
@@ -117,11 +119,15 @@ export function AlertsPage() {
 
   const token = useAuthStore((state) => state.token)
   const queryClient = useQueryClient()
+  const navigate = useNavigate()
   const [severityFilter, setSeverityFilter] = useState<string>('all')
   const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null)
   const [silenceDuration, setSilenceDuration] = useState<string>('1h')
   const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [actionMessage, setActionMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
+  const [showSilencesPanel, setShowSilencesPanel] = useState(false)
+  const [expiringSilenceId, setExpiringSilenceId] = useState<string | null>(null)
+  const [creatingIncident, setCreatingIncident] = useState(false)
 
   // Fetch alerts
   const { data: alertsData, isLoading, error } = useQuery({
@@ -211,6 +217,71 @@ export function AlertsPage() {
     }
   }, [token, queryClient])
 
+  // ── Create Incident from alert ──
+  const handleCreateIncident = useCallback(async (alert: Alert) => {
+    if (!token || !alert.id) return
+    setCreatingIncident(true)
+    setActionMessage(null)
+    try {
+      const serviceName = getAlertServiceName(alert) || alert.labels.service_name || alert.labels.instance || 'unknown'
+      const response = await fetch('/api/incidents', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          service_name: serviceName,
+          severity: alert.severity,
+          alert_fingerprint: alert.fingerprint,
+          alert_id: alert.id,
+        }),
+      })
+      const data = await response.json()
+      if (response.ok) {
+        const incidentId = data.incident?.id
+        const wasCreated = data.created
+        setActionMessage({
+          type: 'success',
+          text: wasCreated
+            ? `Incident created successfully. Redirecting...`
+            : `An open incident already exists for this service. Redirecting...`
+        })
+        queryClient.invalidateQueries({ queryKey: ['alerts'] })
+        setTimeout(() => {
+          setSelectedAlert(null)
+          if (incidentId) navigate(`/incidents?highlight=${incidentId}`)
+        }, 800)
+      } else {
+        setActionMessage({ type: 'error', text: data.detail || 'Failed to create incident' })
+      }
+    } catch (e: any) {
+      setActionMessage({ type: 'error', text: e.message || 'Failed to create incident' })
+    } finally {
+      setCreatingIncident(false)
+    }
+  }, [token, queryClient, navigate])
+
+  // ── Expire (delete) a silence ──
+  const handleExpireSilence = useCallback(async (silenceId: string) => {
+    if (!token) return
+    setExpiringSilenceId(silenceId)
+    try {
+      const response = await fetch(`/api/alerts/silences/${silenceId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` },
+      })
+      if (response.ok) {
+        queryClient.invalidateQueries({ queryKey: ['silences'] })
+        queryClient.invalidateQueries({ queryKey: ['alerts'] })
+      }
+    } catch (e) {
+      console.error('Failed to expire silence:', e)
+    } finally {
+      setExpiringSilenceId(null)
+    }
+  }, [token, queryClient])
+
   // ── Deduplicate by fingerprint (belt-and-suspenders, backend already deduplicates) ──
   const dedupedAlerts = (() => {
     const alerts = alertsData?.alerts || []
@@ -283,10 +354,13 @@ export function AlertsPage() {
         </div>
         <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
           {silencesData?.total > 0 && (
-            <span className="text-xs px-2 sm:px-3 py-1 rounded-full bg-warning/20 text-warning border border-warning/30">
+            <button
+              onClick={() => setShowSilencesPanel(!showSilencesPanel)}
+              className="text-xs px-2 sm:px-3 py-1 rounded-full bg-warning/20 text-warning border border-warning/30 hover:bg-warning/30 transition-colors cursor-pointer"
+            >
               <VolumeX size={12} className="inline mr-1" />
               {silencesData.total} silence{silencesData.total > 1 ? 's' : ''}
-            </span>
+            </button>
           )}
           <button onClick={exportCSV} className="btn btn-secondary flex items-center gap-2 text-sm">
             <Download size={18} />
@@ -316,6 +390,76 @@ export function AlertsPage() {
 
         </div>
       </div>
+
+      {/* Silences Management Panel */}
+      {showSilencesPanel && silencesData?.silences?.length > 0 && (
+        <div className="card border-warning/20">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold text-warning flex items-center gap-2">
+              <VolumeX size={16} />
+              Active Silences ({silencesData.total})
+            </h3>
+            <button
+              onClick={() => setShowSilencesPanel(false)}
+              className="text-gray-400 hover:text-white transition-colors p-1"
+            >
+              <XCircle size={16} />
+            </button>
+          </div>
+          <p className="text-xs text-gray-400 mb-3">Silenced alerts are hidden from the main list. Click &quot;Reactivate&quot; to expire a silence and show the alert again.</p>
+          <div className="space-y-2">
+            {silencesData.silences.map((silence: any) => {
+              const alertname = silence.matchers?.[0]?.value || 'Unknown alert'
+              const expiresAt = silence.endsAt ? new Date(silence.endsAt) : null
+              const timeLeft = expiresAt ? Math.max(0, Math.round((expiresAt.getTime() - Date.now()) / 60000)) : null
+              return (
+                <div key={silence.id} className="flex items-center justify-between gap-3 p-2.5 rounded-lg bg-surface-light border border-gray-700/50">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm text-white truncate">{alertname}</p>
+                    <p className="text-xs text-gray-500">
+                      {timeLeft != null && timeLeft > 0
+                        ? `Expires in ${timeLeft >= 60 ? `${Math.floor(timeLeft / 60)}h ${timeLeft % 60}m` : `${timeLeft}m`}`
+                        : 'Expiring soon'}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => handleExpireSilence(silence.id)}
+                    disabled={expiringSilenceId === silence.id}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md bg-warning/10 text-warning hover:bg-warning/20 border border-warning/20 transition-colors disabled:opacity-50 flex-shrink-0"
+                  >
+                    <Bell size={12} />
+                    {expiringSilenceId === silence.id ? 'Reactivating...' : 'Reactivate'}
+                  </button>
+                </div>
+              )
+            })}
+            <button
+              onClick={async () => {
+                if (!token) return
+                setExpiringSilenceId('all')
+                try {
+                  for (const s of silencesData.silences) {
+                    await fetch(`/api/alerts/silences/${s.id}`, {
+                      method: 'DELETE',
+                      headers: { 'Authorization': `Bearer ${token}` },
+                    })
+                  }
+                  queryClient.invalidateQueries({ queryKey: ['silences'] })
+                  queryClient.invalidateQueries({ queryKey: ['alerts'] })
+                  setShowSilencesPanel(false)
+                } finally {
+                  setExpiringSilenceId(null)
+                }
+              }}
+              disabled={expiringSilenceId !== null}
+              className="w-full flex items-center justify-center gap-2 px-3 py-2 text-xs font-medium rounded-md bg-warning/10 text-warning hover:bg-warning/20 border border-warning/20 transition-colors disabled:opacity-50 mt-2"
+            >
+              <Trash2 size={12} />
+              {expiringSilenceId === 'all' ? 'Reactivating all...' : 'Reactivate All Silences'}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Alerts Table */}
       <div className="card p-0 sm:p-0">
@@ -643,6 +787,48 @@ export function AlertsPage() {
                   ))}
                 </div>
               </div>
+
+              {/* ── Incident Link / Create ── */}
+              {canAct(selectedAlert) && (
+                <div className="card p-3 sm:p-4 border-blue-500/20">
+                  {selectedAlert.incident_id ? (
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <Siren size={18} className="text-blue-400 flex-shrink-0" />
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-white">Linked Incident</p>
+                          <p className="text-xs text-gray-400 truncate">ID: {selectedAlert.incident_id}</p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => { setSelectedAlert(null); navigate(`/incidents?highlight=${selectedAlert.incident_id}`) }}
+                        className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 border border-blue-500/20 transition-colors flex-shrink-0"
+                      >
+                        <ExternalLink size={14} />
+                        View Incident
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <Siren size={18} className="text-gray-400 flex-shrink-0" />
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-gray-300">No Incident Linked</p>
+                          <p className="text-xs text-gray-500">Create an incident to track investigation and resolution</p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => handleCreateIncident(selectedAlert)}
+                        disabled={creatingIncident || actionLoading !== null}
+                        className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 border border-blue-500/20 transition-colors disabled:opacity-50 flex-shrink-0"
+                      >
+                        <Siren size={14} />
+                        {creatingIncident ? 'Creating...' : 'Create Incident'}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* ── Lifecycle Action Buttons ── */}
               {canAct(selectedAlert) ? (

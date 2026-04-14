@@ -35,6 +35,7 @@ class Alert(BaseModel):
     acknowledged_by: Optional[str] = None
     acknowledged_at: Optional[str] = None
     silenced_until: Optional[str] = None
+    incident_id: Optional[str] = None
 
 
 class AlertsResponse(BaseModel):
@@ -291,6 +292,9 @@ async def get_alerts(
                         _a["silenced_until"] = (
                             ev.silenced_until.isoformat()
                             if ev.silenced_until else None)
+                        _a["incident_id"] = (
+                            str(ev.incident_id)
+                            if ev.incident_id else None)
 
                 _covered_canonical_fps.add(_cfp)
 
@@ -345,6 +349,7 @@ async def get_alerts(
                     "acknowledged_by": ev.acknowledged_by,
                     "acknowledged_at": ev.acknowledged_at.isoformat() if ev.acknowledged_at else None,
                     "silenced_until": ev.silenced_until.isoformat() if ev.silenced_until else None,
+                    "incident_id": str(ev.incident_id) if ev.incident_id else None,
                 })
         except Exception as _db_err:
             _log.warning("DB alert events query failed: %s", _db_err)
@@ -382,6 +387,7 @@ async def get_alerts(
                 acknowledged_by=alert.get("acknowledged_by"),
                 acknowledged_at=alert.get("acknowledged_at"),
                 silenced_until=alert.get("silenced_until"),
+                incident_id=alert.get("incident_id"),
             ))
 
         return AlertsResponse(alerts=formatted_alerts, total=len(formatted_alerts))
@@ -537,6 +543,36 @@ async def get_silences(current_user: UserModel = Depends(get_current_user)):
             return {"silences": [], "total": 0}
     except Exception:
         return {"silences": [], "total": 0}
+
+
+# ====================================================================
+# DELETE /api/alerts/silences/{silence_id} — Expire a silence
+# ====================================================================
+
+@router.delete("/silences/{silence_id}")
+async def expire_silence(
+    silence_id: str,
+    current_user: UserModel = Depends(get_current_user),
+):
+    """Expire (delete) a silence in Alertmanager, reactivating the alert."""
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.delete(
+                f"{settings.ALERTMANAGER_URL}/api/v2/silence/{silence_id}"
+            )
+            if response.status_code in (200, 204):
+                return {"status": "ok", "message": f"Silence {silence_id} expired successfully"}
+            else:
+                raise HTTPException(
+                    status_code=response.status_code,
+                    detail=f"Alertmanager returned {response.status_code}: {response.text}"
+                )
+    except httpx.ConnectError:
+        raise HTTPException(status_code=502, detail="Cannot connect to Alertmanager")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # ====================================================================
@@ -705,6 +741,7 @@ class AlertEventResponse(BaseModel):
     silenced_until: Optional[str] = None
     escalation_count: int = 0
     source: Optional[str] = None
+    incident_id: Optional[str] = None
 
 
 def _alert_event_response(ev) -> AlertEventResponse:
@@ -727,6 +764,7 @@ def _alert_event_response(ev) -> AlertEventResponse:
         silenced_until=ev.silenced_until.isoformat() if ev.silenced_until else None,
         escalation_count=ev.escalation_count or 0,
         source=ev.source,
+        incident_id=str(ev.incident_id) if ev.incident_id else None,
     )
 
 

@@ -169,6 +169,7 @@ class IncidentCreate(BaseModel):
     severity: str = "warning"
     title: Optional[str] = None
     alert_fingerprint: Optional[str] = None
+    alert_id: Optional[str] = None
     anomaly_id: Optional[str] = None
 
 
@@ -293,6 +294,39 @@ def _serialize_incident(inc: Incident, alert_count: int = 0) -> dict:
     }
 
 
+def _link_alert_to_incident(db: Session, incident_id, alert_id: str | None, alert_fingerprint: str | None):
+    """Link AlertEvent(s) to an incident.
+
+    Prefers alert_id (UUID) for exact match; falls back to fingerprint.
+    """
+    import uuid as _uuid
+
+    linked = False
+
+    # 1. By alert UUID (most reliable — direct DB id)
+    if alert_id:
+        try:
+            uid = _uuid.UUID(alert_id)
+            ae = db.query(AlertEvent).filter(AlertEvent.id == uid).first()
+            if ae and not ae.incident_id:
+                ae.incident_id = incident_id
+                linked = True
+        except (ValueError, Exception):
+            pass
+
+    # 2. By canonical fingerprint (fallback if alert_id not provided)
+    if not linked and alert_fingerprint:
+        _unlinked = db.query(AlertEvent).filter(
+            AlertEvent.fingerprint == alert_fingerprint,
+            AlertEvent.incident_id.is_(None),
+        ).all()
+        for _ae in _unlinked:
+            _ae.incident_id = incident_id
+            linked = True
+
+    return linked
+
+
 # -- Endpoints --
 
 @router.post("")
@@ -318,6 +352,8 @@ async def create_incident(
     ).first()
 
     if existing:
+        # Link the AlertEvent to the existing incident (by UUID or fingerprint)
+        _link_alert_to_incident(db, existing.id, body.alert_id, body.alert_fingerprint)
         alert_count = db.query(AlertEvent).filter(
             AlertEvent.incident_id == existing.id
         ).count()
@@ -372,6 +408,9 @@ async def create_incident(
             created_by="system",
             metadata={"hint_count": len(hints), "has_anomaly_context": True},
         )
+
+    # Link AlertEvent to the new incident (by UUID or fingerprint)
+    _link_alert_to_incident(db, incident.id, body.alert_id, body.alert_fingerprint)
 
     db.commit()
     logger.info(f"Created incident {incident.id} for {body.service_name} by {current_user.username}")
