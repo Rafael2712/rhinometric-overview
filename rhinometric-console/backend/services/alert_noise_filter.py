@@ -1,15 +1,18 @@
 """
-Alert Noise Filter — Production-grade noise reduction for synthetic monitoring.
+Alert Noise Filter -- Production-grade noise reduction for synthetic monitoring.
 
 Reduces alert and incident volume while preserving real failure detection.
 
 Features:
-  1. Transient failure filter — minimum consecutive failures before alerting
-  2. Per-service alert cooldown — prevent repeated alerts for same service
-  3. Alert deduplication — skip if same fingerprint already firing
-  4. Incident creation gating — require critical severity + sustained downtime
-  5. Recovery buffer — require multiple failures to reopen after recovery
-  6. Severity escalation — auto-escalate based on failure streak length
+  1. Transient failure filter -- minimum consecutive failures before alerting
+  2. Recovery buffer -- require multiple failures to reopen after recovery
+  3. Severity escalation -- auto-escalate based on failure streak length
+  4. Incident creation gating -- require critical severity + sustained downtime
+
+Canonical alert model (v2):
+  Cooldown and fingerprint-dedup are NO LONGER needed here.
+  The alert lifecycle layer (_fire_rule_alert / webhook) guarantees
+  ONE active alert per fingerprint and updates it in-place.
 
 All thresholds configurable via environment variables.
 """
@@ -23,16 +26,16 @@ from typing import Dict, Tuple
 
 logger = logging.getLogger("rhinometric.alert_noise_filter")
 
-# ── Configuration ───────────────────────────────────────────────
+# -- Configuration ------------------------------------------------------------
 # All tunable via environment variables; defaults optimised for
 # 250-300 HTTP endpoints checked every 15 seconds.
-# ────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 
 # Minimum consecutive failures before allowing an alert
 MIN_FAILURE_STREAK = int(os.environ.get("ALERT_MIN_FAILURE_STREAK", "3"))
 
-# Cooldown: seconds after firing an alert before another is allowed
-# for the same service
+# Cooldown: kept as config knob but NO LONGER used for alert creation gating.
+# The canonical alert model uses in-place severity updates instead.
 ALERT_COOLDOWN_SECONDS = int(os.environ.get("ALERT_COOLDOWN_SECONDS", "120"))
 
 # Minimum sustained downtime (seconds) before creating an incident
@@ -46,10 +49,10 @@ SEVERITY_WARNING_STREAK = int(os.environ.get("SEVERITY_WARNING_STREAK", "3"))
 SEVERITY_CRITICAL_STREAK = int(os.environ.get("SEVERITY_CRITICAL_STREAK", "6"))
 
 
-# ── In-memory state ─────────────────────────────────────────────
+# -- In-memory state ----------------------------------------------------------
 _lock = threading.Lock()
 
-# Epoch of last alert fired per entity_name
+# Epoch of last alert fired per entity_name (kept for diagnostics only)
 _last_alert_time: Dict[str, float] = {}
 
 # Whether a service recently recovered (needs extra failures to reopen)
@@ -68,7 +71,7 @@ _suppressed: Dict[str, int] = {}
 _allowed_count: int = 0
 
 
-# ── Service name -> ID mapping ─────────────────────────────────
+# -- Service name -> ID mapping -----------------------------------------------
 
 def _refresh_name_cache() -> None:
     """Refresh the entity_name -> service_id mapping from DB."""
@@ -100,22 +103,24 @@ def _get_failure_streak(entity_name: str) -> int:
             return _consecutive_failures.get(svc_id, 0)
     except Exception as e:
         logger.debug("[NoiseFilter] Cannot read failure streak for %s: %s",
-                     entity_name, e)
+                      entity_name, e)
     return 0
 
 
-# ── Core API ────────────────────────────────────────────────────
+# -- Core API -----------------------------------------------------------------
 
 def should_create_alert(entity_name: str, fingerprint: str,
-                        db=None) -> Tuple[bool, str]:
+                         db=None) -> Tuple[bool, str]:
     """
-    Decide whether an alert event should be created.
+    Decide whether a NEW alert event should be created.
 
     Checks (in order):
-      1. Recovery buffer — recently recovered services need extra failures
-      2. Transient failure filter — minimum consecutive failures
-      3. Alert cooldown — per-service time window
-      4. Alert deduplication — no duplicate firing events
+      1. Recovery buffer -- recently recovered services need extra failures
+      2. Transient failure filter -- minimum consecutive failures
+
+    Cooldown and fingerprint dedup are REMOVED from this function;
+    the caller (_fire_rule_alert / webhook) now handles one-per-fingerprint
+    uniqueness and in-place severity updates.
 
     Returns (should_create, reason_string).
     """
@@ -129,7 +134,7 @@ def should_create_alert(entity_name: str, fingerprint: str,
         if _recently_recovered.get(entity_name, False):
             if streak < RECOVERY_REOPEN_STREAK:
                 reason = (f"recovery_buffer: {streak}/{RECOVERY_REOPEN_STREAK} "
-                          f"failures needed after recovery")
+                           f"failures needed after recovery")
                 _suppressed["recovery_buffer"] = _suppressed.get("recovery_buffer", 0) + 1
                 return False, reason
             else:
@@ -143,30 +148,7 @@ def should_create_alert(entity_name: str, fingerprint: str,
             _suppressed["transient_filter"] = _suppressed.get("transient_filter", 0) + 1
             return False, reason
 
-        # 3. Alert cooldown
-        last_alert = _last_alert_time.get(entity_name, 0)
-        if (now_ts - last_alert) < ALERT_COOLDOWN_SECONDS:
-            remaining = int(ALERT_COOLDOWN_SECONDS - (now_ts - last_alert))
-            reason = f"cooldown: {remaining}s remaining for {entity_name}"
-            _suppressed["cooldown"] = _suppressed.get("cooldown", 0) + 1
-            return False, reason
-
-        # 4. Alert deduplication
-        if db and fingerprint:
-            try:
-                from models.alert_event import AlertEvent
-                existing = db.query(AlertEvent).filter(
-                    AlertEvent.fingerprint == fingerprint,
-                    AlertEvent.status == "firing",
-                ).first()
-                if existing:
-                    reason = f"dedup: firing event exists (fp={fingerprint[:8]})"
-                    _suppressed["dedup"] = _suppressed.get("dedup", 0) + 1
-                    return False, reason
-            except Exception as e:
-                logger.warning("[NoiseFilter] Dedup check failed: %s", e)
-
-        # All checks passed — record and allow
+        # All checks passed -- record and allow
         _last_alert_time[entity_name] = now_ts
         if entity_name not in _first_failure_at:
             _first_failure_at[entity_name] = now_ts
@@ -197,15 +179,15 @@ def should_create_incident(entity_name: str, severity: str) -> Tuple[bool, str]:
         # Only critical alerts create incidents
         if severity != "critical":
             return False, (f"incident_gate: severity={severity} (need critical), "
-                           f"down {down_duration:.0f}s")
+                            f"down {down_duration:.0f}s")
 
         # Critical: require sustained downtime
         if down_duration < INCIDENT_MIN_DOWN_SECONDS:
             return False, (f"incident_gate: critical but down {down_duration:.0f}s "
-                           f"< {INCIDENT_MIN_DOWN_SECONDS}s threshold")
+                            f"< {INCIDENT_MIN_DOWN_SECONDS}s threshold")
 
         return True, (f"incident_allowed: severity={severity}, "
-                       f"down {down_duration:.0f}s >= {INCIDENT_MIN_DOWN_SECONDS}s")
+                        f"down {down_duration:.0f}s >= {INCIDENT_MIN_DOWN_SECONDS}s")
 
 
 def escalate_severity(entity_name: str, original_severity: str) -> str:
@@ -236,7 +218,7 @@ def on_recovery(entity_name: str) -> None:
     with _lock:
         _recently_recovered[entity_name] = True
         _first_failure_at.pop(entity_name, None)
-    logger.info("[NoiseFilter] %s recovered — buffer active "
+    logger.info("[NoiseFilter] %s recovered -- buffer active "
                 "(need %d failures to reopen)", entity_name, RECOVERY_REOPEN_STREAK)
 
 

@@ -680,9 +680,17 @@ def _check_threshold(value: float, operator: str, threshold: float) -> bool:
 def _fire_rule_alert(db: Session, rule: AlertRule, current_value: float,
                      service=None, detail: str = ""):
     """
-    Fire alert through the existing pipeline:
-    1. Create AlertEvent
-    2. Link to incident via find_or_create_incident
+    Canonical alert lifecycle handler (v2).
+
+    ONE active alert per (entity_name + rule_type) fingerprint.
+    - If a firing event ALREADY EXISTS: update severity in-place
+      (escalation), refresh last_evaluated_at, and optionally link
+      to an incident on critical escalation.
+    - If NO firing event exists: run noise-filter checks (recovery
+      buffer + transient filter) and create a new AlertEvent.
+
+    This eliminates duplicate alerts: severity changes are UPDATEs,
+    not new rows.
     """
     from models.alert_event import AlertEvent
     from routers.incidents import find_or_create_incident
@@ -695,28 +703,67 @@ def _fire_rule_alert(db: Session, rule: AlertRule, current_value: float,
     fp_seed = f"{alert_name}|{entity_name}|{rule.rule_type or rule.metric or ''}"
     fingerprint = hashlib.sha256(fp_seed.encode()).hexdigest()[:16]
 
-    # Check if there's already a firing event for this fingerprint
+    now = datetime.now(timezone.utc)
+
+    # -- Severity escalation (always computed, whether updating or creating) --
+    from services.alert_noise_filter import (
+        should_create_alert, escalate_severity, should_create_incident,
+    )
+    effective_severity = escalate_severity(entity_name, rule.severity)
+
+    # -- Check for existing firing event with this fingerprint --
     existing = db.query(AlertEvent).filter(
         AlertEvent.fingerprint == fingerprint,
         AlertEvent.status == "firing",
     ).first()
-    if existing:
-        return
 
-    # ── Noise filter: streak, cooldown, dedup ──
-    from services.alert_noise_filter import (
-        should_create_alert, escalate_severity, should_create_incident,
-    )
+    if existing:
+        # ── UPDATE PATH: severity escalation + touch timestamp ──
+        old_severity = existing.severity
+        existing.last_evaluated_at = now
+
+        if effective_severity != old_severity:
+            _SEV_ORDER = {"info": 0, "warning": 1, "critical": 2}
+            if _SEV_ORDER.get(effective_severity, 0) > _SEV_ORDER.get(old_severity, 0):
+                existing.severity = effective_severity
+                existing.escalation_count = (existing.escalation_count or 0) + 1
+                # Update labels dict with new severity
+                if existing.labels and isinstance(existing.labels, dict):
+                    updated_labels = dict(existing.labels)
+                    updated_labels["severity"] = effective_severity
+                    existing.labels = updated_labels
+                logger.info(
+                    "Alert severity escalated: %s (%s -> %s) for %s",
+                    rule.name, old_severity, effective_severity, entity_name,
+                )
+
+                # On escalation to critical: link to incident if not already linked
+                if effective_severity == "critical" and not existing.incident_id:
+                    _should_inc, _inc_reason = should_create_incident(
+                        entity_name, effective_severity
+                    )
+                    if _should_inc:
+                        try:
+                            inc = find_or_create_incident(
+                                db, entity_type, entity_name,
+                                effective_severity, existing.started_at,
+                            )
+                            existing.incident_id = inc.id
+                        except Exception as e:
+                            logger.warning("Incident linkage on escalation failed: %s", e)
+
+        db.flush()
+        return  # no new row
+
+    # -- CREATION PATH: no existing firing event --
+
+    # Noise filter: recovery buffer + transient failure checks
     _should_alert, _nf_reason = should_create_alert(entity_name, fingerprint, db)
     if not _should_alert:
-        logger.info("[NoiseFilter] Policy alert suppressed: %s for %s — %s",
+        logger.info("[NoiseFilter] Policy alert suppressed: %s for %s -- %s",
                      rule.name, entity_name, _nf_reason)
         return
 
-    # Severity escalation based on failure streak
-    effective_severity = escalate_severity(entity_name, rule.severity)
-
-    now = datetime.now(timezone.utc)
     summary = detail or f"{rule.name}: value={current_value}"
     event = AlertEvent(
         id=uuid.uuid4(),
@@ -740,6 +787,8 @@ def _fire_rule_alert(db: Session, rule: AlertRule, current_value: float,
         summary=summary,
         source="alert_policy",
         generator_url="",
+        escalation_count=0,
+        last_evaluated_at=now,
     )
     db.add(event)
     db.flush()
@@ -755,8 +804,7 @@ def _fire_rule_alert(db: Session, rule: AlertRule, current_value: float,
     else:
         logger.info("[NoiseFilter] Incident gated for policy %s: %s", rule.name, _inc_reason)
 
-    logger.info(f"Policy alert fired: {rule.name} ({rule.rule_type}) → {entity_name}")
-
+    logger.info(f"Policy alert fired: {rule.name} ({rule.rule_type}) -> {entity_name}")
 
 def _get_service_name(db: Session, service_id: int) -> str:
     if not service_id:

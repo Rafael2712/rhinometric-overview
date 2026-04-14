@@ -637,17 +637,55 @@ async def grafana_webhook(
                 events_stored += 1
                 continue
 
-        # ── Noise filter: suppress transient / duplicate / cooldown alerts ──
-        _should_alert, _nf_reason = should_create_alert(entity_name, event_fp, db)
-        if not _should_alert:
-            logger.info("[NoiseFilter] Alert suppressed: %s — %s", entity_name, _nf_reason)
+        # ---- Canonical dedup: ONE active alert per fingerprint ----
+        # Severity escalation (always computed)
+        severity = escalate_severity(entity_name, severity)
+
+        # Check for existing firing event
+        existing = db.query(AlertEvent).filter(
+            AlertEvent.fingerprint == event_fp,
+            AlertEvent.status == "firing",
+        ).first()
+
+        if existing:
+            # UPDATE PATH: escalate severity in-place, touch timestamp
+            _now = datetime.now(timezone.utc)
+            existing.last_evaluated_at = _now
+            old_sev = existing.severity
+            if severity != old_sev:
+                _SEV_ORDER = {"info": 0, "warning": 1, "critical": 2}
+                if _SEV_ORDER.get(severity, 0) > _SEV_ORDER.get(old_sev, 0):
+                    existing.severity = severity
+                    existing.escalation_count = (existing.escalation_count or 0) + 1
+                    if existing.labels and isinstance(existing.labels, dict):
+                        _upd = dict(existing.labels)
+                        _upd["severity"] = severity
+                        existing.labels = _upd
+                    logger.info("Webhook alert escalated: %s (%s -> %s) for %s",
+                                alert_name, old_sev, severity, entity_name)
+                    # On critical escalation: link to incident
+                    if severity == "critical" and not existing.incident_id:
+                        _should_inc, _ = should_create_incident(entity_name, severity)
+                        if _should_inc:
+                            try:
+                                inc = find_or_create_incident(
+                                    db, entity_type, entity_name,
+                                    severity, existing.started_at,
+                                )
+                                existing.incident_id = inc.id
+                            except Exception as _ie:
+                                logger.warning("Incident linkage on webhook escalation failed: %s", _ie)
+            db.flush()
             events_stored += 1
             continue
 
-        # Severity escalation based on failure streak
-        severity = escalate_severity(entity_name, severity)
+        # CREATION PATH: no existing firing event
+        _should_alert, _nf_reason = should_create_alert(entity_name, event_fp, db)
+        if not _should_alert:
+            logger.info("[NoiseFilter] Alert suppressed: %s -- %s", entity_name, _nf_reason)
+            events_stored += 1
+            continue
 
-        # Create new event row
         import uuid
         event = AlertEvent(
             id=uuid.uuid4(),
@@ -665,11 +703,13 @@ async def grafana_webhook(
             summary=annotations.get("summary", ""),
             source="alertmanager",
             generator_url=alert.get("generatorURL", ""),
+            escalation_count=0,
+            last_evaluated_at=datetime.now(timezone.utc),
         )
         db.add(event)
         db.flush()
 
-        # Phase 2.3: Link alert event to incident (noise-gated)
+        # Link to incident pipeline (noise-gated)
         _should_inc, _inc_reason = should_create_incident(entity_name, severity)
         if _should_inc:
             try:
@@ -678,7 +718,7 @@ async def grafana_webhook(
             except Exception as _inc_err:
                 logger.warning(f"Incident linkage failed: {_inc_err}")
         else:
-            logger.info("[NoiseFilter] Incident gated: %s — %s", entity_name, _inc_reason)
+            logger.info("[NoiseFilter] Incident gated: %s -- %s", entity_name, _inc_reason)
 
         events_stored += 1
 
