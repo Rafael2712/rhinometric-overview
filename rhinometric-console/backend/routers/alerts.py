@@ -88,14 +88,36 @@ async def get_alerts(
     db: Session = Depends(get_db),
 ):
     """
-    Get operational alerts from both sources:
+    Get operational alerts from all sources, ensuring every alert has
+    a canonical AlertEvent record in the database for lifecycle actions.
+
+    Sources:
       1. External Alertmanager -- AI anomaly engine alerts
       2. Grafana internal alertmanager -- synthetic monitoring rule alerts
-    Merges, deduplicates, and filters to show only external-service alerts.
+      3. Database AlertEvent -- policy-generated / webhook-originated alerts
+
+    All Source 1/2 alerts are synced to AlertEvent (find-or-create)
+    so they get a UUID id and support ack/resolve/dismiss/silence.
     """
     import asyncio as _aio
+    import hashlib as _hl
+    import uuid as _uuid
+    import logging as _lg
+    _log = _lg.getLogger(__name__)
+
+    from models.alert_event import AlertEvent as _AE
+
+    def _canonical_fp(labels: dict) -> str:
+        """Deterministic fingerprint — MUST match webhook handler logic."""
+        _an = labels.get("alertname", "unknown")
+        _en = (labels.get("service_name", "")
+               or labels.get("instance", "unknown"))
+        _mn = (labels.get("metric_name", "")
+               or labels.get("__name__", ""))
+        return _hl.sha256(f"{_an}|{_en}|{_mn}".encode()).hexdigest()[:16]
 
     alerts_data: list[dict] = []
+    _covered_canonical_fps: set[str] = set()
 
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
@@ -118,9 +140,6 @@ async def get_alerts(
                         a for a in am_alerts
                         if a.get("status", {}).get("state") == "active"
                     ]
-                # Keep only external-service AI anomaly alerts
-                # Match by: metric label starting with external_service_
-                # OR alertname containing external_service (AI anomaly engine format)
                 am_alerts = [
                     a for a in am_alerts
                     if (
@@ -138,25 +157,133 @@ async def get_alerts(
                         a for a in gf_alerts
                         if a.get("status", {}).get("state") == "active"
                     ]
-                # Keep only external-service category (hide infra alerts)
                 gf_alerts = [
                     a for a in gf_alerts
                     if a.get("labels", {}).get("category") == "external-services"
                 ]
                 alerts_data.extend(gf_alerts)
 
-        # -- Source 3: Platform alert events from database --
-        # Include firing alerts from the platform's own alert rule evaluation
+        # =================================================================
+        # SYNC Source 1/2 alerts → canonical AlertEvent records in DB
+        # Guarantees: every alert gets a UUID id, strict idempotency,
+        #             lifecycle state (ack/silence) is never overwritten.
+        # =================================================================
+        _active_statuses_set = ["firing", "acknowledged", "silenced"]
+
         try:
-            from models.alert_event import AlertEvent as _AE
+            # Step 1 — compute canonical fingerprints for all external alerts
+            _fp_to_alerts: dict[str, list[dict]] = {}
+            for _a in alerts_data:
+                _cfp = _canonical_fp(_a.get("labels", {}))
+                _a["_cfp"] = _cfp  # temporary key, removed later
+                _fp_to_alerts.setdefault(_cfp, []).append(_a)
+
+            # Step 2 — batch-query existing ACTIVE AlertEvents by fingerprint
+            _all_fps = list(_fp_to_alerts.keys())
+            _existing_map: dict[str, object] = {}
+            if _all_fps:
+                _rows = db.query(_AE).filter(
+                    _AE.fingerprint.in_(_all_fps),
+                    _AE.status.in_(_active_statuses_set),
+                ).all()
+                for _row in _rows:
+                    _existing_map[_row.fingerprint] = _row
+
+            # Step 3 — enrich existing / create missing
+            _now = datetime.now(timezone.utc)
+            _SEV_ORDER = {"info": 0, "warning": 1, "critical": 2}
+
+            for _cfp, _alert_group in _fp_to_alerts.items():
+                ev = _existing_map.get(_cfp)
+
+                if ev:
+                    # ---------- UPDATE PATH ----------
+                    # Touch timestamp; escalate severity upward only.
+                    # NEVER overwrite acknowledged_by/at, silenced_until.
+                    ev.last_evaluated_at = _now
+                    _new_sev = _alert_group[0].get("labels", {}).get("severity", "warning")
+                    if _SEV_ORDER.get(_new_sev, 0) > _SEV_ORDER.get(ev.severity, 0):
+                        ev.severity = _new_sev
+                        ev.escalation_count = (ev.escalation_count or 0) + 1
+                else:
+                    # ---------- CREATE PATH ----------
+                    _repr = _alert_group[0]
+                    _lbl = _repr.get("labels", {})
+                    _ann = _repr.get("annotations", {})
+
+                    _starts = None
+                    try:
+                        _raw_ts = _repr.get("startsAt", "")
+                        if _raw_ts:
+                            _starts = datetime.fromisoformat(
+                                _raw_ts.replace("Z", "+00:00"))
+                    except Exception:
+                        pass
+
+                    ev = _AE(
+                        id=_uuid.uuid4(),
+                        alert_name=_lbl.get("alertname", "unknown"),
+                        entity_type=_lbl.get("category", "service"),
+                        entity_name=(_lbl.get("service_name", "")
+                                     or _lbl.get("instance", "unknown")),
+                        metric_name=(_lbl.get("metric_name", "")
+                                     or _lbl.get("__name__", "")),
+                        severity=_lbl.get("severity", "warning"),
+                        status="firing",
+                        started_at=_starts or _now,
+                        fingerprint=_cfp,
+                        labels=_lbl,
+                        annotations=_ann,
+                        summary=_ann.get("summary", ""),
+                        source="alertmanager",
+                        generator_url=_repr.get("generatorURL", ""),
+                        escalation_count=0,
+                        last_evaluated_at=_now,
+                    )
+                    db.add(ev)
+                    db.flush()  # materialise id
+
+                # ---- Enrich every alert in this fingerprint group ----
+                for _a in _alert_group:
+                    _a["id"] = str(ev.id)
+                    # DB is authoritative for lifecycle status
+                    if ev.status in ("acknowledged", "silenced"):
+                        _a["status"] = {"state": ev.status}
+                    _a["acknowledged_by"] = ev.acknowledged_by
+                    _a["acknowledged_at"] = (
+                        ev.acknowledged_at.isoformat()
+                        if ev.acknowledged_at else None)
+                    _a["silenced_until"] = (
+                        ev.silenced_until.isoformat()
+                        if ev.silenced_until else None)
+
+                _covered_canonical_fps.add(_cfp)
+
+            db.commit()
+
+        except Exception as _sync_err:
+            _log.warning("Alert DB sync failed (non-fatal): %s", _sync_err)
+            try:
+                db.rollback()
+            except Exception:
+                pass
+
+        # Clean temporary key
+        for _a in alerts_data:
+            _a.pop("_cfp", None)
+
+        # -- Source 3: DB-only alert events (policy / webhook originated) --
+        # Skip any fingerprint already backed by Source 1/2 to avoid dupes.
+        try:
             _service_types = {"service", "external-services"}
-            _active_statuses = ["firing", "acknowledged", "silenced"]
             db_firing = db.query(_AE).filter(
-                _AE.status.in_(_active_statuses),
+                _AE.status.in_(_active_statuses_set),
                 _AE.entity_type.in_(list(_service_types)),
             ).all()
             for ev in db_firing:
                 fp = ev.fingerprint or ""
+                if fp in _covered_canonical_fps:
+                    continue  # already represented by Source 1/2
                 alerts_data.append({
                     "id": str(ev.id),
                     "fingerprint": f"db-{fp}",
@@ -179,8 +306,7 @@ async def get_alerts(
                     "silenced_until": ev.silenced_until.isoformat() if ev.silenced_until else None,
                 })
         except Exception as _db_err:
-            import logging as _lg
-            _lg.getLogger(__name__).warning(f"DB alert events query failed: {_db_err}")
+            _log.warning("DB alert events query failed: %s", _db_err)
 
         # -- Severity filter --
         if severity:
