@@ -226,6 +226,19 @@ async def get_alerts(
                     _covered_canonical_fps.add(_cfp)
                     continue
 
+                # --- INCIDENT-LINKED: alert is managed through its incident ---
+                # Once an active alert is escalated to an incident, it should
+                # no longer appear in the active-alerts list.  The incident
+                # page is the single source of truth for investigation.
+                # Only suppress if the alert is still in an active state;
+                # auto-resolved events (no resolved_by) fall through so a
+                # genuinely new occurrence can be created.
+                if ev and ev.incident_id is not None and ev.status in _active_statuses_set:
+                    for _a in _alert_group:
+                        _a["_suppress"] = True
+                    _covered_canonical_fps.add(_cfp)
+                    continue
+
                 # --- RESOLVED (auto) or old resolved: treat as no record ---
                 if ev and ev.status == "resolved":
                     ev = None
@@ -324,6 +337,7 @@ async def get_alerts(
                 _AE.status.in_(_active_statuses_set),
                 _AE.entity_type.in_(list(_service_types)),
                 _AE.alert_name.like("AnomalyDetected_external_service_%"),
+                _AE.incident_id.is_(None),
             ).all()
             for ev in db_firing:
                 fp = ev.fingerprint or ""

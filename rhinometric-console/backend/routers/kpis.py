@@ -245,6 +245,19 @@ async def get_kpis(
                         elif row.status == "resolved" and row.resolved_by:
                             _suppressed_fps.add(row.fingerprint)
 
+                    # Also suppress active alerts linked to incidents
+                    _inc_rows = (
+                        db.query(_AE)
+                        .filter(
+                            _AE.fingerprint.in_(_cfp_list),
+                            _AE.incident_id.isnot(None),
+                            _AE.status.in_(["firing", "acknowledged", "silenced"]),
+                        )
+                        .all()
+                    )
+                    for row in _inc_rows:
+                        _suppressed_fps.add(row.fingerprint)
+
                     alerts_count = sum(
                         1 for cfp in _all_cfps if cfp not in _suppressed_fps
                     )

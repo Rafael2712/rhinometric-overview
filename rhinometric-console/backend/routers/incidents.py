@@ -619,6 +619,21 @@ async def update_incident_status(
                           description=f"Status changed from {old_status} to {body.status}",
                           created_by=current_user.username)
 
+    # When incident is resolved, auto-resolve all linked active alerts
+    if body.status == "resolved":
+        _now = datetime.now(timezone.utc)
+        _linked_alerts = db.query(AlertEvent).filter(
+            AlertEvent.incident_id == inc_uuid,
+            AlertEvent.status.in_(["firing", "acknowledged", "silenced"]),
+        ).all()
+        for _ae in _linked_alerts:
+            _ae.status = "resolved"
+            _ae.resolved_by = current_user.username
+            _ae.resolved_at = _now
+            _ae.ended_at = _now
+        if _linked_alerts:
+            logger.info(f"Auto-resolved {len(_linked_alerts)} alerts linked to incident {incident_id}")
+
     # Phase 3: Generate postmortem on resolve
     if body.status == "resolved" and not incident.postmortem:
         try:
