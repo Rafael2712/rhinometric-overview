@@ -457,15 +457,45 @@ export function AlertsPage() {
                     <p className="text-xs text-gray-400 line-clamp-2 mb-2 ml-7">
                       {alert.annotations.summary || alert.annotations.description || 'No description'}
                     </p>
-                    <div className="flex items-center justify-between ml-7">
+                    <div className="flex items-center justify-between ml-7 mb-2">
                       <div className="flex items-center gap-1 text-xs text-gray-500">
                         <Clock size={12} />
                         {new Date(alert.startsAt).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                       </div>
-                      <div className="flex items-center gap-2">
-                        <StatusBadge status={alert.status} />
-                        <span className="text-primary text-xs font-medium">Details &rarr;</span>
-                      </div>
+                      <StatusBadge status={alert.status} />
+                    </div>
+                    {/* Mobile action buttons */}
+                    <div className="flex items-center flex-wrap gap-1.5 ml-7" onClick={(e) => e.stopPropagation()}>
+                      {canAct(alert) && alert.status !== 'acknowledged' && (
+                        <button
+                          onClick={() => handleLifecycleAction(alert, 'ack')}
+                          className="px-2.5 py-1.5 text-xs rounded-md bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 border border-amber-500/20 active:bg-amber-500/30 transition-colors font-medium"
+                        >
+                          ACK
+                        </button>
+                      )}
+                      {canAct(alert) && (
+                        <button
+                          onClick={() => handleLifecycleAction(alert, 'resolve')}
+                          className="px-2.5 py-1.5 text-xs rounded-md bg-green-500/10 text-green-400 hover:bg-green-500/20 border border-green-500/20 active:bg-green-500/30 transition-colors font-medium"
+                        >
+                          Resolve
+                        </button>
+                      )}
+                      {canAct(alert) && (
+                        <button
+                          onClick={() => handleLifecycleAction(alert, 'dismiss')}
+                          className="px-2.5 py-1.5 text-xs rounded-md bg-gray-500/10 text-gray-400 hover:bg-gray-500/20 border border-gray-600/30 active:bg-gray-500/30 transition-colors font-medium"
+                        >
+                          Dismiss
+                        </button>
+                      )}
+                      <button
+                        onClick={() => { setSelectedAlert(alert); setActionMessage(null) }}
+                        className="ml-auto px-2.5 py-1.5 text-xs rounded-md text-primary hover:bg-primary/10 active:bg-primary/20 border border-primary/20 transition-colors font-medium"
+                      >
+                        Details
+                      </button>
                     </div>
                   </div>
                 )
