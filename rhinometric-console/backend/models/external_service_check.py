@@ -32,6 +32,13 @@ class ExternalServiceCheck(Base):
         index=True,
     )
 
+    # -- Assertion summary (v1) --
+    assertions_total = Column(Integer, nullable=False, server_default="0")
+    assertions_passed = Column(Integer, nullable=False, server_default="0")
+    assertions_failed = Column(Integer, nullable=False, server_default="0")
+    first_failed_assertion = Column(String(255), nullable=True)
+    first_failed_message = Column(Text, nullable=True)
+
     # Composite index for time-range queries per service
     __table_args__ = (
         Index("ix_ext_checks_svc_time", "service_id", "checked_at"),
@@ -46,4 +53,9 @@ class ExternalServiceCheck(Base):
             "status_code": self.status_code,
             "message": self.message,
             "checked_at": self.checked_at.isoformat() if self.checked_at else None,
+            "assertions_total": self.assertions_total or 0,
+            "assertions_passed": self.assertions_passed or 0,
+            "assertions_failed": self.assertions_failed or 0,
+            "first_failed_assertion": self.first_failed_assertion,
+            "first_failed_message": self.first_failed_message,
         }

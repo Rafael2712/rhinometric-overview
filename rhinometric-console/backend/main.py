@@ -38,6 +38,7 @@ from routers import admin_purge as admin_purge_router
 from routers import telemetry_ingest as telemetry_ingest_router
 from routers import internal_snapshots_v1 as internal_snapshots_v1_router  # Anomaly Engine V1 signal assembler
 from routers import anomalies_v2_proxy  # Severity-aware V2 anomaly proxy
+from routers import assertions as assertions_router  # Assertions CRUD v1
 
 # Disable Swagger/OpenAPI docs in production
 _is_production = os.environ.get("RHINO_ENV", "").lower() in ("production", "staging")
@@ -363,6 +364,7 @@ app.include_router(dashboards.router, prefix=f"{settings.API_PREFIX}/dashboards"
 app.include_router(settings_router.router, prefix=f"{settings.API_PREFIX}/settings", tags=["Settings"])
 app.include_router(correlation.router, prefix=f"{settings.API_PREFIX}/correlation", tags=["Correlation"])  # Rhino Core - Correlation Engine
 app.include_router(external_services.router, prefix=f"{settings.API_PREFIX}/external-services", tags=["External Services"])
+app.include_router(assertions_router.router, prefix=f"{settings.API_PREFIX}", tags=["Assertions"])  # Assertions CRUD v1
 app.include_router(service_map_router.router, prefix=f"{settings.API_PREFIX}/service-map", tags=["Service Map"])
 app.include_router(service_summary_router.router, prefix=f"{settings.API_PREFIX}/services", tags=["Service Summary"])
 app.include_router(services_grouped_router.router, prefix=f"{settings.API_PREFIX}/services", tags=["Services Grouped"])  # Task 22
