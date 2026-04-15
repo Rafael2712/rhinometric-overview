@@ -1,6 +1,7 @@
-﻿"""
+"""
 Keycloak Admin API client.
 Syncs platform user operations (create, delete, role changes) with Keycloak.
+Keycloak is the ONLY source of truth for user identity and authentication.
 """
 import os
 import logging
@@ -134,12 +135,55 @@ def enable_kc_user(kc_id: str):
 
 
 def delete_kc_user(kc_id: str):
+    """Permanently delete user from Keycloak."""
     headers = _headers()
     with httpx.Client(timeout=10.0) as client:
         resp = client.delete(f"{ADMIN_API}/users/{kc_id}", headers=headers)
         if resp.status_code not in (200, 204, 404):
             raise KeycloakAdminError(f"delete failed: {resp.status_code}")
     logger.info("[KC] Deleted user %s", kc_id)
+
+
+# ---------- password operations ----------
+
+def set_kc_user_password(kc_id: str, password: str, temporary: bool = True):
+    """Set a user's password in Keycloak via Admin API."""
+    headers = _headers()
+    payload = {
+        "type": "password",
+        "value": password,
+        "temporary": temporary,
+    }
+    with httpx.Client(timeout=10.0) as client:
+        resp = client.put(
+            f"{ADMIN_API}/users/{kc_id}/reset-password",
+            json=payload,
+            headers=headers,
+        )
+        if resp.status_code not in (200, 204):
+            raise KeycloakAdminError(
+                f"set_kc_user_password failed: {resp.status_code} {resp.text}"
+            )
+    logger.info("[KC] Password set for user %s (temporary=%s)", kc_id, temporary)
+
+
+def send_kc_reset_password_email(kc_id: str):
+    """
+    Trigger Keycloak's built-in 'UPDATE_PASSWORD' required action email.
+    Requires SMTP configured in Keycloak realm settings.
+    """
+    headers = _headers()
+    with httpx.Client(timeout=15.0) as client:
+        resp = client.put(
+            f"{ADMIN_API}/users/{kc_id}/execute-actions-email",
+            json=["UPDATE_PASSWORD"],
+            headers=headers,
+        )
+        if resp.status_code not in (200, 204):
+            raise KeycloakAdminError(
+                f"send_kc_reset_password_email failed: {resp.status_code} {resp.text}"
+            )
+    logger.info("[KC] Reset password email triggered for user %s", kc_id)
 
 
 # ---------- role operations ----------
@@ -150,7 +194,14 @@ def _set_realm_role(client, headers, kc_id: str, role_name: str):
     resp.raise_for_status()
     to_remove = [r for r in resp.json() if r["name"].lower() in PLATFORM_ROLES]
     if to_remove:
-        client.delete(f"{ADMIN_API}/users/{kc_id}/role-mappings/realm", json=to_remove, headers=headers)
+        # httpx Client.delete() does not support json= parameter;
+        # use client.request("DELETE", ...) for DELETE with a body.
+        client.request(
+            "DELETE",
+            f"{ADMIN_API}/users/{kc_id}/role-mappings/realm",
+            json=to_remove,
+            headers=headers,
+        )
     resp = client.get(f"{ADMIN_API}/roles/{role_name}", headers=headers)
     if resp.status_code == 404:
         logger.warning("[KC] Role '%s' not found", role_name)

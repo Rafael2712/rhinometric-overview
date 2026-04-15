@@ -1,9 +1,9 @@
-﻿import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useAuthStore } from '../lib/auth/store'
 import {
   Users as UsersIcon, UserPlus, Shield, Search, CheckCircle,
-  XCircle, Trash2, Copy, AlertTriangle,
-  Crown, Wrench, BookOpen, Pencil, Key
+  XCircle, Trash2, AlertTriangle,
+  Crown, Wrench, BookOpen, Pencil, Key, Mail
 } from 'lucide-react'
 
 /* ------------------------------------------------------------------ */
@@ -14,7 +14,6 @@ interface User {
   id: number; username: string; email: string; full_name?: string
   is_active: boolean; must_change_password: boolean; roles: string[]
   last_login?: string; created_at: string
-  is_deleted?: boolean; deleted_at?: string; deleted_by?: number
 }
 interface CreateUserData {
   username: string; email: string; password: string
@@ -49,9 +48,8 @@ export function UsersPage() {
   const [showResetPwModal,  setShowResetPwModal]  = useState(false)
   const [showCreatedResult, setShowCreatedResult] = useState<{
     username: string; email: string; welcome_email_sent: boolean
-    delivery_mode: string; temporary_password?: string
+    delivery_mode: string
   } | null>(null)
-  const [copied, setCopied] = useState(false)
 
   // Working state
   const [editTarget,   setEditTarget]   = useState<User | null>(null)
@@ -113,9 +111,7 @@ export function UsersPage() {
           username: d.username, email: d.email,
           welcome_email_sent: d.welcome_email_sent ?? false,
           delivery_mode: d.delivery_mode ?? 'manual',
-          temporary_password: d.temporary_password ?? undefined,
         })
-        setCopied(false)
       } else {
         const e = await r.json()
         addToast('error', typeof e.detail === 'string' ? e.detail : e.detail?.[0]?.msg || 'Failed to create user')
@@ -139,7 +135,7 @@ export function UsersPage() {
       })
       if (r.ok) {
         setShowEditModal(false); setEditTarget(null); fetchUsers()
-        addToast('success', `User "${editTarget.username}" updated`)
+        addToast('success', `User "${editTarget.username}" updated (synced to Keycloak)`)
       } else {
         const e = await r.json()
         addToast('error', typeof e.detail === 'string' ? e.detail : 'Update failed')
@@ -157,7 +153,7 @@ export function UsersPage() {
       })
       if (r.ok) {
         setShowDeleteModal(false); setDeleteTarget(null); fetchUsers()
-        addToast('success', `User "${deleteTarget.username}" deleted`)
+        addToast('success', `User "${deleteTarget.username}" permanently deleted`)
       } else {
         const e = await r.json(); addToast('error', e.detail || 'Delete failed')
       }
@@ -175,12 +171,30 @@ export function UsersPage() {
         body: JSON.stringify({ new_password: newPassword }),
       })
       if (r.ok) {
-        addToast('success', 'Password reset. User must change on next login.')
+        addToast('success', 'Password reset in Keycloak. User must change on next login.')
         setShowResetPwModal(false); setPwUserId(null); setNewPassword('')
       } else {
         const e = await r.json(); addToast('error', e.detail || 'Reset failed')
       }
     } catch { addToast('error', 'Reset failed') }
+    finally { setActionLoading(false) }
+  }
+
+  const sendResetEmail = async () => {
+    if (!pwUserId) return
+    setActionLoading(true)
+    try {
+      const r = await fetch(`/api/users/${pwUserId}/send-reset-email`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (r.ok) {
+        addToast('success', 'Password reset email sent via Keycloak')
+        setShowResetPwModal(false); setPwUserId(null); setNewPassword('')
+      } else {
+        const e = await r.json(); addToast('error', e.detail || 'Failed to send reset email')
+      }
+    } catch { addToast('error', 'Failed to send reset email') }
     finally { setActionLoading(false) }
   }
 
@@ -209,8 +223,8 @@ export function UsersPage() {
     (u.full_name || '').toLowerCase().includes(searchQuery.toLowerCase())
   )
 
-  const activeUsers = users.filter(u => u.is_active && !u.is_deleted)
-  const ownerCount = users.filter(u => u.roles.includes('OWNER') && !u.is_deleted).length
+  const activeUsers = users.filter(u => u.is_active)
+  const ownerCount = users.filter(u => u.roles.includes('OWNER')).length
 
   /* ---------- guards ---------- */
 
@@ -249,7 +263,7 @@ export function UsersPage() {
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
             <UsersIcon className="h-7 w-7 text-blue-600" />User Management
           </h1>
-          <p className="mt-1 text-sm text-gray-500">Manage platform users, roles, and access</p>
+          <p className="mt-1 text-sm text-gray-500">Manage platform users, roles, and access &mdash; synced with Keycloak</p>
         </div>
         <button onClick={() => setShowCreateModal(true)}
           className="inline-flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm font-medium shadow-sm transition">
@@ -262,8 +276,8 @@ export function UsersPage() {
         {[
           { label: 'Total Active', value: activeUsers.length, accent: 'text-blue-600' },
           { label: 'Owners', value: ownerCount, accent: 'text-amber-600' },
-          { label: 'Admins', value: users.filter(u => u.roles.includes('ADMIN') && !u.is_deleted).length, accent: 'text-indigo-600' },
-          { label: 'Operators / Viewers', value: users.filter(u => (u.roles.includes('OPERATOR') || u.roles.includes('VIEWER')) && !u.is_deleted).length, accent: 'text-emerald-600' },
+          { label: 'Admins', value: users.filter(u => u.roles.includes('ADMIN')).length, accent: 'text-indigo-600' },
+          { label: 'Operators / Viewers', value: users.filter(u => (u.roles.includes('OPERATOR') || u.roles.includes('VIEWER'))).length, accent: 'text-emerald-600' },
         ].map(s => (
           <div key={s.label} className="bg-white rounded-xl border border-gray-200 p-4">
             <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">{s.label}</p>
@@ -327,18 +341,18 @@ export function UsersPage() {
                   <td className="px-5 py-3.5 text-sm text-gray-500">{user.last_login ? new Date(user.last_login).toLocaleDateString() : <span className="text-gray-300">Never</span>}</td>
                   {/* actions */}
                   <td className="px-5 py-3.5 text-right">
-                      <div className="flex items-center justify-end gap-1 opacity-60 group-hover:opacity-100 transition">
-                        <button onClick={() => openEdit(user)} title="Edit user"
-                          className="p-1.5 rounded-md hover:bg-blue-50 text-gray-500 hover:text-blue-600 transition"><Pencil className="h-4 w-4" /></button>
-                        <button onClick={() => toggleActive(user.id, user.is_active)} title={user.is_active ? 'Deactivate' : 'Activate'}
-                          className="p-1.5 rounded-md hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition">
-                          {user.is_active ? <XCircle className="h-4 w-4" /> : <CheckCircle className="h-4 w-4" />}
-                        </button>
-                        <button onClick={() => { setPwUserId(user.id); setShowResetPwModal(true) }} title="Reset password"
-                          className="p-1.5 rounded-md hover:bg-orange-50 text-gray-500 hover:text-orange-600 transition"><Key className="h-4 w-4" /></button>
-                        <button onClick={() => { setDeleteTarget({ id: user.id, username: user.username }); setShowDeleteModal(true) }} title="Delete user"
-                          className="p-1.5 rounded-md hover:bg-red-50 text-gray-500 hover:text-red-600 transition"><Trash2 className="h-4 w-4" /></button>
-                      </div>
+                    <div className="flex items-center justify-end gap-1 opacity-60 group-hover:opacity-100 transition">
+                      <button onClick={() => openEdit(user)} title="Edit user"
+                        className="p-1.5 rounded-md hover:bg-blue-50 text-gray-500 hover:text-blue-600 transition"><Pencil className="h-4 w-4" /></button>
+                      <button onClick={() => toggleActive(user.id, user.is_active)} title={user.is_active ? 'Deactivate' : 'Activate'}
+                        className="p-1.5 rounded-md hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition">
+                        {user.is_active ? <XCircle className="h-4 w-4" /> : <CheckCircle className="h-4 w-4" />}
+                      </button>
+                      <button onClick={() => { setPwUserId(user.id); setShowResetPwModal(true) }} title="Reset password"
+                        className="p-1.5 rounded-md hover:bg-orange-50 text-gray-500 hover:text-orange-600 transition"><Key className="h-4 w-4" /></button>
+                      <button onClick={() => { setDeleteTarget({ id: user.id, username: user.username }); setShowDeleteModal(true) }} title="Delete user"
+                        className="p-1.5 rounded-md hover:bg-red-50 text-gray-500 hover:text-red-600 transition"><Trash2 className="h-4 w-4" /></button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -389,7 +403,7 @@ export function UsersPage() {
             <Field label="Password *">
               <input type="password" value={newUser.password} onChange={e => setNewUser({...newUser, password: e.target.value})}
                 className="input" placeholder="Secure password" />
-              <p className="text-xs text-gray-500 mt-1">Min 8 chars, 1 upper, 1 lower, 1 digit</p>
+              <p className="text-xs text-gray-500 mt-1">Min 8 chars, 1 upper, 1 lower, 1 digit. User must change on first login.</p>
             </Field>
             <Field label="Role *">
               <select value={newUser.role_names[0]} onChange={e => setNewUser({...newUser, role_names: [e.target.value]})} className="input">
@@ -440,6 +454,9 @@ export function UsersPage() {
                 <p className="text-xs text-amber-600 mt-1 font-medium">Role will change from {editTarget.roles[0]} to {editForm.role_name}</p>
               )}
             </Field>
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <p className="text-xs text-blue-700">Changes will be synced to Keycloak automatically.</p>
+            </div>
           </div>
           <ModalFooter>
             <button onClick={saveEdit} disabled={actionLoading} className="btn-primary flex-1">{actionLoading ? 'Saving...' : 'Save Changes'}</button>
@@ -453,25 +470,17 @@ export function UsersPage() {
         <Modal onClose={() => setShowCreatedResult(null)} title="User Created Successfully" icon={<CheckCircle className="text-green-600" size={24} />}>
           {showCreatedResult.welcome_email_sent ? (
             <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-              <p className="text-sm text-green-800">Credentials sent to <strong>{showCreatedResult.email}</strong>. User must change password on first login.</p>
+              <p className="text-sm text-green-800">Welcome email with credentials sent to <strong>{showCreatedResult.email}</strong>. User must change password on first login.</p>
             </div>
           ) : (
             <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 space-y-3">
-              <div className="flex items-center gap-2"><AlertTriangle className="text-amber-600 shrink-0" size={18} /><span className="font-medium text-amber-800 text-sm">SMTP unavailable — copy credentials now</span></div>
-              <p className="text-xs text-amber-700">Share these securely. <strong>Password shown only once.</strong></p>
+              <div className="flex items-center gap-2"><AlertTriangle className="text-amber-600 shrink-0" size={18} /><span className="font-medium text-amber-800 text-sm">User created in Keycloak</span></div>
+              <p className="text-xs text-amber-700">SMTP unavailable &mdash; share credentials securely with the user. The temporary password was set in Keycloak and must be changed on first login.</p>
               <div className="bg-white border border-gray-200 rounded p-3 font-mono text-sm space-y-1">
                 <div><span className="text-gray-400">Username:</span> <strong>{showCreatedResult.username}</strong></div>
                 <div><span className="text-gray-400">Email:</span> <strong>{showCreatedResult.email}</strong></div>
-                {showCreatedResult.temporary_password && <div><span className="text-gray-400">Password:</span> <strong>{showCreatedResult.temporary_password}</strong></div>}
+                <div><span className="text-gray-400">Password:</span> <em className="text-gray-500">Set during creation &mdash; share securely</em></div>
               </div>
-              {showCreatedResult.temporary_password && (
-                <button onClick={() => {
-                  navigator.clipboard.writeText(`Username: ${showCreatedResult.username}\nEmail: ${showCreatedResult.email}\nPassword: ${showCreatedResult.temporary_password}\nNote: Change on first login.`)
-                  .then(() => setCopied(true))
-                }} className={`w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition ${copied ? 'bg-green-100 text-green-800 border border-green-300' : 'bg-blue-600 text-white hover:bg-blue-700'}`}>
-                  {copied ? <><CheckCircle size={14} />Copied</> : <><Copy size={14} />Copy credentials</>}
-                </button>
-              )}
             </div>
           )}
           <ModalFooter><button onClick={() => setShowCreatedResult(null)} className="btn-secondary w-full">Close</button></ModalFooter>
@@ -482,12 +491,19 @@ export function UsersPage() {
       {showDeleteModal && deleteTarget && (
         <Modal onClose={() => { setShowDeleteModal(false); setDeleteTarget(null) }} title="Delete User"
           icon={<div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center"><AlertTriangle className="h-5 w-5 text-red-600" /></div>}>
-          <p className="text-gray-600 text-sm">Are you sure you want to delete <strong>{deleteTarget.username}</strong>?</p>
-          <p className="text-xs text-gray-500 mt-2">The user will be permanently deactivated and blocked from logging in. This action cannot be undone.</p>
+          <p className="text-gray-600 text-sm">Are you sure you want to <strong>permanently delete</strong> <strong>{deleteTarget.username}</strong>?</p>
+          <div className="bg-red-50 border border-red-200 rounded-lg p-3 mt-3">
+            <p className="text-xs text-red-700 font-medium">This action is irreversible. The user will be removed from:</p>
+            <ul className="text-xs text-red-600 mt-1 ml-4 list-disc">
+              <li>Keycloak (authentication)</li>
+              <li>Local database (roles &amp; metadata)</li>
+              <li>All active sessions will be terminated</li>
+            </ul>
+          </div>
           <ModalFooter>
             <button onClick={() => { setShowDeleteModal(false); setDeleteTarget(null) }} className="btn-secondary" disabled={actionLoading}>Cancel</button>
             <button onClick={confirmDelete} className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 text-sm font-medium disabled:opacity-50" disabled={actionLoading}>
-              {actionLoading ? 'Deleting...' : 'Delete User'}
+              {actionLoading ? 'Deleting...' : 'Delete Permanently'}
             </button>
           </ModalFooter>
         </Modal>
@@ -495,17 +511,38 @@ export function UsersPage() {
 
       {/* ---- RESET PASSWORD ---- */}
       {showResetPwModal && (
-        <Modal onClose={() => { setShowResetPwModal(false); setPwUserId(null); setNewPassword('') }} title="Reset Password">
-          <Field label="New Password *">
-            <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} className="input" placeholder="Secure password" />
-            <p className="text-xs text-gray-500 mt-1">Min 8 chars, 1 upper, 1 lower, 1 digit</p>
-            <p className="text-xs text-orange-600 mt-1 font-medium">User must change password on next login</p>
-          </Field>
+        <Modal onClose={() => { setShowResetPwModal(false); setPwUserId(null); setNewPassword('') }} title="Reset Password (Keycloak)">
+          <div className="space-y-4">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <p className="text-xs text-blue-700">Password will be reset directly in Keycloak. Choose one option:</p>
+            </div>
+
+            {/* Option 1: Send email */}
+            <div className="border border-gray-200 rounded-lg p-4">
+              <h4 className="text-sm font-semibold text-gray-700 flex items-center gap-2"><Mail className="h-4 w-4" />Send Reset Email</h4>
+              <p className="text-xs text-gray-500 mt-1">Keycloak will send a password reset link to the user's email. Requires SMTP configured in Keycloak.</p>
+              <button onClick={sendResetEmail} disabled={actionLoading}
+                className="mt-2 w-full bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700 text-sm font-medium disabled:opacity-50 transition">
+                {actionLoading ? 'Sending...' : 'Send Reset Email'}
+              </button>
+            </div>
+
+            {/* Option 2: Set temp password */}
+            <div className="border border-gray-200 rounded-lg p-4">
+              <h4 className="text-sm font-semibold text-gray-700 flex items-center gap-2"><Key className="h-4 w-4" />Set Temporary Password</h4>
+              <p className="text-xs text-gray-500 mt-1">Set a new temporary password. User must change it on next login.</p>
+              <Field label="New Password *">
+                <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} className="input" placeholder="Secure password" />
+                <p className="text-xs text-gray-500 mt-1">Min 8 chars, 1 upper, 1 lower, 1 digit</p>
+              </Field>
+              <button onClick={resetPassword} disabled={actionLoading || !newPassword}
+                className="mt-2 w-full bg-orange-600 text-white px-3 py-2 rounded-lg hover:bg-orange-700 text-sm font-medium disabled:opacity-50 transition">
+                {actionLoading ? 'Resetting...' : 'Set Temporary Password'}
+              </button>
+            </div>
+          </div>
           <ModalFooter>
-            <button onClick={resetPassword} disabled={actionLoading} className="flex-1 bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 text-sm font-medium disabled:opacity-50">
-              {actionLoading ? 'Resetting...' : 'Reset Password'}
-            </button>
-            <button onClick={() => { setShowResetPwModal(false); setPwUserId(null); setNewPassword('') }} className="btn-secondary flex-1">Cancel</button>
+            <button onClick={() => { setShowResetPwModal(false); setPwUserId(null); setNewPassword('') }} className="btn-secondary w-full">Cancel</button>
           </ModalFooter>
         </Modal>
       )}
@@ -533,7 +570,7 @@ export function UsersPage() {
 function Modal({ children, onClose, title, icon }: { children: React.ReactNode; onClose: () => void; title: string; icon?: React.ReactNode }) {
   return (
     <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={e => { if (e.target === e.currentTarget) onClose() }}>
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden max-h-[90vh] overflow-y-auto">
         <div className="px-6 pt-5 pb-3 flex items-center gap-3">
           {icon}{icon ? null : null}
           <h3 className="text-lg font-semibold text-gray-900">{title}</h3>

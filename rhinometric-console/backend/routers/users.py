@@ -1,6 +1,12 @@
-﻿"""
-User Management API - CRUD operations with Keycloak sync and RBAC.
+"""
+User Management API - CRUD operations with Keycloak as source of truth.
 Requires OWNER or ADMIN role for most operations.
+
+Architecture:
+- Keycloak is the ONLY source of truth for user identity/auth
+- Local DB stores: user_id (KC ref), role, metadata
+- All create/update/delete operations sync to Keycloak FIRST
+- NO soft delete - users are permanently removed
 """
 
 from datetime import datetime
@@ -20,9 +26,9 @@ logger = logging.getLogger("rhinometric.users")
 
 router = APIRouter()
 
-# ====================================================================
+# ======================================================================
 # PYDANTIC SCHEMAS
-# ====================================================================
+# ======================================================================
 
 class UserCreate(BaseModel):
     username: str
@@ -62,7 +68,7 @@ class UserUpdate(BaseModel):
     timezone: Optional[str] = None
     language: Optional[str] = None
     is_active: Optional[bool] = None
-    role_name: Optional[str] = None          # NEW: change role in one call
+    role_name: Optional[str] = None
 
 
 class AdminResetPasswordRequest(BaseModel):
@@ -99,9 +105,6 @@ class UserResponse(BaseModel):
     phone: Optional[str]
     timezone: Optional[str]
     language: Optional[str]
-    is_deleted: bool = False
-    deleted_at: Optional[datetime] = None
-    deleted_by: Optional[int] = None
 
     class Config:
         from_attributes = True
@@ -110,7 +113,6 @@ class UserResponse(BaseModel):
 class UserCreateResponse(UserResponse):
     welcome_email_sent: bool = False
     delivery_mode: str = "manual"
-    temporary_password: Optional[str] = None
 
 
 class UserListResponse(BaseModel):
@@ -120,9 +122,9 @@ class UserListResponse(BaseModel):
     users: List[UserResponse]
 
 
-# ====================================================================
+# ======================================================================
 # HELPERS
-# ====================================================================
+# ======================================================================
 
 def _user_response(user: UserModel) -> UserResponse:
     return UserResponse(
@@ -139,9 +141,6 @@ def _user_response(user: UserModel) -> UserResponse:
         phone=user.phone,
         timezone=user.timezone,
         language=user.language,
-        is_deleted=getattr(user, "is_deleted", False) or False,
-        deleted_at=getattr(user, "deleted_at", None),
-        deleted_by=getattr(user, "deleted_by", None),
     )
 
 
@@ -153,66 +152,9 @@ def _check_role_allowed(assigner: UserModel, target_role_name: str, db: Session)
         raise HTTPException(403, "Only OWNER can assign OWNER role")
 
 
-def _kc_sync_create(user: UserModel, password: str, role_name: str) -> Optional[str]:
-    """Create user in Keycloak (best-effort)."""
-    try:
-        from services.keycloak_admin import create_kc_user
-        parts = (user.full_name or "").split(" ", 1)
-        first = parts[0] if parts else ""
-        last = parts[1] if len(parts) > 1 else ""
-        kc_id = create_kc_user(
-            username=user.username,
-            email=user.email,
-            password=password,
-            first_name=first,
-            last_name=last,
-            role_name=role_name,
-        )
-        return kc_id
-    except Exception as exc:
-        logger.error("[KC SYNC] create failed for %s: %s", user.username, exc)
-        return None
-
-
-def _kc_sync_disable(user: UserModel):
-    """Disable user in Keycloak (best-effort)."""
-    kc_id = user.sso_external_id
-    if not kc_id:
-        return
-    try:
-        from services.keycloak_admin import disable_kc_user
-        disable_kc_user(kc_id)
-    except Exception as exc:
-        logger.error("[KC SYNC] disable failed for %s: %s", user.username, exc)
-
-
-def _kc_sync_enable(user: UserModel):
-    """Enable user in Keycloak (best-effort)."""
-    kc_id = user.sso_external_id
-    if not kc_id:
-        return
-    try:
-        from services.keycloak_admin import enable_kc_user
-        enable_kc_user(kc_id)
-    except Exception as exc:
-        logger.error("[KC SYNC] enable failed for %s: %s", user.username, exc)
-
-
-def _kc_sync_role(user: UserModel, role_name: str):
-    """Sync role change to Keycloak (best-effort)."""
-    kc_id = user.sso_external_id
-    if not kc_id:
-        return
-    try:
-        from services.keycloak_admin import set_kc_user_role
-        set_kc_user_role(kc_id, role_name)
-    except Exception as exc:
-        logger.error("[KC SYNC] role change failed for %s: %s", user.username, exc)
-
-
-# ====================================================================
-# CREATE USER
-# ====================================================================
+# ======================================================================
+# CREATE USER - Keycloak FIRST, then DB
+# ======================================================================
 
 @router.post("/", response_model=UserCreateResponse, status_code=status.HTTP_201_CREATED)
 async def create_user(
@@ -221,25 +163,46 @@ async def create_user(
     db: Session = Depends(get_db),
     request: Request = None,
 ):
-    # --- handle soft-deleted conflicts ---
+    # Check for existing users in DB (including any orphan records)
     existing_username = db.query(UserModel).filter(UserModel.username == user_data.username).first()
     if existing_username:
-        if getattr(existing_username, "is_deleted", False):
-            # Hard-delete the stale record so username can be reused
-            db.query(UserRoleModel).filter(UserRoleModel.user_id == existing_username.id).delete()
-            db.delete(existing_username)
-            db.flush()
-            logger.info("[USER] Purged soft-deleted user %s to allow re-creation", user_data.username)
+        # Check if this is an orphan record (deleted from KC but still in DB)
+        if existing_username.sso_external_id:
+            try:
+                from services.keycloak_admin import find_kc_user
+                kc_user = find_kc_user(username=user_data.username)
+                if kc_user is None:
+                    # Orphan record - KC user gone, purge DB record
+                    logger.info("[USER] Purging orphan DB record for username=%s", user_data.username)
+                    db.query(UserRoleModel).filter(UserRoleModel.user_id == existing_username.id).delete()
+                    db.delete(existing_username)
+                    db.flush()
+                else:
+                    raise HTTPException(400, "Username already exists")
+            except HTTPException:
+                raise
+            except Exception:
+                raise HTTPException(400, "Username already exists")
         else:
             raise HTTPException(400, "Username already exists")
 
     existing_email = db.query(UserModel).filter(UserModel.email == user_data.email).first()
     if existing_email:
-        if getattr(existing_email, "is_deleted", False):
-            db.query(UserRoleModel).filter(UserRoleModel.user_id == existing_email.id).delete()
-            db.delete(existing_email)
-            db.flush()
-            logger.info("[USER] Purged soft-deleted user with email %s to allow re-creation", user_data.email)
+        if existing_email.sso_external_id:
+            try:
+                from services.keycloak_admin import find_kc_user
+                kc_user = find_kc_user(email=user_data.email)
+                if kc_user is None:
+                    logger.info("[USER] Purging orphan DB record for email=%s", user_data.email)
+                    db.query(UserRoleModel).filter(UserRoleModel.user_id == existing_email.id).delete()
+                    db.delete(existing_email)
+                    db.flush()
+                else:
+                    raise HTTPException(400, "Email already exists")
+            except HTTPException:
+                raise
+            except Exception:
+                raise HTTPException(400, "Email already exists")
         else:
             raise HTTPException(400, "Email already exists")
 
@@ -258,7 +221,7 @@ async def create_user(
                 db.query(UserRoleModel)
                 .filter(UserRoleModel.role_id == owner_role.id)
                 .join(UserModel, UserModel.id == UserRoleModel.user_id)
-                .filter(UserModel.is_active == True, (UserModel.is_deleted == False) | (UserModel.is_deleted == None))
+                .filter(UserModel.is_active == True)
                 .count()
             )
             if existing_owners >= 1:
@@ -268,39 +231,67 @@ async def create_user(
     try:
         from services.license_validator import validate_user_roles, LicenseLimitError
         validate_user_roles(db, user_data.role_names)
-    except Exception:
+    except ImportError:
         pass
+    except Exception as e:
+        raise HTTPException(403, str(e))
 
-    # Create DB user
-    new_user = UserModel(
-        username=user_data.username,
-        email=user_data.email,
-        full_name=user_data.full_name,
-        phone=user_data.phone,
-        timezone=user_data.timezone,
-        language=user_data.language,
-        must_change_password=True,
-        is_active=True,
-        is_deleted=False,
-        updated_at=datetime.utcnow(),
-    )
-    new_user.set_password(user_data.password)
-    db.add(new_user)
-    db.flush()
-
+    # === STEP 1: Create in Keycloak FIRST (source of truth) ===
     primary_role = user_data.role_names[0]
-    for role in roles:
-        db.add(UserRoleModel(user_id=new_user.id, role_id=role.id))
-    db.flush()
+    kc_id = None
+    try:
+        from services.keycloak_admin import create_kc_user
+        parts = (user_data.full_name or "").split(" ", 1)
+        first = parts[0] if parts else ""
+        last = parts[1] if len(parts) > 1 else ""
+        kc_id = create_kc_user(
+            username=user_data.username,
+            email=user_data.email,
+            password=user_data.password,
+            first_name=first,
+            last_name=last,
+            role_name=primary_role,
+        )
+    except Exception as exc:
+        logger.error("[USER] Keycloak user creation failed for %s: %s", user_data.username, exc)
+        raise HTTPException(502, f"Failed to create user in Keycloak: {exc}")
 
-    # Sync to Keycloak
-    kc_id = _kc_sync_create(new_user, user_data.password, primary_role)
-    if kc_id:
-        new_user.sso_external_id = kc_id
-        new_user.sso_provider = "keycloak"
+    # === STEP 2: Create DB record with KC reference ===
+    try:
+        new_user = UserModel(
+            username=user_data.username,
+            email=user_data.email,
+            full_name=user_data.full_name,
+            phone=user_data.phone,
+            timezone=user_data.timezone,
+            language=user_data.language,
+            must_change_password=True,
+            is_active=True,
+            is_deleted=False,
+            sso_external_id=kc_id,
+            sso_provider="keycloak",
+            updated_at=datetime.utcnow(),
+        )
+        new_user.set_password(user_data.password)
+        db.add(new_user)
+        db.flush()
 
-    db.commit()
-    db.refresh(new_user)
+        for role in roles:
+            db.add(UserRoleModel(user_id=new_user.id, role_id=role.id))
+        db.flush()
+        db.commit()
+        db.refresh(new_user)
+    except Exception as exc:
+        db.rollback()
+        # Rollback: delete from KC if DB failed
+        if kc_id:
+            try:
+                from services.keycloak_admin import delete_kc_user
+                delete_kc_user(kc_id)
+                logger.info("[USER] Rolled back KC user %s after DB failure", kc_id)
+            except Exception:
+                logger.error("[USER] CRITICAL: KC user %s created but DB rollback failed. Manual cleanup needed.", kc_id)
+        raise HTTPException(500, f"Failed to create user in database: {exc}")
 
     # Audit log (best-effort)
     try:
@@ -314,8 +305,8 @@ async def create_user(
             target_username=new_user.username,
             ip_address=request.client.host if request and request.client else None,
             status="success",
-            message=f"User {new_user.username} created with roles: {','.join(user_data.role_names)}",
-            metadata={"roles": user_data.role_names, "email": new_user.email, "kc_synced": kc_id is not None},
+            message=f"User {new_user.username} created with roles: {','.join(user_data.role_names)} (KC synced)",
+            metadata={"roles": user_data.role_names, "email": new_user.email, "kc_id": kc_id},
         )
     except Exception:
         pass
@@ -333,19 +324,16 @@ async def create_user(
     except Exception:
         pass
 
-    temp_password = user_data.password if (not welcome_email_sent and new_user.must_change_password) else None
-
     return UserCreateResponse(
         **_user_response(new_user).dict(),
         welcome_email_sent=welcome_email_sent,
         delivery_mode="email" if welcome_email_sent else "manual",
-        temporary_password=temp_password,
     )
 
 
-# ====================================================================
+# ======================================================================
 # LIST USERS
-# ====================================================================
+# ======================================================================
 
 @router.get("/", response_model=UserListResponse)
 async def list_users(
@@ -353,8 +341,7 @@ async def list_users(
     page_size: int = Query(50, ge=1, le=100),
     search: Optional[str] = None,
     role_filter: Optional[str] = None,
-    active_only: bool = True,
-    include_deleted: bool = Query(False),
+    active_only: bool = False,
     current_user: UserModel = Depends(require_role(["OWNER", "ADMIN"])),
     db: Session = Depends(get_db),
 ):
@@ -366,9 +353,7 @@ async def list_users(
         )
     if role_filter:
         query = query.join(UserModel.roles).join(RoleModel).filter(RoleModel.name == role_filter)
-    if not include_deleted:
-        query = query.filter((UserModel.is_deleted == False) | (UserModel.is_deleted == None))
-    if active_only and not include_deleted:
+    if active_only:
         query = query.filter(UserModel.is_active == True)
     total = query.count()
     offset = (page - 1) * page_size
@@ -376,9 +361,9 @@ async def list_users(
     return UserListResponse(total=total, page=page, page_size=page_size, users=[_user_response(u) for u in users])
 
 
-# ====================================================================
+# ======================================================================
 # GET USER
-# ====================================================================
+# ======================================================================
 
 @router.get("/{user_id}", response_model=UserResponse)
 async def get_user(
@@ -392,9 +377,9 @@ async def get_user(
     return _user_response(user)
 
 
-# ====================================================================
-# UPDATE USER  (profile fields + optional role change)
-# ====================================================================
+# ======================================================================
+# UPDATE USER  (profile fields + optional role change + KC sync)
+# ======================================================================
 
 @router.put("/{user_id}", response_model=UserResponse)
 async def update_user(
@@ -402,6 +387,7 @@ async def update_user(
     user_data: UserUpdate,
     current_user: UserModel = Depends(require_role(["OWNER", "ADMIN"])),
     db: Session = Depends(get_db),
+    request: Request = None,
 ):
     user = db.query(UserModel).filter(UserModel.id == user_id).first()
     if not user:
@@ -411,24 +397,44 @@ async def update_user(
     if user.id == current_user.id and user_data.is_active is False:
         raise HTTPException(400, "Cannot deactivate your own account")
 
+    # Track what needs to sync to Keycloak
+    kc_update = {}
+
     # Profile fields
     if user_data.email is not None:
         dup = db.query(UserModel).filter(UserModel.email == user_data.email, UserModel.id != user_id).first()
         if dup:
             raise HTTPException(400, "Email already exists")
         user.email = user_data.email
+        kc_update["email"] = user_data.email
+
     if user_data.full_name is not None:
         user.full_name = user_data.full_name
+        parts = (user_data.full_name or "").split(" ", 1)
+        kc_update["firstName"] = parts[0] if parts else ""
+        kc_update["lastName"] = parts[1] if len(parts) > 1 else ""
+
     if user_data.phone is not None:
         user.phone = user_data.phone
     if user_data.timezone is not None:
         user.timezone = user_data.timezone
     if user_data.language is not None:
         user.language = user_data.language
+
     if user_data.is_active is not None:
         user.is_active = user_data.is_active
+        kc_update["enabled"] = user_data.is_active
 
-    # Role change (single-role model for simplicity)
+    # === Sync profile changes to Keycloak FIRST ===
+    if kc_update and user.sso_external_id:
+        try:
+            from services.keycloak_admin import update_kc_user
+            update_kc_user(user.sso_external_id, **kc_update)
+        except Exception as exc:
+            logger.error("[KC SYNC] update failed for %s: %s", user.username, exc)
+            raise HTTPException(502, f"Failed to sync changes to Keycloak: {exc}")
+
+    # Role change (single-role model)
     if user_data.role_name is not None:
         new_role_name = user_data.role_name.upper()
         _check_role_allowed(current_user, new_role_name, db)
@@ -444,7 +450,7 @@ async def update_user(
                     db.query(UserRoleModel)
                     .filter(UserRoleModel.role_id == owner_role.id)
                     .join(UserModel, UserModel.id == UserRoleModel.user_id)
-                    .filter(UserModel.is_active == True, (UserModel.is_deleted == False) | (UserModel.is_deleted == None))
+                    .filter(UserModel.is_active == True)
                     .count()
                 )
                 if existing_owners >= 1:
@@ -455,23 +461,34 @@ async def update_user(
             if user.id == current_user.id:
                 raise HTTPException(400, "Cannot remove your own OWNER role")
 
-        # Replace all roles with the new one
+        # Sync role to KC FIRST
+        if user.sso_external_id:
+            try:
+                from services.keycloak_admin import set_kc_user_role
+                set_kc_user_role(user.sso_external_id, new_role_name)
+            except Exception as exc:
+                logger.error("[KC SYNC] role change failed for %s: %s", user.username, exc)
+                raise HTTPException(502, f"Failed to sync role to Keycloak: {exc}")
+
+        # Replace all roles in DB
         db.query(UserRoleModel).filter(UserRoleModel.user_id == user.id).delete()
         db.add(UserRoleModel(user_id=user.id, role_id=new_role.id, assigned_by=current_user.id))
         db.flush()
 
-        # Sync to KC
-        _kc_sync_role(user, new_role_name)
-
     user.updated_at = datetime.utcnow()
     db.commit()
     db.refresh(user)
+
+    logger.info("[USER] UPDATED id=%d username=%s by=%s fields=%s",
+                user.id, user.username, current_user.username,
+                list(kc_update.keys()) + (["role"] if user_data.role_name else []))
+
     return _user_response(user)
 
 
-# ====================================================================
-# DELETE USER (soft-delete + KC disable)
-# ====================================================================
+# ======================================================================
+# DELETE USER - Hard delete from Keycloak AND DB (NO soft delete)
+# ======================================================================
 
 @router.delete("/{user_id}")
 async def delete_user(
@@ -483,8 +500,6 @@ async def delete_user(
     user = db.query(UserModel).filter(UserModel.id == user_id).first()
     if not user:
         raise HTTPException(404, "User not found")
-    if getattr(user, "is_deleted", False):
-        raise HTTPException(400, "User is already deleted")
     if user.id == current_user.id:
         raise HTTPException(403, "Cannot delete your own account")
     if user.is_owner() and not current_user.is_owner():
@@ -496,74 +511,51 @@ async def delete_user(
             cnt = (
                 db.query(UserRoleModel).filter(UserRoleModel.role_id == owner_role.id)
                 .join(UserModel, UserModel.id == UserRoleModel.user_id)
-                .filter(UserModel.is_active == True, (UserModel.is_deleted == False) | (UserModel.is_deleted == None))
+                .filter(UserModel.is_active == True)
                 .count()
             )
             if cnt <= 1:
                 raise HTTPException(409, "Cannot delete the last OWNER. Transfer ownership first.")
 
-    user.is_active = False
-    user.is_deleted = True
-    user.deleted_at = datetime.utcnow()
-    user.deleted_by = current_user.id
-    user.updated_at = datetime.utcnow()
+    username = user.username
+    uid = user.id
+    kc_id = user.sso_external_id
+
+    # === STEP 1: Delete from Keycloak FIRST ===
+    if kc_id:
+        try:
+            from services.keycloak_admin import delete_kc_user
+            delete_kc_user(kc_id)
+            logger.info("[USER] Deleted from Keycloak: kc_id=%s username=%s", kc_id, username)
+        except Exception as exc:
+            logger.error("[KC SYNC] delete failed for %s: %s", username, exc)
+            raise HTTPException(502, f"Failed to delete user from Keycloak: {exc}")
+
+    # === STEP 2: Hard delete from DB ===
+    db.query(UserRoleModel).filter(UserRoleModel.user_id == user.id).delete()
+    db.delete(user)
     db.commit()
 
-    # Disable in KC
-    _kc_sync_disable(user)
-
-    # Audit
+    # Audit (best-effort)
     try:
         from services.audit_logger import log_audit_event, AuditEvent
         await log_audit_event(
             category=AuditEvent.USER_MANAGEMENT, action="user_deleted",
             user_id=current_user.id, username=current_user.username,
-            target_user_id=user.id, target_username=user.username,
+            target_user_id=uid, target_username=username,
             ip_address=request.client.host if request and request.client else None,
-            status="success", message=f"User {user.username} soft-deleted",
+            status="success", message=f"User {username} permanently deleted from DB and Keycloak",
         )
     except Exception:
         pass
 
-    logger.info("[USER] DELETED id=%d username=%s by=%s", user.id, user.username, current_user.username)
-    return {"ok": True, "user_id": user.id, "deleted_at": str(user.deleted_at)}
+    logger.info("[USER] HARD-DELETED id=%d username=%s by=%s", uid, username, current_user.username)
+    return {"ok": True, "user_id": uid, "message": f"User {username} permanently deleted"}
 
 
-# ====================================================================
-# RESTORE USER
-# ====================================================================
-
-@router.post("/{user_id}/restore")
-async def restore_user(
-    user_id: int,
-    current_user: UserModel = Depends(require_role(["OWNER", "ADMIN"])),
-    db: Session = Depends(get_db),
-    request: Request = None,
-):
-    user = db.query(UserModel).filter(UserModel.id == user_id).first()
-    if not user:
-        raise HTTPException(404, "User not found")
-    if not getattr(user, "is_deleted", False):
-        raise HTTPException(400, "User is not deleted")
-
-    user.is_deleted = False
-    user.is_active = True
-    user.deleted_at = None
-    user.deleted_by = None
-    user.updated_at = datetime.utcnow()
-    db.commit()
-    db.refresh(user)
-
-    # Re-enable in KC
-    _kc_sync_enable(user)
-
-    logger.info("[USER] RESTORED id=%d username=%s by=%s", user.id, user.username, current_user.username)
-    return {"ok": True, "user_id": user.id, "message": f"User {user.username} restored"}
-
-
-# ====================================================================
+# ======================================================================
 # ROLE MANAGEMENT
-# ====================================================================
+# ======================================================================
 
 @router.post("/{user_id}/roles", response_model=UserResponse)
 async def assign_role(
@@ -629,7 +621,6 @@ async def remove_role(
     return _user_response(user)
 
 
-
 # ================================================================
 # CHANGE ROLE (single-role replacement)
 # ================================================================
@@ -657,7 +648,7 @@ async def change_user_role(
             db.query(UserRoleModel)
             .filter(UserRoleModel.role_id == owner_role.id)
             .join(UserModel, UserModel.id == UserRoleModel.user_id)
-            .filter(UserModel.is_active == True, (UserModel.is_deleted == False) | (UserModel.is_deleted == None))
+            .filter(UserModel.is_active == True)
             .filter(UserModel.id != user_id)
             .count()
         )
@@ -666,17 +657,22 @@ async def change_user_role(
     current_roles = user.get_roles()
     if current_roles == [new_role.name]:
         return _user_response(user)
-    db.query(UserRoleModel).filter(UserRoleModel.user_id == user_id).delete()
-    db.add(UserRoleModel(user_id=user_id, role_id=new_role.id, assigned_by=current_user.id))
-    user.updated_at = datetime.utcnow()
-    db.commit()
-    db.refresh(user)
+
+    # Sync to KC FIRST
     if user.sso_external_id:
         try:
             from services.keycloak_admin import set_kc_user_role
             set_kc_user_role(user.sso_external_id, new_role.name)
         except Exception as e:
-            logger.warning("[Users] KC role sync failed for %s: %s", user.username, e)
+            logger.error("[Users] KC role sync failed for %s: %s", user.username, e)
+            raise HTTPException(502, f"Failed to sync role to Keycloak: {e}")
+
+    db.query(UserRoleModel).filter(UserRoleModel.user_id == user_id).delete()
+    db.add(UserRoleModel(user_id=user_id, role_id=new_role.id, assigned_by=current_user.id))
+    user.updated_at = datetime.utcnow()
+    db.commit()
+    db.refresh(user)
+
     try:
         from services.audit_logger import log_audit_event, AuditEvent
         await log_audit_event(
@@ -692,9 +688,9 @@ async def change_user_role(
     logger.info("[Users] Role changed: user=%s from=%s to=%s by=%s", user.username, current_roles, new_role.name, current_user.username)
     return _user_response(user)
 
-# ====================================================================
+# ======================================================================
 # PERMISSIONS
-# ====================================================================
+# ======================================================================
 
 @router.get("/{user_id}/permissions")
 async def get_user_permissions(
@@ -709,9 +705,9 @@ async def get_user_permissions(
     return {"user_id": user.id, "username": user.username, "roles": user.get_roles(), "permissions": perms, "total_permissions": len(perms)}
 
 
-# ====================================================================
-# RESET PASSWORD
-# ====================================================================
+# ======================================================================
+# RESET PASSWORD - Via Keycloak ONLY
+# ======================================================================
 
 @router.post("/{user_id}/reset-password")
 async def reset_user_password(
@@ -721,13 +717,25 @@ async def reset_user_password(
     db: Session = Depends(get_db),
     request: Request = None,
 ):
+    """Admin sets a temporary password for a user via Keycloak Admin API.
+    The user must change it on next login."""
     user = db.query(UserModel).filter(UserModel.id == user_id).first()
     if not user:
         raise HTTPException(404, "User not found")
     if user.is_owner() and not current_user.is_owner():
         raise HTTPException(403, "Only OWNER can reset OWNER password")
+    if not user.sso_external_id:
+        raise HTTPException(400, "User has no Keycloak account. Cannot reset password.")
 
-    user.set_password(request_data.new_password)
+    # Set temporary password in Keycloak (source of truth)
+    try:
+        from services.keycloak_admin import set_kc_user_password
+        set_kc_user_password(user.sso_external_id, request_data.new_password, temporary=True)
+    except Exception as exc:
+        logger.error("[KC] Password reset failed for %s: %s", user.username, exc)
+        raise HTTPException(502, f"Failed to reset password in Keycloak: {exc}")
+
+    # Update local DB to reflect must_change_password
     user.must_change_password = True
     user.updated_at = datetime.utcnow()
     db.commit()
@@ -740,17 +748,54 @@ async def reset_user_password(
             user_id=current_user.id, username=current_user.username,
             target_user_id=user.id, target_username=user.username,
             ip_address=request.client.host if request and request.client else None,
-            status="success", message=f"Password reset for {user.username}",
+            status="success", message=f"Password reset via Keycloak for {user.username}",
         )
     except Exception:
         pass
 
-    return {"message": f"Password reset for {user.username}", "user_id": user.id, "must_change_password": True}
+    return {"message": f"Password reset for {user.username} (via Keycloak)", "user_id": user.id, "must_change_password": True}
 
 
-# ====================================================================
+@router.post("/{user_id}/send-reset-email")
+async def send_reset_email(
+    user_id: int,
+    current_user: UserModel = Depends(require_role(["OWNER", "ADMIN"])),
+    db: Session = Depends(get_db),
+    request: Request = None,
+):
+    """Trigger Keycloak to send a password reset email to the user."""
+    user = db.query(UserModel).filter(UserModel.id == user_id).first()
+    if not user:
+        raise HTTPException(404, "User not found")
+    if not user.sso_external_id:
+        raise HTTPException(400, "User has no Keycloak account.")
+
+    try:
+        from services.keycloak_admin import send_kc_reset_password_email
+        send_kc_reset_password_email(user.sso_external_id)
+    except Exception as exc:
+        logger.error("[KC] Send reset email failed for %s: %s", user.username, exc)
+        raise HTTPException(502, f"Failed to send reset email via Keycloak: {exc}. SMTP may not be configured in Keycloak.")
+
+    # Audit
+    try:
+        from services.audit_logger import log_audit_event, AuditEvent
+        await log_audit_event(
+            category=AuditEvent.USER_MANAGEMENT, action="password_reset_email_sent",
+            user_id=current_user.id, username=current_user.username,
+            target_user_id=user.id, target_username=user.username,
+            ip_address=request.client.host if request and request.client else None,
+            status="success", message=f"Password reset email sent to {user.email}",
+        )
+    except Exception:
+        pass
+
+    return {"message": f"Password reset email sent to {user.email}", "user_id": user.id}
+
+
+# ======================================================================
 # ROLES LIST (for frontend dropdowns)
-# ====================================================================
+# ======================================================================
 
 @router.get("/meta/roles")
 async def list_roles(
