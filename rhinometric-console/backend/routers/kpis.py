@@ -262,6 +262,31 @@ async def get_kpis(
                         1 for cfp in _all_cfps if cfp not in _suppressed_fps
                     )
 
+                # ---- Source 3: DB-only firing alerts ----
+                # alerts.py also shows DB-originated alerts (policy/webhook)
+                # that may not exist in AlertManager. Count them here too
+                # to keep KPI in sync with the Alerts page.
+                _covered_cfps = set(_all_cfps.keys()) if _candidate_alerts else set()
+                _active_statuses = ["firing", "acknowledged", "silenced"]
+                _service_types = {"service", "external-services"}
+                try:
+                    _db_firing = (
+                        db.query(_AE)
+                        .filter(
+                            _AE.status.in_(_active_statuses),
+                            _AE.entity_type.in_(list(_service_types)),
+                            _AE.alert_name.like("AnomalyDetected_external_service_%"),
+                            _AE.incident_id.is_(None),
+                        )
+                        .all()
+                    )
+                    for _ev in _db_firing:
+                        _fp = _ev.fingerprint or ""
+                        if _fp not in _covered_cfps and _fp not in _suppressed_fps:
+                            alerts_count += 1
+                except Exception as _db_err:
+                    print(f"Error counting DB-only alerts: {_db_err}")
+
                 if alerts_count > 0:
                     alerts_status = "warning"
                     alerts_change = f"{alerts_count} active now"
