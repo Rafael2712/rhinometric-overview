@@ -11,6 +11,7 @@ from datetime import datetime, timezone, timedelta
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 import uuid
+import hashlib
 
 from database import get_db
 from routers.auth import get_current_user, require_role
@@ -502,6 +503,14 @@ def evaluate_alert_rules(db: Session):
         except Exception as e:
             logger.error(f"Error evaluating rule {rule.name}: {e}")
 
+    # ── Phase 3: Assertion-failure evaluation (internal defaults, no AlertRule) ──
+    try:
+        af_fired = _evaluate_assertion_failures(db)
+        if af_fired:
+            fired += af_fired
+    except Exception as _af_err:
+        logger.error("[Assertions] Assertion-failure evaluation error: %s", _af_err)
+
     # Always resolve alerts for recovered services
     try:
         _resolve_recovered_services(db)
@@ -637,6 +646,204 @@ def _evaluate_degraded_health(db: Session, rule: AlertRule) -> int:
 
 
 # ÔöÇÔöÇ Legacy metric evaluation (backward compat) ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+
+# ── Assertion failure detection (Phase 3 — internal defaults, no AlertRule) ──────
+
+# Internal defaults — NOT exposed to users in phase 1
+_AF_CONSECUTIVE_FAILURES = 3   # reachable checks with assertion failures before firing
+_AF_SUSTAINED_PASSES     = 3   # reachable checks with all-pass before resolving
+_AF_SEVERITY             = "warning"
+_AF_COOLDOWN_SECONDS     = 120
+
+
+def _evaluate_assertion_failures(db: Session) -> int:
+    """
+    Inline assertion-failure alerting.  No AlertRule object — pure internal logic.
+
+    For each enabled service that has assertions:
+      1. Fetch last N reachable checks (status != 'down','error')
+      2. If last _AF_CONSECUTIVE_FAILURES all have assertions_failed>0 → fire/update alert
+      3. If last _AF_SUSTAINED_PASSES all have assertions_failed==0 → resolve alert
+      4. If service is currently DOWN → resolve any active assertion-failure alert
+
+    Returns count of new alerts fired (not updates).
+    """
+    from models.alert_event import AlertEvent
+    from models.service_assertion import ServiceAssertion
+
+    now = datetime.now(timezone.utc)
+    fired = 0
+
+    # Find services that have at least one enabled assertion
+    svc_ids_with_assertions = (
+        db.query(ServiceAssertion.service_id)
+        .filter(ServiceAssertion.enabled == True)
+        .distinct()
+        .all()
+    )
+    svc_ids_set = {row[0] for row in svc_ids_with_assertions}
+    if not svc_ids_set:
+        return 0
+
+    services = (
+        db.query(ExternalService)
+        .filter(
+            ExternalService.enabled == True,
+            ExternalService.id.in_(svc_ids_set),
+        )
+        .all()
+    )
+
+    window = max(_AF_CONSECUTIVE_FAILURES, _AF_SUSTAINED_PASSES)
+
+    for svc in services:
+        entity_name = svc.name
+        fp_seed = f"assertion_failure:{entity_name}"
+        fingerprint = hashlib.sha256(fp_seed.encode()).hexdigest()[:16]
+
+        # ── Rule 5: if service is currently DOWN, resolve any active assertion alert ──
+        if svc.status in ("down", "error"):
+            existing = db.query(AlertEvent).filter(
+                AlertEvent.fingerprint == fingerprint,
+                AlertEvent.status == "firing",
+            ).first()
+            if existing:
+                existing.status = "resolved"
+                existing.ended_at = now
+                existing.resolved_at = now
+                existing.annotations = {
+                    **(existing.annotations or {}),
+                    "resolve_reason": "superseded_by_service_down",
+                }
+                logger.info(
+                    "[Assertions] Resolved assertion-failure alert for %s "
+                    "(superseded by SERVICE_DOWN)", entity_name
+                )
+            continue  # skip evaluation — service is unreachable
+
+        # ── Fetch recent reachable checks ──
+        rows = db.execute(text("""
+            SELECT assertions_failed, assertions_total,
+                   first_failed_assertion, first_failed_message
+            FROM external_service_checks
+            WHERE service_id = :sid
+              AND status NOT IN ('down', 'error')
+            ORDER BY checked_at DESC
+            LIMIT :limit
+        """), {"sid": svc.id, "limit": window}).fetchall()
+
+        if len(rows) < _AF_CONSECUTIVE_FAILURES:
+            continue  # not enough data
+
+        # ── Check for consecutive assertion failures ──
+        recent_fails = [r for r in rows[:_AF_CONSECUTIVE_FAILURES]]
+        all_failing = all(
+            (r.assertions_failed or 0) > 0
+            for r in recent_fails
+        )
+
+        # ── Check for sustained passes (for resolution) ──
+        recent_passes = [r for r in rows[:_AF_SUSTAINED_PASSES]]
+        all_passing = (
+            len(recent_passes) >= _AF_SUSTAINED_PASSES
+            and all((r.assertions_failed or 0) == 0 for r in recent_passes)
+        )
+
+        # ── Look up existing firing alert ──
+        existing = db.query(AlertEvent).filter(
+            AlertEvent.fingerprint == fingerprint,
+            AlertEvent.status == "firing",
+        ).first()
+
+        if all_failing:
+            # Gather context from the most recent failing check
+            latest = rows[0]
+            fail_count = latest.assertions_failed or 0
+            first_name = latest.first_failed_assertion or "unknown"
+            first_msg = latest.first_failed_message or ""
+            summary_text = (
+                f"Assertion failure on {entity_name}: "
+                f"{fail_count} assertion(s) failed — {first_name}: {first_msg}"
+            )
+
+            if existing:
+                # ── UPDATE existing alert (no duplicate) ──
+                existing.last_evaluated_at = now
+                existing.annotations = {
+                    "summary": summary_text,
+                    "service_name": entity_name,
+                    "assertions_failed": fail_count,
+                    "first_failed_assertion": first_name,
+                    "first_failed_message": first_msg[:500],
+                }
+                # Cooldown: don't log on every cycle
+            else:
+                # ── Cooldown check: don't re-fire too soon after resolution ──
+                last_resolved = db.query(AlertEvent).filter(
+                    AlertEvent.fingerprint == fingerprint,
+                    AlertEvent.status == "resolved",
+                ).order_by(AlertEvent.ended_at.desc()).first()
+
+                if last_resolved and last_resolved.ended_at:
+                    elapsed = (now - last_resolved.ended_at).total_seconds()
+                    if elapsed < _AF_COOLDOWN_SECONDS:
+                        continue  # still in cooldown
+
+                # ── CREATE new assertion-failure alert ──
+                alert_name = f"assertion_failure:{entity_name}"
+                event = AlertEvent(
+                    id=uuid.uuid4(),
+                    alert_name=alert_name,
+                    entity_type="external-services",
+                    entity_name=entity_name,
+                    metric_name="ASSERTION_FAILURE",
+                    severity=_AF_SEVERITY,
+                    status="firing",
+                    started_at=now,
+                    fingerprint=fingerprint,
+                    labels={
+                        "alertname": alert_name,
+                        "service_name": entity_name,
+                        "severity": _AF_SEVERITY,
+                        "rule_type": "ASSERTION_FAILURE",
+                        "source": "assertion_evaluator",
+                    },
+                    annotations={
+                        "summary": summary_text,
+                        "service_name": entity_name,
+                        "assertions_failed": fail_count,
+                        "first_failed_assertion": first_name,
+                        "first_failed_message": first_msg[:500],
+                    },
+                    summary=summary_text,
+                    source="assertion_evaluator",
+                    generator_url="",
+                    escalation_count=0,
+                    last_evaluated_at=now,
+                )
+                db.add(event)
+                fired += 1
+                logger.info(
+                    "[Assertions] Fired assertion-failure alert for %s: %s",
+                    entity_name, summary_text[:200],
+                )
+
+        elif all_passing and existing:
+            # ── RESOLVE: assertions passing consistently ──
+            existing.status = "resolved"
+            existing.ended_at = now
+            existing.resolved_at = now
+            existing.annotations = {
+                **(existing.annotations or {}),
+                "resolve_reason": "assertions_passing",
+            }
+            logger.info(
+                "[Assertions] Resolved assertion-failure alert for %s "
+                "(all assertions passing)", entity_name
+            )
+
+    return fired
+
 
 def _compute_metric(db: Session, service_id: int, metric: str, window_minutes: int) -> float:
     """Compute a metric value from recent checks (legacy path)."""

@@ -109,6 +109,33 @@ def run_cleanup(retention_days=None):
             if deleted == _BATCH_SIZE:
                 time.sleep(_BATCH_SLEEP_SECS)
 
+        # ── Phase 3: cleanup assertion_results (same retention) ──
+        ar_deleted = 0
+        try:
+            while True:
+                ar_result = db.execute(
+                    text(
+                        "DELETE FROM assertion_results "
+                        "WHERE ctid IN ("
+                        "  SELECT ctid FROM assertion_results "
+                        "  WHERE evaluated_at < :cutoff "
+                        "  ORDER BY evaluated_at "
+                        "  LIMIT :batch"
+                        ")"
+                    ),
+                    {"cutoff": cutoff, "batch": _BATCH_SIZE},
+                )
+                db.commit()
+                ar_batch = ar_result.rowcount
+                if ar_batch == 0:
+                    break
+                ar_deleted += ar_batch
+                if ar_batch == _BATCH_SIZE:
+                    time.sleep(_BATCH_SLEEP_SECS)
+        except Exception as ar_e:
+            db.rollback()
+            logger.error("[retention] assertion_results cleanup error: %s", ar_e)
+
     except Exception as e:
         db.rollback()
         logger.error("[retention] cleanup error: %s", e, exc_info=True)
@@ -120,6 +147,11 @@ def run_cleanup(retention_days=None):
         "[cleanup] external_service_checks retention=%d days deleted=%d duration=%ss",
         retention_days, total_deleted, duration,
     )
+    if ar_deleted:
+        logger.info(
+            "[cleanup] assertion_results retention=%d days deleted=%d",
+            retention_days, ar_deleted,
+        )
     return total_deleted, duration
 
 
