@@ -85,6 +85,7 @@ def test_http_connection(
     skip_tls_verify: bool = False,
     service_name: str = "",
     use_shared_client: bool = True,
+    capture_body: bool = False,
 ) -> dict:
     """
     Test an HTTP/HTTPS endpoint.
@@ -148,6 +149,14 @@ def test_http_connection(
         elapsed_ms = (time.monotonic() - start) * 1000
         status_code = resp.status_code
 
+        # Capture response body when assertions require it
+        response_body = None
+        if capture_body:
+            try:
+                response_body = resp.text[:65536]
+            except Exception:
+                response_body = None
+
         # Classify HTTP status codes
         if 200 <= status_code < 300:
             status = "up"
@@ -169,6 +178,7 @@ def test_http_connection(
             "message": message,
             "response_time_ms": round(elapsed_ms, 2),
             "status_code": status_code,
+            "response_body": response_body,
             "checked_at": datetime.now(timezone.utc).isoformat(),
         }
 

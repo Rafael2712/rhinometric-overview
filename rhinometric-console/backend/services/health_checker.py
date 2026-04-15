@@ -53,6 +53,10 @@ from metrics import (
 from services.retention_cleanup import run_cleanup as _run_retention_cleanup, get_retention_days
 from services.state_repository import ensure_schema as _ensure_state_schema, load_all_states as _load_all_states, persist_state as _persist_state
 
+from models.service_assertion import ServiceAssertion
+from models.assertion_result import AssertionResult
+from services.assertion_evaluator import evaluate_assertions, needs_body_capture
+
 logger = logging.getLogger("rhinometric.health_checker")
 
 # ── Configuration ───────────────────────────────────────────────
@@ -108,11 +112,40 @@ HEALTH_WINDOW_SIZE = 60  # keep last 60 checks (~15min at 15s interval)
 _ssl_cache: Dict[str, Tuple[float, float]] = {}
 SSL_CHECK_INTERVAL = 3600  # Re-check SSL every hour
 
+# Assertion cache: service_id -> list of enabled assertions (sorted by order)
+_assertion_cache: Dict[int, list] = {}
+_assertion_cache_ts: float = 0.0
+_ASSERTION_CACHE_TTL: float = 60.0  # Refresh every 60 seconds
+
 
 # ── Stale metric label cleanup ──────────────────────────────────
 # Tracks (service_name, service_type, group_name) tuples that have been emitted.
 # On each scheduler iteration, label sets for deleted/disabled services are removed.
 _known_metric_labels: set = set()
+
+
+def _refresh_assertion_cache():
+    """Reload enabled assertions from DB, grouped by service_id."""
+    global _assertion_cache, _assertion_cache_ts
+    db = SessionLocal()
+    try:
+        rows = (
+            db.query(ServiceAssertion)
+            .filter(ServiceAssertion.enabled == True)
+            .order_by(ServiceAssertion.service_id, ServiceAssertion.order)
+            .all()
+        )
+        new_cache: Dict[int, list] = {}
+        for a in rows:
+            new_cache.setdefault(a.service_id, []).append(a)
+            db.expunge(a)
+        _assertion_cache = new_cache
+        _assertion_cache_ts = _time_mod.time()
+        logger.debug("[Assertions] Cache refreshed: %d assertions for %d services", len(rows), len(new_cache))
+    except Exception as exc:
+        logger.warning("[Assertions] Cache refresh failed: %s", exc)
+    finally:
+        db.close()
 
 
 def _cleanup_stale_metrics(active_services):
@@ -344,7 +377,7 @@ def _compute_stagger_offset(service_id: int, interval: int) -> float:
 
 # ── Core Check Logic ─────────────────────────────────────────────
 
-def _check_service(svc_id: int, svc_type: str, config: dict, timeout: int) -> dict:
+def _check_service(svc_id: int, svc_type: str, config: dict, timeout: int, capture_body: bool = False) -> dict:
     """Run a single service check (blocking - runs in thread pool)."""
     try:
         if svc_type == "http":
@@ -357,6 +390,7 @@ def _check_service(svc_id: int, svc_type: str, config: dict, timeout: int) -> di
                 auth_value=config.get("auth_value"),
                 timeout_seconds=timeout,
                 service_name=config.get("name", f"svc-{svc_id}"),
+                capture_body=capture_body,
             )
         elif svc_type == "postgresql":
             return test_postgresql_connection(
@@ -377,15 +411,46 @@ def _check_service(svc_id: int, svc_type: str, config: dict, timeout: int) -> di
 
 
 async def _check_one(svc_id: int, svc_name: str, svc_type: str, config: dict, timeout: int, group_name: str = "default"):
-    """Run a check in the thread pool, update DB, insert history, update all metrics."""
+    """Run a check in the thread pool, update DB, insert history, evaluate assertions, update metrics."""
+    # -- Determine if body capture is needed for assertions --
+    assertions = _assertion_cache.get(svc_id, [])
+    capture_body = bool(assertions) and svc_type == "http" and needs_body_capture(assertions)
+
     loop = asyncio.get_event_loop()
-    result = await loop.run_in_executor(_executor, _check_service, svc_id, svc_type, config, timeout)
+    result = await loop.run_in_executor(
+        _executor, _check_service, svc_id, svc_type, config, timeout, capture_body,
+    )
 
     now = datetime.now(timezone.utc)
     now_epoch = now.timestamp()
     check_status = result.get("status", "error")
     is_success = result.get("success", False)
     latency = result.get("response_time_ms", 0) or 0
+
+    # -- Evaluate assertions (skip when service is DOWN/error) --
+    assertion_eval_results = []
+    a_total = a_passed = a_failed = 0
+    first_fail_name = None
+    first_fail_msg = None
+
+    if assertions and check_status not in ("down", "error"):
+        response_body = result.get("response_body")
+        try:
+            assertion_eval_results = evaluate_assertions(assertions, result, response_body)
+            a_total = len(assertion_eval_results)
+            a_passed = sum(1 for r in assertion_eval_results if r["passed"])
+            a_failed = a_total - a_passed
+            for r in assertion_eval_results:
+                if not r["passed"]:
+                    first_fail_name = r["assertion_name"]
+                    first_fail_msg = r.get("error_message") or (
+                        f"expected {r['expected_value']}, got {r['actual_value']}"
+                    )
+                    break
+            if a_failed:
+                logger.info("[Assertions] %s: %d/%d failed (first: %s)", svc_name, a_failed, a_total, first_fail_name)
+        except Exception as _ae:
+            logger.warning("[Assertions] Evaluation error for %s: %s", svc_name, _ae)
 
     # ── Incident Detection (UP->DOWN transition) ──
     prev = _previous_status.get(svc_id)
@@ -439,8 +504,31 @@ async def _check_one(svc_id: int, svc_name: str, svc_type: str, config: dict, ti
                 status_code=result.get("status_code"),
                 message=result.get("message", "")[:500],
                 checked_at=now,
+                # Phase 2: assertion summary
+                assertions_total=a_total,
+                assertions_passed=a_passed,
+                assertions_failed=a_failed,
+                first_failed_assertion=(first_fail_name or "")[:255] or None,
+                first_failed_message=(first_fail_msg or "")[:500] or None,
             )
             db.add(check_record)
+
+            # Phase 2: persist FAILED assertion results
+            if a_failed and assertion_eval_results:
+                db.flush()  # materialise check_record.id
+                for _ar in assertion_eval_results:
+                    if not _ar["passed"]:
+                        db.add(AssertionResult(
+                            check_id=check_record.id,
+                            assertion_id=_ar["assertion_id"],
+                            service_id=svc_id,
+                            assertion_type=_ar["assertion_type"],
+                            assertion_name=_ar.get("assertion_name"),
+                            expected_value=_ar["expected_value"],
+                            actual_value=_ar.get("actual_value"),
+                            error_message=_ar.get("error_message"),
+                            evaluated_at=now,
+                        ))
 
             db.commit()
             logger.info(f"[HealthCheck] {svc_name} ({svc_type}) -> {check_status} ({latency:.0f}ms) [score={_compute_health_score(svc_id, svc_name, svc_type, group_name):.0f}]")
@@ -560,6 +648,13 @@ async def _scheduler_loop():
     while _running:
         cycle_start = _time_mod.monotonic()
         due_count = 0
+
+        # Refresh assertion cache if stale
+        if _time_mod.time() - _assertion_cache_ts >= _ASSERTION_CACHE_TTL:
+            try:
+                _refresh_assertion_cache()
+            except Exception as _acerr:
+                logger.warning("[HealthCheck] Assertion cache refresh error: %s", _acerr)
 
         try:
             db = SessionLocal()
