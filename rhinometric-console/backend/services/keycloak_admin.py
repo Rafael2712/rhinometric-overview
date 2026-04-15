@@ -14,7 +14,9 @@ logger = logging.getLogger("rhinometric.keycloak_admin")
 KEYCLOAK_URL = os.getenv("KEYCLOAK_URL", "http://keycloak:8080")
 KEYCLOAK_REALM = os.getenv("KEYCLOAK_REALM", "rhinometric")
 KC_ADMIN_USER = os.getenv("KC_ADMIN_USER", "admin")
-KC_ADMIN_PASSWORD = os.getenv("KC_ADMIN_PASSWORD", "Rh1n0K3ycl0ak2026!")
+KC_ADMIN_PASSWORD = os.getenv("KC_ADMIN_PASSWORD", "")
+if not KC_ADMIN_PASSWORD:
+    logger.warning("KC_ADMIN_PASSWORD env var not set - Keycloak admin operations will fail")
 
 ADMIN_API = f"{KEYCLOAK_URL}/auth/admin/realms/{KEYCLOAK_REALM}"
 MASTER_TOKEN_URL = f"{KEYCLOAK_URL}/auth/realms/master/protocol/openid-connect/token"

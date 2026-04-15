@@ -1,0 +1,7 @@
+*.env
+.env.*
+alertmanager/
+configure-loki-datasource.sh
+*.bak*
+*.yml.bak*
+ALERTMANAGER_FIX_RESUMEN.md
