@@ -90,7 +90,7 @@ def normalize_service_type(raw: str) -> tuple:
 
 # Default values matching the existing create flow
 DEFAULT_TIMEOUT = 10
-DEFAULT_INTERVAL = 15
+DEFAULT_INTERVAL = 60
 
 # ── Field alias mapping ─────────────────────────────────────────
 # All keys are lowercase (applied AFTER lowercasing raw keys).

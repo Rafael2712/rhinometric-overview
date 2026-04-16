@@ -177,6 +177,7 @@ function TypeBadge({ type, catalogType }: { type: string; catalogType?: string |
 }
 
 /* ─── Monitoring Badge ────────────────────────────────────── */
+// @ts-expect-error MonitoringBadge preserved for future use
 function MonitoringBadge({ svc }: { svc: ExternalServiceData }) {
   // Telemetry indicator dot color
   const dotColor = svc.monitoring_mode === 'synthetic_only'
@@ -1049,6 +1050,16 @@ export default function Services() {
   const [bulkPreview, setBulkPreview] = useState<any>(null)
   const [bulkResult, setBulkResult] = useState<any>(null)
 
+  // Add Services modal
+  const [showAddModal, setShowAddModal] = useState(false)
+
+  // Assertions state (for edit view)
+  const [assertions, setAssertions] = useState<any[]>([])
+  const [assertionsLoading, setAssertionsLoading] = useState(false)
+  const [assertionForm, setAssertionForm] = useState<{type: string, expected: string, jsonPath: string, name: string, severity: string}>({type: 'status_code', expected: '200', jsonPath: '', name: '', severity: 'warning'})
+  const [showAssertionForm, setShowAssertionForm] = useState(false)
+  const [editTab, setEditTab] = useState<'connection' | 'assertions' | 'classification'>('connection')
+
   const apiHeaders = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
   const canManage = isAdmin()  // Only ADMIN/OWNER can create/edit/delete/toggle
 
@@ -1084,6 +1095,56 @@ export default function Services() {
     } catch (e) { console.error('grouped fetch error', e) }
   }, [token])
 
+  // Fetch assertions for a service (used in edit view)
+  const fetchAssertions = useCallback(async (serviceId: number) => {
+    setAssertionsLoading(true)
+    try {
+      const res = await fetch(`/api/external-services/${serviceId}/assertions`, { headers: apiHeaders })
+      if (res.ok) setAssertions(await res.json())
+    } catch (e) { console.error('assertions fetch error', e) }
+    setAssertionsLoading(false)
+  }, [token])
+
+  const createAssertion = async (serviceId: number) => {
+    const body: any = {
+      assertion_type: assertionForm.type,
+      expected_value: assertionForm.expected,
+      name: assertionForm.name || undefined,
+      severity: assertionForm.severity,
+      enabled: true,
+      order: assertions.length,
+    }
+    if (assertionForm.type === 'json_path_equals') body.json_path = assertionForm.jsonPath
+    try {
+      const res = await fetch(`/api/external-services/${serviceId}/assertions`, {
+        method: 'POST', headers: apiHeaders, body: JSON.stringify(body)
+      })
+      if (!res.ok) { const d = await res.json().catch(() => ({})); alert(d.detail || 'Failed to create assertion'); return }
+      await fetchAssertions(serviceId)
+      setShowAssertionForm(false)
+      setAssertionForm({type: 'status_code', expected: '200', jsonPath: '', name: '', severity: 'warning'})
+    } catch (e: any) { alert(e.message) }
+  }
+
+  const deleteAssertion = async (serviceId: number, assertionId: string) => {
+    if (!confirm('Delete this assertion?')) return
+    try {
+      await fetch(`/api/external-services/${serviceId}/assertions/${assertionId}`, {
+        method: 'DELETE', headers: apiHeaders
+      })
+      await fetchAssertions(serviceId)
+    } catch (e: any) { alert(e.message) }
+  }
+
+  const toggleAssertion = async (serviceId: number, assertionId: string, enabled: boolean) => {
+    try {
+      await fetch(`/api/external-services/${serviceId}/assertions/${assertionId}`, {
+        method: 'PUT', headers: apiHeaders, body: JSON.stringify({ enabled: !enabled })
+      })
+      await fetchAssertions(serviceId)
+    } catch (e: any) { alert(e.message) }
+  }
+
   useEffect(() => {
     const load = async () => {
       setIsLoading(true)
@@ -1110,6 +1171,7 @@ export default function Services() {
 
   const openEdit = (svc: ExternalServiceData) => {
     setEditId(svc.id); setFormType(svc.service_type); setFormName(svc.name)
+    setEditTab('connection'); fetchAssertions(svc.id)
     setFormEnv(svc.environment || ''); setFormDesc(svc.description || '')
     setFormConfig(svc.config || {}); setFormTimeout(svc.timeout_seconds)
     setFormInterval(svc.check_interval_seconds); setTestResult(null)
@@ -1433,7 +1495,7 @@ export default function Services() {
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div>
-            <h1 className="text-2xl font-bold text-white">Bulk HTTP</h1>
+            <h1 className="text-2xl font-bold text-white">Multiple Endpoints</h1>
             <p className="text-gray-400 text-sm">Create multiple HTTP services in one operation</p>
           </div>
         </div>
@@ -1816,7 +1878,7 @@ export default function Services() {
             <ArrowLeft className="w-5 h-5" />
           </button>
           <h1 className="text-2xl font-bold text-white">
-            {view === 'edit' ? 'Edit Service' : 'Connect External Service'}
+            {view === 'edit' ? 'Edit Service' : 'Add Endpoint'}
           </h1>
         </div>
 
@@ -1830,25 +1892,40 @@ export default function Services() {
           </div>
         )}
 
-        {/* Type selector (only on create) */}
-        {view === 'create' && (
-          <div className="grid grid-cols-2 gap-4">
-            {(['http', 'postgresql'] as const).map(t => (
-              <button key={t} onClick={() => { setFormType(t); setFormConfig({}) }}
-                className={`p-4 rounded-lg border-2 transition-all ${formType === t ? 'border-blue-500 bg-blue-500/10' : 'border-gray-700 hover:border-gray-600 bg-gray-800/50'}`}>
-                <div className="flex items-center gap-3">
-                  {t === 'http' ? <Network className="w-8 h-8 text-violet-400" /> : <Database className="w-8 h-8 text-orange-400" />}
-                  <div className="text-left">
-                    <p className="text-white font-semibold">{t === 'http' ? 'HTTP / HTTPS API' : 'PostgreSQL'}</p>
-                    <p className="text-gray-400 text-sm">{t === 'http' ? 'Monitor REST APIs, websites, webhooks' : 'Monitor PostgreSQL databases'}</p>
-                  </div>
-                </div>
-              </button>
-            ))}
+        {/* Edit tabs */}
+        {view === 'edit' && (
+          <div className="flex items-center bg-gray-800/60 rounded-lg p-1 gap-1">
+            <button onClick={() => setEditTab('connection')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${editTab === 'connection' ? 'bg-gray-700 text-white shadow-sm' : 'text-gray-400 hover:text-gray-200'}`}>
+              <Network className="w-4 h-4" /> Connection
+            </button>
+            <button onClick={() => setEditTab('assertions')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${editTab === 'assertions' ? 'bg-gray-700 text-white shadow-sm' : 'text-gray-400 hover:text-gray-200'}`}>
+              <Shield className="w-4 h-4" /> Assertions
+              {assertions.length > 0 && (
+                <span className={`ml-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold ${assertions.some((a: any) => a.enabled) ? 'bg-blue-500/20 text-blue-400' : 'bg-gray-600 text-gray-400'}`}>
+                  {assertions.length}
+                </span>
+              )}
+            </button>
+            <button onClick={() => setEditTab('classification')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${editTab === 'classification' ? 'bg-gray-700 text-white shadow-sm' : 'text-gray-400 hover:text-gray-200'}`}>
+              <Tag className="w-4 h-4" /> Classification
+            </button>
           </div>
         )}
 
-        {/* Common fields */}
+        {/* Service type - HTTP default, PG available via "Add Services > Advanced" */}
+        {view === 'create' && formType === 'postgresql' && (
+          <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-orange-500/10 border border-orange-500/30">
+            <Database className="w-4 h-4 text-orange-400" />
+            <span className="text-orange-300 text-sm">PostgreSQL mode</span>
+            <button onClick={() => { setFormType('http'); setFormConfig({}) }} className="ml-auto text-xs text-gray-400 hover:text-white">Switch to HTTP</button>
+          </div>
+        )}
+
+        {/* Common fields — visible in create, in edit only on connection tab */}
+        {(view === 'create' || editTab === 'connection') && (
         <div className="bg-gray-800/50 rounded-lg border border-gray-700/50 p-6 space-y-4">
           <h2 className="text-lg font-semibold text-white mb-2">General</h2>
           <div>
@@ -1868,14 +1945,31 @@ export default function Services() {
                 min={1} max={120} className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-3 py-2 text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
             </div>
           </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">Check Interval (s)</label>
+              <input type="number" value={formInterval} onChange={e => setFormInterval(parseInt(e.target.value) || 60)}
+                min={10} max={86400} className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-3 py-2 text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
+              <p className="text-gray-600 text-xs mt-1">How often to check (default: 60s)</p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">Method</label>
+              <select value={formConfig.method || 'GET'} onChange={e => setFormConfig({...formConfig, method: e.target.value})}
+                className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-3 py-2 text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
+                <option value="GET">GET</option><option value="POST">POST</option><option value="HEAD">HEAD</option>
+              </select>
+            </div>
+          </div>
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-1">Description</label>
             <textarea value={formDesc} onChange={e => setFormDesc(e.target.value)} rows={2}
               placeholder="Optional description" className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-3 py-2 text-white placeholder-gray-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
           </div>
         </div>
+        )}
 
-        {/* Classification (catalog metadata) */}
+        {/* Classification — shown in create, in edit only on classification tab */}
+        {(view === 'create' || editTab === 'classification') && (
         <div className="bg-gray-800/50 rounded-lg border border-gray-700/50 p-6 space-y-4">
           <h2 className="text-lg font-semibold text-white mb-2">Classification</h2>
           <p className="text-gray-500 text-xs -mt-1">Optional metadata for organizing and filtering services.</p>
@@ -1939,7 +2033,144 @@ export default function Services() {
           </div>
         </div>
 
-        {/* ── Monitoring Mode ── */}
+        )}
+
+        {/* Assertions Tab (edit view only) */}
+        {view === 'edit' && editTab === 'assertions' && editId && (
+          <div className="bg-gray-800/50 rounded-lg border border-gray-700/50 p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+                <Shield className="w-5 h-5 text-blue-400" /> Assertions
+              </h2>
+              {canManage && (
+                <button onClick={() => setShowAssertionForm(!showAssertionForm)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm bg-blue-600/20 text-blue-400 hover:bg-blue-600/30 transition-colors">
+                  <Plus className="w-3.5 h-3.5" /> Add Assertion
+                </button>
+              )}
+            </div>
+            <p className="text-gray-500 text-xs">Define rules to validate response behavior. Assertions run on every successful check.</p>
+
+            {/* Assertion create form */}
+            {showAssertionForm && (
+              <div className="bg-gray-900/50 rounded-lg border border-gray-700 p-4 space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-400 mb-1">Type</label>
+                    <select value={assertionForm.type} onChange={e => {
+                        const t = e.target.value
+                        setAssertionForm({...assertionForm, type: t, expected: t === 'status_code' ? '200' : t === 'response_time' ? '5000' : '', jsonPath: '', name: ''})
+                      }}
+                      className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:border-blue-500">
+                      <option value="status_code">Status Code</option>
+                      <option value="response_time">Response Time (ms)</option>
+                      <option value="text_contains">Body Contains Text</option>
+                      <option value="json_path_equals">JSON Path Equals</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-400 mb-1">Severity</label>
+                    <select value={assertionForm.severity} onChange={e => setAssertionForm({...assertionForm, severity: e.target.value})}
+                      className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:border-blue-500">
+                      <option value="info">Info</option>
+                      <option value="warning">Warning</option>
+                      <option value="critical">Critical</option>
+                    </select>
+                  </div>
+                </div>
+                {assertionForm.type === 'json_path_equals' && (
+                  <div>
+                    <label className="block text-xs font-medium text-gray-400 mb-1">JSON Path</label>
+                    <input type="text" value={assertionForm.jsonPath}
+                      onChange={e => setAssertionForm({...assertionForm, jsonPath: e.target.value})}
+                      placeholder="$.data.status" className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:border-blue-500" />
+                  </div>
+                )}
+                <div>
+                  <label className="block text-xs font-medium text-gray-400 mb-1">
+                    {assertionForm.type === 'status_code' ? 'Expected Status Code' : assertionForm.type === 'response_time' ? 'Max Response Time (ms)' : assertionForm.type === 'text_contains' ? 'Expected Text' : 'Expected Value'}
+                  </label>
+                  <input type="text" value={assertionForm.expected}
+                    onChange={e => setAssertionForm({...assertionForm, expected: e.target.value})}
+                    placeholder={assertionForm.type === 'status_code' ? '200' : assertionForm.type === 'response_time' ? '5000' : 'expected value'}
+                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:border-blue-500" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-400 mb-1">Name (optional)</label>
+                  <input type="text" value={assertionForm.name}
+                    onChange={e => setAssertionForm({...assertionForm, name: e.target.value})}
+                    placeholder="e.g. Check status is 200"
+                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:border-blue-500" />
+                </div>
+                {/* Quick templates */}
+                <div className="flex flex-wrap gap-2 pt-1">
+                  <span className="text-xs text-gray-500">Quick:</span>
+                  <button onClick={() => setAssertionForm({type: 'status_code', expected: '200', jsonPath: '', name: 'Status is 200', severity: 'warning'})}
+                    className="px-2 py-0.5 rounded text-xs bg-green-500/10 text-green-400 hover:bg-green-500/20">status = 200</button>
+                  <button onClick={() => setAssertionForm({type: 'response_time', expected: '5000', jsonPath: '', name: 'Response under 5s', severity: 'warning'})}
+                    className="px-2 py-0.5 rounded text-xs bg-blue-500/10 text-blue-400 hover:bg-blue-500/20">&lt; 5000ms</button>
+                  <button onClick={() => setAssertionForm({type: 'status_code', expected: '201', jsonPath: '', name: 'Status is 201', severity: 'info'})}
+                    className="px-2 py-0.5 rounded text-xs bg-green-500/10 text-green-400 hover:bg-green-500/20">status = 201</button>
+                  <button onClick={() => setAssertionForm({type: 'response_time', expected: '2000', jsonPath: '', name: 'Response under 2s', severity: 'critical'})}
+                    className="px-2 py-0.5 rounded text-xs bg-red-500/10 text-red-400 hover:bg-red-500/20">&lt; 2000ms</button>
+                </div>
+                <div className="flex justify-end gap-2 pt-1">
+                  <button onClick={() => setShowAssertionForm(false)}
+                    className="px-3 py-1.5 rounded-lg text-sm text-gray-400 hover:text-white">Cancel</button>
+                  <button onClick={() => editId && createAssertion(editId)}
+                    disabled={!assertionForm.expected.trim() || (assertionForm.type === 'json_path_equals' && !assertionForm.jsonPath.trim())}
+                    className="px-4 py-1.5 rounded-lg text-sm bg-blue-600 text-white hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed font-medium">
+                    Create Assertion
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Existing assertions list */}
+            {assertionsLoading ? (
+              <div className="flex justify-center py-8"><RefreshCw className="w-5 h-5 text-blue-400 animate-spin" /></div>
+            ) : assertions.length === 0 ? (
+              <div className="text-center py-8">
+                <Shield className="w-8 h-8 text-gray-600 mx-auto mb-2" />
+                <p className="text-gray-500 text-sm">No assertions configured</p>
+                <p className="text-gray-600 text-xs mt-1">Add assertions to validate response behavior on every check</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {assertions.map((a: any) => (
+                  <div key={a.id} className={`flex items-center gap-3 p-3 rounded-lg border ${a.enabled ? 'border-gray-700 bg-gray-900/30' : 'border-gray-800 bg-gray-900/10 opacity-60'}`}>
+                    <button onClick={() => canManage && editId && toggleAssertion(editId, a.id, a.enabled)}
+                      className={`w-8 h-5 rounded-full transition-colors flex items-center ${a.enabled ? 'bg-blue-600 justify-end' : 'bg-gray-700 justify-start'}`}>
+                      <span className="w-3.5 h-3.5 rounded-full bg-white mx-0.5 shadow-sm" />
+                    </button>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-mono px-1.5 py-0.5 rounded bg-gray-700 text-gray-300">{a.assertion_type}</span>
+                        <span className={`text-xs px-1.5 py-0.5 rounded ${a.severity === 'critical' ? 'bg-red-500/10 text-red-400' : a.severity === 'warning' ? 'bg-yellow-500/10 text-yellow-400' : 'bg-blue-500/10 text-blue-400'}`}>{a.severity}</span>
+                        {a.name && <span className="text-sm text-gray-300 truncate">{a.name}</span>}
+                      </div>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        {a.assertion_type === 'status_code' && <>expects <span className="text-gray-300">{a.expected_value}</span></>}
+                        {a.assertion_type === 'response_time' && <>under <span className="text-gray-300">{a.expected_value}ms</span></>}
+                        {a.assertion_type === 'text_contains' && <>contains "<span className="text-gray-300">{a.expected_value}</span>"</>}
+                        {a.assertion_type === 'json_path_equals' && <><span className="font-mono text-gray-400">{a.json_path}</span> = <span className="text-gray-300">{a.expected_value}</span></>}
+                      </p>
+                    </div>
+                    {canManage && (
+                      <button onClick={() => editId && deleteAssertion(editId, a.id)}
+                        className="p-1.5 rounded hover:bg-gray-700/50 text-gray-500 hover:text-red-400 transition-colors">
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Monitoring Mode (hidden in create, shown in edit only) */}
+        {view === 'edit' && (<>
         <div className="bg-gray-800/50 rounded-lg border border-gray-700/50 p-6 space-y-4">
           <h2 className="text-lg font-semibold text-white mb-2 flex items-center gap-2">
             <Radio className="w-5 h-5 text-blue-400" /> Monitoring Mode
@@ -2059,13 +2290,18 @@ export default function Services() {
           </div>
         )}
 
+        </>)}
+
         {/* Type-specific fields */}
+        {(view === 'create' || editTab === 'connection') && (
         <div className="bg-gray-800/50 rounded-lg border border-gray-700/50 p-6">
           <h2 className="text-lg font-semibold text-white mb-4">
             {formType === 'http' ? 'HTTP Connection' : 'PostgreSQL Connection'}
           </h2>
           {formType === 'http' ? <HttpForm config={formConfig} onChange={setFormConfig} /> : <PgForm config={formConfig} onChange={setFormConfig} />}
         </div>
+
+        )}
 
         {/* Test Connection Result */}
         {testResult && (() => {
@@ -2122,7 +2358,7 @@ export default function Services() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-white">Services</h1>
-          <p className="text-gray-400 mt-1">Manage and monitor your connected services</p>
+          <p className="text-gray-400 mt-1">Monitor your HTTP endpoints and API services</p>
         </div>
           <div className="flex items-center gap-3">
             {/* View mode toggle (Task 22) */}
@@ -2136,17 +2372,9 @@ export default function Services() {
                 <Layers className="w-3.5 h-3.5" /> Flat List
               </button>
             </div>
-            <button onClick={openImportModal}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-gray-600 text-gray-300 hover:text-white hover:border-gray-500 font-medium transition-colors">
-              <Upload className="w-4 h-4" /> Import CSV/JSON
-            </button>
-            <button onClick={openBulkHttp}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-emerald-600/50 text-emerald-400 hover:text-emerald-300 hover:border-emerald-500/60 font-medium transition-colors">
-              <Layers className="w-4 h-4" /> Bulk HTTP
-            </button>
-            <button onClick={openCreate}
+            <button onClick={() => setShowAddModal(true)}
               className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-blue-600 text-white hover:bg-blue-500 font-medium transition-colors shadow-lg shadow-blue-600/20">
-              <Plus className="w-4 h-4" /> Connect Service
+              <Plus className="w-4 h-4" /> Add Services
             </button>
           </div>
       </div>
@@ -2358,7 +2586,7 @@ export default function Services() {
                       <th className="text-left p-4 text-gray-400 font-medium">Type</th>
                       <th className="text-left p-4 text-gray-400 font-medium">Category</th>
                       <th className="text-left p-4 text-gray-400 font-medium">Target</th>
-                      <th className="text-left p-4 text-gray-400 font-medium">Monitoring</th>
+                      <th className="text-left p-4 text-gray-400 font-medium">Assertions</th>
                       <th className="text-left p-4 text-gray-400 font-medium">Status</th>
                       <th className="text-left p-4 text-gray-400 font-medium">Latency</th>
                       <th className="text-left p-4 text-gray-400 font-medium">Last Check</th>
@@ -2404,7 +2632,16 @@ export default function Services() {
                             {targetDisplay(svc)}
                           </code>
                         </td>
-                        <td className="p-4"><MonitoringBadge svc={svc} /></td>
+                        <td className="p-4">
+                          {(svc as any).assertions_total > 0 ? (
+                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ${(svc as any).assertions_failed > 0 ? 'bg-red-400/10 text-red-400' : 'bg-green-400/10 text-green-400'}`}>
+                              {(svc as any).assertions_failed > 0 ? <AlertCircle className="w-3 h-3" /> : <CheckCircle className="w-3 h-3" />}
+                              {(svc as any).assertions_passed}/{(svc as any).assertions_total}
+                            </span>
+                          ) : (
+                            <span className="text-gray-600 text-xs">&mdash;</span>
+                          )}
+                        </td>
                         <td className="p-4"><StatusBadge status={svc.enabled ? svc.status : 'unknown'} /></td>
                         <td className="p-4 text-gray-300 text-sm">
                           {svc.last_response_time_ms != null ? `${svc.last_response_time_ms.toFixed(0)}ms` : '-'}
@@ -2451,6 +2688,71 @@ export default function Services() {
 
       {/* ── PLATFORM SERVICES TAB (HIDDEN) ───────────────────────────────── */}
 
+            {/* Add Services Modal */}
+      {showAddModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="bg-gray-800 rounded-xl border border-gray-700 shadow-2xl w-full max-w-lg">
+            <div className="flex items-center justify-between p-6 border-b border-gray-700">
+              <div>
+                <h2 className="text-lg font-semibold text-white">Add Services</h2>
+                <p className="text-gray-400 text-sm mt-0.5">Choose how you want to add endpoints</p>
+              </div>
+              <button onClick={() => setShowAddModal(false)} className="p-2 rounded-lg hover:bg-gray-700 text-gray-400 hover:text-white transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-6 space-y-3">
+              <button onClick={() => { setShowAddModal(false); openCreate() }}
+                className="w-full flex items-center gap-4 p-4 rounded-lg border border-gray-700 hover:border-blue-500/50 hover:bg-blue-500/5 transition-all text-left group">
+                <div className="p-3 rounded-lg bg-blue-500/10 group-hover:bg-blue-500/20 transition-colors">
+                  <Network className="w-6 h-6 text-blue-400" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-white font-semibold">Single endpoint</p>
+                  <p className="text-gray-400 text-sm">Monitor one HTTP/API endpoint with full configuration</p>
+                </div>
+                <ChevronRight className="w-5 h-5 text-gray-600 group-hover:text-blue-400 transition-colors" />
+              </button>
+              <button onClick={() => { setShowAddModal(false); openBulkHttp() }}
+                className="w-full flex items-center gap-4 p-4 rounded-lg border border-gray-700 hover:border-emerald-500/50 hover:bg-emerald-500/5 transition-all text-left group">
+                <div className="p-3 rounded-lg bg-emerald-500/10 group-hover:bg-emerald-500/20 transition-colors">
+                  <Layers className="w-6 h-6 text-emerald-400" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-white font-semibold">Multiple endpoints</p>
+                  <p className="text-gray-400 text-sm">Quickly add many endpoints with shared settings</p>
+                </div>
+                <ChevronRight className="w-5 h-5 text-gray-600 group-hover:text-emerald-400 transition-colors" />
+              </button>
+              <button onClick={() => { setShowAddModal(false); openImportModal() }}
+                className="w-full flex items-center gap-4 p-4 rounded-lg border border-gray-700 hover:border-violet-500/50 hover:bg-violet-500/5 transition-all text-left group">
+                <div className="p-3 rounded-lg bg-violet-500/10 group-hover:bg-violet-500/20 transition-colors">
+                  <Upload className="w-6 h-6 text-violet-400" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-white font-semibold">Import file</p>
+                  <p className="text-gray-400 text-sm">Upload a CSV or JSON file with service definitions</p>
+                </div>
+                <ChevronRight className="w-5 h-5 text-gray-600 group-hover:text-violet-400 transition-colors" />
+              </button>
+              <details className="pt-2">
+                <summary className="text-xs text-gray-500 cursor-pointer hover:text-gray-400">Advanced options</summary>
+                <button onClick={() => { setShowAddModal(false); setFormType('postgresql'); setFormConfig({}); setView('create') }}
+                  className="w-full mt-2 flex items-center gap-4 p-3 rounded-lg border border-gray-700/50 hover:border-orange-500/30 hover:bg-orange-500/5 transition-all text-left group">
+                  <div className="p-2 rounded-lg bg-orange-500/10">
+                    <Database className="w-5 h-5 text-orange-400" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-white font-medium text-sm">PostgreSQL database</p>
+                    <p className="text-gray-500 text-xs">Monitor database connectivity</p>
+                  </div>
+                </button>
+              </details>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── BULK IMPORT MODAL ────────────────────────────────── */}
       {showImportModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
@@ -2460,8 +2762,8 @@ export default function Services() {
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-blue-400/10 rounded-lg"><Upload className="w-5 h-5 text-blue-400" /></div>
                 <div>
-                  <h2 className="text-lg font-semibold text-white">Import Services</h2>
-                  <p className="text-gray-400 text-sm">Bulk import from CSV or JSON</p>
+                  <h2 className="text-lg font-semibold text-white">Import File</h2>
+                  <p className="text-gray-400 text-sm">Upload a CSV or JSON file with service definitions</p>
                 </div>
               </div>
               <button onClick={closeImportModal} className="p-2 rounded-lg hover:bg-gray-700 text-gray-400 hover:text-white transition-colors">

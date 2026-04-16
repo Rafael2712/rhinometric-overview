@@ -113,6 +113,9 @@ def process_bulk_http(
     # Auth
     auth_type = (common.get("auth_type") or "").strip() or None
     auth_value = (common.get("auth_value") or "").strip() or None
+
+    # Group name
+    group_name = (common.get("group_name") or "Default").strip()
     
     # Health path common
     health_path_common = (common.get("health_path") or "").strip() or None
@@ -234,6 +237,7 @@ def process_bulk_http(
             "catalog_type": catalog_type,
             "category": category,
             "tags": merged_tags,
+            "group_name": group_name,
         }
         valid_services.append(svc_data)
         
