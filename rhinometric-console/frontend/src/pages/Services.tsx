@@ -2506,9 +2506,9 @@ export default function Services() {
                         </td>
                         <td className="p-4">
                           {(svc as any).assertions_total > 0 ? (
-                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ${(svc as any).assertions_failed > 0 ? 'bg-red-400/10 text-red-400' : 'bg-green-400/10 text-green-400'}`}>
-                              {(svc as any).assertions_failed > 0 ? <AlertCircle className="w-3 h-3" /> : <CheckCircle className="w-3 h-3" />}
-                              {(svc as any).assertions_passed}/{(svc as any).assertions_total}
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-400/10 text-blue-400">
+                              <Shield className="w-3 h-3" />
+                              {(svc as any).assertions_total} {(svc as any).assertions_total === 1 ? 'rule' : 'rules'}
                             </span>
                           ) : (
                             <span className="text-gray-600 text-xs">&mdash;</span>

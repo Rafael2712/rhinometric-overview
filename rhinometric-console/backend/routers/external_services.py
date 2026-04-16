@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any
 from datetime import datetime, timezone, timedelta, timedelta
 from sqlalchemy.orm import Session
+from sqlalchemy import func as sa_func
 
 from database import get_db
 from routers.auth import get_current_user, require_role
@@ -15,6 +16,7 @@ from models.external_service import ExternalService, ServiceType, ServiceStatus,
 from routers.telemetry_ingest import generate_telemetry_token
 from services.capability_helper import derive_capability_from_dict
 from models.external_service_check import ExternalServiceCheck
+from models.service_assertion import ServiceAssertion
 from models.external_service_check import ExternalServiceCheck
 from services.connector_service import test_http_connection, test_postgresql_connection
 from services.config_validation import validate_service_config
@@ -191,10 +193,32 @@ def list_external_services(
         .order_by(ExternalService.created_at.desc())
         .all()
     )
+
+    # Query assertion counts per service in a single query
+    assertion_counts = dict(
+        db.query(
+            ServiceAssertion.service_id,
+            sa_func.count(ServiceAssertion.id),
+        )
+        .group_by(ServiceAssertion.service_id)
+        .all()
+    )
+    assertion_enabled = dict(
+        db.query(
+            ServiceAssertion.service_id,
+            sa_func.count(ServiceAssertion.id),
+        )
+        .filter(ServiceAssertion.enabled == True)
+        .group_by(ServiceAssertion.service_id)
+        .all()
+    )
+
     result = []
     for s in services:
         d = s.to_dict()
         d["capability"] = derive_capability_from_dict(d)
+        d["assertions_total"] = assertion_counts.get(s.id, 0)
+        d["assertions_enabled"] = assertion_enabled.get(s.id, 0)
         result.append(d)
     return result
 
@@ -390,6 +414,16 @@ def get_external_service(
         raise HTTPException(status_code=404, detail="External service not found")
     d = svc.to_dict()
     d["capability"] = derive_capability_from_dict(d)
+    d["assertions_total"] = (
+        db.query(sa_func.count(ServiceAssertion.id))
+        .filter(ServiceAssertion.service_id == service_id)
+        .scalar() or 0
+    )
+    d["assertions_enabled"] = (
+        db.query(sa_func.count(ServiceAssertion.id))
+        .filter(ServiceAssertion.service_id == service_id, ServiceAssertion.enabled == True)
+        .scalar() or 0
+    )
     return d
 
 
