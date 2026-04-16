@@ -1120,18 +1120,20 @@ export default function Services() {
   const deleteAssertion = async (serviceId: number, assertionId: string) => {
     if (!confirm('Delete this assertion?')) return
     try {
-      await fetch(`/api/external-services/${serviceId}/assertions/${assertionId}`, {
+      const res = await fetch(`/api/external-services/${serviceId}/assertions/${assertionId}`, {
         method: 'DELETE', headers: apiHeaders
       })
+      if (!res.ok && res.status !== 204) { alert('Failed to delete assertion'); }
       await fetchAssertions(serviceId)
     } catch (e: any) { alert(e.message) }
   }
 
   const toggleAssertion = async (serviceId: number, assertionId: string, enabled: boolean) => {
     try {
-      await fetch(`/api/external-services/${serviceId}/assertions/${assertionId}`, {
+      const res = await fetch(`/api/external-services/${serviceId}/assertions/${assertionId}`, {
         method: 'PUT', headers: apiHeaders, body: JSON.stringify({ enabled: !enabled })
       })
+      if (!res.ok) { alert('Failed to toggle assertion'); }
       await fetchAssertions(serviceId)
     } catch (e: any) { alert(e.message) }
   }
@@ -1205,7 +1207,7 @@ export default function Services() {
     const body: Record<string, any> = {
       name: formName, service_type: formType, environment: formEnv || null,
       description: formDesc || null, config: formConfig,
-      timeout_seconds: formTimeout, check_interval_seconds: formInterval, enabled: true,
+      timeout_seconds: formTimeout, check_interval_seconds: formInterval,
       catalog_type: formCatalogType || null, category: formCategory || null,
       group_name: formGroupName || 'Default',
       tags: formTags.length > 0 ? formTags : null,
@@ -1237,21 +1239,30 @@ export default function Services() {
   const handleDelete = async (id: number) => {
     if (!confirm('Delete this service?')) return
     setActionLoading(id)
-    await fetch(`/api/external-services/${id}`, { method: 'DELETE', headers: apiHeaders })
+    try {
+      const res = await fetch(`/api/external-services/${id}`, { method: 'DELETE', headers: apiHeaders })
+      if (!res.ok && res.status !== 204) { alert('Failed to delete service'); }
+    } catch (e: any) { alert(e.message) }
     await fetchExternal()
     setActionLoading(null)
   }
 
   const handleToggle = async (id: number) => {
     setActionLoading(id)
-    await fetch(`/api/external-services/${id}/toggle`, { method: 'POST', headers: apiHeaders })
+    try {
+      const res = await fetch(`/api/external-services/${id}/toggle`, { method: 'POST', headers: apiHeaders })
+      if (!res.ok) { alert('Failed to toggle service'); }
+    } catch (e: any) { alert(e.message) }
     await fetchExternal()
     setActionLoading(null)
   }
 
   const handleTestSaved = async (id: number) => {
     setActionLoading(id)
-    await fetch(`/api/external-services/${id}/test`, { method: 'POST', headers: apiHeaders })
+    try {
+      const res = await fetch(`/api/external-services/${id}/test`, { method: 'POST', headers: apiHeaders })
+      if (!res.ok) { alert('Connection test failed'); }
+    } catch (e: any) { alert(e.message) }
     await fetchExternal()
     setActionLoading(null)
   }

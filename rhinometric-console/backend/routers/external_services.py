@@ -75,6 +75,7 @@ class ExternalServiceCreate(BaseModel):
 
 class ExternalServiceUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=255)
+    service_type: Optional[str] = None  # accepted for config validation; not applied directly
     environment: Optional[str] = None
     description: Optional[str] = None
     enabled: Optional[bool] = None
@@ -140,6 +141,8 @@ class ExternalServiceResponse(BaseModel):
     created_by: Optional[int]
     created_at: Optional[str]
     updated_at: Optional[str]
+    assertions_total: int = 0
+    assertions_enabled: int = 0
 
 
 # ── Helpers ─────────────────────────────────────────────────────
@@ -587,6 +590,8 @@ def update_external_service(
         update_data["monitoring_mode"] = MonitoringMode(update_data["monitoring_mode"])
 
     for field, value in update_data.items():
+        if field == "service_type":
+            continue  # used for config validation only, not applied directly
         if field == "config" and value is not None:
             # Merge config: keep existing password if not provided
             existing = dict(svc.config) if svc.config else {}
@@ -604,6 +609,16 @@ def update_external_service(
     logger.info(f"Updated external service: {svc.name} (id={svc.id})")
     d = svc.to_dict()
     d["capability"] = derive_capability_from_dict(d)
+    d["assertions_total"] = (
+        db.query(sa_func.count(ServiceAssertion.id))
+        .filter(ServiceAssertion.service_id == service_id)
+        .scalar() or 0
+    )
+    d["assertions_enabled"] = (
+        db.query(sa_func.count(ServiceAssertion.id))
+        .filter(ServiceAssertion.service_id == service_id, ServiceAssertion.enabled == True)
+        .scalar() or 0
+    )
     return d
 
 
