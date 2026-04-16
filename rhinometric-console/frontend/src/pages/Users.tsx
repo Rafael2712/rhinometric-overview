@@ -138,7 +138,7 @@ export function UsersPage() {
         addToast('success', `User "${editTarget.username}" updated (synced to Keycloak)`)
       } else {
         const e = await r.json()
-        addToast('error', typeof e.detail === 'string' ? e.detail : 'Update failed')
+        addToast('error', typeof e.detail === 'string' ? e.detail : Array.isArray(e.detail) ? e.detail.map((d: any) => d.msg || d).join(', ') : 'Update failed')
       }
     } catch { addToast('error', 'Update failed') }
     finally { setActionLoading(false) }
@@ -174,7 +174,7 @@ export function UsersPage() {
         addToast('success', 'Password reset in Keycloak. User must change on next login.')
         setShowResetPwModal(false); setPwUserId(null); setNewPassword('')
       } else {
-        const e = await r.json(); addToast('error', e.detail || 'Reset failed')
+        const e = await r.json().catch(() => ({ detail: 'Reset failed' })); const msg = Array.isArray(e.detail) ? e.detail.map((d: any) => d.msg || d).join(', ') : (e.detail || 'Reset failed'); addToast('error', msg)
       }
     } catch { addToast('error', 'Reset failed') }
     finally { setActionLoading(false) }
@@ -192,7 +192,7 @@ export function UsersPage() {
         addToast('success', 'Password reset email sent via Keycloak')
         setShowResetPwModal(false); setPwUserId(null); setNewPassword('')
       } else {
-        const e = await r.json(); addToast('error', e.detail || 'Failed to send reset email')
+        const e = await r.json().catch(() => ({ detail: 'Failed to send reset email' })); const emailMsg = Array.isArray(e.detail) ? e.detail.map((d: any) => d.msg || d).join(', ') : (e.detail || 'Failed to send reset email'); addToast('error', emailMsg)
       }
     } catch { addToast('error', 'Failed to send reset email') }
     finally { setActionLoading(false) }
@@ -200,13 +200,20 @@ export function UsersPage() {
 
   const toggleActive = async (uid: number, active: boolean) => {
     try {
-      await fetch(`/api/users/${uid}`, {
+      const r = await fetch(`/api/users/${uid}`, {
         method: 'PUT',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ is_active: !active }),
       })
-      fetchUsers()
-    } catch { /* */ }
+      if (r.ok) {
+        fetchUsers()
+        addToast('success', active ? 'User deactivated' : 'User activated')
+      } else {
+        const e = await r.json().catch(() => ({ detail: 'Unknown error' }))
+        const msg = Array.isArray(e.detail) ? e.detail.map((d: any) => d.msg || d).join(', ') : (e.detail || 'Action failed')
+        addToast('error', msg)
+      }
+    } catch { addToast('error', 'Failed to update user status') }
   }
 
   const openEdit = (u: User) => {

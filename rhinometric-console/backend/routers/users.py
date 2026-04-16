@@ -763,21 +763,82 @@ async def send_reset_email(
     db: Session = Depends(get_db),
     request: Request = None,
 ):
-    """Trigger Keycloak to send a password reset email to the user."""
+    """
+    Send password reset email to user.
+    Generates a temporary password, sets it in Keycloak, and emails it
+    via the backend's Zoho API (SMTP ports are blocked on this server).
+    """
     user = db.query(UserModel).filter(UserModel.id == user_id).first()
     if not user:
         raise HTTPException(404, "User not found")
     if not user.sso_external_id:
         raise HTTPException(400, "User has no Keycloak account.")
 
-    try:
-        from services.keycloak_admin import send_kc_reset_password_email
-        send_kc_reset_password_email(user.sso_external_id)
-    except Exception as exc:
-        logger.error("[KC] Send reset email failed for %s: %s", user.username, exc)
-        raise HTTPException(502, f"Failed to send reset email via Keycloak: {exc}. SMTP may not be configured in Keycloak.")
+    # Generate a secure random temporary password
+    import secrets
+    import string
+    alphabet = string.ascii_letters + string.digits + "!@#$%"
+    while True:
+        temp_password = ''.join(secrets.choice(alphabet) for _ in range(14))
+        # Ensure it meets validation rules: upper + lower + digit
+        if (any(c.isupper() for c in temp_password)
+                and any(c.islower() for c in temp_password)
+                and any(c.isdigit() for c in temp_password)):
+            break
 
-    # Audit
+    # Step 1: Set temporary password in Keycloak (must change on next login)
+    try:
+        from services.keycloak_admin import set_kc_user_password
+        set_kc_user_password(user.sso_external_id, temp_password, temporary=True)
+    except Exception as exc:
+        logger.error("[KC] Password set failed for %s: %s", user.username, exc)
+        raise HTTPException(502, f"Failed to set password in Keycloak: {exc}")
+
+    # Step 2: Send email with temp password via backend email service (Zoho API)
+    email_sent = False
+    try:
+        from services.email_service import _load_zoho_api_config, _send_via_zoho_api, _get_public_base_url
+        zoho_cfg = _load_zoho_api_config()
+        if zoho_cfg:
+            from_email = zoho_cfg.get("from_email", "noreply@rhinometric.com")
+            login_url = _get_public_base_url()
+            subject = "Password Reset - Rhinometric Platform"
+            html = f"""<!DOCTYPE html><html><head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#f3f4f6;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">
+<table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:40px 20px">
+<table width="600" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:12px;box-shadow:0 4px 24px rgba(0,0,0,0.06)">
+<tr><td style="padding:32px 40px;background:linear-gradient(135deg,#667eea,#764ba2);border-radius:12px 12px 0 0">
+<h1 style="color:#fff;font-size:22px;margin:0">Rhinometric Platform</h1></td></tr>
+<tr><td style="padding:40px">
+<h2 style="color:#1f2937;font-size:24px">Password Reset</h2>
+<p style="color:#4b5563">Hello <strong>{user.full_name or user.username}</strong>,</p>
+<p style="color:#4b5563">Your password has been reset by an administrator. Use the temporary password below to log in:</p>
+<div style="padding:20px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;margin:20px 0">
+<table style="width:100%">
+<tr><td style="padding:6px 0;color:#6b7280;width:100px">Username:</td><td style="font-weight:600;color:#1f2937">{user.username}</td></tr>
+<tr><td style="padding:6px 0;color:#6b7280">Password:</td><td style="font-weight:600;color:#1f2937;font-family:monospace">{temp_password}</td></tr>
+</table></div>
+<p style="text-align:center;margin:32px 0"><a href="{login_url}" style="display:inline-block;padding:16px 32px;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;text-decoration:none;border-radius:6px;font-weight:600">Login to Rhinometric</a></p>
+<div style="margin-top:24px;padding:12px;background:#fef3c7;border-radius:4px;border-left:4px solid #f59e0b">
+<p style="margin:0;color:#92400e;font-size:14px"><strong>Security:</strong> You must change this password on first login. Do not share credentials.</p></div>
+</td></tr>
+<tr><td style="padding:20px 40px;background:#f9fafb;border-radius:0 0 12px 12px;text-align:center">
+<p style="color:#9ca3af;font-size:12px;margin:0">&copy; {__import__("datetime").datetime.utcnow().year} Rhinometric</p>
+</td></tr></table></td></tr></table></body></html>"""
+            await _send_via_zoho_api(user.email, subject, html, from_email, zoho_cfg)
+            email_sent = True
+            logger.info("[USER] Reset email sent to %s via Zoho API", user.email)
+        else:
+            logger.warning("[USER] Zoho API not configured, cannot send reset email")
+    except Exception as exc:
+        logger.error("[USER] Failed to send reset email to %s: %s", user.email, exc)
+
+    # Step 3: Update local DB
+    user.must_change_password = True
+    user.updated_at = datetime.utcnow()
+    db.commit()
+
+    # Audit (best-effort)
     try:
         from services.audit_logger import log_audit_event, AuditEvent
         await log_audit_event(
@@ -785,12 +846,16 @@ async def send_reset_email(
             user_id=current_user.id, username=current_user.username,
             target_user_id=user.id, target_username=user.username,
             ip_address=request.client.host if request and request.client else None,
-            status="success", message=f"Password reset email sent to {user.email}",
+            status="success", message=f"Password reset email sent to {user.email} (email_sent={email_sent})",
         )
     except Exception:
         pass
 
-    return {"message": f"Password reset email sent to {user.email}", "user_id": user.id}
+    if email_sent:
+        return {"message": f"Password reset email sent to {user.email}", "user_id": user.id}
+    else:
+        # Password was still set in KC, just email delivery failed
+        return {"message": f"Temporary password set in Keycloak for {user.username}, but email delivery failed. Share the new password manually.", "user_id": user.id}
 
 
 # ======================================================================
