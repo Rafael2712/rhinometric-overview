@@ -1016,6 +1016,60 @@ def _fire_rule_alert(db: Session, rule: AlertRule, current_value: float,
 
     logger.info(f"Policy alert fired: {rule.name} ({rule.rule_type}) -> {entity_name}")
 
+    # ── Forward new policy alert to Alertmanager for Slack/email notifications ──
+    try:
+        import httpx
+        from config import settings as _cfg
+        am_payload = [{
+            "labels": {
+                "alertname": alert_name,
+                "service_name": entity_name,
+                "severity": effective_severity,
+                "rule_type": rule.rule_type or "",
+                "source": "alert_policy",
+                "category": "external-services",
+                "metric": rule.rule_type or rule.metric or "",
+            },
+            "annotations": {
+                "summary": summary,
+                "description": detail or summary,
+            },
+            "startsAt": now.isoformat(),
+            "generatorURL": "",
+        }]
+        with httpx.Client(timeout=5.0) as _fwd:
+            _fwd.post(f"{_cfg.ALERTMANAGER_URL}/api/v2/alerts", json=am_payload)
+        logger.info("Forwarded policy alert to Alertmanager for notification: %s", alert_name)
+    except Exception as _fwd_err:
+        logger.warning("Alertmanager forward failed (non-fatal): %s", _fwd_err)
+
+    # ── Forward new policy alert to Alertmanager for Slack/email notifications ──
+    try:
+        import httpx
+        from config import settings as _cfg
+        am_payload = [{
+            "labels": {
+                "alertname": alert_name,
+                "service_name": entity_name,
+                "severity": effective_severity,
+                "rule_type": rule.rule_type or "",
+                "source": "alert_policy",
+                "category": "external-services",
+                "metric": rule.rule_type or rule.metric or "",
+            },
+            "annotations": {
+                "summary": summary,
+                "description": detail or summary,
+            },
+            "startsAt": now.isoformat(),
+            "generatorURL": "",
+        }]
+        with httpx.Client(timeout=5.0) as _fwd:
+            _fwd.post(f"{_cfg.ALERTMANAGER_URL}/api/v2/alerts", json=am_payload)
+        logger.info("Forwarded policy alert to Alertmanager for notification: %s", alert_name)
+    except Exception as _fwd_err:
+        logger.warning("Alertmanager forward failed (non-fatal): %s", _fwd_err)
+
 def _get_service_name(db: Session, service_id: int) -> str:
     if not service_id:
         return "all-services"

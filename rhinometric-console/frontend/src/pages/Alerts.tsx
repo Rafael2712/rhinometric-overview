@@ -250,7 +250,7 @@ export function AlertsPage() {
         queryClient.invalidateQueries({ queryKey: ['alerts'] })
         setTimeout(() => {
           setSelectedAlert(null)
-          if (incidentId) navigate(`/incidents?highlight=${incidentId}`)
+          if (incidentId) navigate(`/incidents?expand=${incidentId}`)
         }, 800)
       } else {
         setActionMessage({ type: 'error', text: data.detail || 'Failed to create incident' })
@@ -277,6 +277,7 @@ export function AlertsPage() {
       }
     } catch (e) {
       console.error('Failed to expire silence:', e)
+      setActionMessage({ type: 'error', text: 'Failed to expire silence. Please try again.' })
     } finally {
       setExpiringSilenceId(null)
     }
@@ -323,7 +324,10 @@ export function AlertsPage() {
   const getSeverityColor = (severity: string) => {
     switch (severity.toLowerCase()) {
       case 'critical': return 'bg-error/20 text-error'
+      case 'high': return 'bg-orange-500/20 text-orange-400'
       case 'warning': return 'bg-warning/20 text-warning'
+      case 'medium': return 'bg-amber-500/20 text-amber-400'
+      case 'low': return 'bg-blue-500/20 text-blue-400'
       case 'info': return 'bg-blue-500/20 text-blue-400'
       default: return 'bg-gray-500/20 text-gray-400'
     }
@@ -383,8 +387,10 @@ export function AlertsPage() {
               <option value="all">All Severities</option>
               <option value="critical">Critical</option>
               <option value="high">High</option>
+              <option value="warning">Warning</option>
               <option value="medium">Medium</option>
               <option value="low">Low</option>
+              <option value="info">Info</option>
             </select>
           </div>
 
@@ -801,7 +807,7 @@ export function AlertsPage() {
                         </div>
                       </div>
                       <button
-                        onClick={() => { setSelectedAlert(null); navigate(`/incidents?highlight=${selectedAlert.incident_id}`) }}
+                        onClick={() => { setSelectedAlert(null); navigate(`/incidents?expand=${selectedAlert.incident_id}`) }}
                         className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 border border-blue-500/20 transition-colors flex-shrink-0"
                       >
                         <ExternalLink size={14} />
