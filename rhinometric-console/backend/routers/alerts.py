@@ -852,6 +852,20 @@ async def lifecycle_resolve(
             _cir(db, ev.incident_id)
         except Exception:
             pass
+
+    # Send recovery email + endsAt to Alertmanager
+    try:
+        from services.alert_email_service import send_recovery_notification, resolve_alertmanager_alert
+        ev.recovery_notification_sent_at = now
+        send_recovery_notification(ev)
+        resolve_alertmanager_alert(
+            ev.alert_name, ev.entity_name, ev.severity,
+            labels=ev.labels if isinstance(ev.labels, dict) else None,
+        )
+    except Exception as _recov_err:
+        import logging as _lg
+        _lg.getLogger(__name__).warning("Recovery notification failed: %s", _recov_err)
+
     db.commit()
     return _alert_event_response(ev)
 
@@ -879,6 +893,18 @@ async def lifecycle_dismiss(
         ann = dict(ev.annotations) if ev.annotations else {}
         ann["dismiss_note"] = body.note
         ev.annotations = ann
+
+    # Send endsAt to Alertmanager (no recovery email for dismissed alerts)
+    try:
+        from services.alert_email_service import resolve_alertmanager_alert
+        resolve_alertmanager_alert(
+            ev.alert_name, ev.entity_name, ev.severity,
+            labels=ev.labels if isinstance(ev.labels, dict) else None,
+        )
+    except Exception as _dismiss_err:
+        import logging as _lg
+        _lg.getLogger(__name__).warning("AM endsAt on dismiss failed: %s", _dismiss_err)
+
     db.commit()
     return _alert_event_response(ev)
 

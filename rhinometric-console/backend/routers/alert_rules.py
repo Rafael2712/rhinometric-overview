@@ -1,4 +1,4 @@
-﻿"""
+"""
 Synthetic Monitoring Alert Policies ÔÇö CRUD and evaluation.
 
 Product-oriented alert configuration for synthetic monitoring.
@@ -367,6 +367,18 @@ def _resolve_recovered_services(db: Session):
                 except Exception as e:
                     logger.error(f"Resolution check error: {e}")
             on_recovery(event.entity_name)
+
+            # Send recovery email and endsAt to Alertmanager
+            try:
+                from services.alert_email_service import send_recovery_notification, resolve_alertmanager_alert
+                event.recovery_notification_sent_at = now
+                send_recovery_notification(event)
+                resolve_alertmanager_alert(
+                    event.alert_name, event.entity_name, event.severity,
+                    labels=event.labels if isinstance(event.labels, dict) else None,
+                )
+            except Exception as _recov_err:
+                logger.warning("Recovery notification failed (non-fatal): %s", _recov_err)
 
         if firing_events:
             logger.info(f"Auto-resolved {len(firing_events)} alert(s) for recovered services")
@@ -1043,33 +1055,15 @@ def _fire_rule_alert(db: Session, rule: AlertRule, current_value: float,
     except Exception as _fwd_err:
         logger.warning("Alertmanager forward failed (non-fatal): %s", _fwd_err)
 
-    # ── Forward new policy alert to Alertmanager for Slack/email notifications ──
+    # ── Send direct email notification via Zoho API (bypasses Alertmanager SMTP) ──
     try:
-        import httpx
-        from config import settings as _cfg
-        am_payload = [{
-            "labels": {
-                "alertname": alert_name,
-                "service_name": entity_name,
-                "severity": effective_severity,
-                "rule_type": rule.rule_type or "",
-                "source": "alert_policy",
-                "category": "external-services",
-                "metric": rule.rule_type or rule.metric or "",
-            },
-            "annotations": {
-                "summary": summary,
-                "description": detail or summary,
-            },
-            "startsAt": now.isoformat(),
-            "generatorURL": "",
-        }]
-        with httpx.Client(timeout=5.0) as _fwd:
-            _fwd.post(f"{_cfg.ALERTMANAGER_URL}/api/v2/alerts", json=am_payload)
-        logger.info("Forwarded policy alert to Alertmanager for notification: %s", alert_name)
-    except Exception as _fwd_err:
-        logger.warning("Alertmanager forward failed (non-fatal): %s", _fwd_err)
-
+        from services.alert_email_service import send_firing_notification
+        event.notification_sent_at = now
+        db.flush()
+        send_firing_notification(event, current_value=current_value)
+        logger.info("Direct email notification triggered for: %s", alert_name)
+    except Exception as _email_err:
+        logger.warning("Direct email notification failed (non-fatal): %s", _email_err)
 def _get_service_name(db: Session, service_id: int) -> str:
     if not service_id:
         return "all-services"

@@ -67,7 +67,13 @@ class AlertEvent(Base):
     dismissed_by = Column(String(150), nullable=True)
     dismissed_at = Column(DateTime(timezone=True), nullable=True)
     silenced_until = Column(DateTime(timezone=True), nullable=True,
-        doc="Alert is silenced (hidden from notifications) until this timestamp")
+        doc='Alert is silenced (hidden from notifications) until this timestamp')
+
+    # -- v4 notification tracking fields --
+    notification_sent_at = Column(DateTime(timezone=True), nullable=True,
+        doc="Timestamp when firing email notification was sent")
+    recovery_notification_sent_at = Column(DateTime(timezone=True), nullable=True,
+        doc="Timestamp when recovery email notification was sent")
 
     # Composite index for efficient history queries
     __table_args__ = (
