@@ -1,6 +1,6 @@
-/**
+﻿/**
  * Auth state management (Zustand).
- * Keycloak-only mode — all legacy local auth has been removed.
+ * Keycloak-only mode ÔÇö all legacy local auth has been removed.
  */
 import { create } from 'zustand'
 import { useState, useEffect } from 'react'
@@ -38,7 +38,7 @@ interface AuthState {
 
   // Actions
   initOidc: () => Promise<void>
-  loginWithKeycloak: () => void
+  loginWithKeycloak: (returnTo?: string) => void
   logout: () => void
   refreshToken: () => Promise<string | undefined>
   fetchUserProfile: (accessToken: string) => Promise<User>
@@ -101,8 +101,8 @@ export const useAuthStore = create<AuthState>()(
       /**
        * Redirect to Keycloak login page.
        */
-      loginWithKeycloak: () => {
-        keycloakLogin()
+      loginWithKeycloak: (returnTo?: string) => {
+        keycloakLogin(returnTo)
       },
 
       /**

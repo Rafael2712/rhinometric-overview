@@ -173,14 +173,9 @@ def render_alertmanager_config(channels: dict, ai_alerting_enabled: bool) -> str
             "actions": [
                 {
                     "type": "button",
-                    "text": "Ver Dashboard en Consola",
-                    "url": '{{- $m := (index .Alerts 0).Labels.metric -}}{{- if match ".*::.*" $m -}}https://console-staging.rhinometric.com/ai-anomalies-v2?metric={{ reReplaceAll "::.*" "" $m }}&entity={{ reReplaceAll ".*::" "" $m }}{{- else -}}https://console-staging.rhinometric.com/ai-anomalies-v2?metric={{ $m }}{{- end -}}'
-                },
-                {
-                    "type": "button",
-                    "text": "Ver en Grafana",
-                    "url": '{{- $m := (index .Alerts 0).Labels.metric -}}{{- if match "external_service_latency" $m -}}http://46.225.231.117/grafana/d/ext-svc-intelligence/external-services-intelligence?viewPanel=6&from=now-1h&to=now&theme=dark&var-service_name={{ reReplaceAll ".*::" "" $m }}{{- else if match "external_service_availability" $m -}}http://46.225.231.117/grafana/d/ext-svc-intelligence/external-services-intelligence?viewPanel=5&from=now-1h&to=now&theme=dark&var-service_name={{ reReplaceAll ".*::" "" $m }}{{- else if match "external_service_health" $m -}}http://46.225.231.117/grafana/d/ext-svc-intelligence/external-services-intelligence?viewPanel=12&from=now-1h&to=now&theme=dark&var-service_name={{ reReplaceAll ".*::" "" $m }}{{- else if eq $m "node_cpu_usage" -}}http://46.225.231.117/grafana/d/rhinometric-system-overview/system-overview?viewPanel=1&from=now-1h&to=now&theme=dark{{- else if eq $m "node_memory_usage" -}}http://46.225.231.117/grafana/d/rhinometric-system-overview/system-overview?viewPanel=2&from=now-1h&to=now&theme=dark{{- else if match "node_disk" $m -}}http://46.225.231.117/grafana/d/rhinometric-system-overview/system-overview?viewPanel=3&from=now-1h&to=now&theme=dark{{- else if match "node_network" $m -}}http://46.225.231.117/grafana/d/rhinometric-system-overview/system-overview?viewPanel=6&from=now-1h&to=now&theme=dark{{- else if match "container_" $m -}}http://46.225.231.117/grafana/d/docker-new/docker-containers?from=now-1h&to=now&theme=dark{{- else -}}http://46.225.231.117/grafana/d/ai-anomaly-service/ai-anomaly-service?from=now-1h&to=now&theme=dark{{- end -}}'
-                },
+                    "text": "View in Console",
+                    "url": '{{- $m := (index .Alerts 0).Labels.metric -}}{{- if match ".*::.*" $m -}}https://console-staging.rhinometric.com/alerts?metric={{ reReplaceAll "::.*" "" $m }}&entity={{ reReplaceAll ".*::" "" $m }}{{- else -}}https://console-staging.rhinometric.com/alerts?metric={{ $m }}{{- end -}}'
+                }
             ],
             "send_resolved": True,
         }]

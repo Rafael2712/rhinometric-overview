@@ -541,44 +541,16 @@ async def alertmanager_email_webhook(request: Request):
             dev_pct = html_mod.escape(annotations.get("deviation_percent", "N/A"))
             
 
-            # Map metric to correct Grafana dashboard/panel
-            grafana_base = "http://46.225.231.117/grafana"
+            # Map metric to Console alerts page (Grafana links removed)
             metric_raw = labels.get("metric", labels.get("alertname", "unknown"))
-            # ÔöÇÔöÇ Parse metric label (format: metric_name::entity_name or just metric_name) ÔöÇÔöÇ
             if "::" in metric_raw:
                 metric_key, entity_name_parsed = metric_raw.split("::", 1)
             else:
                 metric_key = metric_raw
                 entity_name_parsed = ""
 
-            # ÔöÇÔöÇ Grafana deep link: correct dashboard + panel + time range + entity filter ÔöÇÔöÇ
-            _time_range = "from=now-1h&to=now"
-            _svc_filter = f"&var-service_name={_url_quote(entity_name_parsed)}" if entity_name_parsed else ""
-
-            if metric_key == "external_service_latency":
-                grafana_url = f"{grafana_base}/d/ext-svc-intelligence/external-services-intelligence?viewPanel=6&{_time_range}&theme=dark{_svc_filter}"
-            elif metric_key == "external_service_availability":
-                grafana_url = f"{grafana_base}/d/ext-svc-intelligence/external-services-intelligence?viewPanel=5&{_time_range}&theme=dark{_svc_filter}"
-            elif metric_key == "external_service_health":
-                grafana_url = f"{grafana_base}/d/ext-svc-intelligence/external-services-intelligence?viewPanel=12&{_time_range}&theme=dark{_svc_filter}"
-            elif metric_key == "node_cpu_usage":
-                grafana_url = f"{grafana_base}/d/rhinometric-system-overview/system-overview?viewPanel=1&{_time_range}&theme=dark"
-            elif metric_key == "node_memory_usage":
-                grafana_url = f"{grafana_base}/d/rhinometric-system-overview/system-overview?viewPanel=2&{_time_range}&theme=dark"
-            elif metric_key in ("node_disk_usage", "node_disk_io"):
-                grafana_url = f"{grafana_base}/d/rhinometric-system-overview/system-overview?viewPanel=3&{_time_range}&theme=dark"
-            elif metric_key in ("node_network_receive", "node_network_transmit"):
-                grafana_url = f"{grafana_base}/d/rhinometric-system-overview/system-overview?viewPanel=6&{_time_range}&theme=dark"
-            elif metric_key.startswith("container_"):
-                grafana_url = f"{grafana_base}/d/docker-new/docker-containers?{_time_range}&theme=dark"
-            else:
-                grafana_url = f"{grafana_base}/d/ai-anomaly-service/ai-anomaly-service?{_time_range}&theme=dark"
-
-            # ÔöÇÔöÇ Console deep link: /anomalies with metric + entity query params ÔöÇÔöÇ
-            console_params = f"metric={_url_quote(metric_key)}"
-            if entity_name_parsed:
-                console_params += f"&entity={_url_quote(entity_name_parsed)}"
-            console_dash_path = f"/anomalies?{console_params}"
+            # Console deep link: /alerts page (Keycloak-protected)
+            console_dash_path = "/alerts"
 
             body_html = (
                 '<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">'
@@ -596,8 +568,7 @@ async def alertmanager_email_webhook(request: Request):
                 '<p><strong>Deviation:</strong> {dev}</p>'
                 '<hr style="border-color:#334155;">'
                 '<p style="margin-top:16px;">'
-                '<a href="{url}{console_dash}" style="background:#3b82f6;color:white;padding:10px 20px;border-radius:6px;text-decoration:none;margin-right:10px;">Ver Dashboard en Consola</a> '
-                '<a href="{grafana_url}" style="background:#f59e0b;color:white;padding:10px 20px;border-radius:6px;text-decoration:none;">Ver en Grafana</a>'
+                '<a href="{url}{console_dash}" style="background:#3b82f6;color:white;padding:10px 22px;border-radius:6px;text-decoration:none;font-weight:600;">View in Console</a>'
                 '</p>'
                 '</div></div>'
 
@@ -605,7 +576,6 @@ async def alertmanager_email_webhook(request: Request):
                 bg=bg_color, icon=icon, sev=severity, met=metric_escaped,
                 st=alert_status.upper(), comp=component, svc=service,
                 cur=cur_val, base=base_val, dev=dev_pct, url=console_url,
-                grafana_url=grafana_url,
                 console_dash=console_dash_path
             )
             

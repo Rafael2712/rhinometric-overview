@@ -30,7 +30,9 @@ import { useAuthStore, useHasHydrated } from './lib/auth/store'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuthStore()
-  return isAuthenticated ? <>{children}</> : <Navigate to="/login" replace />
+  if (isAuthenticated) return <>{children}</>
+  const returnTo = window.location.pathname + window.location.search
+  return <Navigate to={`/login?returnTo=${encodeURIComponent(returnTo)}`} replace />
 }
 
 function AdminRoute({ children }: { children: React.ReactNode }) {

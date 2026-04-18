@@ -78,9 +78,12 @@ export async function initKeycloak(config: KeycloakConfig): Promise<boolean> {
 /**
  * Trigger Keycloak login redirect.
  */
-export function keycloakLogin(): void {
+export function keycloakLogin(returnTo?: string): void {
   if (_keycloak) {
-    _keycloak.login({ redirectUri: window.location.origin + '/' })
+    const redirectUri = returnTo
+      ? window.location.origin + returnTo
+      : window.location.origin + '/'
+    _keycloak.login({ redirectUri })
   }
 }
 

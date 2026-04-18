@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuthStore } from '../lib/auth/store'
 import { Activity, LogIn } from 'lucide-react'
 
@@ -13,6 +13,8 @@ export function LoginPage() {
   }, [])
 
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const returnTo = searchParams.get('returnTo') || undefined
   const {
     isAuthenticated,
     authMode,
@@ -22,7 +24,7 @@ export function LoginPage() {
   // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated) {
-      navigate('/', { replace: true })
+      navigate(returnTo || '/', { replace: true })
     }
   }, [isAuthenticated, navigate])
 
@@ -49,7 +51,7 @@ export function LoginPage() {
 
           <div className="space-y-4">
             <button
-              onClick={loginWithKeycloak}
+              onClick={() => loginWithKeycloak(returnTo)}
               className="btn btn-primary w-full flex items-center justify-center gap-2"
             >
               <LogIn className="w-5 h-5" />
