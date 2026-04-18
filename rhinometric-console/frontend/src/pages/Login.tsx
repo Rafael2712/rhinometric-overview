@@ -28,6 +28,17 @@ export function LoginPage() {
     }
   }, [isAuthenticated, navigate])
 
+  // Auto-trigger KC login when deep-link target exists and user is not authenticated
+  useEffect(() => {
+    if (!isAuthenticated && authMode === 'oidc' && returnTo) {
+      // Small delay to let check-sso complete, then auto-redirect to KC
+      const timer = setTimeout(() => {
+        loginWithKeycloak(returnTo)
+      }, 300)
+      return () => clearTimeout(timer)
+    }
+  }, [isAuthenticated, authMode, returnTo, loginWithKeycloak])
+
   // Show loading while OIDC initializes
   if (authMode === 'initializing') {
     return (

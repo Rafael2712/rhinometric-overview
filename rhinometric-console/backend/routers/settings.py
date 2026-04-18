@@ -460,33 +460,119 @@ async def get_email_status(
 
 # --- Alertmanager Webhook for Email Forwarding via Zoho API ---
 from fastapi import Request
-
-
-# ÔöÇÔöÇ Email cooldown deduplication ÔöÇÔöÇ
-# Prevents repeated email alerts for the same metric+severity within a cooldown window.
-# Defense-in-depth alongside Alertmanager group_interval increase.
 import time as _time
+import json as _json
 
-_EMAIL_COOLDOWN: dict = {}          # key=(metric,severity) ÔåÆ last_sent_ts
-EMAIL_COOLDOWN_SECONDS = 3600       # 1 hour cooldown per unique alert
+# ── Alert email lifecycle tracking ──
+# Tracks per-metric alert state to prevent ghost/stale emails.
+# For each logical alert occurrence:
+#   - At most 1 FIRING email
+#   - At most 1 RESOLVED email after stable resolution
+# State is persisted to disk to survive container restarts.
+
+_LIFECYCLE_FILE = "/app/data/email_lifecycle_state.json"
+_LIFECYCLE_STATE: dict = {}   # key=metric -> {state, fired_at, resolved_at}
+_LIFECYCLE_LOADED = False
+STABLE_RESOLVE_SECONDS = 600   # 10 min: alert must stay resolved this long before we email resolved
+REFIRE_COOLDOWN_SECONDS = 14400  # 4 hours: minimum time before a new firing email for same metric
 
 
-def _email_cooldown_ok(metric: str, severity: str) -> bool:
-    """Return True if this alert should be emailed (not in cooldown)."""
-    key = (metric, severity)
+def _load_lifecycle_state():
+    """Load lifecycle state from disk on first access."""
+    global _LIFECYCLE_STATE, _LIFECYCLE_LOADED
+    if _LIFECYCLE_LOADED:
+        return
+    try:
+        if os.path.exists(_LIFECYCLE_FILE):
+            with open(_LIFECYCLE_FILE, "r") as f:
+                _LIFECYCLE_STATE = _json.load(f)
+    except Exception as e:
+        logger.warning("Could not load email lifecycle state: %s", e)
+        _LIFECYCLE_STATE = {}
+    _LIFECYCLE_LOADED = True
+
+
+def _save_lifecycle_state():
+    """Persist lifecycle state to disk."""
+    try:
+        with open(_LIFECYCLE_FILE, "w") as f:
+            _json.dump(_LIFECYCLE_STATE, f, indent=2)
+    except Exception as e:
+        logger.warning("Could not save email lifecycle state: %s", e)
+
+
+def _should_send_email(metric: str, alert_status: str) -> bool:
+    """
+    Determine whether an email should be sent for this alert event.
+    
+    Rules:
+    - FIRING: send only if no firing email was sent for this metric recently
+      (within REFIRE_COOLDOWN_SECONDS), OR if a resolved email was sent since
+      the last firing email (new occurrence).
+    - RESOLVED: send only if a firing email was previously sent for this  
+      metric and no resolved email was sent since.
+    """
+    _load_lifecycle_state()
     now = _time.time()
-    last = _EMAIL_COOLDOWN.get(key, 0)
-    if now - last < EMAIL_COOLDOWN_SECONDS:
-        return False
-    _EMAIL_COOLDOWN[key] = now
-    # Prune stale entries (keep cache bounded)
-    if len(_EMAIL_COOLDOWN) > 500:
-        cutoff = now - EMAIL_COOLDOWN_SECONDS * 2
-        stale = [k for k, v in _EMAIL_COOLDOWN.items() if v < cutoff]
-        for k in stale:
-            del _EMAIL_COOLDOWN[k]
-    return True
+    key = metric  # one lifecycle per metric regardless of severity
+    state = _LIFECYCLE_STATE.get(key, {})
+    
+    if alert_status == "firing":
+        fired_at = state.get("fired_at", 0)
+        resolved_at = state.get("resolved_at", 0)
+        
+        # If we sent a resolved email after the last firing email,
+        # this is a new occurrence — allow firing email with cooldown check
+        if resolved_at > fired_at:
+            if now - resolved_at < REFIRE_COOLDOWN_SECONDS:
+                return False  # too soon after resolution
+            # New occurrence after resolution — allow
+            _LIFECYCLE_STATE[key] = {"state": "firing", "fired_at": now, "resolved_at": resolved_at}
+            _save_lifecycle_state()
+            return True
+        
+        # No resolved email yet: check if we already sent a firing email
+        if fired_at > 0:
+            if now - fired_at < REFIRE_COOLDOWN_SECONDS:
+                return False  # firing email already sent recently
+            # Very old firing, allow re-fire (e.g., alert persisted > 4h)
+            _LIFECYCLE_STATE[key] = {"state": "firing", "fired_at": now, "resolved_at": resolved_at}
+            _save_lifecycle_state()
+            return True
+        
+        # First time seeing this metric — allow
+        _LIFECYCLE_STATE[key] = {"state": "firing", "fired_at": now, "resolved_at": 0}
+        _save_lifecycle_state()
+        return True
+    
+    elif alert_status == "resolved":
+        fired_at = state.get("fired_at", 0)
+        resolved_at = state.get("resolved_at", 0)
+        
+        # Only send resolved if we sent a firing email and haven't sent resolved yet
+        if fired_at == 0:
+            return False  # never sent firing email, skip resolved
+        if resolved_at >= fired_at:
+            return False  # already sent resolved for this occurrence
+        
+        # Mark resolved
+        _LIFECYCLE_STATE[key] = {"state": "resolved", "fired_at": fired_at, "resolved_at": now}
+        _save_lifecycle_state()
+        return True
+    
+    return False
 
+
+def _prune_lifecycle_state():
+    """Remove entries older than 48 hours to keep state file bounded."""
+    now = _time.time()
+    cutoff = now - 172800  # 48 hours
+    stale_keys = [k for k, v in _LIFECYCLE_STATE.items() 
+                  if max(v.get("fired_at", 0), v.get("resolved_at", 0)) < cutoff]
+    for k in stale_keys:
+        del _LIFECYCLE_STATE[k]
+    if stale_keys:
+        _save_lifecycle_state()
 RED_CIRCLE = chr(0x1F534)
 ORANGE_CIRCLE = chr(0x1F7E0)
 
@@ -579,10 +665,11 @@ async def alertmanager_email_webhook(request: Request):
                 console_dash=console_dash_path
             )
             
-            # ÔöÇÔöÇ Cooldown guard: skip if recently emailed for this metric+severity ÔöÇÔöÇ
-            if not _email_cooldown_ok(metric, severity.lower()):
-                logger.info("Email cooldown: skipping %s (sev=%s)", metric, severity)
+            # ── Lifecycle guard: prevent ghost/stale emails ──
+            if not _should_send_email(metric, alert_status):
+                logger.info("Email lifecycle blocked: %s (status=%s)", metric, alert_status)
                 continue
+            _prune_lifecycle_state()
 
             for to_email in to_emails:
                 try:

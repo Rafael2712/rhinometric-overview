@@ -91,6 +91,9 @@ export const useAuthStore = create<AuthState>()(
                 set({ isAuthenticated: false, user: null, token: null })
               }
             }
+          } else {
+            // check-sso returned false: clear any stale persisted auth state
+            set({ isAuthenticated: false, user: null, token: null })
           }
         } catch (err) {
           console.error('[Auth] OIDC init failed:', err)
