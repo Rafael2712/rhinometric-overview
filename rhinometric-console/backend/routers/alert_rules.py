@@ -403,6 +403,34 @@ def _resolve_recovered_services(db: Session):
     if orphan_resolved:
         logger.info(f"Resolved {orphan_resolved} orphan incident(s) for deleted services")
 
+    # ── 3. Resolve orphaned firing alerts for deleted services ──
+    # Alerts whose entity_name references a service that no longer exists
+    # must be resolved to prevent permanently-firing phantom alerts.
+    existing_names_exact = {svc.name for svc in db.query(ExternalService).all()}
+    orphan_alerts = db.query(AlertEvent).filter(
+        AlertEvent.status == "firing",
+        AlertEvent.source.in_(["alert_policy", "assertion_evaluator"]),
+    ).all()
+
+    orphan_alerts_resolved = 0
+    for alert in orphan_alerts:
+        if alert.entity_name not in existing_names_exact:
+            alert.status = "resolved"
+            alert.ended_at = now
+            alert.resolved_at = now
+            alert.annotations = {
+                **(alert.annotations if isinstance(alert.annotations, dict) else {}),
+                "resolve_reason": "orphan_service_deleted",
+            }
+            orphan_alerts_resolved += 1
+            logger.info(
+                "Auto-resolved orphan alert %s for deleted service '%s'",
+                alert.alert_name, alert.entity_name,
+            )
+
+    if orphan_alerts_resolved:
+        logger.info(f"Resolved {orphan_alerts_resolved} orphan alert(s) for deleted services")
+
 # ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
 # Default rules seeding
 # ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
@@ -489,33 +517,44 @@ def evaluate_alert_rules(db: Session):
     """
     Evaluate all enabled alert rules against recent metrics.
     Called from the monitoring cycle, feeds into existing alert + incident pipeline.
+
+    Architecture (Phase 1 repair):
+      - Layer 1: User-configurable Alert Policies (SERVICE_DOWN, HIGH_LATENCY, DEGRADED_HEALTH)
+        Only evaluated when user-created AlertRule rows exist.
+      - Layer 2: Built-in internal alert logic (assertion-failure evaluation,
+        recovery processing, orphan cleanup)
+        ALWAYS runs regardless of whether any user policies are configured.
     """
-    rules = db.query(AlertRule).filter(AlertRule.enabled == True).all()
-    if not rules:
-        return
-
     fired = 0
-    for rule in rules:
-        try:
-            rule_type = rule.rule_type or "SERVICE_DOWN"
 
-            if rule_type == "SERVICE_DOWN":
-                fired += _evaluate_service_down(db, rule)
-            elif rule_type == "HIGH_LATENCY":
-                fired += _evaluate_high_latency(db, rule)
-            elif rule_type == "DEGRADED_HEALTH":
-                fired += _evaluate_degraded_health(db, rule)
-            else:
-                # Legacy metric/operator rules
-                value = _compute_metric(db, rule.service_id, rule.metric,
-                                        rule.window_minutes or 5)
-                if value is not None and _check_threshold(value, rule.operator, rule.threshold):
-                    _fire_rule_alert(db, rule, value)
-                    fired += 1
-        except Exception as e:
-            logger.error(f"Error evaluating rule {rule.name}: {e}")
+    # ── Layer 1: User-configurable policy evaluation ────────────────────
+    rules = db.query(AlertRule).filter(AlertRule.enabled == True).all()
+    if rules:
+        for rule in rules:
+            try:
+                rule_type = rule.rule_type or "SERVICE_DOWN"
 
-    # ── Phase 3: Assertion-failure evaluation (internal defaults, no AlertRule) ──
+                if rule_type == "SERVICE_DOWN":
+                    fired += _evaluate_service_down(db, rule)
+                elif rule_type == "HIGH_LATENCY":
+                    fired += _evaluate_high_latency(db, rule)
+                elif rule_type == "DEGRADED_HEALTH":
+                    fired += _evaluate_degraded_health(db, rule)
+                else:
+                    # Legacy metric/operator rules
+                    value = _compute_metric(db, rule.service_id, rule.metric,
+                                            rule.window_minutes or 5)
+                    if value is not None and _check_threshold(value, rule.operator, rule.threshold):
+                        _fire_rule_alert(db, rule, value)
+                        fired += 1
+            except Exception as e:
+                logger.error(f"Error evaluating rule {rule.name}: {e}")
+    else:
+        logger.debug("No user-configured alert policies found \u2014 skipping policy evaluation")
+
+    # ── Layer 2: Built-in internal alert logic (always runs) ────────────
+
+    # Phase 2a: Assertion-failure evaluation (internal defaults, no AlertRule needed)
     try:
         af_fired = _evaluate_assertion_failures(db)
         if af_fired:
@@ -523,7 +562,7 @@ def evaluate_alert_rules(db: Session):
     except Exception as _af_err:
         logger.error("[Assertions] Assertion-failure evaluation error: %s", _af_err)
 
-    # Always resolve alerts for recovered services
+    # Phase 2b: Recovery processing + orphan cleanup (always runs)
     try:
         _resolve_recovered_services(db)
     except Exception as _res_err:
@@ -532,7 +571,7 @@ def evaluate_alert_rules(db: Session):
     db.commit()
 
     if fired:
-        logger.info(f"Alert rules: {fired} of {len(rules)} triggered")
+        logger.info(f"Alert evaluation: {fired} alert(s) triggered (policies={len(rules)})")
 
 
 def _get_target_services(db: Session, rule: AlertRule) -> list:
