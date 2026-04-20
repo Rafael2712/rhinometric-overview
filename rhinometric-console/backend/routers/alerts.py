@@ -141,12 +141,19 @@ async def get_alerts(
                         a for a in am_alerts
                         if a.get("status", {}).get("state") == "active"
                     ]
-                # Only show external-service alerts; exclude
-                # platform infrastructure (node_*) alerts.
+                # Phase 2: Show external-service alerts AND policy/assertion
+                # alerts forwarded to AM. Exclude platform infra (node_*).
+                _OPERATIONAL_PREFIXES = (
+                    "AnomalyDetected_external_service_",
+                    "policy:",
+                    "assertion_failure:",
+                )
                 am_alerts = [
                     a for a in am_alerts
-                    if a.get("labels", {}).get("alertname", "")
-                       .startswith("AnomalyDetected_external_service_")
+                    if any(
+                        a.get("labels", {}).get("alertname", "").startswith(p)
+                        for p in _OPERATIONAL_PREFIXES
+                    )
                 ]
                 alerts_data.extend(am_alerts)
 
@@ -328,16 +335,18 @@ async def get_alerts(
             _a.pop("_cfp", None)
             _a.pop("_suppress", None)
 
-        # -- Source 3: DB-only alert events (policy / webhook originated) --
+        # -- Source 3: DB-only alert events (ALL sources: policy / assertion / webhook / anomaly) --
         # Skip any fingerprint already backed by Source 1/2 to avoid dupes.
-        # Also exclude platform infrastructure alerts (node_*) from DB.
+        # Shows ALL active alert_events — the canonical source of operational truth.
         try:
             _service_types = {"service", "external-services"}
             db_firing = db.query(_AE).filter(
                 _AE.status.in_(_active_statuses_set),
                 _AE.entity_type.in_(list(_service_types)),
-                _AE.alert_name.like("AnomalyDetected_external_service_%"),
-                _AE.incident_id.is_(None),
+                # Phase 2: removed alert_name.like("AnomalyDetected_external_service_%")
+                # so policy:*, assertion_failure:*, and anomaly alerts ALL appear.
+                # Phase 2: removed incident_id.is_(None)
+                # so incident-linked alerts remain visible (with incident_id shown).
             ).all()
             for ev in db_firing:
                 fp = ev.fingerprint or ""
