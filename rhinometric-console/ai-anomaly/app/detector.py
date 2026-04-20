@@ -112,6 +112,9 @@ class AnomalyDetector:
         )
         self.detection_history: Dict[str, List[Dict]] = {}
 
+        # Phase 3 hardening: deduplication key -> anomaly for active tracking
+        self._active_anomalies: Dict[str, "AnomalyResult"] = {}
+
         # Model persistence
         if self.config.persistence.enabled:
             self.model_dir = Path(self.config.persistence.directory)
@@ -343,28 +346,49 @@ class AnomalyDetector:
                         "baseline_available": baseline is not None
                     }
                 )
+                # Store anomaly (with deduplication check)
+                dedup_key = (
+                    f"{result.metric_name}|{result.entity_type}|"
+                    f"{result.entity_name}|{result.source}|{result.severity}"
+                )
+                is_new_occurrence = dedup_key not in self._active_anomalies
 
-                # Store anomaly
-                self.anomalies.append(result)
+                if is_new_occurrence:
+                    # New anomaly for this entity+metric+source+severity
+                    self.anomalies.append(result)
+                    self._active_anomalies[dedup_key] = result
+                    logger.debug(f"New anomaly tracked (dedup key: {dedup_key})")
 
-                # Update stats
-                self.stats["total_anomalies"] += 1
-                self.stats["anomalies_by_metric"][metric_name] = \
-                    self.stats["anomalies_by_metric"].get(metric_name, 0) + 1
+                    # Update stats only for new occurrences
+                    self.stats["total_anomalies"] += 1
+                    self.stats["anomalies_by_metric"][metric_name] =                         self.stats["anomalies_by_metric"].get(metric_name, 0) + 1
 
-                # EXPORT TO PROMETHEUS
-                try:
-                    from app.api import prom_anomalies_detected
-                    prom_anomalies_detected.labels(
-                        metric=metric_name,
-                        severity=severity
-                    ).inc()
-                except Exception as e:
-                    logger.error(f"Error updating Prometheus metrics: {e}")
+                    # EXPORT TO PROMETHEUS only for new occurrences
+                    try:
+                        from app.api import prom_anomalies_detected
+                        prom_anomalies_detected.labels(
+                            metric=metric_name,
+                            severity=severity
+                        ).inc()
+                    except Exception as e:
+                        logger.error(f"Error updating Prometheus metrics: {e}")
 
-                # Send alert
-                if self.config.features.enable_notifications:
-                    await self._send_alert(result, metric_config)
+                    # Send firing alert only for new occurrences
+                    if self.config.features.enable_notifications:
+                        await self._send_alert(result, metric_config)
+                else:
+                    # Anomaly still active - refresh existing anomaly state
+                    existing = self._active_anomalies[dedup_key]
+                    existing.timestamp = result.timestamp
+                    existing.current_value = result.current_value
+                    existing.expected_value = result.expected_value
+                    existing.anomaly_score = result.anomaly_score
+                    existing.confidence = result.confidence
+                    existing.model_scores = result.model_scores
+                    existing.metadata = result.metadata
+                    existing.deviation_percent = result.deviation_percent
+                    existing.baseline_explanation = result.baseline_explanation
+                    logger.debug(f"Anomaly refreshed (dedup key: {dedup_key})")
 
                 logger.warning(
                     f"Anomaly detected: {metric_name} | "
@@ -532,6 +556,35 @@ class AnomalyDetector:
                     f"AM resolution sent for {anomaly.metric_name} | "
                     f"Severity: {anomaly.severity}"
                 )
+
+                # Phase 3 hardening: keep backend DB coherent on the principal path.
+                try:
+                    import httpx
+                    backend_url = os.getenv(
+                        "AI_ALERT_DB_RESOLVE_URL",
+                        "http://rhinometric-console-backend:8105/api/alerts/internal/ai-resolve"
+                    )
+                    async with httpx.AsyncClient(timeout=5.0) as client:
+                        db_resp = await client.post(
+                            backend_url,
+                            json={
+                                "alert_name": f"AnomalyDetected_{anomaly.metric_name}",
+                                "note": "resolved by ai-anomaly engine principal path"
+                            }
+                        )
+                        if db_resp.status_code == 200:
+                            logger.info(
+                                f"Backend DB resolution synced for {anomaly.metric_name}"
+                            )
+                        else:
+                            logger.warning(
+                                f"Backend DB resolution sync failed for {anomaly.metric_name}: "
+                                f"status={db_resp.status_code} body={db_resp.text[:200]}"
+                            )
+                except Exception as db_sync_err:
+                    logger.warning(
+                        f"Backend DB resolution sync error for {anomaly.metric_name}: {db_sync_err}"
+                    )
             else:
                 logger.warning(
                     f"Failed to send AM resolution for {anomaly.metric_name}"
@@ -672,7 +725,7 @@ class AnomalyDetector:
             }
         }
 
-    async def resolve_stale_anomalies(self, ttl_minutes: int = 30) -> int:
+    async def resolve_stale_anomalies(self, ttl_minutes: Optional[int] = None) -> int:
         """
         Resolve anomalies that haven't been re-detected in TTL period.
 
@@ -688,8 +741,10 @@ class AnomalyDetector:
         """
         from app.api import prom_resolved_anomalies
 
+        # Use global config TTL when not explicitly provided
+        if ttl_minutes is None:
+            ttl_minutes = self.config.detection.resolution_ttl_minutes
         now = datetime.now()
-        cutoff_time = now - timedelta(minutes=ttl_minutes)
         resolved_count = 0
 
         for anomaly in self.anomalies:
@@ -697,7 +752,16 @@ class AnomalyDetector:
             if anomaly.status != "active":
                 continue
 
-            # Check if anomaly is older than TTL
+            # Per-metric TTL override (fallback to global)
+            metric_name_base = anomaly.metric_name.split("::", 1)[0]
+            metric_cfg = config_manager.get_metric(metric_name_base)
+            effective_ttl = ttl_minutes
+            if metric_cfg and getattr(metric_cfg, "ttl_minutes", None):
+                effective_ttl = metric_cfg.ttl_minutes
+
+            cutoff_time = now - timedelta(minutes=effective_ttl)
+
+            # Check if anomaly is older than effective TTL
             if anomaly.timestamp < cutoff_time:
                 anomaly.status = "resolved"
                 anomaly.resolved_at = now
@@ -709,9 +773,19 @@ class AnomalyDetector:
                     severity=anomaly.severity
                 ).inc()
 
+                # Clean up dedup tracking
+                dedup_key = (
+                    f"{anomaly.metric_name}|{anomaly.entity_type}|"
+                    f"{anomaly.entity_name}|{anomaly.source}|{anomaly.severity}"
+                )
+                if dedup_key in self._active_anomalies:
+                    del self._active_anomalies[dedup_key]
+
                 # Phase 3: Send resolution to Alertmanager
                 # This is the CRITICAL fix - without this, AM alerts
                 # become zombies that never clear.
+                # Note: We send resolves even if notifications disabled,
+                # since alertmanager.enabled gates actual AM connectivity.
                 if self.config.alertmanager.enabled:
                     try:
                         await self._resolve_alert_in_am(anomaly)

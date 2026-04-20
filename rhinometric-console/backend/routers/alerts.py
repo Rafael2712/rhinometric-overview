@@ -767,6 +767,11 @@ class AlertEventResponse(BaseModel):
     incident_id: Optional[str] = None
 
 
+class InternalAIResolveRequest(BaseModel):
+    alert_name: str
+    note: Optional[str] = None
+
+
 def _alert_event_response(ev) -> AlertEventResponse:
     """Build a uniform AlertEventResponse from an AlertEvent row."""
     return AlertEventResponse(
@@ -877,6 +882,45 @@ async def lifecycle_resolve(
 
     db.commit()
     return _alert_event_response(ev)
+
+
+@router.post("/internal/ai-resolve")
+async def internal_ai_resolve(
+    body: InternalAIResolveRequest,
+    db: Session = Depends(get_db),
+):
+    """Internal endpoint used by AI anomaly engine to resolve canonical DB events immediately after AM resolve."""
+    from models.alert_event import AlertEvent as _AE
+
+    now = datetime.now(timezone.utc)
+    rows = db.query(_AE).filter(
+        _AE.alert_name == body.alert_name,
+        _AE.status.in_(["firing", "active", "acknowledged", "silenced"])
+    ).all()
+
+    updated = 0
+    for ev in rows:
+        ev.status = "resolved"
+        ev.resolved_by = "ai-anomaly-engine"
+        ev.resolved_at = now
+        ev.ended_at = now
+        if body.note:
+            ann = dict(ev.annotations) if ev.annotations else {}
+            ann["resolve_note"] = body.note
+            ev.annotations = ann
+        updated += 1
+
+    if updated:
+        db.commit()
+    else:
+        db.rollback()
+
+    return {
+        "status": "ok",
+        "updated": updated,
+        "alert_name": body.alert_name,
+        "timestamp": now.isoformat(),
+    }
 
 
 @router.put("/{alert_id}/dismiss", response_model=AlertEventResponse)
