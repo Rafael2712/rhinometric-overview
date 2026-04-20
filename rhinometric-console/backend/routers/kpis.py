@@ -682,8 +682,15 @@ async def get_system_health(current_user: UserModel = Depends(get_current_user))
             platform_unhealthy = platform_total - platform_healthy
             total_unhealthy = platform_unhealthy + (client_total - client_healthy)
             
+            # Phase 1.5: Align with global semantics (DOWN > CRITICAL > DEGRADED > HEALTHY)
+            total_down_count = platform_unhealthy + (client_total - client_healthy)
+            has_any_down = total_down_count > 0 and any(
+                not s["is_up"] for s in all_services
+            )
             if total_unhealthy == 0:
-                overall_status = "operational"
+                overall_status = "healthy"
+            elif has_any_down:
+                overall_status = "down"
             elif total_unhealthy <= 2:
                 overall_status = "degraded"
             else:

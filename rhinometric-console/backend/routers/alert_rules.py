@@ -344,23 +344,43 @@ def _resolve_recovered_services(db: Session):
 
     now = datetime.now(timezone.utc)
 
-    # ÔöÇÔöÇ 1. Resolve alerts for services that are UP ÔöÇÔöÇ
-    up_services = db.query(ExternalService).filter(
+    # Phase 1.5 Rule 5: SERVICE_DOWN alerts only resolve when service is truly UP
+    # Other alerts (HIGH_LATENCY, DEGRADED_HEALTH) resolve when UP or DEGRADED
+    truly_up_services = db.query(ExternalService).filter(
+        ExternalService.enabled == True,
+        ExternalService.status == "up",
+    ).all()
+    truly_up_names = {svc.name for svc in truly_up_services}
+
+    up_or_degraded_services = db.query(ExternalService).filter(
         ExternalService.enabled == True,
         ExternalService.status.in_(["up", "degraded"]),
     ).all()
-    up_names = {svc.name for svc in up_services}
+    up_or_degraded_names = {svc.name for svc in up_or_degraded_services}
 
-    if up_names:
+    all_candidate_names = up_or_degraded_names
+    if all_candidate_names:
         firing_events = db.query(AlertEvent).filter(
             AlertEvent.status == "firing",
             AlertEvent.source == "alert_policy",
-            AlertEvent.entity_name.in_(list(up_names)),
+            AlertEvent.entity_name.in_(list(all_candidate_names)),
         ).all()
 
+        resolved_count = 0
         for event in firing_events:
+            # Determine rule_type from stored labels
+            rule_type = ""
+            if event.labels and isinstance(event.labels, dict):
+                rule_type = event.labels.get("rule_type", "")
+
+            # Phase 1.5: SERVICE_DOWN only resolves when service is truly UP
+            if rule_type == "SERVICE_DOWN":
+                if event.entity_name not in truly_up_names:
+                    continue  # Service is DEGRADED, not truly recovered from DOWN
+
             event.status = "resolved"
             event.ended_at = now
+            resolved_count += 1
             if event.incident_id:
                 try:
                     check_incident_resolution(db, event.incident_id)
@@ -380,8 +400,8 @@ def _resolve_recovered_services(db: Session):
             except Exception as _recov_err:
                 logger.warning("Recovery notification failed (non-fatal): %s", _recov_err)
 
-        if firing_events:
-            logger.info(f"Auto-resolved {len(firing_events)} alert(s) for recovered services")
+        if resolved_count:
+            logger.info(f"Auto-resolved {resolved_count} alert(s) for recovered services")
 
     # ÔöÇÔöÇ 2. Resolve orphaned incidents for deleted services ÔöÇÔöÇ
     from models.incident import Incident
@@ -606,7 +626,9 @@ def _evaluate_service_down(db: Session, rule: AlertRule) -> int:
         if len(rows) < threshold:
             continue
 
-        consecutive_down = all(r.status != 'up' for r in rows)
+        # Phase 1.5: Only truly down/error statuses count as DOWN
+            # DEGRADED is NOT treated as DOWN (Rule 5)
+            consecutive_down = all(r.status in ('down', 'error') for r in rows)
         if consecutive_down:
             _fire_rule_alert(db, rule, threshold, service=svc,
                              detail=f"{threshold} consecutive failures")
@@ -972,6 +994,10 @@ def _fire_rule_alert(db: Session, rule: AlertRule, current_value: float,
     )
     effective_severity = escalate_severity(entity_name, rule.severity)
 
+    # Phase 1.5 Rule 2: SERVICE_DOWN alerts are ALWAYS critical severity
+    if rule.rule_type == 'SERVICE_DOWN':
+        effective_severity = 'critical'
+
     # -- Check for existing firing event with this fingerprint --
     existing = db.query(AlertEvent).filter(
         AlertEvent.fingerprint == fingerprint,
@@ -1019,7 +1045,11 @@ def _fire_rule_alert(db: Session, rule: AlertRule, current_value: float,
     # -- CREATION PATH: no existing firing event --
 
     # Noise filter: recovery buffer + transient failure checks
-    _should_alert, _nf_reason = should_create_alert(entity_name, fingerprint, db)
+    # Phase 1.5 Rule 4: SERVICE_DOWN bypasses noise filter (immediate alert)
+    if rule.rule_type == 'SERVICE_DOWN':
+        _should_alert, _nf_reason = True, "SERVICE_DOWN bypass"
+    else:
+        _should_alert, _nf_reason = should_create_alert(entity_name, fingerprint, db)
     if not _should_alert:
         logger.info("[NoiseFilter] Policy alert suppressed: %s for %s -- %s",
                      rule.name, entity_name, _nf_reason)

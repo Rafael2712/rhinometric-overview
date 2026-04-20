@@ -287,6 +287,10 @@ def send_firing_notification(alert_event, current_value=None):
                 metric=metric,
                 current_value=current_value,
             )
+            # Phase 1.5 Rule 4: SERVICE_DOWN gets [URGENT] prefix
+            _rule_type = alert_event.labels.get("rule_type", "") if alert_event.labels and isinstance(alert_event.labels, dict) else ""
+            if _rule_type == "SERVICE_DOWN":
+                subject = "[URGENT] " + subject
             from_addr = zoho_cfg.get("from_address", "rafael.canelon@rhinometric.com")
 
             sent_count = 0

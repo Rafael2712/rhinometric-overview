@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 
 from config import settings
 from models.external_service import ExternalService, ServiceStatus
+from models.alert_event import AlertEvent
 
 logger = logging.getLogger("rhinometric.service_summary")
 
@@ -122,34 +123,33 @@ def _calculate_overall_status(
     degraded: int,
     down: int,
     total: int,
+    has_active_critical_alerts: bool = False,
 ) -> str:
     """
-    Determine health status based on ACTUAL service state.
+    Determine platform health status based on service state and alert data.
 
-    Rules (in priority order):
-      1. >10% of services DOWN  -> CRITICAL
-      2. ANY service DOWN       -> DEGRADED
-      3. ANY service DEGRADED   -> DEGRADED
-      4. Everything healthy     -> OPERATIONAL
+    Phase 1.5 — Official semantic priority (highest to lowest):
+      1. ANY service DOWN           → "DOWN"
+      2. Active CRITICAL alerts     → "CRITICAL"
+      3. ANY service DEGRADED       → "DEGRADED"
+      4. Everything healthy         → "HEALTHY"
 
     Note: AI anomalies are informational and intentionally excluded.
     They have their own dedicated card on the Home dashboard.
     """
     if total == 0:
-        return "OPERATIONAL"
-
-    down_pct = down / total
-
-    if down_pct > 0.10:
-        return "CRITICAL"
+        return "HEALTHY"
 
     if down > 0:
-        return "DEGRADED"
+        return "DOWN"
+
+    if has_active_critical_alerts:
+        return "CRITICAL"
 
     if degraded > 0:
         return "DEGRADED"
 
-    return "OPERATIONAL"
+    return "HEALTHY"
 
 
 async def _check_latency_anomalies() -> bool:
@@ -229,12 +229,24 @@ async def get_services_summary(db: Session) -> Dict[str, Any]:
     monitored_degraded = ext_degraded
     monitored_down = ext_down + prom_ext_down
 
+    # --- Phase 1.5: Check for active CRITICAL alerts ---
+    has_critical_alerts = False
+    try:
+        critical_count = db.query(AlertEvent).filter(
+            AlertEvent.status == "firing",
+            AlertEvent.severity == "critical",
+        ).count()
+        has_critical_alerts = critical_count > 0
+    except Exception as _crit_err:
+        logger.warning("Failed to query critical alerts: %s", _crit_err)
+
     # --- Overall statuses computed SEPARATELY ---
     monitored_status = _calculate_overall_status(
         healthy=monitored_healthy,
         degraded=monitored_degraded,
         down=monitored_down,
         total=monitored_total,
+        has_active_critical_alerts=has_critical_alerts,
     )
 
     platform_status = _calculate_overall_status(
@@ -242,6 +254,7 @@ async def get_services_summary(db: Session) -> Dict[str, Any]:
         degraded=0,  # internal services are only up/down
         down=internal_down,
         total=internal_total,
+        has_active_critical_alerts=has_critical_alerts,
     )
 
     # --- Grand totals (backward compat) ---
@@ -255,6 +268,7 @@ async def get_services_summary(db: Session) -> Dict[str, Any]:
         degraded=total_degraded,
         down=total_down,
         total=total_services,
+        has_active_critical_alerts=has_critical_alerts,
     )
 
     return {
