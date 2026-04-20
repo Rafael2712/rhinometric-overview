@@ -588,6 +588,12 @@ def evaluate_alert_rules(db: Session):
     except Exception as _res_err:
         logger.error(f"Error resolving recovered services: {_res_err}")
 
+    # ── Layer 3: Phase 3 – AM ↔ DB reconciliation for AI-anomaly zombie alerts ──
+    try:
+        _reconcile_am_anomaly_alerts(db)
+    except Exception as _recon_err:
+        logger.warning(f"[Reconcile] AM reconciliation error: {_recon_err}")
+
     db.commit()
 
     if fired:
@@ -1140,3 +1146,110 @@ def _get_service_name(db: Session, service_id: int) -> str:
     return svc.name if svc else f"service-{service_id}"
 
 
+
+
+# ════════════════════════════════════════════════════════════════
+# Phase 3: AM ↔ DB Reconciliation for AI-Anomaly Alerts
+# ════════════════════════════════════════════════════════════════
+
+_reconcile_counter = 0          # runs every Nth eval cycle
+_RECONCILE_EVERY_N = 20         # ~20 cycles × 15s = 5 min
+
+def _reconcile_am_anomaly_alerts(db: Session):
+    """
+    Phase 3 reconciliation loop.
+
+    Queries Alertmanager for active alerts sourced from 'ai-anomaly',
+    checks if the anomaly engine still considers them active,
+    and sends endsAt for any that are stale/resolved.
+
+    Also ensures alert_events in DB match AM state:
+      - If AM alert is gone but DB event is still 'firing' → resolve in DB.
+    """
+    global _reconcile_counter
+    _reconcile_counter += 1
+    if _reconcile_counter % _RECONCILE_EVERY_N != 0:
+        return      # Skip most cycles for efficiency
+
+    try:
+        import httpx
+        from config import settings as _cfg
+
+        # 1. Fetch active AM alerts
+        with httpx.Client(timeout=10.0) as client:
+            am_resp = client.get(f"{_cfg.ALERTMANAGER_URL}/api/v2/alerts")
+            am_resp.raise_for_status()
+            am_alerts = am_resp.json()
+
+        ai_am_alerts = [
+            a for a in am_alerts
+            if a.get("labels", {}).get("rhinometric_source") == "ai-anomaly"
+               or a.get("labels", {}).get("alertname", "").startswith("AnomalyDetected_")
+        ]
+
+        if not ai_am_alerts:
+            return  # Nothing to reconcile
+
+        # 2. Fetch active anomalies from AI anomaly engine
+        active_metrics = set()
+        try:
+            with httpx.Client(timeout=10.0) as client:
+                eng_resp = client.get("http://rhinometric-ai-anomaly:8085/anomalies?status=active")
+                if eng_resp.status_code == 200:
+                    engine_data = eng_resp.json()
+                    anomalies_list = engine_data if isinstance(engine_data, list) else engine_data.get("anomalies", [])
+                    for anom in anomalies_list:
+                        if anom.get("status") == "active":
+                            active_metrics.add(anom.get("metric_name", ""))
+        except Exception as e:
+            logger.debug(f"[Reconcile] Could not reach AI anomaly engine: {e}")
+            # If engine is unreachable, skip reconciliation this cycle
+            return
+
+        # 3. For each AM alert with no matching active anomaly → resolve
+        now = datetime.now(timezone.utc)
+        resolved_count = 0
+
+        for am_alert in ai_am_alerts:
+            labels = am_alert.get("labels", {})
+            alertname = labels.get("alertname", "")
+            # Extract metric name from alertname: "AnomalyDetected_<metric>"
+            metric_key = alertname.replace("AnomalyDetected_", "", 1) if alertname.startswith("AnomalyDetected_") else alertname
+
+            if metric_key in active_metrics:
+                continue  # Still legitimately active
+
+            # Stale → send endsAt to AM
+            try:
+                resolve_payload = [{
+                    "labels": labels,
+                    "annotations": am_alert.get("annotations", {}),
+                    "endsAt": now.isoformat(),
+                    "generatorURL": am_alert.get("generatorURL", ""),
+                }]
+                with httpx.Client(timeout=5.0) as client:
+                    client.post(f"{_cfg.ALERTMANAGER_URL}/api/v2/alerts", json=resolve_payload)
+                resolved_count += 1
+            except Exception:
+                pass
+
+            # Also resolve in DB if still firing
+            try:
+                db.execute(
+                    text(
+                        "UPDATE alert_events "
+                        "SET status = 'resolved', resolved_at = NOW(), updated_at = NOW() "
+                        "WHERE status IN ('firing', 'active', 'acknowledged') "
+                        "  AND alert_name = :aname"
+                    ),
+                    {"aname": alertname}
+                )
+            except Exception:
+                pass
+
+        if resolved_count > 0:
+            db.commit()
+            logger.info(f"[Reconcile] Resolved {resolved_count} stale AI-anomaly AM alerts")
+
+    except Exception as e:
+        logger.warning(f"[Reconcile] AM reconciliation error (non-fatal): {e}")
