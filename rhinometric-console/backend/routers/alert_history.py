@@ -14,7 +14,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy.orm import Session
-from sqlalchemy import func as sqlfunc
+from sqlalchemy import func as sqlfunc, or_, and_
 
 from database import get_db
 from models.alert_event import AlertEvent
@@ -84,12 +84,21 @@ def _apply_retention_and_exclusion(query, db: Session, time_range: str = None):
     user_cutoff = _parse_time_range(time_range) if time_range else None
     effective_cutoff = max(retention_cutoff, user_cutoff) if user_cutoff else retention_cutoff
 
-    # Always show firing/acknowledged regardless of age; apply cutoff to resolved
-    from sqlalchemy import or_, and_
+    # Always show firing/acknowledged regardless of age.
+    # For resolved/dismissed alerts, history should be based on when the alert ended,
+    # not when it originally started. Otherwise long-lived active alerts disappear from
+    # history immediately after a manual resolve if started_at is older than the UI range.
     query = query.filter(
         or_(
             AlertEvent.status.in_(["firing", "acknowledged"]),
-            AlertEvent.started_at >= effective_cutoff,
+            and_(
+                AlertEvent.status.in_(["resolved", "dismissed"]),
+                sqlfunc.coalesce(
+                    AlertEvent.ended_at,
+                    AlertEvent.resolved_at,
+                    AlertEvent.started_at,
+                ) >= effective_cutoff,
+            ),
         )
     )
 
