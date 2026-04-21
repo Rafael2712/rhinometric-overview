@@ -1,5 +1,5 @@
-"""
-Phase 2.2 — Alert Event Store: Alert History API.
+﻿"""
+Phase 2.2 ÔÇö Alert Event Store: Alert History API.
 
 Provides endpoints to query the persistent alert event history and
 ingest alert lifecycle transitions.
@@ -26,11 +26,11 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-# ── Constants ───────────────────────────────────────────────────
+# ÔöÇÔöÇ Constants ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
 MAX_RETENTION_DAYS = 30
 
 
-# ── Helpers ─────────────────────────────────────────────────────
+# ÔöÇÔöÇ Helpers ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
 
 def _alert_fingerprint(alert_name: str, entity_name: str, metric_name: str = "") -> str:
     """Generate deterministic fingerprint for alert-anomaly correlation."""
@@ -77,7 +77,7 @@ def _apply_retention_and_exclusion(query, db: Session, time_range: str = None):
                firing/acknowledged alerts are always shown.
     Exclusion: alerts whose entity_name matches a disabled service are hidden.
     """
-    # ── Retention cap ───────────────────────────────────────────
+    # ÔöÇÔöÇ Retention cap ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
     retention_cutoff = datetime.now(timezone.utc) - timedelta(days=MAX_RETENTION_DAYS)
 
     # If user-requested cutoff is within 30d, use that; otherwise cap at 30d
@@ -93,7 +93,7 @@ def _apply_retention_and_exclusion(query, db: Session, time_range: str = None):
         )
     )
 
-    # ── Deleted-service exclusion (Task 5: existence-based) ─────
+    # ÔöÇÔöÇ Deleted-service exclusion (Task 5: existence-based) ÔöÇÔöÇÔöÇÔöÇÔöÇ
     existing_names = _get_existing_service_names(db)
     # For service-related alerts: only keep those whose entity_name
     # still exists in the external_services table.
@@ -103,13 +103,18 @@ def _apply_retention_and_exclusion(query, db: Session, time_range: str = None):
         query = query.filter(
             or_(
                 ~AlertEvent.entity_type.in_(list(_SERVICE_ENTITY_TYPES)),
+                AlertEvent.status.in_(["resolved", "dismissed"]),
                 sqlfunc.lower(AlertEvent.entity_name).in_(existing_names),
             )
         )
     else:
-        # No services exist at all → exclude ALL service-type alerts
+        # No services exist at all:
+        # keep resolved/dismissed history but exclude active service-type alerts
         query = query.filter(
-            ~AlertEvent.entity_type.in_(list(_SERVICE_ENTITY_TYPES))
+            or_(
+                ~AlertEvent.entity_type.in_(list(_SERVICE_ENTITY_TYPES)),
+                AlertEvent.status.in_(["resolved", "dismissed"]),
+            )
         )
 
 
@@ -130,7 +135,7 @@ def _apply_retention_and_exclusion(query, db: Session, time_range: str = None):
     return query
 
 
-# ── GET /api/alerts/history ─────────────────────────────────────
+# ÔöÇÔöÇ GET /api/alerts/history ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
 
 @router.get("")
 async def get_alert_event_history(
@@ -197,7 +202,7 @@ async def get_alert_event_history(
     }
 
 
-# ── GET /api/alerts/history/stats ───────────────────────────────
+# ÔöÇÔöÇ GET /api/alerts/history/stats ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
 
 @router.get("/stats")
 async def get_alert_stats(
