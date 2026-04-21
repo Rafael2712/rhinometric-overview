@@ -1,33 +1,141 @@
+/* Design tokens — must come before Tailwind layers */
+@import './styles/tokens.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   * {
-    @apply border-surface-light;
+    @apply border-border;
+    box-sizing: border-box;
+  }
+  html {
+    font-size: 16px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
   body {
-    @apply bg-background text-text-primary font-sans antialiased;
+    background-color: var(--c-bg);
+    color: var(--c-text-primary);
+    font-family: 'Inter', system-ui, sans-serif;
   }
   h1, h2, h3, h4, h5, h6 {
     @apply font-semibold;
   }
+
+  /* Smooth theme transitions — only on targeted properties */
+  body,
+  .theme-transition {
+    transition: background-color 200ms ease, color 200ms ease, border-color 200ms ease;
+  }
 }
 
 @layer components {
+  /* ── Buttons ──────────────────────────────────────────────── */
   .btn {
-    @apply px-4 py-2 rounded-md font-medium transition-colors duration-200;
+    @apply inline-flex items-center justify-center px-4 py-2 rounded-md font-medium text-sm transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed;
   }
   .btn-primary {
     @apply bg-primary hover:bg-primary-dark text-white;
   }
   .btn-secondary {
-    @apply bg-surface hover:bg-surface-light text-text-primary;
+    background-color: var(--c-surface-light);
+    color: var(--c-text-primary);
   }
+  .btn-secondary:hover {
+    background-color: var(--c-border);
+  }
+  .btn-ghost {
+    background: transparent;
+    color: var(--c-text-secondary);
+  }
+  .btn-ghost:hover {
+    background-color: var(--c-surface-light);
+    color: var(--c-text-primary);
+  }
+
+  /* ── Cards ────────────────────────────────────────────────── */
   .card {
-    @apply bg-surface rounded-lg border border-surface-light p-6;
+    background-color: var(--c-surface);
+    border: 1px solid var(--c-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    padding: var(--space-6);
   }
+  .card-sm {
+    background-color: var(--c-surface);
+    border: 1px solid var(--c-border);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-sm);
+    padding: var(--space-4);
+  }
+
+  /* ── Inputs ───────────────────────────────────────────────── */
   .input {
-    @apply bg-surface border border-surface-light rounded-md px-4 py-2 text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary;
+    background-color: var(--c-surface);
+    border: 1px solid var(--c-border);
+    border-radius: var(--radius-md);
+    padding: 8px 16px;
+    color: var(--c-text-primary);
+    font-size: 0.875rem;
+    transition: border-color 150ms, box-shadow 150ms;
+  }
+  .input::placeholder {
+    color: var(--c-text-muted);
+  }
+  .input:focus {
+    outline: none;
+    border-color: var(--c-primary);
+    box-shadow: 0 0 0 3px rgb(14 165 233 / 0.15);
+  }
+
+  /* ── Status badges ────────────────────────────────────────── */
+  .badge {
+    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium;
+  }
+  .badge-critical {
+    background-color: var(--c-critical-bg);
+    color: var(--c-critical);
+    border: 1px solid var(--c-critical-border);
+  }
+  .badge-warning {
+    background-color: var(--c-warning-bg);
+    color: var(--c-warning);
+    border: 1px solid var(--c-warning-border);
+  }
+  .badge-success {
+    background-color: var(--c-success-bg);
+    color: var(--c-success);
+    border: 1px solid var(--c-success-border);
+  }
+  .badge-info {
+    background-color: var(--c-info-bg);
+    color: var(--c-info);
+    border: 1px solid var(--c-info-border);
+  }
+  .badge-neutral {
+    background-color: var(--c-surface-light);
+    color: var(--c-text-secondary);
+    border: 1px solid var(--c-border);
+  }
+
+  /* ── Severity dot ─────────────────────────────────────────── */
+  .dot-critical { @apply w-2 h-2 rounded-full bg-red-500; }
+  .dot-warning  { @apply w-2 h-2 rounded-full bg-amber-500; }
+  .dot-success  { @apply w-2 h-2 rounded-full bg-green-500; }
+  .dot-info     { @apply w-2 h-2 rounded-full bg-sky-500; }
+  .dot-muted    { @apply w-2 h-2 rounded-full bg-gray-400; }
+
+  /* ── Section heading ──────────────────────────────────────── */
+  .section-heading {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--c-sidebar-section);
+    padding: 0 12px;
+    margin-bottom: 4px;
+    margin-top: 20px;
   }
 }

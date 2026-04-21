@@ -1,0 +1,110 @@
+/* ═══════════════════════════════════════════════════════════════
+   RHINOMETRIC DESIGN TOKENS
+   Light theme is the default. Dark theme activates on .dark class
+   on <html>. The sidebar always stays dark (intentional split UI).
+═══════════════════════════════════════════════════════════════ */
+
+:root {
+  /* ── Main surface ───────────────────────────────────────── */
+  --c-bg:            #f8fafc;   /* slate-50 — page background    */
+  --c-surface:       #ffffff;   /* white — cards, panels         */
+  --c-surface-dark:  #f1f5f9;   /* slate-100 — nested surfaces   */
+  --c-surface-light: #e2e8f0;   /* slate-200 — hover, dividers   */
+  --c-border:        #e2e8f0;   /* slate-200 — default border    */
+
+  /* ── Typography ─────────────────────────────────────────── */
+  --c-text-primary:   #0f172a;  /* slate-900                     */
+  --c-text-secondary: #475569;  /* slate-600                     */
+  --c-text-muted:     #94a3b8;  /* slate-400                     */
+
+  /* ── Brand ───────────────────────────────────────────────── */
+  --c-primary:       #0ea5e9;   /* sky-500                       */
+  --c-primary-dark:  #0284c7;   /* sky-600                       */
+  --c-primary-light: #38bdf8;   /* sky-400                       */
+
+  /* ── Semantic (status) ───────────────────────────────────── */
+  --c-success:       #16a34a;   /* green-600                     */
+  --c-success-bg:    #f0fdf4;   /* green-50                      */
+  --c-success-border:#bbf7d0;   /* green-200                     */
+
+  --c-warning:       #d97706;   /* amber-600                     */
+  --c-warning-bg:    #fffbeb;   /* amber-50                      */
+  --c-warning-border:#fde68a;   /* amber-200                     */
+
+  --c-critical:      #dc2626;   /* red-600                       */
+  --c-critical-bg:   #fef2f2;   /* red-50                        */
+  --c-critical-border:#fecaca;  /* red-200                       */
+
+  --c-info:          #0ea5e9;   /* sky-500                       */
+  --c-info-bg:       #f0f9ff;   /* sky-50                        */
+  --c-info-border:   #bae6fd;   /* sky-200                       */
+
+  /* ── Sidebar (always dark in both themes) ────────────────── */
+  --c-sidebar-bg:          #1e293b;
+  --c-sidebar-border:      #334155;
+  --c-sidebar-text:        #94a3b8;
+  --c-sidebar-text-hover:  #f1f5f9;
+  --c-sidebar-section:     #64748b;
+  --c-sidebar-active-bg:   #0ea5e9;
+  --c-sidebar-active-text: #ffffff;
+  --c-sidebar-hover-bg:    #334155;
+
+  /* ── Header ─────────────────────────────────────────────── */
+  --c-header-bg:     #ffffff;
+  --c-header-border: #e2e8f0;
+
+  /* ── Shadows ─────────────────────────────────────────────── */
+  --shadow-sm:  0 1px 2px 0 rgb(15 23 42 / 0.05);
+  --shadow-md:  0 4px 6px -1px rgb(15 23 42 / 0.07), 0 2px 4px -2px rgb(15 23 42 / 0.04);
+  --shadow-lg:  0 10px 15px -3px rgb(15 23 42 / 0.08), 0 4px 6px -4px rgb(15 23 42 / 0.04);
+
+  /* ── Radius ──────────────────────────────────────────────── */
+  --radius-sm:  4px;
+  --radius-md:  8px;
+  --radius-lg:  12px;
+  --radius-xl:  16px;
+
+  /* ── Spacing scale ───────────────────────────────────────── */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+}
+
+/* ── Dark theme overrides — content area only ────────────── */
+.dark {
+  --c-bg:            #0f172a;
+  --c-surface:       #1e293b;
+  --c-surface-dark:  #0f1729;
+  --c-surface-light: #334155;
+  --c-border:        #334155;
+
+  --c-text-primary:   #f1f5f9;
+  --c-text-secondary: #cbd5e1;
+  --c-text-muted:     #94a3b8;
+
+  --c-success:       #10b981;
+  --c-success-bg:    rgb(16 185 129 / 0.10);
+  --c-success-border:rgb(16 185 129 / 0.25);
+
+  --c-warning:       #f59e0b;
+  --c-warning-bg:    rgb(245 158 11 / 0.10);
+  --c-warning-border:rgb(245 158 11 / 0.25);
+
+  --c-critical:      #ef4444;
+  --c-critical-bg:   rgb(239 68 68 / 0.10);
+  --c-critical-border:rgb(239 68 68 / 0.25);
+
+  --c-info:          #38bdf8;
+  --c-info-bg:       rgb(56 189 248 / 0.10);
+  --c-info-border:   rgb(56 189 248 / 0.25);
+
+  --c-header-bg:     #1e293b;
+  --c-header-border: #334155;
+
+  --shadow-sm:  0 1px 2px 0 rgb(0 0 0 / 0.3);
+  --shadow-md:  0 4px 6px -1px rgb(0 0 0 / 0.4), 0 2px 4px -2px rgb(0 0 0 / 0.2);
+  --shadow-lg:  0 10px 15px -3px rgb(0 0 0 / 0.5), 0 4px 6px -4px rgb(0 0 0 / 0.2);
+}
