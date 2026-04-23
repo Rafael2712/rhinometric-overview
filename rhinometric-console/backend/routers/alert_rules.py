@@ -331,6 +331,101 @@ async def delete_alert_rule(
 # Auto-resolution: resolve alerts for recovered services
 # ├ö├Â├ç├ö├Â├ç├ö├Â├ç├ö├Â├ç├ö├Â├ç├ö├Â├ç├ö├Â├ç├ö├Â├ç├ö├Â├ç├ö├Â├ç├ö├Â├ç├ö├Â├ç├ö├Â├ç├ö├Â├ç├ö├Â├ç├ö├Â├ç├ö├Â├ç├ö├Â├ç├ö├Â├ç├ö├Â├ç├ö├Â├ç├ö├Â├ç├ö├Â├ç├ö├Â├ç├ö├Â├ç├ö├Â├ç├ö├Â├ç├ö├Â├ç├ö├Â├ç├ö├Â├ç├ö├Â├ç├ö├Â├ç├ö├Â├ç├ö├Â├ç├ö├Â├ç├ö├Â├ç├ö├Â├ç├ö├Â├ç├ö├Â├ç├ö├Â├ç├ö├Â├ç├ö├Â├ç├ö├Â├ç├ö├Â├ç├ö├Â├ç├ö├Â├ç├ö├Â├ç├ö├Â├ç├ö├Â├ç├ö├Â├ç├ö├Â├ç├ö├Â├ç├ö├Â├ç├ö├Â├ç├ö├Â├ç├ö├Â├ç├ö├Â├ç├ö├Â├ç├ö├Â├ç├ö├Â├ç├ö├Â├ç├ö├Â├ç├ö├Â├ç├ö├Â├ç
 
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# CRITICAL Alert Auto-Escalation to Incidents
+# ═══════════════════════════════════════════════════════════════════════
+
+def _auto_escalate_critical_alert(db: Session, alert_event):
+    """
+    Automatically escalate CRITICAL alerts to incidents.
+    
+    Business Rules:
+    1. Only CRITICAL severity alerts escalate
+    2. Check for existing open incident for same entity
+    3. If found, link alert to it; if not, create new incident
+    4. Mark alert as "escalated" status
+    5. Alert disappears from active Alerts queue but remains in history
+    
+    Args:
+        db: Database session
+        alert_event: The newly created AlertEvent with severity="critical"
+    """
+    from models.incident import Incident
+    
+    # Only escalate CRITICAL alerts
+    if alert_event.severity != "critical":
+        return
+    
+    # Only escalate firing alerts
+    if alert_event.status != "firing":
+        return
+    
+    # Check if alert is already linked to an incident
+    if alert_event.incident_id:
+        return
+    
+    entity_name = alert_event.entity_name
+    entity_type = alert_event.entity_type or "service"
+    now = datetime.now(timezone.utc)
+    
+    # Build incident key for deduplication
+    incident_key = f"{entity_type}:{entity_name}"
+    
+    # Look for existing open/investigating incident for this entity
+    existing_incident = db.query(Incident).filter(
+        Incident.incident_key == incident_key,
+        Incident.status.in_(["open", "investigating"]),
+    ).first()
+    
+    if existing_incident:
+        # Link alert to existing incident
+        alert_event.incident_id = existing_incident.id
+        alert_event.status = "escalated"
+        
+        # Update incident severity if this alert is more severe
+        severity_rank = {"critical": 4, "warning": 3, "info": 2, "low": 1}
+        if severity_rank.get(alert_event.severity.lower(), 0) > severity_rank.get(existing_incident.severity.lower(), 0):
+            existing_incident.severity = alert_event.severity
+        
+        existing_incident.updated_at = now
+        
+        logger.info(
+            "[Auto-Escalation] Linked CRITICAL alert %s to existing incident %s",
+            alert_event.alert_name, existing_incident.id
+        )
+    else:
+        # Create new incident
+        new_incident = Incident(
+            id=uuid.uuid4(),
+            incident_key=incident_key,
+            entity_name=entity_name,
+            entity_type=entity_type,
+            severity=alert_event.severity,
+            status="open",
+            started_at=now,
+            created_at=now,
+            updated_at=now,
+            title=f"Critical issue: {alert_event.alert_name}",
+            summary=alert_event.summary or (alert_event.annotations.get("summary", "") if alert_event.annotations else ""),
+            alert_fingerprint=alert_event.fingerprint,
+        )
+        db.add(new_incident)
+        db.flush()
+        
+        # Link alert to new incident
+        alert_event.incident_id = new_incident.id
+        alert_event.status = "escalated"
+        
+        logger.info(
+            "[Auto-Escalation] Created incident %s for CRITICAL alert %s",
+            new_incident.id, alert_event.alert_name
+        )
+    
+    db.flush()
+
+
 def _resolve_recovered_services(db: Session):
     """Resolve alert events for services that have recovered.
 
@@ -386,6 +481,10 @@ def _resolve_recovered_services(db: Session):
                     check_incident_resolution(db, event.incident_id)
                 except Exception as e:
                     logger.error(f"Resolution check error: {e}")
+            
+            # If alert was escalated, also resolve it in DB
+            if event.status == "escalated":
+                event.status = "resolved"
             on_recovery(event.entity_name)
 
             # Send recovery email and endsAt to Alertmanager
@@ -903,6 +1002,12 @@ def _evaluate_assertion_failures(db: Session) -> int:
                 db.add(event)
                 db.flush()  # Materialize event.id for email service
                 
+                # Auto-escalate CRITICAL assertion alerts to incidents
+                try:
+                    _auto_escalate_critical_alert(db, event)
+                except Exception as _esc_err:
+                    logger.warning("[Auto-Escalation] Failed for assertion alert (non-fatal): %s", _esc_err)
+                
                 # Phase 3 FIX-2: Send email notification for assertion failures
                 try:
                     from services.alert_email_service import send_firing_notification
@@ -1107,6 +1212,12 @@ def _fire_rule_alert(db: Session, rule: AlertRule, current_value: float,
     )
     db.add(event)
     db.flush()
+
+    # Auto-escalate CRITICAL alerts to incidents
+    try:
+        _auto_escalate_critical_alert(db, event)
+    except Exception as _esc_err:
+        logger.warning("[Auto-Escalation] Failed for policy alert (non-fatal): %s", _esc_err)
 
     # Link to incident pipeline (noise-gated)
     _should_inc, _inc_reason = should_create_incident(entity_name, effective_severity)
