@@ -456,7 +456,7 @@ def _resolve_recovered_services(db: Session):
     all_candidate_names = up_or_degraded_names
     if all_candidate_names:
         firing_events = db.query(AlertEvent).filter(
-            AlertEvent.status == "firing",
+            AlertEvent.status.in_(["firing", "escalated"]),
             AlertEvent.source.in_(["alert_policy", "alertmanager"]),
             AlertEvent.entity_name.in_(list(all_candidate_names)),
         ).all()
@@ -481,10 +481,6 @@ def _resolve_recovered_services(db: Session):
                     check_incident_resolution(db, event.incident_id)
                 except Exception as e:
                     logger.error(f"Resolution check error: {e}")
-            
-            # If alert was escalated, also resolve it in DB
-            if event.status == "escalated":
-                event.status = "resolved"
             on_recovery(event.entity_name)
 
             # Send recovery email and endsAt to Alertmanager
@@ -1127,10 +1123,10 @@ def _fire_rule_alert(db: Session, rule: AlertRule, current_value: float,
     if rule.rule_type == 'SERVICE_DOWN':
         effective_severity = 'critical'
 
-    # -- Check for existing firing event with this fingerprint --
+    # -- Check for existing firing/escalated event with this fingerprint --
     existing = db.query(AlertEvent).filter(
         AlertEvent.fingerprint == fingerprint,
-        AlertEvent.status == "firing",
+        AlertEvent.status.in_(["firing", "escalated"]),
     ).first()
 
     if existing:
