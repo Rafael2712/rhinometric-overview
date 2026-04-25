@@ -483,17 +483,15 @@ def _resolve_recovered_services(db: Session):
                     logger.error(f"Resolution check error: {e}")
             on_recovery(event.entity_name)
 
-            # Send recovery email and endsAt to Alertmanager
+            # Notify Alertmanager of resolution (send endsAt) — no recovery email per noise policy
             try:
-                from services.alert_email_service import send_recovery_notification, resolve_alertmanager_alert
-                event.recovery_notification_sent_at = now
-                send_recovery_notification(event)
+                from services.alert_email_service import resolve_alertmanager_alert
                 resolve_alertmanager_alert(
                     event.alert_name, event.entity_name, event.severity,
                     labels=event.labels if isinstance(event.labels, dict) else None,
                 )
             except Exception as _recov_err:
-                logger.warning("Recovery notification failed (non-fatal): %s", _recov_err)
+                logger.warning("AM resolve (endsAt) failed (non-fatal): %s", _recov_err)
 
         if resolved_count:
             logger.info(f"Auto-resolved {resolved_count} alert(s) for recovered services")
@@ -1004,21 +1002,23 @@ def _evaluate_assertion_failures(db: Session) -> int:
                 except Exception as _esc_err:
                     logger.warning("[Auto-Escalation] Failed for assertion alert (non-fatal): %s", _esc_err)
                 
-                # Phase 3 FIX-2: Send email notification for assertion failures
-                try:
-                    from services.alert_email_service import send_firing_notification
-                    event.notification_sent_at = now
-                    db.flush()
-                    send_firing_notification(event, current_value=fail_count)
-                    logger.info(
-                        "[Assertions] Email notification triggered for %s",
-                        entity_name
-                    )
-                except Exception as _email_err:
-                    logger.warning(
-                        "[Assertions] Email notification failed (non-fatal): %s",
-                        _email_err
-                    )
+                # Notification policy: only notify CRITICAL severity alerts
+                # _AF_SEVERITY is 'warning' — assertion failures are non-critical, no email
+                if _AF_SEVERITY == "critical":
+                    try:
+                        from services.alert_email_service import send_firing_notification
+                        event.notification_sent_at = now
+                        db.flush()
+                        send_firing_notification(event, current_value=fail_count)
+                        logger.info(
+                            "[Assertions] Email notification triggered for %s",
+                            entity_name
+                        )
+                    except Exception as _email_err:
+                        logger.warning(
+                            "[Assertions] Email notification failed (non-fatal): %s",
+                            _email_err
+                        )
                 
                 fired += 1
                 logger.info(
@@ -1164,6 +1164,37 @@ def _fire_rule_alert(db: Session, rule: AlertRule, current_value: float,
                         except Exception as e:
                             logger.warning("Incident linkage on escalation failed: %s", e)
 
+                # Notification policy: notify once on escalation to critical (WARNING → CRITICAL)
+                if effective_severity == "critical" and not existing.notification_sent_at:
+                    try:
+                        import httpx as _httpx
+                        from config import settings as _cfg2
+                        _am_esc = [{
+                            "labels": {
+                                "alertname": existing.alert_name,
+                                "service_name": entity_name,
+                                "severity": effective_severity,
+                                "rule_type": rule.rule_type or "",
+                                "source": "alert_policy",
+                                "category": "external-services",
+                            },
+                            "annotations": {"summary": existing.summary or ""},
+                            "startsAt": existing.started_at.isoformat() if existing.started_at else "",
+                            "generatorURL": "",
+                        }]
+                        with _httpx.Client(timeout=5.0) as _fwd2:
+                            _fwd2.post(f"{_cfg2.ALERTMANAGER_URL}/api/v2/alerts", json=_am_esc)
+                    except Exception as _am_esc_err:
+                        logger.warning("AM forward on escalation failed (non-fatal): %s", _am_esc_err)
+                    try:
+                        from services.alert_email_service import send_firing_notification
+                        existing.notification_sent_at = now
+                        db.flush()
+                        send_firing_notification(existing, current_value=current_value)
+                        logger.info("Escalation-to-critical notification sent for: %s", entity_name)
+                    except Exception as _notif_esc_err:
+                        logger.warning("Escalation notification failed (non-fatal): %s", _notif_esc_err)
+
         db.flush()
         return  # no new row
 
@@ -1228,42 +1259,43 @@ def _fire_rule_alert(db: Session, rule: AlertRule, current_value: float,
 
     logger.info(f"Policy alert fired: {rule.name} ({rule.rule_type}) -> {entity_name}")
 
-    # ÔöÇÔöÇ Forward new policy alert to Alertmanager for Slack/email notifications ÔöÇÔöÇ
-    try:
-        import httpx
-        from config import settings as _cfg
-        am_payload = [{
-            "labels": {
-                "alertname": alert_name,
-                "service_name": entity_name,
-                "severity": effective_severity,
-                "rule_type": rule.rule_type or "",
-                "source": "alert_policy",
-                "category": "external-services",
-                "metric": rule.rule_type or rule.metric or "",
-            },
-            "annotations": {
-                "summary": summary,
-                "description": detail or summary,
-            },
-            "startsAt": now.isoformat(),
-            "generatorURL": "",
-        }]
-        with httpx.Client(timeout=5.0) as _fwd:
-            _fwd.post(f"{_cfg.ALERTMANAGER_URL}/api/v2/alerts", json=am_payload)
-        logger.info("Forwarded policy alert to Alertmanager for notification: %s", alert_name)
-    except Exception as _fwd_err:
-        logger.warning("Alertmanager forward failed (non-fatal): %s", _fwd_err)
+    # Notification policy: only forward CRITICAL alerts (no WARNING/INFO notifications)
+    if effective_severity == "critical":
+        try:
+            import httpx
+            from config import settings as _cfg
+            am_payload = [{
+                "labels": {
+                    "alertname": alert_name,
+                    "service_name": entity_name,
+                    "severity": effective_severity,
+                    "rule_type": rule.rule_type or "",
+                    "source": "alert_policy",
+                    "category": "external-services",
+                    "metric": rule.rule_type or rule.metric or "",
+                },
+                "annotations": {
+                    "summary": summary,
+                    "description": detail or summary,
+                },
+                "startsAt": now.isoformat(),
+                "generatorURL": "",
+            }]
+            with httpx.Client(timeout=5.0) as _fwd:
+                _fwd.post(f"{_cfg.ALERTMANAGER_URL}/api/v2/alerts", json=am_payload)
+            logger.info("Forwarded CRITICAL policy alert to Alertmanager: %s", alert_name)
+        except Exception as _fwd_err:
+            logger.warning("Alertmanager forward failed (non-fatal): %s", _fwd_err)
 
-    # ÔöÇÔöÇ Send direct email notification via Zoho API (bypasses Alertmanager SMTP) ÔöÇÔöÇ
-    try:
-        from services.alert_email_service import send_firing_notification
-        event.notification_sent_at = now
-        db.flush()
-        send_firing_notification(event, current_value=current_value)
-        logger.info("Direct email notification triggered for: %s", alert_name)
-    except Exception as _email_err:
-        logger.warning("Direct email notification failed (non-fatal): %s", _email_err)
+        # Send direct email notification via Zoho API (bypasses Alertmanager SMTP)
+        try:
+            from services.alert_email_service import send_firing_notification
+            event.notification_sent_at = now
+            db.flush()
+            send_firing_notification(event, current_value=current_value)
+            logger.info("Direct email notification triggered for: %s", alert_name)
+        except Exception as _email_err:
+            logger.warning("Direct email notification failed (non-fatal): %s", _email_err)
 def _get_service_name(db: Session, service_id: int) -> str:
     if not service_id:
         return "all-services"
