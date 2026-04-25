@@ -7,7 +7,7 @@ import {
   Filter, ChevronDown, ChevronUp, Clock, Activity,
   Flame, Eye, BarChart3, MessageSquare, Tag, Plus, X, Send,
   Crosshair, Shield, Trash2, Loader2,
-  Brain, Lightbulb, BookOpen, RefreshCw, ExternalLink
+  Brain, Lightbulb, BookOpen, RefreshCw, ExternalLink, Zap
 } from 'lucide-react'
 
 /* -- Types -- */
@@ -33,6 +33,23 @@ interface IncidentSummary {
   postmortem?: string | null
   anomaly_id?: string | null
   alert_fingerprint?: string | null
+  // Phase 5.1 AI Briefing
+  ai_briefing?: AiBriefing | null
+}
+
+interface AiBriefing {
+  executive_summary: string
+  probable_cause: string
+  affected_service: string
+  related_alerts: Array<{ alert_name: string; severity: string; status: string; started_at: string | null; ended_at?: string | null }>
+  related_anomalies: Array<{ service: string; score: number | null; severity: string | null; predicted_risk: string | null; timestamp: string | null }>
+  evidence: string[]
+  impact_assessment: string
+  recommended_actions: string[]
+  confidence: 'high' | 'medium' | 'low'
+  generated_at: string
+  engine: string
+  model: string | null
 }
 
 interface IncidentDetail {
@@ -747,7 +764,7 @@ function IncidentDetailPanel({ detail }: { detail: IncidentDetail }) {
   const incidentId = detail.incident.id
   const inc = detail.incident
 
-  const [activeTab, setActiveTab] = useState<'summary' | 'alerts' | 'timeline' | 'comments' | 'root-cause'>('summary')
+  const [activeTab, setActiveTab] = useState<'summary' | 'alerts' | 'timeline' | 'comments' | 'root-cause' | 'briefing'>('summary')
   const [newComment, setNewComment] = useState('')
   const [newTag, setNewTag] = useState('')
   const [regenerating, setRegenerating] = useState(false)
@@ -784,6 +801,22 @@ function IncidentDetailPanel({ detail }: { detail: IncidentDetail }) {
     },
     enabled: activeTab === 'root-cause',
     staleTime: 30000,
+  })
+
+  // AI Briefing mutation (Phase 5.1)
+  const briefingMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`/api/incidents/${incidentId}/ai-briefing`, {
+        method: 'POST',
+        headers,
+      })
+      if (!res.ok) throw new Error('Failed to generate briefing')
+      return res.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['incident-detail', incidentId] })
+      queryClient.invalidateQueries({ queryKey: ['incident-detail'] })
+    },
   })
 
   // Add comment mutation
@@ -928,6 +961,7 @@ function IncidentDetailPanel({ detail }: { detail: IncidentDetail }) {
           { key: 'timeline' as const, label: `Timeline (${timeline.length})`, icon: Clock },
           { key: 'comments' as const, label: `Comments (${comments.length})`, icon: MessageSquare },
           { key: 'root-cause' as const, label: 'Root Cause', icon: Crosshair },
+          { key: 'briefing' as const, label: 'AI Briefing', icon: Zap },
         ]).map(({ key, label, icon: TabIcon }) => (
           <button
             key={key}
@@ -1212,6 +1246,165 @@ function IncidentDetailPanel({ detail }: { detail: IncidentDetail }) {
               </button>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Tab content: AI Briefing (Phase 5.1) */}
+      {activeTab === 'briefing' && (
+        <div className="space-y-4">
+          {inc.ai_briefing ? (
+            <AiBriefingPanel
+              briefing={inc.ai_briefing}
+              onRegenerate={() => briefingMutation.mutate()}
+              isRegenerating={briefingMutation.isPending}
+            />
+          ) : (
+            <div className="rounded-lg border border-indigo-200 dark:border-indigo-500/20 bg-indigo-50 dark:bg-indigo-500/5 p-6 text-center">
+              <Zap size={28} className="mx-auto text-indigo-400 mb-3" />
+              <p className="text-sm font-medium text-slate-700 dark:text-gray-300 mb-1">AI Incident Briefing</p>
+              <p className="text-xs text-slate-500 dark:text-gray-500 mb-4">
+                Generate a structured 10-point operational briefing based on real incident data.
+              </p>
+              <button
+                onClick={() => briefingMutation.mutate()}
+                disabled={briefingMutation.isPending}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+              >
+                {briefingMutation.isPending
+                  ? <Loader2 size={14} className="animate-spin" />
+                  : <Zap size={14} />}
+                {briefingMutation.isPending ? 'Generating...' : 'Generate AI Briefing'}
+              </button>
+              {briefingMutation.isError && (
+                <p className="mt-2 text-xs text-red-500">Failed to generate briefing. Try again.</p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/* -- AiBriefingPanel component (Phase 5.1) -- */
+
+function AiBriefingPanel({
+  briefing,
+  onRegenerate,
+  isRegenerating,
+}: {
+  briefing: AiBriefing
+  onRegenerate: () => void
+  isRegenerating: boolean
+}) {
+  const confidenceColor =
+    briefing.confidence === 'high'
+      ? 'text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-500/10 border-green-200 dark:border-green-500/20'
+      : briefing.confidence === 'medium'
+      ? 'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/20'
+      : 'text-slate-600 dark:text-gray-400 bg-slate-50 dark:bg-gray-500/10 border-slate-200 dark:border-gray-500/20'
+
+  return (
+    <div className="space-y-3">
+      {/* Header */}
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <Zap size={14} className="text-indigo-500" />
+          <span className="text-sm font-semibold text-slate-900 dark:text-white">AI Incident Briefing</span>
+          <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${confidenceColor}`}>
+            {briefing.confidence} confidence
+          </span>
+          <span className="text-xs text-slate-400 dark:text-gray-500">{briefing.engine}</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-slate-400 dark:text-gray-500">
+            {new Date(briefing.generated_at).toLocaleString()}
+          </span>
+          <button
+            onClick={onRegenerate}
+            disabled={isRegenerating}
+            className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20 transition-colors disabled:opacity-50"
+          >
+            <RefreshCw size={10} className={isRegenerating ? 'animate-spin' : ''} />
+            {isRegenerating ? 'Regenerating...' : 'Regenerate'}
+          </button>
+        </div>
+      </div>
+
+      {/* Text sections: executive summary, probable cause, affected service, impact */}
+      {[
+        { label: '1. Executive Summary', content: briefing.executive_summary, color: 'border-slate-200 dark:border-gray-700' },
+        { label: '2. Probable Cause',    content: briefing.probable_cause,    color: 'border-amber-200 dark:border-amber-500/20' },
+        { label: '3. Affected Service',  content: briefing.affected_service,  color: 'border-slate-200 dark:border-gray-700' },
+        { label: '7. Impact Assessment', content: briefing.impact_assessment, color: 'border-red-200 dark:border-red-500/20' },
+      ].map(({ label, content, color }) => (
+        <div key={label} className={`rounded-lg border ${color} bg-white dark:bg-surface p-3`}>
+          <p className="text-xs font-semibold text-slate-500 dark:text-gray-400 mb-1">{label}</p>
+          <p className="text-sm text-slate-700 dark:text-gray-300 leading-relaxed">{content}</p>
+        </div>
+      ))}
+
+      {/* 6. Evidence */}
+      <div className="rounded-lg border border-blue-200 dark:border-blue-500/20 bg-white dark:bg-surface p-3">
+        <p className="text-xs font-semibold text-slate-500 dark:text-gray-400 mb-2">6. Evidence Used</p>
+        <ul className="space-y-1">
+          {briefing.evidence.map((e, i) => (
+            <li key={i} className="flex items-start gap-2 text-sm text-slate-700 dark:text-gray-300">
+              <span className="text-blue-400 mt-0.5 flex-shrink-0">•</span>{e}
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      {/* 8. Recommended Actions */}
+      <div className="rounded-lg border border-green-200 dark:border-green-500/20 bg-white dark:bg-surface p-3">
+        <p className="text-xs font-semibold text-slate-500 dark:text-gray-400 mb-2">8. Recommended Actions</p>
+        <ol className="space-y-1">
+          {briefing.recommended_actions.map((a, i) => (
+            <li key={i} className="flex items-start gap-2 text-sm text-slate-700 dark:text-gray-300">
+              <span className="text-green-600 dark:text-green-400 font-bold flex-shrink-0">{i + 1}.</span>{a}
+            </li>
+          ))}
+        </ol>
+      </div>
+
+      {/* 4. Related Alerts */}
+      {briefing.related_alerts.length > 0 && (
+        <div className="rounded-lg border border-slate-200 dark:border-gray-700 bg-white dark:bg-surface p-3">
+          <p className="text-xs font-semibold text-slate-500 dark:text-gray-400 mb-2">
+            4. Related Alerts ({briefing.related_alerts.length})
+          </p>
+          <div className="space-y-1">
+            {briefing.related_alerts.slice(0, 5).map((a, i) => (
+              <div key={i} className="flex items-center gap-2 text-xs text-slate-700 dark:text-gray-300">
+                <span className={`px-1.5 py-0.5 rounded font-medium ${
+                  a.severity === 'critical'
+                    ? 'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400'
+                    : 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400'
+                }`}>{a.severity}</span>
+                <span className="font-mono truncate">{a.alert_name}</span>
+                <span className="text-slate-400 dark:text-gray-500 ml-auto">{a.status}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 5. Related Anomalies */}
+      {briefing.related_anomalies.length > 0 && (
+        <div className="rounded-lg border border-indigo-200 dark:border-indigo-500/20 bg-white dark:bg-surface p-3">
+          <p className="text-xs font-semibold text-slate-500 dark:text-gray-400 mb-2">
+            5. Related Anomalies ({briefing.related_anomalies.length})
+          </p>
+          <div className="space-y-1">
+            {briefing.related_anomalies.map((a, i) => (
+              <div key={i} className="text-xs text-slate-700 dark:text-gray-300 flex gap-2">
+                <span className="text-indigo-500 font-medium">{a.service}</span>
+                {a.severity && <span className="text-slate-400">{a.severity}</span>}
+                {a.predicted_risk && <span className="text-slate-400">risk: {a.predicted_risk}</span>}
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>
