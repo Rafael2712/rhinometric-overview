@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link, useLocation, Outlet } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import {
-  Home, Bell, CreditCard, Settings,
+  Home, Bell, CreditCard, Settings, LayoutDashboard, HardDrive,
   LogOut, Menu, X, Users, Globe, ClipboardList, Flame, Shield,
   Map, Zap, Search, Sun, Moon, ChevronDown, BarChart2,
 } from 'lucide-react'
@@ -27,6 +27,13 @@ const NAV_GROUPS = [
     ],
   },
   {
+    key: 'observe',
+    label: 'OBSERVE',
+    items: [
+      { name: 'Dashboards', href: '/dashboards', icon: LayoutDashboard },
+    ],
+  },
+  {
     key: 'manage',
     label: 'MANAGE',
     items: [
@@ -42,6 +49,13 @@ const NAV_GROUPS = [
       { name: 'Integrations', href: '/integrations', icon: Zap },
       { name: 'Users', href: '/users', icon: Users, requiredRoles: ['OWNER', 'ADMIN'] },
       { name: 'Settings', href: '/settings', icon: Settings, requiredRoles: ['OWNER', 'ADMIN'] },
+    ],
+  },
+  {
+    key: 'resilience',
+    label: 'RESILIENCE',
+    items: [
+      { name: 'Backup & Recovery', href: '/backup', icon: HardDrive },
     ],
   },
   {
