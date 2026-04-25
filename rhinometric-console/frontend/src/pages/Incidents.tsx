@@ -1,5 +1,5 @@
 /* eslint-disable */
-import { useState, useEffect } from 'react'
+import { useState, useEffect, type ReactNode } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuthStore } from '../lib/auth/store'
 import {
@@ -38,14 +38,15 @@ interface IncidentSummary {
 }
 
 interface AiBriefing {
+  status_snapshot: string
   executive_summary: string
-  probable_cause: string
-  affected_service: string
+  likely_cause: string
+  operational_impact: string
+  evidence: string[]
+  recommended_actions: string[]
   related_alerts: Array<{ alert_name: string; severity: string; status: string; started_at: string | null; ended_at?: string | null }>
   related_anomalies: Array<{ service: string; score: number | null; severity: string | null; predicted_risk: string | null; timestamp: string | null }>
-  evidence: string[]
-  impact_assessment: string
-  recommended_actions: string[]
+  confidence_explanation: string
   confidence: 'high' | 'medium' | 'low'
   generated_at: string
   engine: string
@@ -1286,7 +1287,7 @@ function IncidentDetailPanel({ detail }: { detail: IncidentDetail }) {
   )
 }
 
-/* -- AiBriefingPanel component (Phase 5.1) -- */
+/* -- AiBriefingPanel component (Phase 5.1 v2) -- */
 
 function AiBriefingPanel({
   briefing,
@@ -1297,116 +1298,183 @@ function AiBriefingPanel({
   onRegenerate: () => void
   isRegenerating: boolean
 }) {
-  const confidenceColor =
+  const confBadge =
     briefing.confidence === 'high'
-      ? 'text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-500/10 border-green-200 dark:border-green-500/20'
+      ? 'text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-500/10 border-green-200 dark:border-green-500/20'
       : briefing.confidence === 'medium'
-      ? 'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/20'
-      : 'text-slate-600 dark:text-gray-400 bg-slate-50 dark:bg-gray-500/10 border-slate-200 dark:border-gray-500/20'
+      ? 'text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/20'
+      : 'text-slate-600 dark:text-gray-400 bg-slate-100 dark:bg-gray-700/30 border-slate-200 dark:border-gray-600/30'
+
+  const sevColor = (sev: string) =>
+    sev === 'critical'
+      ? 'bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-400'
+      : sev === 'warning'
+      ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400'
+      : 'bg-slate-100 text-slate-600 dark:bg-gray-700/40 dark:text-gray-400'
+
+  const statusColor = (st: string) =>
+    st === 'firing' || st === 'escalated'
+      ? 'text-red-600 dark:text-red-400'
+      : st === 'resolved'
+      ? 'text-green-600 dark:text-green-400'
+      : 'text-slate-500 dark:text-gray-500'
 
   return (
-    <div className="space-y-3">
-      {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <div className="flex items-center gap-2 flex-wrap">
-          <Zap size={14} className="text-indigo-500" />
+    <div className="space-y-0.5">
+
+      {/* ── Top strip: Status Snapshot ── */}
+      <div className="rounded-lg bg-slate-100 dark:bg-gray-800/60 border border-slate-200 dark:border-gray-700/50 px-3 py-2 flex flex-wrap gap-x-4 gap-y-1 items-center">
+        {briefing.status_snapshot.split('  ·  ').map((part, i) => (
+          <span key={i} className="text-xs font-medium text-slate-600 dark:text-gray-300">{part}</span>
+        ))}
+        <span className="ml-auto text-xs text-slate-400 dark:text-gray-500">
+          {new Date(briefing.generated_at).toLocaleString()}
+        </span>
+      </div>
+
+      {/* ── Header bar ── */}
+      <div className="flex items-center justify-between pt-2 pb-1 flex-wrap gap-2">
+        <div className="flex items-center gap-2">
+          <Zap size={13} className="text-indigo-500" />
           <span className="text-sm font-semibold text-slate-900 dark:text-white">AI Incident Briefing</span>
-          <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${confidenceColor}`}>
+          <span className={`inline-flex items-center px-2 py-0.5 rounded border text-xs font-medium ${confBadge}`}>
             {briefing.confidence} confidence
           </span>
           <span className="text-xs text-slate-400 dark:text-gray-500">{briefing.engine}</span>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-slate-400 dark:text-gray-500">
-            {new Date(briefing.generated_at).toLocaleString()}
-          </span>
-          <button
-            onClick={onRegenerate}
-            disabled={isRegenerating}
-            className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20 transition-colors disabled:opacity-50"
-          >
-            <RefreshCw size={10} className={isRegenerating ? 'animate-spin' : ''} />
-            {isRegenerating ? 'Regenerating...' : 'Regenerate'}
-          </button>
-        </div>
+        <button
+          onClick={onRegenerate}
+          disabled={isRegenerating}
+          className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 border border-indigo-200 dark:border-indigo-500/20 transition-colors disabled:opacity-50"
+        >
+          <RefreshCw size={10} className={isRegenerating ? 'animate-spin' : ''} />
+          {isRegenerating ? 'Regenerating...' : 'Regenerate'}
+        </button>
       </div>
 
-      {/* Text sections: executive summary, probable cause, affected service, impact */}
-      {[
-        { label: '1. Executive Summary', content: briefing.executive_summary, color: 'border-slate-200 dark:border-gray-700' },
-        { label: '2. Probable Cause',    content: briefing.probable_cause,    color: 'border-amber-200 dark:border-amber-500/20' },
-        { label: '3. Affected Service',  content: briefing.affected_service,  color: 'border-slate-200 dark:border-gray-700' },
-        { label: '7. Impact Assessment', content: briefing.impact_assessment, color: 'border-red-200 dark:border-red-500/20' },
-      ].map(({ label, content, color }) => (
-        <div key={label} className={`rounded-lg border ${color} bg-white dark:bg-surface p-3`}>
-          <p className="text-xs font-semibold text-slate-500 dark:text-gray-400 mb-1">{label}</p>
-          <p className="text-sm text-slate-700 dark:text-gray-300 leading-relaxed">{content}</p>
-        </div>
-      ))}
+      {/* ── Sections 1–6 (text) ── */}
+      <div className="space-y-2 pt-1">
 
-      {/* 6. Evidence */}
-      <div className="rounded-lg border border-blue-200 dark:border-blue-500/20 bg-white dark:bg-surface p-3">
-        <p className="text-xs font-semibold text-slate-500 dark:text-gray-400 mb-2">6. Evidence Used</p>
-        <ul className="space-y-1">
-          {briefing.evidence.map((e, i) => (
-            <li key={i} className="flex items-start gap-2 text-sm text-slate-700 dark:text-gray-300">
-              <span className="text-blue-400 mt-0.5 flex-shrink-0">•</span>{e}
-            </li>
+        {/* § 1 Executive Summary */}
+        <BriefingSection index={1} label="Executive Summary">
+          <p className="text-sm text-slate-700 dark:text-gray-300 leading-relaxed">{briefing.executive_summary}</p>
+        </BriefingSection>
+
+        {/* § 2 Likely Cause */}
+        <BriefingSection index={2} label="Likely Cause" accent="amber">
+          <p className="text-sm text-slate-700 dark:text-gray-300 leading-relaxed">{briefing.likely_cause}</p>
+        </BriefingSection>
+
+        {/* § 3 Operational Impact */}
+        <BriefingSection index={3} label="Operational Impact" accent="red">
+          {briefing.operational_impact.split('\n').map((line, i) => (
+            <p key={i} className={`text-sm leading-relaxed ${
+              i === 0
+                ? 'font-semibold text-slate-800 dark:text-gray-200 mb-0.5'
+                : 'text-slate-600 dark:text-gray-400'
+            }`}>{line}</p>
           ))}
-        </ul>
-      </div>
+        </BriefingSection>
 
-      {/* 8. Recommended Actions */}
-      <div className="rounded-lg border border-green-200 dark:border-green-500/20 bg-white dark:bg-surface p-3">
-        <p className="text-xs font-semibold text-slate-500 dark:text-gray-400 mb-2">8. Recommended Actions</p>
-        <ol className="space-y-1">
-          {briefing.recommended_actions.map((a, i) => (
-            <li key={i} className="flex items-start gap-2 text-sm text-slate-700 dark:text-gray-300">
-              <span className="text-green-600 dark:text-green-400 font-bold flex-shrink-0">{i + 1}.</span>{a}
-            </li>
-          ))}
-        </ol>
-      </div>
-
-      {/* 4. Related Alerts */}
-      {briefing.related_alerts.length > 0 && (
-        <div className="rounded-lg border border-slate-200 dark:border-gray-700 bg-white dark:bg-surface p-3">
-          <p className="text-xs font-semibold text-slate-500 dark:text-gray-400 mb-2">
-            4. Related Alerts ({briefing.related_alerts.length})
-          </p>
-          <div className="space-y-1">
-            {briefing.related_alerts.slice(0, 5).map((a, i) => (
-              <div key={i} className="flex items-center gap-2 text-xs text-slate-700 dark:text-gray-300">
-                <span className={`px-1.5 py-0.5 rounded font-medium ${
-                  a.severity === 'critical'
-                    ? 'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400'
-                    : 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400'
-                }`}>{a.severity}</span>
-                <span className="font-mono truncate">{a.alert_name}</span>
-                <span className="text-slate-400 dark:text-gray-500 ml-auto">{a.status}</span>
-              </div>
+        {/* § 4 Evidence */}
+        <BriefingSection index={4} label="Evidence Used" accent="blue">
+          <ul className="space-y-1">
+            {briefing.evidence.map((e, i) => (
+              <li key={i} className="flex items-start gap-2 text-sm text-slate-700 dark:text-gray-300">
+                <span className="text-blue-400 dark:text-blue-500 flex-shrink-0 mt-0.5">▸</span>
+                <span>{e}</span>
+              </li>
             ))}
-          </div>
-        </div>
-      )}
+          </ul>
+        </BriefingSection>
 
-      {/* 5. Related Anomalies */}
-      {briefing.related_anomalies.length > 0 && (
-        <div className="rounded-lg border border-indigo-200 dark:border-indigo-500/20 bg-white dark:bg-surface p-3">
-          <p className="text-xs font-semibold text-slate-500 dark:text-gray-400 mb-2">
-            5. Related Anomalies ({briefing.related_anomalies.length})
-          </p>
-          <div className="space-y-1">
-            {briefing.related_anomalies.map((a, i) => (
-              <div key={i} className="text-xs text-slate-700 dark:text-gray-300 flex gap-2">
-                <span className="text-indigo-500 font-medium">{a.service}</span>
-                {a.severity && <span className="text-slate-400">{a.severity}</span>}
-                {a.predicted_risk && <span className="text-slate-400">risk: {a.predicted_risk}</span>}
-              </div>
+        {/* § 5 Recommended Actions */}
+        <BriefingSection index={5} label="Recommended Actions" accent="green">
+          <ol className="space-y-2">
+            {briefing.recommended_actions.map((a, i) => (
+              <li key={i} className="flex items-start gap-2 text-sm text-slate-700 dark:text-gray-300">
+                <span className="flex-shrink-0 w-5 h-5 rounded-full bg-green-100 dark:bg-green-500/15 text-green-700 dark:text-green-400 text-xs font-bold flex items-center justify-center mt-0.5">{i + 1}</span>
+                <span className="leading-relaxed">{a}</span>
+              </li>
             ))}
-          </div>
-        </div>
-      )}
+          </ol>
+        </BriefingSection>
+
+        {/* § 6 Related Alerts */}
+        {briefing.related_alerts.length > 0 && (
+          <BriefingSection index={6} label={`Related Alerts (${briefing.related_alerts.length})`}>
+            <div className="space-y-1.5">
+              {briefing.related_alerts.slice(0, 6).map((a, i) => (
+                <div key={i} className="flex items-center gap-2 text-xs">
+                  <span className={`px-1.5 py-0.5 rounded font-semibold ${sevColor(a.severity)}`}>{a.severity}</span>
+                  <span className="text-slate-700 dark:text-gray-300 font-mono truncate flex-1">{a.alert_name}</span>
+                  <span className={`font-medium ${statusColor(a.status)}`}>{a.status}</span>
+                </div>
+              ))}
+            </div>
+          </BriefingSection>
+        )}
+
+        {/* § 7 Related Anomalies */}
+        {briefing.related_anomalies.length > 0 && (
+          <BriefingSection index={7} label={`Related Anomalies (${briefing.related_anomalies.length})`} accent="indigo">
+            <div className="space-y-1.5">
+              {briefing.related_anomalies.map((a, i) => (
+                <div key={i} className="flex items-center gap-2 text-xs">
+                  <span className="text-indigo-600 dark:text-indigo-400 font-medium">{a.service}</span>
+                  {a.severity && <span className="text-slate-500 dark:text-gray-500">{a.severity}</span>}
+                  {a.predicted_risk && (
+                    <span className="text-slate-400 dark:text-gray-500">risk: {a.predicted_risk}</span>
+                  )}
+                  {a.score != null && (
+                    <span className="ml-auto text-slate-400 dark:text-gray-500">score: {a.score}</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </BriefingSection>
+        )}
+
+        {/* § 8 Confidence Explanation */}
+        <BriefingSection index={8} label="Confidence">
+          <p className="text-sm text-slate-600 dark:text-gray-400 leading-relaxed">{briefing.confidence_explanation}</p>
+        </BriefingSection>
+
+      </div>
+    </div>
+  )
+}
+
+/* -- BriefingSection helper -- */
+
+function BriefingSection({
+  index,
+  label,
+  accent,
+  children,
+}: {
+  index: number
+  label: string
+  accent?: 'amber' | 'red' | 'blue' | 'green' | 'indigo'
+  children: ReactNode
+}) {
+  const accentLine =
+    accent === 'amber' ? 'bg-amber-400 dark:bg-amber-500'
+    : accent === 'red'   ? 'bg-red-400 dark:bg-red-500'
+    : accent === 'blue'  ? 'bg-blue-400 dark:bg-blue-500'
+    : accent === 'green' ? 'bg-green-400 dark:bg-green-500'
+    : accent === 'indigo'? 'bg-indigo-400 dark:bg-indigo-500'
+    : 'bg-slate-300 dark:bg-gray-600'
+
+  return (
+    <div className="flex gap-3">
+      <div className={`w-0.5 rounded-full flex-shrink-0 mt-1 ${accentLine}`} style={{ minHeight: '1.5rem' }} />
+      <div className="flex-1 min-w-0">
+        <p className="text-xs font-semibold text-slate-400 dark:text-gray-500 uppercase tracking-wide mb-1">
+          {String(index).padStart(2, '0')}  {label}
+        </p>
+        {children}
+      </div>
     </div>
   )
 }

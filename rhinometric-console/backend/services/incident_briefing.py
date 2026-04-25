@@ -1,37 +1,37 @@
 """
-Incident Briefing Service — Phase 5.1 AI Operations Layer.
+Incident Briefing Service — Phase 5.1 AI Operations Layer (v2).
 
-Generates a structured 10-point AI Incident Briefing for any incident.
+Generates a 9-section structured AI Incident Briefing for any incident.
 
 Strategy:
   1. Collects all real platform data (incident, linked alerts, service
      status, recent checks, anomalies, alert history).
-  2. If OPENAI_API_KEY is configured: calls GPT-4o-mini via httpx for
-     a narrative analysis using the collected context.
+  2. If OPENAI_API_KEY is configured: calls GPT-4o-mini via httpx.
   3. If no API key: generates a deterministic rule-based briefing from
      the same context — factual, no invented data.
 
 Output schema (stored as JSON in incidents.ai_briefing):
   {
-    "executive_summary": str,
-    "probable_cause": str,
-    "affected_service": str,
-    "related_alerts": [...],
-    "related_anomalies": [...],
-    "evidence": [...],
-    "impact_assessment": str,
-    "recommended_actions": [...],
-    "confidence": "high" | "medium" | "low",
-    "generated_at": ISO timestamp,
-    "engine": "openai-gpt4o-mini" | "rule-based",
-    "model": str | None,
+    "status_snapshot":        str,   # compact one-liner at the top
+    "executive_summary":      str,
+    "likely_cause":           str,
+    "operational_impact":     str,   # separates incident severity from customer impact
+    "evidence":               [str],
+    "recommended_actions":    [str],
+    "related_alerts":         [...],
+    "related_anomalies":      [...],
+    "confidence_explanation": str,
+    "confidence":             "high" | "medium" | "low",
+    "generated_at":           ISO timestamp,
+    "engine":                 "rule-based" | "openai-gpt4o-mini",
+    "model":                  str | None,
   }
 """
 
 import logging
 import json
 from datetime import datetime, timedelta, timezone
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List
 
 import httpx
 from sqlalchemy.orm import Session
@@ -112,7 +112,7 @@ def _collect_context(incident: Incident, db: Session) -> Dict[str, Any]:
         .first()
     )
 
-    # Recent service checks (last 50)
+    # Recent service checks (last 50 in 1h window around incident start)
     recent_checks: List[ExternalServiceCheck] = []
     if svc:
         window = inc_started - timedelta(hours=1) if inc_started else datetime.now(timezone.utc) - timedelta(hours=1)
@@ -127,10 +127,8 @@ def _collect_context(incident: Incident, db: Session) -> Dict[str, Any]:
             .all()
         )
 
-    # Anomalies: try fetching from AI service
     anomalies = _fetch_anomalies_sync(entity)
 
-    # Build serialisable context
     alert_list = [
         {
             "id": str(a.id),
@@ -179,13 +177,17 @@ def _collect_context(incident: Incident, db: Session) -> Dict[str, Any]:
             "summary": incident.summary,
             "tags": incident.tags or [],
         },
-        "service": {
-            "name": svc.name if svc else entity,
-            "type": svc.service_type.value if svc and svc.service_type else "unknown",
-            "status": svc.status.value if svc and svc.status else "unknown",
-            "environment": svc.environment if svc else None,
-            "enabled": svc.enabled if svc else None,
-        } if svc else {"name": entity},
+        "service": (
+            {
+                "name": svc.name,
+                "type": svc.service_type.value if svc.service_type else "unknown",
+                "status": svc.status.value if svc.status else "unknown",
+                "environment": svc.environment,
+                "enabled": svc.enabled,
+            }
+            if svc
+            else {"name": entity}
+        ),
         "linked_alerts": alert_list,
         "recent_alert_history": recent_alert_summary,
         "service_checks": check_summary,
@@ -196,9 +198,8 @@ def _collect_context(incident: Incident, db: Session) -> Dict[str, Any]:
 def _fetch_anomalies_sync(entity_name: str) -> List[Dict]:
     """Best-effort sync fetch of anomalies for the entity from AI service."""
     try:
-        import httpx as _httpx
         url = getattr(settings, "AI_ANOMALY_URL", "http://rhinometric-ai-anomaly:8085")
-        r = _httpx.get(f"{url}/anomalies?service={entity_name}&time_range=24h&limit=5", timeout=3.0)
+        r = httpx.get(f"{url}/anomalies?service={entity_name}&time_range=24h&limit=5", timeout=3.0)
         if r.status_code == 200:
             data = r.json()
             groups = data.get("groups", data if isinstance(data, list) else [])
@@ -217,6 +218,24 @@ def _fetch_anomalies_sync(entity_name: str) -> List[Dict]:
     return []
 
 
+# ── Duration helper ───────────────────────────────────────────────────
+
+def _duration_str(start_iso: str, end_iso: str) -> str:
+    try:
+        s = datetime.fromisoformat(start_iso)
+        e = datetime.fromisoformat(end_iso)
+        secs = int((e - s).total_seconds())
+        if secs < 0:
+            secs = 0
+        if secs < 120:
+            return f"{secs}s"
+        if secs < 3600:
+            return f"{secs // 60}m"
+        return f"{secs // 3600}h {(secs % 3600) // 60}m"
+    except Exception:
+        return "unknown"
+
+
 # ── Rule-based briefing ───────────────────────────────────────────────
 
 def _rule_based_briefing(ctx: Dict) -> Dict:
@@ -228,71 +247,233 @@ def _rule_based_briefing(ctx: Dict) -> Dict:
     anomalies = ctx.get("anomalies", [])
 
     entity = inc["entity_name"]
-    severity = inc["severity"]
-    status = inc["status"]
-    started_at = inc["started_at"]
+    severity = inc["severity"] or "unknown"
+    inc_status = inc["status"] or "unknown"
+    svc_current_status = (svc.get("status") or "unknown").lower()
+    is_production = (svc.get("environment") or "").lower() == "production"
+    is_resolved = inc_status == "resolved"
 
-    # ── 1. Executive summary ──────────────────────────────────────
-    if status == "resolved":
-        duration_note = ""
+    down_pct = checks.get("down_pct") or 0
+    avg_lat = checks.get("avg_latency_ms")
+    last_check = (checks.get("last_status") or "unknown").lower()
+
+    # ── § 1  Status Snapshot ──────────────────────────────────────
+    parts = []
+    if svc_current_status == "up":
+        parts.append("Service: HEALTHY")
+    elif svc_current_status == "down":
+        parts.append("Service: DOWN")
+    elif svc_current_status != "unknown":
+        parts.append(f"Service: {svc_current_status.upper()}")
+
+    parts.append(f"Incident: {inc_status.upper()}")
+    parts.append(f"Severity: {severity.upper()}")
+
+    now_iso = datetime.now(timezone.utc).isoformat()
+    if is_resolved and inc.get("resolved_at") and inc.get("started_at"):
+        parts.append(f"Duration: {_duration_str(inc['started_at'], inc['resolved_at'])}")
+    elif inc.get("started_at"):
+        parts.append(f"Open for: {_duration_str(inc['started_at'], now_iso)}")
+
+    if linked:
+        parts.append(f"Alerts: {len(linked)}")
+
+    status_snapshot = "  ·  ".join(parts)
+
+    # ── § 2  Executive Summary ────────────────────────────────────
+    if is_resolved:
+        dur = ""
         if inc.get("resolved_at") and inc.get("started_at"):
-            try:
-                s = datetime.fromisoformat(inc["started_at"])
-                e = datetime.fromisoformat(inc["resolved_at"])
-                secs = int((e - s).total_seconds())
-                if secs < 120:
-                    duration_note = f" The incident lasted {secs} seconds."
-                elif secs < 3600:
-                    duration_note = f" The incident lasted {secs // 60} minutes."
-                else:
-                    duration_note = f" The incident lasted {secs // 3600}h {(secs % 3600) // 60}m."
-            except Exception:
-                pass
+            dur = f" It ran for {_duration_str(inc['started_at'], inc['resolved_at'])} before being resolved."
         executive_summary = (
-            f"A {severity}-severity incident affecting '{entity}' has been resolved.{duration_note} "
-            f"The incident was linked to {len(linked)} alert event(s) and is now closed."
+            f"A {severity}-severity incident affecting '{entity}' has been resolved.{dur} "
+            f"{len(linked)} alert event(s) were linked during the incident lifecycle."
         )
+        if svc_current_status == "up":
+            executive_summary += " The service is currently healthy and operational."
     else:
-        checks_note = ""
-        if checks.get("down_pct") is not None:
-            checks_note = f" Recent checks show {checks['down_pct']}% failure rate."
-        executive_summary = (
-            f"An active {severity}-severity incident is ongoing for service '{entity}'.{checks_note} "
-            f"Started at {started_at}. Currently {len(linked)} alert(s) are linked."
-        )
+        if svc_current_status == "up" and last_check == "up":
+            executive_summary = (
+                f"A {severity}-severity incident is open for '{entity}', however the service "
+                f"is currently responding as healthy. The triggering condition may have already "
+                f"cleared — verify before closing this incident."
+            )
+        else:
+            fail_note = f" Recent checks show a {down_pct}% failure rate." if down_pct else ""
+            executive_summary = (
+                f"An active {severity}-severity incident is ongoing for service '{entity}'.{fail_note} "
+                f"{len(linked)} linked alert(s) require attention."
+            )
 
-    # ── 2. Probable cause ─────────────────────────────────────────
+    # ── § 3  Likely Cause ─────────────────────────────────────────
     alert_names = list({a["alert_name"] for a in linked if a.get("alert_name")})
     if alert_names:
-        probable_cause = (
-            f"The incident was triggered by the following alert rule(s): {', '.join(alert_names[:3])}. "
-        )
+        likely_cause = f"Triggered by alert rule(s): {', '.join(alert_names[:3])}."
+        if len(alert_names) > 3:
+            likely_cause += f" ({len(alert_names) - 3} additional rule(s) also fired.)"
     else:
-        probable_cause = "No linked alerts found — incident may have been created manually. "
+        likely_cause = (
+            "No alert rules are directly linked to this incident — "
+            "it may have been created manually or via an external integration."
+        )
 
-    if checks.get("down_pct", 0) >= 50:
-        probable_cause += (
-            f"Service health checks are failing at {checks['down_pct']}%, indicating a likely "
-            f"service outage or connectivity issue."
+    if down_pct >= 80:
+        likely_cause += (
+            f" Health checks are failing at {down_pct}% — consistent with a full service "
+            "outage or unreachable endpoint."
         )
-    elif checks.get("down_pct", 0) > 0:
-        probable_cause += (
-            f"Intermittent failures detected ({checks['down_pct']}% of recent checks are down), "
-            f"suggesting instability rather than a full outage."
+    elif down_pct >= 30:
+        likely_cause += (
+            f" Partial degradation detected ({down_pct}% check failure rate), "
+            "suggesting intermittent connectivity or backend instability."
         )
-    elif checks.get("last_status") == "up":
-        probable_cause += "Service checks are currently returning UP — the trigger condition may have already cleared."
+    elif svc_current_status == "up" and last_check == "up":
+        likely_cause += " All current health checks are passing — the service appears to have recovered."
+    elif not checks:
+        likely_cause += " No health check data is available for this service."
+
+    if avg_lat and avg_lat > 3000:
+        likely_cause += (
+            f" Elevated response times ({avg_lat}ms average) may indicate "
+            "resource exhaustion, slow downstream dependencies, or DNS delays."
+        )
+
+    # ── § 4  Operational Impact ───────────────────────────────────
+    # Deliberately separate incident severity (classification) from current customer impact (evidence-based)
+    if svc_current_status == "up" and last_check == "up":
+        cust_level = "LOW"
+        cust_note = (
+            "The service is currently passing health checks and responding normally. "
+            "Customer-facing impact, if any, has likely already resolved."
+        )
+    elif svc_current_status == "down" or down_pct >= 80:
+        cust_level = "HIGH"
+        cust_note = (
+            "The service is currently unavailable or near-completely failing health checks. "
+            "Customer requests to this endpoint are expected to be failing."
+        )
+    elif down_pct >= 30:
+        cust_level = "MEDIUM"
+        cust_note = (
+            f"{down_pct}% of health checks are failing. "
+            "A portion of customer requests may be affected intermittently."
+        )
+    elif is_resolved:
+        cust_level = "NONE"
+        cust_note = "The incident has been resolved. No ongoing customer impact is expected."
     else:
-        probable_cause += "Insufficient check history to determine root cause from synthetic monitoring alone."
+        cust_level = "UNDETERMINED"
+        cust_note = (
+            "Insufficient check data to assess customer-facing impact directly. "
+            "Monitor the service closely."
+        )
 
-    # ── 3. Affected service ───────────────────────────────────────
-    svc_env = f" ({svc.get('environment', 'unknown')} environment)" if svc.get("environment") else ""
-    affected_service = (
-        f"{entity}{svc_env} — type: {svc.get('type', 'unknown')}, "
-        f"current status: {svc.get('status', 'unknown')}."
+    prod_note = ""
+    if is_production and cust_level not in ("NONE", "LOW"):
+        prod_note = " This service runs in the PRODUCTION environment — impact is customer-visible."
+
+    operational_impact = (
+        f"Incident severity: {severity.upper()}  |  Customer impact: {cust_level}\n"
+        f"{cust_note}{prod_note}"
     )
 
-    # ── 4. Related alerts ─────────────────────────────────────────
+    # ── § 5  Evidence ─────────────────────────────────────────────
+    evidence: List[str] = []
+    if linked:
+        crit_n = sum(1 for a in linked if a.get("severity") == "critical")
+        suffix = f" ({crit_n} critical)" if crit_n else ""
+        evidence.append(f"{len(linked)} alert event(s) directly linked to this incident{suffix}.")
+    if checks.get("total"):
+        evidence.append(
+            f"{checks['total']} health checks in the incident window: "
+            f"{checks.get('down_count', 0)} failed ({down_pct}% failure rate)"
+            + (f", avg latency {avg_lat}ms." if avg_lat else ".")
+        )
+    if history.get("total_7d"):
+        evidence.append(
+            f"7-day alert history for '{entity}': {history['total_7d']} total, "
+            f"{history.get('critical', 0)} critical, {history.get('resolved', 0)} resolved."
+        )
+    if anomalies:
+        evidence.append(
+            f"AI anomaly detection flagged {len(anomalies)} anomaly group(s) for this entity "
+            "in the past 24 hours."
+        )
+    if svc.get("type") and svc.get("type") != "unknown":
+        evidence.append(
+            f"Service type: {svc['type']}, environment: {svc.get('environment', 'unknown')}."
+        )
+    if not evidence or len(evidence) < 2:
+        evidence.append(
+            "Evidence is limited — this briefing is based on incident metadata only. "
+            "Linking alerts and enabling health checks will improve analysis quality."
+        )
+
+    # ── § 6  Recommended Actions ──────────────────────────────────
+    actions: List[str] = []
+
+    if svc_current_status == "down" or down_pct >= 80:
+        if is_production:
+            actions.append(
+                f"IMMEDIATE: Escalate to on-call — '{entity}' is down in production. "
+                "Notify stakeholders and activate the incident response protocol."
+            )
+        actions.append(
+            f"Open service logs for '{entity}' from {inc.get('started_at', 'incident start')} "
+            "and filter for ERROR or FATAL entries."
+        )
+        actions.append(
+            "Verify DNS resolution and network connectivity to the service endpoint. "
+            "Check upstream load balancers and proxy configuration."
+        )
+    elif down_pct >= 30:
+        actions.append(
+            f"Investigate intermittent failures on '{entity}': check for rate limiting, "
+            "connection pool exhaustion, or upstream dependency timeouts."
+        )
+    elif svc_current_status == "up" and not is_resolved:
+        actions.append(
+            f"'{entity}' is currently healthy. Confirm the triggering condition is no longer "
+            "active and close this incident if conditions remain stable."
+        )
+
+    if avg_lat and avg_lat > 2000:
+        actions.append(
+            f"Response time is elevated ({avg_lat}ms avg). "
+            "Profile database queries, check external API dependencies, and review resource utilisation."
+        )
+
+    if history.get("critical", 0) >= 3:
+        actions.append(
+            f"'{entity}' has generated {history['critical']} critical alerts in the past 7 days. "
+            "Consider a service reliability review and threshold tuning."
+        )
+
+    if anomalies:
+        actions.append(
+            f"Review {len(anomalies)} AI-flagged anomaly group(s) in the Anomaly Analysis panel "
+            "for correlated metric deviations."
+        )
+
+    if is_resolved:
+        actions.append(
+            "Complete a post-incident review: document root cause, timeline, and corrective "
+            "actions in the postmortem field."
+        )
+        actions.append(
+            "Confirm monitoring is back to baseline and no residual alerts remain firing."
+        )
+
+    if not actions:
+        actions.append(
+            f"Continue monitoring '{entity}'. If conditions are stable for 30+ minutes, "
+            "consider closing this incident."
+        )
+        actions.append(
+            "Review alert rule thresholds to reduce noise and improve signal quality."
+        )
+
+    # ── § 7  Related Alerts ───────────────────────────────────────
     related_alerts_list = [
         {
             "alert_name": a["alert_name"],
@@ -304,7 +485,7 @@ def _rule_based_briefing(ctx: Dict) -> Dict:
         for a in linked[:10]
     ]
 
-    # ── 5. Related anomalies ──────────────────────────────────────
+    # ── § 8  Related Anomalies ────────────────────────────────────
     related_anomalies_list = [
         {
             "service": a.get("service", entity),
@@ -316,87 +497,45 @@ def _rule_based_briefing(ctx: Dict) -> Dict:
         for a in anomalies[:5]
     ]
 
-    # ── 6. Evidence ───────────────────────────────────────────────
-    evidence = []
-    if linked:
-        evidence.append(f"{len(linked)} alert event(s) linked directly to this incident.")
-    if checks.get("total"):
-        evidence.append(
-            f"{checks['total']} service checks in the observed window: "
-            f"{checks.get('down_count', 0)} failures, avg latency "
-            f"{checks.get('avg_latency_ms', 'N/A')}ms."
-        )
-    if history.get("total_7d"):
-        evidence.append(
-            f"Alert history (7d): {history['total_7d']} alerts total, "
-            f"{history.get('critical', 0)} critical, {history.get('resolved', 0)} resolved."
-        )
-    if anomalies:
-        evidence.append(f"AI anomaly detection found {len(anomalies)} anomaly group(s) for this entity.")
-    if not evidence:
-        evidence.append("Insufficient data available to build a comprehensive evidence list.")
-
-    # ── 7. Impact assessment ──────────────────────────────────────
-    if severity == "critical":
-        impact = (
-            f"CRITICAL impact — service '{entity}' is experiencing a critical failure. "
-            "This can directly affect end users or downstream services depending on this entity."
-        )
-    elif severity == "warning":
-        impact = (
-            f"Degraded service — '{entity}' is experiencing elevated error rates or latency. "
-            "End users may encounter intermittent failures."
-        )
-    else:
-        impact = (
-            f"Low severity impact on '{entity}'. Monitoring is advisable to ensure the situation "
-            "does not escalate."
-        )
-    if svc.get("environment") == "production":
-        impact += " Note: This is a PRODUCTION environment — customer impact is possible."
-
-    # ── 8. Recommended actions ────────────────────────────────────
-    actions = []
-    if checks.get("down_pct", 0) >= 50:
-        actions.append("Immediately check service health via logs and infrastructure metrics.")
-        actions.append("Verify network connectivity and DNS resolution for the affected endpoint.")
-    if checks.get("avg_latency_ms") and checks["avg_latency_ms"] > 2000:
-        actions.append(f"Investigate high latency ({checks['avg_latency_ms']}ms avg) — check DB connections, external dependencies, and resource usage.")
-    if history.get("critical", 0) > 3:
-        actions.append(f"Review recurring critical alerts ({history['critical']} in 7 days) — this may indicate a systemic issue.")
-    if anomalies:
-        actions.append("Review AI anomaly signals for correlated metric deviations.")
-    if status == "resolved":
-        actions.append("Conduct a post-incident review and document in the postmortem field.")
-        actions.append("Verify the fix is stable and monitoring is back to baseline.")
-    if not actions:
-        actions.append("Continue monitoring and close the incident if conditions remain stable.")
-        actions.append("If the situation recurs, review alert rule thresholds.")
-
-    # ── 9. Confidence ─────────────────────────────────────────────
+    # ── § 9  Confidence Explanation ───────────────────────────────
     data_points = sum([
         bool(linked),
-        bool(checks.get("total")),
-        bool(history.get("total_7d")),
+        checks.get("total", 0) > 0,
+        history.get("total_7d", 0) > 0,
         bool(anomalies),
-        bool(svc.get("status")),
+        svc.get("status") not in (None, "unknown"),
     ])
+
     if data_points >= 4:
         confidence = "high"
+        confidence_explanation = (
+            f"High — {data_points} of 5 data sources available "
+            "(linked alerts, health checks, alert history, anomaly signals, service status)."
+        )
     elif data_points >= 2:
         confidence = "medium"
+        confidence_explanation = (
+            f"Medium — {data_points} of 5 data sources available. "
+            f"{5 - data_points} source(s) are missing or returned no data."
+        )
     else:
         confidence = "low"
+        confidence_explanation = (
+            "Low — fewer than 2 data sources are available. "
+            "This briefing is based on incident metadata only. "
+            "Link alerts and enable health checks to improve analysis quality."
+        )
 
     return {
+        "status_snapshot": status_snapshot,
         "executive_summary": executive_summary,
-        "probable_cause": probable_cause,
-        "affected_service": affected_service,
+        "likely_cause": likely_cause,
+        "operational_impact": operational_impact,
+        "evidence": evidence,
+        "recommended_actions": actions,
         "related_alerts": related_alerts_list,
         "related_anomalies": related_anomalies_list,
-        "evidence": evidence,
-        "impact_assessment": impact,
-        "recommended_actions": actions,
+        "confidence_explanation": confidence_explanation,
         "confidence": confidence,
         "engine": "rule-based",
         "model": None,
@@ -407,20 +546,20 @@ def _rule_based_briefing(ctx: Dict) -> Dict:
 
 async def _openai_briefing(ctx: Dict, api_key: str) -> Dict:
     """Call OpenAI GPT-4o-mini to generate the briefing."""
-    inc = ctx["incident"]
-    entity = inc["entity_name"]
-
     system_prompt = (
         "You are an expert SRE analyst for an AIOps platform called Rhinometric. "
-        "Your job is to produce a concise, factual incident briefing. "
-        "Use ONLY the data provided. Do not invent facts. If data is missing, say so. "
-        "Return a JSON object with these exact keys: "
-        "executive_summary, probable_cause, affected_service, impact_assessment, confidence. "
-        "confidence must be 'high', 'medium', or 'low' based on available evidence."
+        "Produce a concise, factual operational incident briefing. "
+        "RULES: (1) Use ONLY the data provided — never invent facts. "
+        "(2) If the service is currently UP, state that impact is likely resolved. "
+        "(3) Incident severity is the classification — assess actual customer impact separately. "
+        "(4) If evidence is sparse, say 'Evidence is limited'. "
+        "(5) Recommendations must be specific, operational, and reference actual service names. "
+        "Return JSON with keys: executive_summary, likely_cause, operational_impact, confidence. "
+        "confidence must be 'high', 'medium', or 'low'."
     )
 
     user_prompt = (
-        f"Generate an incident briefing for this incident:\n\n"
+        f"Generate an operational incident briefing:\n\n"
         f"{json.dumps(ctx, indent=2, default=str)}"
     )
 
@@ -439,26 +578,24 @@ async def _openai_briefing(ctx: Dict, api_key: str) -> Dict:
                 ],
                 "response_format": {"type": "json_object"},
                 "temperature": 0.2,
-                "max_tokens": 1000,
+                "max_tokens": 1200,
             },
         )
         resp.raise_for_status()
-        data = resp.json()
 
-    ai_text = data["choices"][0]["message"]["content"]
-    ai_json = json.loads(ai_text)
-
-    # Merge: LLM provides narrative fields; rule-based fills the structured data
+    ai_json = json.loads(resp.json()["choices"][0]["message"]["content"])
     rule = _rule_based_briefing(ctx)
+
     return {
+        "status_snapshot": rule["status_snapshot"],
         "executive_summary": ai_json.get("executive_summary", rule["executive_summary"]),
-        "probable_cause": ai_json.get("probable_cause", rule["probable_cause"]),
-        "affected_service": ai_json.get("affected_service", rule["affected_service"]),
+        "likely_cause": ai_json.get("likely_cause", rule["likely_cause"]),
+        "operational_impact": ai_json.get("operational_impact", rule["operational_impact"]),
+        "evidence": rule["evidence"],
+        "recommended_actions": rule["recommended_actions"],
         "related_alerts": rule["related_alerts"],
         "related_anomalies": rule["related_anomalies"],
-        "evidence": rule["evidence"],
-        "impact_assessment": ai_json.get("impact_assessment", rule["impact_assessment"]),
-        "recommended_actions": rule["recommended_actions"],
+        "confidence_explanation": rule["confidence_explanation"],
         "confidence": ai_json.get("confidence", rule["confidence"]),
         "engine": "openai-gpt4o-mini",
         "model": "gpt-4o-mini",
@@ -468,4 +605,8 @@ async def _openai_briefing(ctx: Dict, api_key: str) -> Dict:
 # ── Helpers ───────────────────────────────────────────────────────────
 
 def _error(msg: str) -> Dict:
-    return {"error": msg, "engine": None, "generated_at": datetime.now(timezone.utc).isoformat()}
+    return {
+        "error": msg,
+        "engine": None,
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+    }
