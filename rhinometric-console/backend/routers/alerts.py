@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 
 from config import settings
 from database import get_db
+from routers.alert_rules import _auto_escalate_critical_alert
 from routers.auth import get_current_user
 from models.user import User as UserModel
 from models.alert_acknowledgement import AlertAcknowledgement, AckStatus
@@ -235,8 +236,17 @@ async def get_alerts(
                     _covered_canonical_fps.add(_cfp)
                     continue
 
+                # --- ESCALATED: alert has been escalated to an incident ---
+                # Status = 'escalated' means the alert is exclusively managed
+                # through the Incidents module. Must never appear in Alerts.
+                if ev and ev.status == "escalated":
+                    for _a in _alert_group:
+                        _a["_suppress"] = True
+                    _covered_canonical_fps.add(_cfp)
+                    continue
+
                 # --- INCIDENT-LINKED: alert is managed through its incident ---
-                # Once an active alert is escalated to an incident, it should
+                # Once an active alert is linked to an incident, it should
                 # no longer appear in the active-alerts list.  The incident
                 # page is the single source of truth for investigation.
                 # Only suppress if the alert is still in an active state;
@@ -864,8 +874,7 @@ async def lifecycle_resolve(
     # Check linked incident resolution
     if ev.incident_id:
         try:
-            from routers.alert_rules import _auto_escalate_critical_alert
-from routers.incidents import check_incident_resolution as _cir
+            from routers.incidents import check_incident_resolution as _cir
             _cir(db, ev.incident_id)
         except Exception:
             pass

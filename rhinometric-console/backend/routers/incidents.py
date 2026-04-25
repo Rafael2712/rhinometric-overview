@@ -310,6 +310,8 @@ def _link_alert_to_incident(db: Session, incident_id, alert_id: str | None, aler
             ae = db.query(AlertEvent).filter(AlertEvent.id == uid).first()
             if ae and not ae.incident_id:
                 ae.incident_id = incident_id
+                if ae.status == "firing":
+                    ae.status = "escalated"  # escalated = managed via Incidents module
                 linked = True
         except (ValueError, Exception):
             pass
@@ -322,6 +324,8 @@ def _link_alert_to_incident(db: Session, incident_id, alert_id: str | None, aler
         ).all()
         for _ae in _unlinked:
             _ae.incident_id = incident_id
+            if _ae.status == "firing":
+                _ae.status = "escalated"  # escalated = managed via Incidents module
             linked = True
 
     return linked
