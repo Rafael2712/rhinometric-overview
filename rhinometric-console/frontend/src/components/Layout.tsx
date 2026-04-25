@@ -55,7 +55,7 @@ const NAV_GROUPS = [
     key: 'resilience',
     label: 'RESILIENCE',
     items: [
-      { name: 'Backup & Recovery', href: '/backup', icon: HardDrive },
+      { name: 'Backup & Recovery', href: '/backup-recovery', icon: HardDrive },
     ],
   },
   {
