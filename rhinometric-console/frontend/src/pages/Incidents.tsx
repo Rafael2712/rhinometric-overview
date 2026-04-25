@@ -41,6 +41,7 @@ interface AiBriefing {
   status_snapshot: string
   executive_summary: string
   likely_cause: string
+  probable_cause?: string           // v1 compat
   operational_impact: string
   evidence: string[]
   recommended_actions: string[]
@@ -1253,7 +1254,7 @@ function IncidentDetailPanel({ detail }: { detail: IncidentDetail }) {
       {/* Tab content: AI Briefing (Phase 5.1) */}
       {activeTab === 'briefing' && (
         <div className="space-y-4">
-          {inc.ai_briefing ? (
+          {inc.ai_briefing && inc.ai_briefing.status_snapshot ? (
             <AiBriefingPanel
               briefing={inc.ai_briefing}
               onRegenerate={() => briefingMutation.mutate()}
@@ -1324,7 +1325,7 @@ function AiBriefingPanel({
 
       {/* ── Top strip: Status Snapshot ── */}
       <div className="rounded-lg bg-slate-100 dark:bg-gray-800/60 border border-slate-200 dark:border-gray-700/50 px-3 py-2 flex flex-wrap gap-x-4 gap-y-1 items-center">
-        {briefing.status_snapshot.split('  ·  ').map((part, i) => (
+        {(briefing.status_snapshot || '').split('  ·  ').map((part, i) => (
           <span key={i} className="text-xs font-medium text-slate-600 dark:text-gray-300">{part}</span>
         ))}
         <span className="ml-auto text-xs text-slate-400 dark:text-gray-500">
@@ -1362,12 +1363,12 @@ function AiBriefingPanel({
 
         {/* § 2 Likely Cause */}
         <BriefingSection index={2} label="Likely Cause" accent="amber">
-          <p className="text-sm text-slate-700 dark:text-gray-300 leading-relaxed">{briefing.likely_cause}</p>
+          <p className="text-sm text-slate-700 dark:text-gray-300 leading-relaxed">{briefing.likely_cause || briefing.probable_cause || '—'}</p>
         </BriefingSection>
 
         {/* § 3 Operational Impact */}
         <BriefingSection index={3} label="Operational Impact" accent="red">
-          {briefing.operational_impact.split('\n').map((line, i) => (
+          {(briefing.operational_impact || '').split('\n').map((line, i) => (
             <p key={i} className={`text-sm leading-relaxed ${
               i === 0
                 ? 'font-semibold text-slate-800 dark:text-gray-200 mb-0.5'
@@ -1379,7 +1380,7 @@ function AiBriefingPanel({
         {/* § 4 Evidence */}
         <BriefingSection index={4} label="Evidence Used" accent="blue">
           <ul className="space-y-1">
-            {briefing.evidence.map((e, i) => (
+            {(briefing.evidence || []).map((e, i) => (
               <li key={i} className="flex items-start gap-2 text-sm text-slate-700 dark:text-gray-300">
                 <span className="text-blue-400 dark:text-blue-500 flex-shrink-0 mt-0.5">▸</span>
                 <span>{e}</span>
@@ -1391,7 +1392,7 @@ function AiBriefingPanel({
         {/* § 5 Recommended Actions */}
         <BriefingSection index={5} label="Recommended Actions" accent="green">
           <ol className="space-y-2">
-            {briefing.recommended_actions.map((a, i) => (
+            {(briefing.recommended_actions || []).map((a, i) => (
               <li key={i} className="flex items-start gap-2 text-sm text-slate-700 dark:text-gray-300">
                 <span className="flex-shrink-0 w-5 h-5 rounded-full bg-green-100 dark:bg-green-500/15 text-green-700 dark:text-green-400 text-xs font-bold flex items-center justify-center mt-0.5">{i + 1}</span>
                 <span className="leading-relaxed">{a}</span>
@@ -1401,10 +1402,10 @@ function AiBriefingPanel({
         </BriefingSection>
 
         {/* § 6 Related Alerts */}
-        {briefing.related_alerts.length > 0 && (
-          <BriefingSection index={6} label={`Related Alerts (${briefing.related_alerts.length})`}>
+        {(briefing.related_alerts || []).length > 0 && (
+          <BriefingSection index={6} label={`Related Alerts (${(briefing.related_alerts || []).length})`}>
             <div className="space-y-1.5">
-              {briefing.related_alerts.slice(0, 6).map((a, i) => (
+              {(briefing.related_alerts || []).slice(0, 6).map((a, i) => (
                 <div key={i} className="flex items-center gap-2 text-xs">
                   <span className={`px-1.5 py-0.5 rounded font-semibold ${sevColor(a.severity)}`}>{a.severity}</span>
                   <span className="text-slate-700 dark:text-gray-300 font-mono truncate flex-1">{a.alert_name}</span>
@@ -1416,10 +1417,10 @@ function AiBriefingPanel({
         )}
 
         {/* § 7 Related Anomalies */}
-        {briefing.related_anomalies.length > 0 && (
-          <BriefingSection index={7} label={`Related Anomalies (${briefing.related_anomalies.length})`} accent="indigo">
+        {(briefing.related_anomalies || []).length > 0 && (
+          <BriefingSection index={7} label={`Related Anomalies (${(briefing.related_anomalies || []).length})`} accent="indigo">
             <div className="space-y-1.5">
-              {briefing.related_anomalies.map((a, i) => (
+              {(briefing.related_anomalies || []).map((a, i) => (
                 <div key={i} className="flex items-center gap-2 text-xs">
                   <span className="text-indigo-600 dark:text-indigo-400 font-medium">{a.service}</span>
                   {a.severity && <span className="text-slate-500 dark:text-gray-500">{a.severity}</span>}
@@ -1437,7 +1438,7 @@ function AiBriefingPanel({
 
         {/* § 8 Confidence Explanation */}
         <BriefingSection index={8} label="Confidence">
-          <p className="text-sm text-slate-600 dark:text-gray-400 leading-relaxed">{briefing.confidence_explanation}</p>
+          <p className="text-sm text-slate-600 dark:text-gray-400 leading-relaxed">{briefing.confidence_explanation || `Confidence: ${briefing.confidence}`}</p>
         </BriefingSection>
 
       </div>
