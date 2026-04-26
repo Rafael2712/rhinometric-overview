@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from config import settings
 from database import get_db
 from routers.alert_rules import _auto_escalate_critical_alert
-from routers.auth import get_current_user
+from routers.auth import get_current_user, require_role
 from models.user import User as UserModel
 from models.alert_acknowledgement import AlertAcknowledgement, AckStatus
 
@@ -1429,3 +1429,49 @@ async def get_alert_history(
 async def noise_filter_stats(current_user: UserModel = Depends(get_current_user)):
     """Get alert noise filter statistics, configuration, and current state."""
     return get_filter_stats()
+
+
+# ================================================================
+# Phase 5.2 — AI Decision Engine endpoints for alerts
+# ================================================================
+
+@router.get("/{alert_id}/ai-decision")
+async def get_alert_ai_decision(
+    alert_id: str,
+    db: Session = Depends(get_db),
+    current_user: UserModel = Depends(get_current_user),
+):
+    """Return the stored AI triage decision for an alert event, or None."""
+    import uuid as _uuid
+    from models.alert_event import AlertEvent as _AE
+    try:
+        aid = _uuid.UUID(alert_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid alert ID")
+    ev = db.query(_AE).filter(_AE.id == aid).first()
+    if not ev:
+        raise HTTPException(status_code=404, detail="Alert not found")
+    return {"decision": ev.ai_decision}
+
+
+@router.post("/{alert_id}/ai-decision")
+async def create_alert_ai_decision(
+    alert_id: str,
+    db: Session = Depends(get_db),
+    current_user: UserModel = Depends(require_role(["OWNER", "ADMIN", "OPERATOR"])),
+):
+    """Generate (or regenerate) the AI triage decision for an alert and persist it."""
+    import uuid as _uuid
+    from models.alert_event import AlertEvent as _AE
+    from services.ai_decision_engine import evaluate_alert_decision
+    try:
+        aid = _uuid.UUID(alert_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid alert ID")
+    ev = db.query(_AE).filter(_AE.id == aid).first()
+    if not ev:
+        raise HTTPException(status_code=404, detail="Alert not found")
+    decision = await evaluate_alert_decision(ev, db)
+    ev.ai_decision = decision
+    db.commit()
+    return {"decision": decision}

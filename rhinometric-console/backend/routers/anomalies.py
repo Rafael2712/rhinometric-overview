@@ -1,152 +1,1084 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel
-from typing import Optional
+﻿from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel, Field
+from typing import Optional, List, Any, Dict
 import httpx
+import hashlib
+import re
+from datetime import datetime, timedelta, timezone
+import logging
+import time
+from itertools import groupby as itertools_groupby
+from sqlalchemy.orm import Session
 from config import settings
-from routers.auth import get_current_user, User
+from database import get_db
+from routers.auth import get_current_user, require_role
+from models.user import User as UserModel
 
 router = APIRouter()
+logger = logging.getLogger("anomalies")
 
-class Anomaly(BaseModel):
-    id: int
+# ÔöÇÔöÇ Task 4: Retention ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+MAX_RETENTION_DAYS = 30
+
+
+# ÔöÇÔöÇ Customer-facing filter ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+# Only "service" and "website" entity types are customer-facing.
+# All "infrastructure" entities (node_exporter, cadvisor, internal
+# monitoring) are internal platform telemetry and must be hidden.
+# Additionally, any entity_name / source matching internal platform
+# services is excluded as a safety net.
+# ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+INTERNAL_SOURCES: set = {
+    "node_exporter",
+    "cadvisor",
+    "internal_monitoring",
+    "legacy",
+}
+
+INTERNAL_ENTITY_NAMES: set = {
+    "console-backend",
+    "docker_logs",
+    "rhinometric-audit",
+    "grafana",
+    "loki",
+    "jaeger",
+    "jaeger-all-in-one",
+    "jaeger-query",
+    "jaeger-collector",
+    "alertmanager",
+    "prometheus",
+    "node-exporter",
+    "cadvisor",
+    "ai-anomaly",
+    "ai_anomaly",
+}
+
+INTERNAL_NAME_PATTERN = re.compile(
+    r"^(rhinometric[-_]|console[-_]|grafana|loki|jaeger|alertmanager"
+    r"|prometheus|cadvisor|node.exporter|ai[-_]anomaly)",
+    re.IGNORECASE,
+)
+
+
+def _is_customer_facing_group(g: dict) -> bool:
+    """Return True only if the anomaly group is customer-facing."""
+    # Infrastructure entity type is always internal
+    if g.get("entity_type") == "infrastructure":
+        return False
+    # Safety-net: check source and entity_name against blocklist
+    source = (g.get("source") or "").lower()
+    entity = (g.get("entity_name") or "").lower()
+    if source in INTERNAL_SOURCES:
+        return False
+    if entity in INTERNAL_ENTITY_NAMES:
+        return False
+    if INTERNAL_NAME_PATTERN.search(entity) or INTERNAL_NAME_PATTERN.search(source):
+        return False
+    return True
+
+
+# Entity types that reference external services
+_SERVICE_ENTITY_TYPES = {"service", "external-services"}
+
+
+def _get_existing_service_names() -> set:
+    """Return the set of service names that currently exist in external_services.
+
+    Task 5 fix: existence-based check.  Returns ALL names (lowercased).
+    If the table is empty, returns an empty set ÔÇö meaning every
+    service-type anomaly is orphaned and should be hidden.
+    """
+    try:
+        from database import SessionLocal
+        from models.external_service import ExternalService
+        db = SessionLocal()
+        rows = db.query(ExternalService.name).all()
+        db.close()
+        return {r[0].lower() for r in rows}
+    except Exception as e:
+        logger.warning(f"Failed to load existing services: {e}")
+        return set()
+
+
+def _is_existing_service(g: dict) -> bool:
+    """Return True only if the anomaly group's service still exists.
+
+    Task 5 fix: existence-based.  For service-type groups, the
+    entity_name must match an existing external service.
+    Non-service groups (website, infrastructure) always pass.
+    """
+    entity_type = (g.get("entity_type") or "").lower()
+    if entity_type not in _SERVICE_ENTITY_TYPES:
+        return True  # not a service ÔåÆ always show
+    existing = _get_existing_service_names_cached()
+    entity = (g.get("entity_name") or "").lower()
+    # If existing is empty (no services in DB) ÔåÆ orphan ÔåÆ hide
+    if not existing:
+        return False
+    return entity in existing
+
+
+# Cache existing service names for 60s (same pattern as service registry)
+_existing_svc_cache: set = set()
+_existing_svc_ttl: float = 0
+
+
+def _get_existing_service_names_cached() -> set:
+    global _existing_svc_cache, _existing_svc_ttl
+    now = time.time()
+    if now < _existing_svc_ttl:
+        return _existing_svc_cache
+    _existing_svc_cache = _get_existing_service_names()
+    _existing_svc_ttl = now + 60
+    return _existing_svc_cache
+
+
+def _apply_retention_filter(groups: list[dict]) -> list[dict]:
+    """Task 4: 30-day retention for resolved/suppressed/false_positive groups.
+
+    Active / acknowledged / alert_created groups are ALWAYS shown.
+    Resolved / suppressed / false_positive groups older than 30 days are hidden.
+    """
+    cutoff = datetime.now(timezone.utc) - timedelta(days=MAX_RETENTION_DAYS)
+    cutoff_str = cutoff.isoformat()
+
+    retained = []
+    for g in groups:
+        if g["status"] in ("active", "acknowledged", "alert_created"):
+            retained.append(g)
+        else:
+            # Compare last_seen against retention cutoff
+            last_seen = g.get("last_seen", "")
+            if last_seen >= cutoff_str:
+                retained.append(g)
+    return retained
+
+
+# -- Phase 2.1: Anomaly Occurrence (single detection event) ------
+class AnomalyOccurrence(BaseModel):
+    """A single detection event within an anomaly group."""
     timestamp: str
-    metric: str
-    service: str
+    current_value: float
+    expected_value: float
+    deviation_percent: float
     severity: str
-    deviation: str
-    baseline: float
-    current: float
     confidence: float | None = None
-    description: str | None = None
+    analysis: str | None = None
 
-class AnomaliesResponse(BaseModel):
-    anomalies: list[Anomaly]
+
+# -- Phase 2.1: Anomaly Group (deduplicated, lifecycle-managed) --
+class AnomalyGroup(BaseModel):
+    """Deduplicated anomaly group with lifecycle management.
+    Phase 2.1: Groups occurrences by fingerprint.
+    fingerprint = sha256(entity_type|entity_name|metric_name|source)[:16]
+    """
+    fingerprint: str
+    entity_type: str
+    entity_name: str
+    metric_name: str
+    source: str
+    first_seen: str
+    last_seen: str
+    occurrence_count: int
+    severity_current: str
+    status: str
+    occurrences: list[AnomalyOccurrence] = Field(default_factory=list)
+    environment: str = Field(default="unknown")
+    service_group: str = Field(default="default")
+    region: str | None = None
+    cluster: str | None = None
+    priority: int = Field(default=2)
+    tags: list[str] | None = None
+    metadata: dict | None = None
+
+
+class AnomalyGroupsResponse(BaseModel):
+    anomaly_groups: list[AnomalyGroup]
     total: int
     page: int
     page_size: int
 
-@router.get("")
-async def get_anomalies(
-    current_user: User = Depends(get_current_user),
-    severity: Optional[str] = Query(None, description="Filter by severity: high, medium, low"),
-    time_range: Optional[str] = Query("24h", description="Time range: 1h, 24h, 7d, 30d"),
-    page: int = Query(1, ge=1),
-    page_size: int = Query(50, ge=1, le=100)
-):
+
+class OccurrencesResponse(BaseModel):
+    fingerprint: str
+    entity_type: str
+    entity_name: str
+    metric_name: str
+    source: str
+    occurrences: list[AnomalyOccurrence]
+    total: int
+
+
+class StatusUpdateRequest(BaseModel):
+    status: str
+
+
+# -- Priority + severity sort helpers ----------------------------
+ENTITY_PRIORITY = {
+    "service": 1,
+    "website": 2,
+    "infrastructure": 3,
+}
+
+SEVERITY_ORDER = {
+    "critical": 0,
+    "high": 1,
+    "medium": 2,
+    "low": 3,
+}
+
+
+# -- Entity type inference from metric name ----------------------
+METRIC_ENTITY_MAP = {
+    "node_cpu_usage": ("infrastructure", "node_exporter"),
+    "node_memory_usage": ("infrastructure", "node_exporter"),
+    "node_disk_usage": ("infrastructure", "node_exporter"),
+    "node_disk_io": ("infrastructure", "node_exporter"),
+    "node_network_receive": ("infrastructure", "node_exporter"),
+    "node_network_transmit": ("infrastructure", "node_exporter"),
+    "container_cpu_usage": ("infrastructure", "cadvisor"),
+    "container_memory_usage": ("infrastructure", "cadvisor"),
+    "rhinometric_website_availability": ("website", "blackbox_exporter"),
+    "rhinometric_website_response_time": ("website", "blackbox_exporter"),
+    "rhinometric_website_ssl_expiry": ("website", "blackbox_exporter"),
+    "rhinometric_website_dns_time": ("website", "blackbox_exporter"),
+    "license_validation_rate": ("infrastructure", "internal_monitoring"),
+    "license_expired_count": ("infrastructure", "internal_monitoring"),
+    "external_service_latency": ("service", "external_services"),
+    "external_service_health": ("service", "external_services"),
+    "external_service_availability": ("service", "external_services"),
+}
+
+METRIC_DISPLAY_NAMES = {
+    "node_cpu_usage": "Node CPU",
+    "node_memory_usage": "Node Memory",
+    "node_disk_usage": "Node Disk",
+    "node_disk_io": "Node Disk I/O",
+    "node_network_receive": "Network Receive",
+    "node_network_transmit": "Network Transmit",
+    "container_cpu_usage": "Container CPU",
+    "container_memory_usage": "Container Memory",
+    "rhinometric_website_availability": "Rhinometric Website",
+    "rhinometric_website_response_time": "Rhinometric Website",
+    "rhinometric_website_ssl_expiry": "Website SSL Certificate",
+    "rhinometric_website_dns_time": "Website DNS",
+    "license_validation_rate": "License Validation",
+    "license_expired_count": "Expired Licenses",
+}
+
+INFRA_SERVICE_GROUPS = {
+    "node_cpu_usage": "compute",
+    "node_memory_usage": "compute",
+    "node_disk_usage": "storage",
+    "node_disk_io": "storage",
+    "node_network_receive": "network",
+    "node_network_transmit": "network",
+    "container_cpu_usage": "containers",
+    "container_memory_usage": "containers",
+    "license_validation_rate": "licensing",
+    "license_expired_count": "licensing",
+}
+
+
+# -- Service Registry Cache --------------------------------------
+_service_registry_cache: Dict[str, dict] = {}
+_service_registry_ttl: float = 0
+
+
+def _load_service_registry() -> Dict[str, dict]:
+    """Load external services from DB for context enrichment.
+    Cached for 60 seconds to avoid DB pressure.
     """
-    Get anomalies from AI Anomaly Detection Engine (port 8085)
-    
-    Filters:
-    - severity: high, medium, low
-    - time_range: 1h, 24h, 7d, 30d
-    - pagination: page, page_size
-    
-    Note: Response format is passed through directly from AI service (not validated)
-    """
-    
+    global _service_registry_cache, _service_registry_ttl
+
+    now = time.time()
+    if _service_registry_cache and now < _service_registry_ttl:
+        return _service_registry_cache
+
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            # AI Anomaly service uses "limit" instead of "page_size"
-            params = {
-                "time_range": time_range,
-                "limit": page_size
-            }
-            if severity:
-                params["severity"] = severity
-            
-            response = await client.get(
-                f"{settings.AI_ANOMALY_URL}/anomalies",
-                params=params
-            )
-            
-            if response.status_code == 200:
-                return response.json()
+        from database import SessionLocal
+        from models.external_service import ExternalService
+        db = SessionLocal()
+        services = db.query(ExternalService).filter(ExternalService.enabled == True).all()
+        registry = {}
+        for svc in services:
+            d = svc.to_dict()
+            svc_name = d["name"]
+            svc_type = d.get("service_type") or "unknown"
+            if svc_type == "postgresql":
+                service_group = "databases"
+            elif svc_type == "http":
+                service_group = "apis"
             else:
-                raise HTTPException(
-                    status_code=response.status_code,
-                    detail=f"AI Anomaly service error: {response.text}"
-                )
-                
-    except httpx.ConnectError:
-        # Return mock data if service is not available
-        mock_anomalies = [
-            Anomaly(
-                id=1,
-                timestamp="2024-11-24 14:23:45",
-                metric="cpu_usage_percent",
-                service="api-gateway",
-                severity="high",
-                deviation="+47%",
-                baseline=32.5,
-                current=47.8,
-                confidence=0.94,
-                description="CPU usage significantly above baseline"
-            ),
-            Anomaly(
-                id=2,
-                timestamp="2024-11-24 14:18:12",
-                metric="response_time_ms",
-                service="database",
-                severity="medium",
-                deviation="+23%",
-                baseline=145,
-                current=178,
-                confidence=0.87,
-                description="Response time elevated"
-            ),
-            Anomaly(
-                id=3,
-                timestamp="2024-11-24 13:56:33",
-                metric="memory_usage_bytes",
-                service="worker-pool",
-                severity="low",
-                deviation="+12%",
-                baseline=2.1,
-                current=2.35,
-                confidence=0.76,
-                description="Minor memory increase detected"
-            )
-        ]
-        
-        # Apply severity filter
-        if severity:
-            mock_anomalies = [a for a in mock_anomalies if a.severity == severity.lower()]
-        
-        return AnomaliesResponse(
-            anomalies=mock_anomalies,
-            total=len(mock_anomalies),
-            page=page,
-            page_size=page_size
-        )
+                service_group = "default"
+            tags = []
+            if svc_type:
+                tags.append(f"type:{svc_type}")
+            if d.get("status"):
+                tags.append(f"status:{d['status']}")
+            registry[svc_name] = {
+                "environment": d.get("environment") or "unknown",
+                "service_type": svc_type,
+                "service_group": service_group,
+                "description": d.get("description") or "",
+                "tags": tags,
+            }
+        db.close()
+        _service_registry_cache = registry
+        _service_registry_ttl = now + 60
+        logger.debug(f"Service registry loaded: {len(registry)} services")
+        return registry
     except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to fetch anomalies: {str(e)}"
+        logger.warning(f"Failed to load service registry: {e}")
+        return _service_registry_cache
+
+
+def _enrich_anomaly(normalized: dict) -> dict:
+    """Add context enrichment + priority to a normalized anomaly."""
+    entity_type = normalized.get("entity_type", "")
+    entity_name = normalized.get("entity_name", "")
+    base_metric = normalized.get("metric_name", "")
+
+    if entity_type == "service":
+        registry = _load_service_registry()
+        svc_info = registry.get(entity_name, {})
+        normalized["environment"] = svc_info.get("environment", "unknown")
+        normalized["service_group"] = svc_info.get("service_group", "default")
+        existing_tags = normalized.get("tags") or []
+        registry_tags = svc_info.get("tags", [])
+        merged_tags = list(dict.fromkeys(existing_tags + registry_tags))
+        normalized["tags"] = merged_tags if merged_tags else None
+    elif entity_type == "infrastructure":
+        normalized["environment"] = "production"
+        normalized["service_group"] = INFRA_SERVICE_GROUPS.get(base_metric, "system")
+    elif entity_type == "website":
+        normalized["environment"] = "production"
+        normalized["service_group"] = "websites"
+    else:
+        normalized["environment"] = "unknown"
+        normalized["service_group"] = "default"
+
+    normalized.setdefault("region", None)
+    normalized.setdefault("cluster", None)
+    normalized["priority"] = ENTITY_PRIORITY.get(entity_type, 3)
+
+    return normalized
+
+
+# ---------------------------------------------------------------------------
+# Operational Severity Classification — hard rules override ML softness
+# ---------------------------------------------------------------------------
+# The anomaly engine's ML model adapts to sustained failures, marking DOWN
+# services as "low" severity.  These rules enforce operational truth:
+#   availability == 0  →  DOWN / critical
+#   health < 30%       →  DOWN / critical
+#   error_rate >= 95%  →  DOWN / critical
+# The generated explanation is authoritative and replaces the engine's
+# bland statistical text ("Current: 0.00, Expected: 0.00 …").
+# ---------------------------------------------------------------------------
+
+_OP_STATE_DOWN = "DOWN"
+_OP_STATE_SEVERE = "SEVERE_DEGRADATION"
+_OP_STATE_DEGRADED = "DEGRADED"
+_OP_STATE_MINOR = "MINOR"
+_OP_STATE_NORMAL = "NORMAL"
+
+# Forbidden soft phrases that must never appear for DOWN / SEVERE states
+_SOFT_PHRASES = re.compile(
+    r"minor\s+degradation|low\s+risk|stable|within\s+normal|no\s+significant|"
+    r"slight\s+deviation|marginal|negligible|normal\s+range",
+    re.IGNORECASE,
+)
+
+
+def _classify_operational_state(
+    metric_name: str,
+    current_value: float,
+    expected_value: float,
+    deviation_percent: float,
+    raw_severity: str,
+) -> tuple[str, str]:
+    """Hard classification of operational state from metric values.
+
+    Returns (operational_state, corrected_severity).
+    The ML model's severity is overridden when the operational state
+    clearly contradicts it (e.g. availability=0 but severity="low").
+    """
+    ml = metric_name.lower()
+    cv = current_value
+    dev = abs(deviation_percent)
+
+    # ── Availability metrics (0.0 = down, 1.0 = up) ──────────────
+    if "availability" in ml:
+        if cv <= 0.001:
+            return _OP_STATE_DOWN, "critical"
+        if cv < 0.5:
+            return _OP_STATE_SEVERE, "critical"
+        if cv < 0.9:
+            return _OP_STATE_DEGRADED, "high"
+        if cv < 0.95:
+            return _OP_STATE_MINOR, max_severity(raw_severity, "medium")
+        return _OP_STATE_NORMAL, raw_severity
+
+    # ── Health metrics (0-100 percentage) ─────────────────────────
+    if "health" in ml:
+        if cv < 30:
+            return _OP_STATE_DOWN, "critical"
+        if cv < 50:
+            return _OP_STATE_SEVERE, "critical"
+        if cv < 70:
+            return _OP_STATE_DEGRADED, "high"
+        if cv < 85:
+            return _OP_STATE_MINOR, max_severity(raw_severity, "medium")
+        return _OP_STATE_NORMAL, raw_severity
+
+    # ── Error / failure rate metrics (0.0-1.0 or 0-100) ──────────
+    if "error" in ml or "failure" in ml:
+        # Normalise: if value > 1, assume percentage scale
+        rate = cv / 100.0 if cv > 1.0 else cv
+        if rate >= 0.95:
+            return _OP_STATE_DOWN, "critical"
+        if rate >= 0.50:
+            return _OP_STATE_SEVERE, "critical"
+        if rate >= 0.20:
+            return _OP_STATE_DEGRADED, "high"
+        if rate >= 0.10:
+            return _OP_STATE_MINOR, max_severity(raw_severity, "medium")
+        return _OP_STATE_NORMAL, raw_severity
+
+    # ── Latency metrics (deviation-based) ─────────────────────────
+    if "latency" in ml or "response_time" in ml:
+        if dev >= 500:
+            return _OP_STATE_SEVERE, "critical"
+        if dev >= 200:
+            return _OP_STATE_DEGRADED, "high"
+        if dev >= 100:
+            return _OP_STATE_MINOR, max_severity(raw_severity, "medium")
+        return _OP_STATE_NORMAL, raw_severity
+
+    # ── Generic fallback: deviation magnitude ─────────────────────
+    if dev >= 300:
+        return _OP_STATE_SEVERE, max_severity(raw_severity, "high")
+    if dev >= 100:
+        return _OP_STATE_DEGRADED, max_severity(raw_severity, "medium")
+    return _OP_STATE_NORMAL, raw_severity
+
+
+def max_severity(a: str, b: str) -> str:
+    """Return the more severe of two severity strings."""
+    order = {"critical": 0, "high": 1, "medium": 2, "low": 3}
+    return a if order.get(a, 3) <= order.get(b, 3) else b
+
+
+def _generate_severity_explanation(
+    op_state: str,
+    entity_name: str,
+    metric_name: str,
+    current_value: float,
+    expected_value: float,
+    deviation_percent: float,
+    original_explanation: str | None,
+) -> str:
+    """Generate a severity-aware, operationally honest explanation.
+
+    For DOWN / SEVERE states the explanation leads with the operational
+    state in bold, followed by evidence.  For MINOR / NORMAL, the
+    original engine explanation is returned (or enhanced).
+    """
+    ml = metric_name.lower()
+    dev = deviation_percent
+
+    # ── DOWN state explanations ───────────────────────────────────
+    if op_state == _OP_STATE_DOWN:
+        if "availability" in ml:
+            return (
+                f"**SERVICE DOWN** — {entity_name} is completely unavailable. "
+                f"Availability at {current_value*100:.1f}%, deviation {dev:+.1f}% from expected. "
+                f"Immediate investigation required."
+            )
+        if "health" in ml:
+            return (
+                f"**SERVICE DOWN** — {entity_name} health critically low at {current_value:.1f}%. "
+                f"Service is non-functional or severely impaired. "
+                f"Immediate investigation required."
+            )
+        if "error" in ml or "failure" in ml:
+            rate = current_value if current_value <= 1 else current_value / 100
+            return (
+                f"**SERVICE DOWN** — {entity_name} error rate at {rate*100:.1f}%. "
+                f"Nearly all requests are failing. "
+                f"Immediate investigation required."
+            )
+        return (
+            f"**SERVICE DOWN** — {entity_name} is in a critical failure state. "
+            f"Current value: {current_value:.2f}, expected: {expected_value:.2f} "
+            f"(deviation {dev:+.1f}%). Immediate investigation required."
         )
 
-@router.get("/{anomaly_id}")
-async def get_anomaly_details(
-    anomaly_id: int,
-    current_user: User = Depends(get_current_user)
-):
-    """Get detailed information about a specific anomaly"""
-    try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            response = await client.get(f"{settings.AI_ANOMALY_URL}/anomalies/{anomaly_id}")
-            
-            if response.status_code == 200:
-                return response.json()
-            elif response.status_code == 404:
-                raise HTTPException(status_code=404, detail="Anomaly not found")
-            else:
-                raise HTTPException(status_code=response.status_code, detail=response.text)
-                
-    except httpx.ConnectError:
-        raise HTTPException(
-            status_code=503,
-            detail="AI Anomaly Detection Engine is not available"
+    # ── SEVERE DEGRADATION explanations ───────────────────────────
+    if op_state == _OP_STATE_SEVERE:
+        if "availability" in ml:
+            return (
+                f"**SEVERE DEGRADATION** — {entity_name} availability at {current_value*100:.1f}%, "
+                f"well below acceptable threshold. Majority of requests are failing."
+            )
+        if "health" in ml:
+            return (
+                f"**SEVERE DEGRADATION** — {entity_name} health at {current_value:.1f}%, "
+                f"significantly below operational threshold. Service is severely impaired."
+            )
+        if "error" in ml or "failure" in ml:
+            rate = current_value if current_value <= 1 else current_value / 100
+            return (
+                f"**SEVERE DEGRADATION** — {entity_name} error rate at {rate*100:.1f}%. "
+                f"Majority of requests failing. Users experiencing widespread failures."
+            )
+        if "latency" in ml or "response_time" in ml:
+            return (
+                f"**SEVERE DEGRADATION** — {entity_name} latency at {current_value:.2f}ms, "
+                f"{abs(dev):.0f}% above baseline of {expected_value:.2f}ms. "
+                f"Service is effectively unusable."
+            )
+        return (
+            f"**SEVERE DEGRADATION** — {entity_name} operating far outside normal parameters. "
+            f"Current: {current_value:.2f}, expected: {expected_value:.2f} (deviation {dev:+.1f}%)."
         )
+
+    # ── DEGRADED explanations ─────────────────────────────────────
+    if op_state == _OP_STATE_DEGRADED:
+        if "availability" in ml:
+            return (
+                f"**DEGRADED** — {entity_name} availability at {current_value*100:.1f}%, "
+                f"below target. Users are experiencing intermittent failures."
+            )
+        if "health" in ml:
+            return (
+                f"**DEGRADED** — {entity_name} health at {current_value:.1f}%, "
+                f"below operational target. Service reliability is impacted."
+            )
+        if "latency" in ml or "response_time" in ml:
+            return (
+                f"**DEGRADED** — {entity_name} latency at {current_value:.2f}ms, "
+                f"{abs(dev):.0f}% above baseline of {expected_value:.2f}ms. "
+                f"Users are experiencing noticeable delays."
+            )
+        if "error" in ml or "failure" in ml:
+            rate = current_value if current_value <= 1 else current_value / 100
+            return (
+                f"**DEGRADED** — {entity_name} error rate at {rate*100:.1f}%. "
+                f"Significant portion of requests failing."
+            )
+        return (
+            f"**DEGRADED** — {entity_name} operating outside normal parameters. "
+            f"Current: {current_value:.2f}, expected: {expected_value:.2f} (deviation {dev:+.1f}%)."
+        )
+
+    # ── MINOR / NORMAL — return original or enhance ───────────────
+    if original_explanation:
+        # Block forbidden soft phrases for anything above NORMAL
+        if op_state == _OP_STATE_MINOR and _SOFT_PHRASES.search(original_explanation):
+            return (
+                f"{entity_name}: metric deviation detected. "
+                f"Current: {current_value:.2f}, expected: {expected_value:.2f} "
+                f"(deviation {dev:+.1f}%). Monitor for further degradation."
+            )
+        return original_explanation
+
+    return (
+        f"{entity_name}: Current {current_value:.2f}, expected {expected_value:.2f} "
+        f"(deviation {dev:+.1f}%)."
+    )
+
+
+def normalize_anomaly(raw: dict, index: int) -> dict:
+    """Normalize any anomaly dict into unified schema + enrichment."""
+    metric_name = raw.get("metric_name", "unknown")
+    base_metric = metric_name.split("::")[0].strip()
+    entity_suffix = metric_name.split("::")[-1].strip() if "::" in metric_name else ""
+
+    entity_type = raw.get("entity_type", "").strip()
+    source = raw.get("source", "").strip()
+    entity_name = raw.get("entity_name", "").strip()
+
+    if not entity_type or not source:
+        inferred = METRIC_ENTITY_MAP.get(base_metric)
+        if inferred:
+            if not entity_type:
+                entity_type = inferred[0]
+            if not source:
+                source = inferred[1]
+
+    if not entity_type:
+        entity_type = "infrastructure"
+    if not source:
+        source = "legacy"
+
+    if not entity_name:
+        if entity_suffix:
+            entity_name = entity_suffix
+        elif base_metric in METRIC_DISPLAY_NAMES:
+            entity_name = METRIC_DISPLAY_NAMES[base_metric]
+        else:
+            entity_name = base_metric.replace("_", " ").title()
+
+    raw_id = raw.get("id")
+    if raw_id:
+        anomaly_id = str(raw_id)
+    else:
+        id_seed = f"{metric_name}:{raw.get('timestamp', index)}"
+        anomaly_id = hashlib.sha256(id_seed.encode()).hexdigest()[:12]
+
+    severity = raw.get("severity", "low").lower()
+    severity_map = {
+        "critical": "critical", "high": "high", "medium": "medium",
+        "warning": "medium", "low": "low", "info": "low",
+    }
+    severity = severity_map.get(severity, severity)
+
+    tags = []
+    if raw.get("is_anomaly"):
+        tags.append("anomaly")
+    models = raw.get("models_used", [])
+    if models:
+        tags.extend([f"model:{m}" for m in models])
+    priority_tag = (raw.get("metadata") or {}).get("priority")
+    if priority_tag:
+        tags.append(f"priority:{priority_tag}")
+
+    original_analysis = raw.get("baseline_explanation")
+
+    current_value = float(raw.get("current_value", 0))
+    expected_value = float(raw.get("expected_value", 0))
+    deviation_percent = float(raw.get("deviation_percent", 0))
+
+    # ── Operational severity override ─────────────────────────────
+    # The ML model adapts to sustained failures and may mark DOWN
+    # services as "low".  Hard rules enforce operational truth.
+    op_state, corrected_severity = _classify_operational_state(
+        base_metric, current_value, expected_value,
+        deviation_percent, severity,
+    )
+
+    if SEVERITY_ORDER.get(corrected_severity, 3) < SEVERITY_ORDER.get(severity, 3):
+        logger.info(
+            f"Severity override: {entity_name}/{base_metric} "
+            f"{severity}→{corrected_severity} (op_state={op_state})"
+        )
+        severity = corrected_severity
+
+    analysis = _generate_severity_explanation(
+        op_state, entity_name, base_metric,
+        current_value, expected_value, deviation_percent,
+        original_analysis,
+    )
+
+    normalized = {
+        "id": anomaly_id,
+        "timestamp": raw.get("timestamp", ""),
+        "entity_type": entity_type,
+        "entity_name": entity_name,
+        "source": source,
+        "metric_name": base_metric,
+        "severity": severity,
+        "current_value": current_value,
+        "expected_value": expected_value,
+        "deviation_percent": deviation_percent,
+        "status": raw.get("status", "active"),
+        "confidence": raw.get("confidence"),
+        "analysis": analysis,
+        "op_state": op_state,
+        "tags": tags if tags else None,
+        "metadata": raw.get("metadata"),
+    }
+
+    normalized = _enrich_anomaly(normalized)
+    return normalized
+
+
+# -- Phase 2.1: Fingerprint + Grouping Engine --------------------
+
+def _generate_fingerprint(entity_type: str, entity_name: str, metric_name: str, source: str) -> str:
+    """Generate deterministic fingerprint for anomaly grouping.
+    fingerprint = sha256(entity_type|entity_name|metric_name|source)[:16]
+    """
+    seed = f"{entity_type}|{entity_name}|{metric_name}|{source}"
+    return hashlib.sha256(seed.encode()).hexdigest()[:16]
+
+
+# In-memory lifecycle status store (Phase 2.1)
+_status_overrides: Dict[str, str] = {}
+VALID_STATUSES = {"active", "acknowledged", "false_positive", "suppressed", "resolved", "alert_created"}
+# Auto-resolution: groups with no new occurrences within this window
+# are automatically transitioned to "resolved".
+AUTO_RESOLVE_WINDOW = 1800  # seconds (30 minutes)
+# Statuses that must NOT be auto-resolved (user-intent statuses)
+_NO_AUTO_RESOLVE = {"false_positive", "suppressed", "alert_created"}
+
+
+def _build_anomaly_groups(normalized_anomalies: list[dict]) -> list[dict]:
+    """Transform flat normalized anomalies into deduplicated groups.
+    Each unique (entity_type, entity_name, metric_name, source) combination
+    becomes one AnomalyGroup with multiple occurrences.
+    """
+    groups: Dict[str, dict] = {}
+
+    for a in normalized_anomalies:
+        fp = _generate_fingerprint(
+            a["entity_type"], a["entity_name"],
+            a["metric_name"], a["source"]
+        )
+
+        occurrence = {
+            "timestamp": a["timestamp"],
+            "current_value": a["current_value"],
+            "expected_value": a["expected_value"],
+            "deviation_percent": a["deviation_percent"],
+            "severity": a["severity"],
+            "confidence": a.get("confidence"),
+            "analysis": a.get("analysis"),
+            "op_state": a.get("op_state", "NORMAL"),
+        }
+
+        if fp in groups:
+            g = groups[fp]
+            g["occurrences"].append(occurrence)
+            g["occurrence_count"] += 1
+            if a["timestamp"] > g["last_seen"]:
+                g["last_seen"] = a["timestamp"]
+                g["severity_current"] = a["severity"]
+            if a["timestamp"] < g["first_seen"]:
+                g["first_seen"] = a["timestamp"]
+        else:
+            groups[fp] = {
+                "fingerprint": fp,
+                "entity_type": a["entity_type"],
+                "entity_name": a["entity_name"],
+                "metric_name": a["metric_name"],
+                "source": a["source"],
+                "first_seen": a["timestamp"],
+                "last_seen": a["timestamp"],
+                "occurrence_count": 1,
+                "severity_current": a["severity"],
+                "status": _status_overrides.get(fp, "active"),
+                "occurrences": [occurrence],
+                "environment": a.get("environment", "unknown"),
+                "service_group": a.get("service_group", "default"),
+                "region": a.get("region"),
+                "cluster": a.get("cluster"),
+                "priority": a.get("priority", 2),
+                "tags": a.get("tags"),
+                "metadata": a.get("metadata"),
+            }
+
+    # Sort occurrences DESC by timestamp within each group
+    for g in groups.values():
+        g["occurrences"].sort(key=lambda o: o["timestamp"], reverse=True)
+        g["status"] = _status_overrides.get(g["fingerprint"], "active")
+
+    # ÔöÇÔöÇ Auto-resolution pass ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+    # If a group's last_seen is older than AUTO_RESOLVE_WINDOW and its
+    # status is eligible, automatically transition it to "resolved".
+    now = datetime.utcnow()
+    for g in groups.values():
+        if g["status"] in _NO_AUTO_RESOLVE:
+            continue  # never auto-resolve user-intent statuses
+        try:
+            last = datetime.fromisoformat(g["last_seen"].replace("Z", "+00:00").replace("+00:00", ""))
+        except Exception:
+            continue
+        age_seconds = (now - last).total_seconds()
+        if age_seconds > AUTO_RESOLVE_WINDOW:
+            g["status"] = "resolved"
+            # Persist so the override survives between API calls
+            _status_overrides[g["fingerprint"]] = "resolved"
+
+    return list(groups.values())
+
+
+async def _fetch_and_normalize(time_range: str = "24h", limit: int = 500) -> list[dict]:
+    """Fetch raw anomalies from AI service and normalize them."""
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        response = await client.get(
+            f"{settings.AI_ANOMALY_URL}/anomalies",
+            params={"time_range": time_range, "limit": limit}
+        )
+        if response.status_code != 200:
+            raise HTTPException(
+                status_code=response.status_code,
+                detail=f"AI Anomaly service error: {response.text}"
+            )
+        data = response.json()
+        raw_anomalies = data.get("anomalies", [])
+        return [normalize_anomaly(raw, i) for i, raw in enumerate(raw_anomalies)]
+
+# -- API Endpoints ------------------------------------------------
+
+@router.get("")
+async def get_anomalies(
+    current_user: UserModel = Depends(get_current_user),
+    severity: Optional[str] = Query(None),
+    entity_type: Optional[str] = Query(None),
+    source: Optional[str] = Query(None),
+    environment: Optional[str] = Query(None),
+    service_group: Optional[str] = Query(None),
+    status: Optional[str] = Query(None, description="Filter by lifecycle status"),
+    time_range: Optional[str] = Query("24h"),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=1, le=100),
+):
+    """Get anomaly groups -- deduplicated with occurrence counts and lifecycle status.
+
+    Task 2: Only customer-facing anomaly groups are returned.
+    Infrastructure / internal platform telemetry is filtered out.
+    Task 4: 30-day retention; deleted services excluded.
+    """
+    try:
+        normalized = await _fetch_and_normalize(time_range, page_size * 3)
+        groups = _build_anomaly_groups(normalized)
+
+        # ÔöÇÔöÇ Task 2: strip internal platform telemetry ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+        groups = [g for g in groups if _is_customer_facing_group(g)]
+
+        # ÔöÇÔöÇ Task 5: existence-based service exclusion ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+        groups = [g for g in groups if _is_existing_service(g)]
+
+        # ÔöÇÔöÇ Task 4: retention policy ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+        groups = _apply_retention_filter(groups)
+
+        if entity_type:
+            groups = [g for g in groups if g["entity_type"] == entity_type]
+        if source:
+            groups = [g for g in groups if g["source"] == source]
+        if environment:
+            groups = [g for g in groups if g["environment"] == environment]
+        if service_group:
+            groups = [g for g in groups if g["service_group"] == service_group]
+        if severity:
+            groups = [g for g in groups if g["severity_current"] == severity]
+        if status:
+            groups = [g for g in groups if g["status"] == status]
+
+        # Sort: priority ASC -> severity DESC -> last_seen DESC
+        temp = sorted(groups, key=lambda g: (
+            g.get("priority", 3),
+            SEVERITY_ORDER.get(g.get("severity_current", "low"), 3),
+        ))
+        result = []
+        for _, grp in itertools_groupby(temp, key=lambda g: (
+            g.get("priority", 3),
+            SEVERITY_ORDER.get(g.get("severity_current", "low"), 3),
+        )):
+            bucket = sorted(grp, key=lambda x: x.get("last_seen", ""), reverse=True)
+            result.extend(bucket)
+
+        # Build backward-compat flat list for cached old frontends
+        compat_list = []
+        for g in result:
+            latest = g["occurrences"][0] if g.get("occurrences") else {}
+            flat = {
+                "id": g["fingerprint"],
+                "timestamp": g["last_seen"],
+                "entity_type": g["entity_type"],
+                "entity_name": g["entity_name"],
+                "source": g["source"],
+                "metric_name": g["metric_name"],
+                "severity": g["severity_current"],
+                "current_value": latest.get("current_value", 0),
+                "expected_value": latest.get("expected_value", 0),
+                "deviation_percent": latest.get("deviation_percent", 0),
+                "status": g["status"],
+                "confidence": latest.get("confidence"),
+                "analysis": latest.get("analysis"),
+                "op_state": latest.get("op_state", "NORMAL"),
+                "tags": g.get("tags"),
+                "metadata": g.get("metadata"),
+                "environment": g.get("environment", "unknown"),
+                "service_group": g.get("service_group", "default"),
+                "region": g.get("region"),
+                "cluster": g.get("cluster"),
+                "priority": g.get("priority", 2),
+            }
+            compat_list.append(flat)
+
+        return {
+            "anomaly_groups": result,
+            "anomalies": compat_list,  # backward compat: flat format for cached old frontends
+            "total": len(result),
+            "page": page,
+            "page_size": page_size,
+        }
+
+    except httpx.ConnectError as e:
+        raise HTTPException(status_code=503, detail=f"AI Anomaly Detection Engine connection failed: {str(e)}")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error fetching anomaly groups: {e}")
+        raise HTTPException(status_code=503, detail=f"AI Anomaly service error: {str(e)}")
+
+@router.get("/{fingerprint}/occurrences")
+async def get_occurrences(
+    fingerprint: str,
+    current_user: UserModel = Depends(get_current_user),
+    time_range: Optional[str] = Query("24h"),
+):
+    """Get all occurrences for a specific anomaly group."""
+    try:
+        normalized = await _fetch_and_normalize(time_range, 500)
+        groups = _build_anomaly_groups(normalized)
+
+        # Task 2: only allow access to customer-facing groups
+        groups = [g for g in groups if _is_customer_facing_group(g)]
+
+        for g in groups:
+            if g["fingerprint"] == fingerprint:
+                return {
+                    "fingerprint": g["fingerprint"],
+                    "entity_type": g["entity_type"],
+                    "entity_name": g["entity_name"],
+                    "metric_name": g["metric_name"],
+                    "source": g["source"],
+                    "occurrences": g["occurrences"],
+                    "total": g["occurrence_count"],
+                }
+
+        raise HTTPException(status_code=404, detail="Anomaly group not found")
+
+    except httpx.ConnectError:
+        raise HTTPException(status_code=503, detail="AI Anomaly Detection Engine is not available")
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.patch("/{fingerprint}/status")
+async def update_anomaly_status(
+    fingerprint: str,
+    body: StatusUpdateRequest,
+    current_user: UserModel = Depends(get_current_user),
+):
+    """Update lifecycle status for an anomaly group.
+    Valid statuses: active, acknowledged, false_positive, suppressed, resolved, alert_created
+    """
+    new_status = body.status.lower().strip()
+    if new_status not in VALID_STATUSES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid status. Valid: {', '.join(sorted(VALID_STATUSES))}"
+        )
+
+    _status_overrides[fingerprint] = new_status
+    logger.info(f"Anomaly {fingerprint} status -> {new_status} by {current_user.username}")
+    return {"fingerprint": fingerprint, "status": new_status, "message": f"Status updated to {new_status}"}
+
+@router.get("/{fingerprint}")
+async def get_anomaly_group(
+    fingerprint: str,
+    current_user: UserModel = Depends(get_current_user),
+    time_range: Optional[str] = Query("24h"),
+):
+    """Get detailed anomaly group by fingerprint."""
+    try:
+        normalized = await _fetch_and_normalize(time_range, 500)
+        groups = _build_anomaly_groups(normalized)
+
+        # Task 2: only allow access to customer-facing groups
+        groups = [g for g in groups if _is_customer_facing_group(g)]
+
+        for g in groups:
+            if g["fingerprint"] == fingerprint:
+                return g
+
+        raise HTTPException(status_code=404, detail="Anomaly group not found")
+
+    except httpx.ConnectError:
+        raise HTTPException(status_code=503, detail="AI Anomaly Detection Engine is not available")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ════════════════════════════════════════════════════════════════════
+# Phase 5.2 — AI Decision Engine endpoints for anomalies
+# ════════════════════════════════════════════════════════════════════
+
+@router.get("/db/{anomaly_id}/ai-decision")
+async def get_anomaly_ai_decision(
+    anomaly_id: str,
+    db: Session = Depends(get_db),
+    current_user: UserModel = Depends(get_current_user),
+):
+    """Return the stored AI triage decision for an anomaly record (anomaly_engine_results_v1)."""
+    import uuid as _uuid
+    from sqlalchemy import text as _text
+    try:
+        aid = _uuid.UUID(anomaly_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid anomaly ID")
+    row = db.execute(
+        _text("SELECT ai_decision FROM anomaly_engine_results_v1 WHERE id = :id"),
+        {"id": str(aid)},
+    ).fetchone()
+    if not row:
+        raise HTTPException(status_code=404, detail="Anomaly not found")
+    return {"decision": row[0]}
+
+
+@router.post("/db/{anomaly_id}/ai-decision")
+async def create_anomaly_ai_decision(
+    anomaly_id: str,
+    db: Session = Depends(get_db),
+    current_user: UserModel = Depends(require_role(["OWNER", "ADMIN", "OPERATOR"])),
+):
+    """Generate (or regenerate) the AI triage decision for an anomaly record."""
+    import uuid as _uuid
+    from sqlalchemy import text as _text
+    from services.ai_decision_engine import evaluate_anomaly_decision
+    try:
+        aid = _uuid.UUID(anomaly_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid anomaly ID")
+
+    from sqlalchemy.orm import DeclarativeMeta
+    from sqlalchemy.ext.declarative import declarative_base
+
+    # Fetch as ORM-like object using text query, wrap in a simple namespace
+    row = db.execute(
+        _text("""
+            SELECT id, service_name, anomaly_score, severity, confidence_label,
+                   primary_category, occurrence_count, evidence_summary, status,
+                   first_seen_at, last_seen_at, predicted_risk_level
+            FROM anomaly_engine_results_v1 WHERE id = :id
+        """),
+        {"id": str(aid)},
+    ).fetchone()
+    if not row:
+        raise HTTPException(status_code=404, detail="Anomaly not found")
+
+    # Map row to a simple object the engine can read
+    class _AnomalyProxy:
+        def __init__(self, r):
+            self.id                = r[0]
+            self.service_name      = r[1]
+            self.anomaly_score     = r[2]
+            self.severity          = r[3]
+            self.confidence_label  = r[4]
+            self.primary_category  = r[5]
+            self.occurrence_count  = r[6]
+            self.evidence_summary  = r[7]
+            self.status            = r[8]
+            self.first_seen_at     = r[9]
+            self.last_seen_at      = r[10]
+            self.predicted_risk_level = r[11]
+
+    proxy = _AnomalyProxy(row)
+    decision = await evaluate_anomaly_decision(proxy, db)
+
+    db.execute(
+        _text("UPDATE anomaly_engine_results_v1 SET ai_decision = :d WHERE id = :id"),
+        {"d": __import__("json").dumps(decision), "id": str(aid)},
+    )
+    db.commit()
+    return {"decision": decision}

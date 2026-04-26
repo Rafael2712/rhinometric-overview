@@ -42,6 +42,9 @@ class Incident(Base):
     # ── Phase 5.1: AI Incident Briefing ──────────────────────────
     ai_briefing = Column(JSONB, nullable=True)
 
+    # ── Phase 5.2: AI Decision Engine ─────────────────────────────
+    ai_decision = Column(JSONB, nullable=True)
+
     __table_args__ = (
         Index("ix_incidents_entity", "entity_type", "entity_name"),
         Index("ix_incidents_status_started", "status", "started_at"),

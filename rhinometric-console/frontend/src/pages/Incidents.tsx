@@ -35,6 +35,8 @@ interface IncidentSummary {
   alert_fingerprint?: string | null
   // Phase 5.1 AI Briefing
   ai_briefing?: AiBriefing | null
+  // Phase 5.2 AI Decision
+  ai_decision?: AiDecision | null
 }
 
 interface AiBriefing {
@@ -50,6 +52,25 @@ interface AiBriefing {
   confidence_explanation: string
   confidence: 'high' | 'medium' | 'low'
   generated_at: string
+  engine: string
+  model: string | null
+}
+
+interface AiDecision {
+  decision: 'ignore' | 'monitor' | 'notify' | 'escalate'
+  confidence: 'low' | 'medium' | 'high'
+  risk_level: 'low' | 'medium' | 'high' | 'critical'
+  summary: string
+  reason: string
+  evidence: string[]
+  recommended_actions: string[]
+  noise_assessment: {
+    is_likely_noise: boolean
+    noise_reason: string
+    recurrence_detected: boolean
+  }
+  customer_impact: 'none' | 'low' | 'medium' | 'high'
+  created_at: string
   engine: string
   model: string | null
 }
@@ -766,7 +787,7 @@ function IncidentDetailPanel({ detail }: { detail: IncidentDetail }) {
   const incidentId = detail.incident.id
   const inc = detail.incident
 
-  const [activeTab, setActiveTab] = useState<'summary' | 'alerts' | 'timeline' | 'comments' | 'root-cause' | 'briefing'>('summary')
+  const [activeTab, setActiveTab] = useState<'summary' | 'alerts' | 'timeline' | 'comments' | 'root-cause' | 'briefing' | 'decision'>('summary')
   const [newComment, setNewComment] = useState('')
   const [newTag, setNewTag] = useState('')
   const [regenerating, setRegenerating] = useState(false)
@@ -803,6 +824,22 @@ function IncidentDetailPanel({ detail }: { detail: IncidentDetail }) {
     },
     enabled: activeTab === 'root-cause',
     staleTime: 30000,
+  })
+
+  // AI Decision mutation (Phase 5.2)
+  const decisionMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`/api/incidents/${incidentId}/ai-decision`, {
+        method: 'POST',
+        headers,
+      })
+      if (!res.ok) throw new Error('Failed to generate decision')
+      return res.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['incident-detail', incidentId] })
+      queryClient.invalidateQueries({ queryKey: ['incident-detail'] })
+    },
   })
 
   // AI Briefing mutation (Phase 5.1)
@@ -964,6 +1001,7 @@ function IncidentDetailPanel({ detail }: { detail: IncidentDetail }) {
           { key: 'comments' as const, label: `Comments (${comments.length})`, icon: MessageSquare },
           { key: 'root-cause' as const, label: 'Root Cause', icon: Crosshair },
           { key: 'briefing' as const, label: 'AI Briefing', icon: Zap },
+          { key: 'decision' as const, label: 'AI Triage', icon: Shield },
         ]).map(({ key, label, icon: TabIcon }) => (
           <button
             key={key}
@@ -1251,6 +1289,40 @@ function IncidentDetailPanel({ detail }: { detail: IncidentDetail }) {
         </div>
       )}
 
+      {/* Tab content: AI Triage Decision (Phase 5.2) */}
+      {activeTab === 'decision' && (
+        <div className="space-y-4">
+          {inc.ai_decision ? (
+            <AiDecisionPanel
+              decision={inc.ai_decision}
+              onRegenerate={() => decisionMutation.mutate()}
+              isRegenerating={decisionMutation.isPending}
+            />
+          ) : (
+            <div className="rounded-lg border border-slate-200 dark:border-gray-700/30 bg-slate-50 dark:bg-gray-800/20 p-6 text-center">
+              <Shield size={28} className="mx-auto text-slate-400 mb-3" />
+              <p className="text-sm font-medium text-slate-700 dark:text-gray-300 mb-1">AI Triage Decision</p>
+              <p className="text-xs text-slate-500 dark:text-gray-500 mb-4">
+                Classify this incident: ignore, monitor, notify, or escalate — with evidence and recommended actions.
+              </p>
+              <button
+                onClick={() => decisionMutation.mutate()}
+                disabled={decisionMutation.isPending}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-700 dark:bg-gray-700 text-white text-sm font-medium hover:bg-slate-800 dark:hover:bg-gray-600 disabled:opacity-50 transition-colors"
+              >
+                {decisionMutation.isPending
+                  ? <Loader2 size={14} className="animate-spin" />
+                  : <Shield size={14} />}
+                {decisionMutation.isPending ? 'Analysing...' : 'Run AI Triage'}
+              </button>
+              {decisionMutation.isError && (
+                <p className="mt-2 text-xs text-red-500">Failed to generate decision. Try again.</p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Tab content: AI Briefing (Phase 5.1) */}
       {activeTab === 'briefing' && (
         <div className="space-y-4">
@@ -1441,6 +1513,147 @@ function AiBriefingPanel({
           <p className="text-sm text-slate-600 dark:text-gray-400 leading-relaxed">{briefing.confidence_explanation || `Confidence: ${briefing.confidence}`}</p>
         </BriefingSection>
 
+      </div>
+    </div>
+  )
+}
+
+/* -- AiDecisionPanel component (Phase 5.2) -- */
+
+const DECISION_COLORS: Record<string, string> = {
+  ignore:   'bg-slate-100 text-slate-600 dark:bg-gray-700/40 dark:text-gray-400 border-slate-200 dark:border-gray-600',
+  monitor:  'bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400 border-blue-200 dark:border-blue-500/30',
+  notify:   'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400 border-amber-200 dark:border-amber-500/30',
+  escalate: 'bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-400 border-red-200 dark:border-red-500/30',
+}
+
+const RISK_COLORS: Record<string, string> = {
+  low:      'text-green-600 dark:text-green-400',
+  medium:   'text-amber-600 dark:text-amber-400',
+  high:     'text-orange-600 dark:text-orange-400',
+  critical: 'text-red-600 dark:text-red-400',
+}
+
+const CONFIDENCE_COLORS: Record<string, string> = {
+  low:    'text-slate-400 dark:text-gray-500',
+  medium: 'text-amber-500 dark:text-amber-400',
+  high:   'text-green-500 dark:text-green-400',
+}
+
+function AiDecisionPanel({
+  decision,
+  onRegenerate,
+  isRegenerating,
+}: {
+  decision: AiDecision
+  onRegenerate: () => void
+  isRegenerating: boolean
+}) {
+  const decColor = DECISION_COLORS[decision.decision] ?? DECISION_COLORS.monitor
+  const riskColor = RISK_COLORS[decision.risk_level] ?? ''
+  const confColor = CONFIDENCE_COLORS[decision.confidence] ?? ''
+
+  return (
+    <div className="space-y-4">
+      {/* Header bar */}
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wide border ${decColor}`}>
+            <Shield size={11} />
+            {decision.decision}
+          </span>
+          <span className={`text-xs font-medium ${riskColor}`}>Risk: {decision.risk_level}</span>
+          <span className="text-xs text-slate-300 dark:text-gray-600">·</span>
+          <span className={`text-xs font-medium ${confColor}`}>{decision.confidence} confidence</span>
+          <span className="text-xs text-slate-300 dark:text-gray-600">·</span>
+          <span className="text-xs text-slate-500 dark:text-gray-500">
+            Customer impact: <span className="font-medium text-slate-700 dark:text-gray-300">{decision.customer_impact}</span>
+          </span>
+        </div>
+        <button
+          onClick={onRegenerate}
+          disabled={isRegenerating}
+          className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-gray-700/60 text-slate-500 dark:text-gray-400 text-xs font-medium hover:bg-slate-200 dark:hover:bg-gray-600 disabled:opacity-50 transition-colors"
+        >
+          {isRegenerating ? <Loader2 size={11} className="animate-spin" /> : <RefreshCw size={11} />}
+          Regenerate
+        </button>
+      </div>
+
+      {/* Summary */}
+      <div className="rounded-lg border border-slate-200 dark:border-gray-700/30 bg-slate-50/50 dark:bg-gray-800/20 p-4">
+        <p className="text-xs font-semibold text-slate-400 dark:text-gray-500 uppercase tracking-wide mb-1">Summary</p>
+        <p className="text-sm text-slate-700 dark:text-gray-300">{decision.summary}</p>
+      </div>
+
+      {/* Reason */}
+      <div className="flex gap-3">
+        <div className="w-0.5 rounded-full flex-shrink-0 mt-1 bg-slate-300 dark:bg-gray-600" style={{ minHeight: '1.5rem' }} />
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-semibold text-slate-400 dark:text-gray-500 uppercase tracking-wide mb-1">01  Why this decision</p>
+          <p className="text-sm text-slate-700 dark:text-gray-300">{decision.reason}</p>
+        </div>
+      </div>
+
+      {/* Evidence */}
+      <div className="flex gap-3">
+        <div className="w-0.5 rounded-full flex-shrink-0 mt-1 bg-blue-400 dark:bg-blue-500" style={{ minHeight: '1.5rem' }} />
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-semibold text-slate-400 dark:text-gray-500 uppercase tracking-wide mb-1">02  Evidence</p>
+          <ul className="space-y-1">
+            {decision.evidence.map((e, i) => (
+              <li key={i} className="flex items-start gap-1.5 text-sm text-slate-700 dark:text-gray-300">
+                <span className="mt-1.5 w-1 h-1 rounded-full bg-blue-400 flex-shrink-0" />
+                {e}
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+
+      {/* Recommended actions */}
+      <div className="flex gap-3">
+        <div className="w-0.5 rounded-full flex-shrink-0 mt-1 bg-green-400 dark:bg-green-500" style={{ minHeight: '1.5rem' }} />
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-semibold text-slate-400 dark:text-gray-500 uppercase tracking-wide mb-1">03  Recommended actions</p>
+          <ul className="space-y-1">
+            {decision.recommended_actions.map((a, i) => (
+              <li key={i} className="flex items-start gap-1.5 text-sm text-slate-700 dark:text-gray-300">
+                <span className="mt-1.5 w-1 h-1 rounded-full bg-green-400 flex-shrink-0" />
+                {a}
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+
+      {/* Noise assessment */}
+      <div className="flex gap-3">
+        <div className={`w-0.5 rounded-full flex-shrink-0 mt-1 ${decision.noise_assessment.is_likely_noise ? 'bg-slate-300 dark:bg-gray-600' : 'bg-amber-400 dark:bg-amber-500'}`} style={{ minHeight: '1.5rem' }} />
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-semibold text-slate-400 dark:text-gray-500 uppercase tracking-wide mb-1">04  Noise assessment</p>
+          <div className="flex items-center gap-2 mb-1">
+            <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+              decision.noise_assessment.is_likely_noise
+                ? 'bg-slate-100 text-slate-500 dark:bg-gray-700 dark:text-gray-400'
+                : 'bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400'
+            }`}>
+              {decision.noise_assessment.is_likely_noise ? 'Likely noise' : 'Operational signal'}
+            </span>
+            {decision.noise_assessment.recurrence_detected && (
+              <span className="text-xs bg-orange-50 text-orange-600 dark:bg-orange-500/10 dark:text-orange-400 px-2 py-0.5 rounded-full">Recurrence detected</span>
+            )}
+          </div>
+          <p className="text-sm text-slate-600 dark:text-gray-400">{decision.noise_assessment.noise_reason}</p>
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div className="border-t border-slate-200 dark:border-gray-700/30 pt-3 flex items-center gap-3 text-xs text-slate-400 dark:text-gray-500">
+        <span>Engine: {decision.engine}</span>
+        {decision.model && <><span>·</span><span>{decision.model}</span></>}
+        <span>·</span>
+        <span>{new Date(decision.created_at).toLocaleString()}</span>
       </div>
     </div>
   )

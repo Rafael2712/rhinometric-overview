@@ -295,6 +295,7 @@ def _serialize_incident(inc: Incident, alert_count: int = 0) -> dict:
         "alert_fingerprint": inc.alert_fingerprint,
         # Phase 5.1 AI Briefing
         "ai_briefing": inc.ai_briefing,
+        "ai_decision": inc.ai_decision,
     }
 
 
@@ -945,3 +946,46 @@ def _parse_time_range(tr: str) -> Optional[datetime]:
     if tr.endswith("d"):
         return now - timedelta(days=int(tr[:-1]))
     return None
+
+
+# ── Phase 5.2: AI Decision Engine ────────────────────────────────────────────
+
+@router.get("/{incident_id}/ai-decision")
+async def get_incident_ai_decision(
+    incident_id: str,
+    db: Session = Depends(get_db),
+    current_user: UserModel = Depends(get_current_user),
+):
+    """Return the stored AI triage decision for an incident, or None."""
+    import uuid as _uuid
+    try:
+        inc_uuid = _uuid.UUID(incident_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid incident ID")
+    incident = db.query(Incident).filter(Incident.id == inc_uuid).first()
+    if not incident:
+        raise HTTPException(status_code=404, detail="Incident not found")
+    return {"decision": incident.ai_decision}
+
+
+@router.post("/{incident_id}/ai-decision")
+async def create_incident_ai_decision(
+    incident_id: str,
+    current_user: UserModel = Depends(require_role(["OWNER", "ADMIN", "OPERATOR"])),
+    db: Session = Depends(get_db),
+):
+    """Generate (or regenerate) the AI triage decision for an incident and persist it."""
+    import uuid as _uuid
+    from services.ai_decision_engine import evaluate_incident_decision
+    try:
+        inc_uuid = _uuid.UUID(incident_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid incident ID")
+    incident = db.query(Incident).filter(Incident.id == inc_uuid).first()
+    if not incident:
+        raise HTTPException(status_code=404, detail="Incident not found")
+    decision = await evaluate_incident_decision(incident, db)
+    incident.ai_decision = decision
+    incident.updated_at = datetime.now(timezone.utc)
+    db.commit()
+    return {"decision": decision}
