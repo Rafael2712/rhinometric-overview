@@ -388,6 +388,10 @@ def rule_based_decision_for_alert(ctx: Dict) -> Dict[str, Any]:
         if failure_rate < 0.3 and not recurrence:
             actions.append(f"Verify '{entity}' remains stable over the next 30 minutes")
             actions.append("Consider tuning alert thresholds to reduce transient noise")
+            actions.append(
+                "Confirm stability over the next monitoring cycle "
+                "and close if no recurrence is detected."
+            )
             return _make_decision(
                 decision="monitor",
                 confidence="high" if check_count >= 5 else "medium",
@@ -434,26 +438,53 @@ def rule_based_decision_for_alert(ctx: Dict) -> Dict[str, Any]:
 
     # ── Rule 4: Critical + service UP ────────────────────────────
     if sev_rank >= 2 and svc_status == "up":
+        # If no recent checks are failing, the condition has fully recovered → monitor
+        if down_count == 0 and not recurrence:
+            actions.append(f"Verify '{entity}' is genuinely healthy (check metrics)")
+            actions.append("Review alert rule thresholds — may have fired on a brief spike")
+            actions.append(
+                "Confirm stability over the next monitoring cycle and close if no recurrence is detected."
+            )
+            return _make_decision(
+                decision="monitor",
+                confidence="high" if check_count >= 5 else "medium",
+                risk_level="low",
+                summary=f"Critical alert for '{entity}': service is UP with no recent failures. Triggering condition appears recovered.",
+                reason=(
+                    "Critical alert fired but service is UP and all recent checks pass. "
+                    "The triggering condition appears transient and recovered."
+                ),
+                evidence=evidence,
+                actions=actions,
+                is_noise=True,
+                noise_reason="Service UP + 0 recent failures — likely brief spike or threshold sensitivity.",
+                recurrence=False,
+                impact="none",
+            )
+        # Service UP but with ongoing failures or recurrence → notify
         actions.append(f"Verify '{entity}' is genuinely healthy (check metrics)")
         actions.append("Review alert rule thresholds — may have fired on a brief spike")
         if recurrence:
             actions.append("Recurrence detected — review alert policy for this service")
+        actions.append(
+            "Confirm stability over the next monitoring cycle and close if no recurrence is detected."
+        )
         return _make_decision(
             decision="notify",
             confidence="medium",
-            risk_level="high",
-            summary=f"Critical alert for '{entity}' but service is currently UP.",
+            risk_level="medium",
+            summary=f"Critical alert for '{entity}' but service is currently UP — some failures remain.",
             reason=(
-                "Critical severity alert fired but the service now reports UP. "
-                "Condition may have been brief or the service auto-recovered. Investigate."
+                "Critical severity alert fired and service now reports UP, but recent check failures "
+                "or recurrence indicate the condition may not be fully resolved. Investigate."
             ),
             evidence=evidence,
             actions=actions,
-            is_noise=not recurrence,
+            is_noise=False,
             noise_reason=(
-                "Service recovered quickly — possible spike or threshold sensitivity."
-                if not recurrence else
                 "Recurrence detected — repeated pattern, not noise."
+                if recurrence else
+                "Recent failures present — not classified as noise."
             ),
             recurrence=recurrence,
             impact="medium",
@@ -485,6 +516,11 @@ def rule_based_decision_for_alert(ctx: Dict) -> Dict[str, Any]:
         recovery_note = " Service is currently UP." if svc_status == "up" else ""
         actions.append(f"Monitor '{entity}' over the next hour")
         actions.append("No action required unless condition persists or severity increases")
+        if svc_status == "up":
+            actions.append(
+                "Confirm stability over the next monitoring cycle "
+                "and close if no recurrence is detected."
+            )
         return _make_decision(
             decision="monitor",
             confidence="medium" if check_count > 0 else "low",
@@ -707,41 +743,89 @@ def rule_based_decision_for_incident(ctx: Dict) -> Dict[str, Any]:
             impact="high",
         )
 
-    # ── Critical + service recovered ─────────────────────────────
-    if sev_rank >= 2 and svc_status == "up":
-        actions.append(f"Service '{entity}' appears recovered — verify stability")
-        actions.append("Update incident status to 'investigating' or 'resolved' as appropriate")
-        actions.append("Identify root cause before closing")
+    # ── Service healthy: UP + zero recent failures (any severity) ─
+    # Primary noise-reduction rule. If the service is UP and no recent
+    # checks are failing, the triggering condition has recovered.
+    # Downgrade to monitor regardless of incident severity.
+    if svc_status in ("up", "healthy") and down_count == 0:
+        actions.append(
+            "Confirm stability over the next monitoring cycle "
+            "and close the incident if no recurrence is detected."
+        )
+        if check_count == 0:
+            actions.append("No recent check data — verify monitoring is active for this service")
         return _make_decision(
-            decision="notify",
-            confidence="high",
-            risk_level="medium",
-            summary=f"Critical incident for '{entity}': service has recovered.",
-            reason="Service is UP but incident remains open. Recommend completing root cause analysis.",
+            decision="monitor",
+            confidence="high" if check_count >= 5 else "medium",
+            risk_level="low" if sev_rank < 2 else "medium",
+            summary=(
+                f"Incident for '{entity}' (severity {severity.upper()}): "
+                "service is currently UP with no recent failures. "
+                "Triggering condition appears recovered."
+            ),
+            reason=(
+                f"Service '{entity}' is UP and all recent checks are passing "
+                f"({check_count} check(s), 0 failures). "
+                "The condition that triggered this incident has recovered. "
+                "No active failure signal exists to justify escalation or operator notification."
+            ),
             evidence=evidence,
             actions=actions,
             is_noise=False,
-            noise_reason="Service recovered but incident not yet resolved.",
+            noise_reason="Service is healthy — incident condition resolved, post-recovery monitoring advised.",
+            recurrence=False,
+            impact="none" if sev_rank < 2 else "low",
+        )
+
+    # ── Critical + service UP but checks still show failures ─────
+    if sev_rank >= 2 and svc_status == "up":
+        actions.append(f"Service '{entity}' reports UP but recent checks show failures — verify")
+        actions.append("Update incident status to 'investigating' or 'resolved' as appropriate")
+        actions.append("Identify root cause before closing")
+        actions.append(
+            "Confirm stability over the next monitoring cycle "
+            "and close the incident if no recurrence is detected."
+        )
+        return _make_decision(
+            decision="notify",
+            confidence="medium",
+            risk_level="medium",
+            summary=f"Critical incident for '{entity}': service is UP but recent check failures remain.",
+            reason=(
+                "Service is UP but recent checks still show failures. "
+                "Condition may be intermittent. Recommend completing root cause analysis before closing."
+            ),
+            evidence=evidence,
+            actions=actions,
+            is_noise=False,
+            noise_reason="Recent failures present despite UP status — not classified as noise.",
             recurrence=False,
             impact="medium",
         )
 
-    # ── Warning / non-critical ────────────────────────────────────
+    # ── Warning / non-critical + degraded or unknown ─────────────
     actions.append(f"Monitor '{entity}' and update incident status as situation develops")
-    if svc_status == "up":
-        actions.append("Service is UP — confirm this is not a false positive")
+    actions.append(
+        "Confirm stability over the next monitoring cycle "
+        "and close the incident if no recurrence is detected."
+    )
     return _make_decision(
-        decision="notify",
+        decision="notify" if svc_status not in ("up", "healthy") else "monitor",
         confidence="medium",
-        risk_level="medium" if svc_status != "up" else "low",
+        risk_level="medium" if svc_status not in ("up", "healthy") else "low",
         summary=f"Non-critical incident for '{entity}' in {status} state.",
-        reason="Non-critical incident with no immediate escalation trigger.",
+        reason=(
+            "Non-critical incident with service in a degraded or unknown state. "
+            "Operator awareness recommended."
+            if svc_status not in ("up", "healthy") else
+            "Non-critical incident with service UP — conditions do not meet escalation threshold."
+        ),
         evidence=evidence,
         actions=actions,
         is_noise=False,
         noise_reason="Open incident — monitoring recommended.",
         recurrence=False,
-        impact="medium" if svc_status != "up" else "low",
+        impact="medium" if svc_status not in ("up", "healthy") else "low",
     )
 
 
