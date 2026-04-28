@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Diagnóstico Rhinometric Console</title>
+    <style>
+        body { font-family: monospace; padding: 20px; background: #1a1a1a; color: #00ff00; }
+        .error { color: #ff4444; }
+        .success { color: #00ff00; }
+        pre { background: #000; padding: 10px; overflow: auto; }
+    </style>
+</head>
+<body>
+    <h1>Diagnóstico Rhinometric Console</h1>
+    <div id="status">Cargando...</div>
+    <h2>Errores de Consola:</h2>
+    <pre id="errors"></pre>
+    <h2>Respuesta del Servidor:</h2>
+    <pre id="response"></pre>
+    
+    <script>
+        const errorLog = [];
+        const originalConsoleError = console.error;
+        const originalConsoleWarn = console.warn;
+        
+        console.error = function(...args) {
+            errorLog.push(['ERROR', ...args]);
+            document.getElementById('errors').textContent = JSON.stringify(errorLog, null, 2);
+            originalConsoleError.apply(console, args);
+        };
+        
+        console.warn = function(...args) {
+            errorLog.push(['WARN', ...args]);
+            document.getElementById('errors').textContent = JSON.stringify(errorLog, null, 2);
+            originalConsoleWarn.apply(console, args);
+        };
+        
+        fetch('http://localhost:3002')
+            .then(r => r.text())
+            .then(html => {
+                document.getElementById('status').innerHTML = '<span class="success">✓ Servidor responde</span>';
+                document.getElementById('response').textContent = html.substring(0, 1000);
+                
+                // Intentar cargar en iframe
+                const iframe = document.createElement('iframe');
+                iframe.src = 'http://localhost:3002';
+                iframe.style.width = '100%';
+                iframe.style.height = '600px';
+                iframe.style.border = '2px solid #00ff00';
+                document.body.appendChild(iframe);
+                
+                iframe.onerror = function(e) {
+                    console.error('Error cargando iframe:', e);
+                };
+            })
+            .catch(err => {
+                document.getElementById('status').innerHTML = '<span class="error">✗ Error: ' + err.message + '</span>';
+                console.error('Fetch error:', err);
+            });
+            
+        window.onerror = function(msg, url, line, col, error) {
+            console.error('Global error:', msg, 'at', url, line + ':' + col, error);
+        };
+    </script>
+</body>
+</html>

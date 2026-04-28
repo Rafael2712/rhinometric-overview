@@ -1,0 +1,31 @@
+# CONFIGURAR DOMINIO LOCAL RHINOMETRIC
+
+## Windows
+
+1. Abrir Notepad como ADMINISTRADOR
+2. Abrir archivo: C:\Windows\System32\drivers\etc\hosts
+3. Añadir al final:
+
+```
+127.0.0.1 rhinometric.local
+```
+
+4. Guardar y cerrar
+5. Abrir navegador en: http://rhinometric.local:3002
+
+## Verificar DNS local
+
+```bash
+ping rhinometric.local
+```
+
+Debería responder desde 127.0.0.1
+
+---
+
+## Alternativa: Usar IP de red local
+
+Si no tienes permisos de administrador, usa:
+http://192.168.0.152:3002
+
+Esta es tu IP de red local y funcionará desde cualquier dispositivo en tu red.
