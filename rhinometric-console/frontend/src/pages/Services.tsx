@@ -181,7 +181,7 @@ function TypeBadge({ type, catalogType }: { type: string; catalogType?: string |
 function MonitoringBadge({ svc }: { svc: ExternalServiceData }) {
   // Telemetry indicator dot color
   const dotColor = svc.monitoring_mode === 'synthetic_only'
-    ? 'bg-surface-dark'                   // grey = synthetic only
+    ? 'bg-gray-50'                   // grey = synthetic only
     : svc.telemetry_attached
       ? 'bg-success'                // green = telemetry attached
       : 'bg-info';                // blue = configured but not attached
@@ -263,7 +263,7 @@ function TelemetryReadinessCard({ svc }: { svc: ExternalServiceData }) {
 
   // Derive conservative per-signal state from overall telemetry_status
   function signalState(enabled: boolean): { label: string; color: string; dotColor: string } {
-    if (!enabled) return { label: 'Disabled', color: 'text-muted', dotColor: 'bg-surface-dark' };
+    if (!enabled) return { label: 'Disabled', color: 'text-muted', dotColor: 'bg-gray-50' };
     const status = svc.telemetry_status || 'not_configured';
     if (status === 'receiving_data' || status === 'connected') {
       return { label: 'Receiving', color: 'text-success', dotColor: 'bg-success' };
@@ -287,7 +287,7 @@ function TelemetryReadinessCard({ svc }: { svc: ExternalServiceData }) {
     <div className="mt-5 bg-surface/40 rounded-lg border border-border/30 p-4 space-y-4">
       <div className="flex items-center gap-2">
         <Zap className="w-4 h-4 text-emerald-400" />
-        <h4 className="text-sm font-semibold text-white">Telemetry Readiness</h4>
+        <h4 className="text-sm font-semibold text-gray-900">Telemetry Readiness</h4>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -373,7 +373,7 @@ function SetupChecklist({ svc }: { svc: ExternalServiceData }) {
     <div className="mt-4 bg-surface/40 rounded-lg border border-border/30 p-4 space-y-3">
       <div className="flex items-center gap-2">
         <CircleDot className="w-4 h-4 text-info" />
-        <h4 className="text-sm font-semibold text-white">Setup Checklist</h4>
+        <h4 className="text-sm font-semibold text-gray-900">Setup Checklist</h4>
         <span className="text-xs text-muted ml-auto">
           {steps.filter(s => s.done).length}/{steps.length} complete
         </span>
@@ -451,7 +451,7 @@ function TroubleshootingBlock({ svc }: { svc: ExternalServiceData }) {
     <div className="mt-4 bg-surface/40 rounded-lg border border-border/30 p-4 space-y-3">
       <div className="flex items-center gap-2">
         <HelpCircle className="w-4 h-4 text-muted" />
-        <h4 className="text-sm font-semibold text-white">Troubleshooting</h4>
+        <h4 className="text-sm font-semibold text-gray-900">Troubleshooting</h4>
       </div>
       <div className={`flex items-start gap-2 px-3 py-2.5 rounded-lg border ${msg.bgColor} ${msg.borderColor}`}>
         {msg.icon === 'check' ? (
@@ -536,7 +536,7 @@ function TelemetrySetupBlock({ svc }: { svc: ExternalServiceData }) {
       {/* Section Header */}
       <div className="flex items-center gap-2 border-t border-border/30 pt-5">
         <Shield className="w-4 h-4 text-emerald-400" />
-        <h4 className="text-sm font-semibold text-white">Telemetry Setup</h4>
+        <h4 className="text-sm font-semibold text-gray-900">Telemetry Setup</h4>
         <TelemetryStatusBadge status={svc.telemetry_status} />
       </div>
 
@@ -579,7 +579,7 @@ function TelemetrySetupBlock({ svc }: { svc: ExternalServiceData }) {
             {svc.telemetry_service_key && (
               <button
                 onClick={() => copyToClipboard(svc.telemetry_service_key!, 'key')}
-                className="p-1 rounded hover:bg-surface-dark/50 text-muted hover:text-white transition-colors flex-shrink-0"
+                className="p-1 rounded hover:bg-gray-50/50 text-muted hover:text-gray-900 transition-colors flex-shrink-0"
                 title="Copy Service Key"
               >
                 {copiedField === 'key' ? <CheckCircle className="w-3.5 h-3.5 text-success" /> : <Copy className="w-3.5 h-3.5" />}
@@ -599,14 +599,14 @@ function TelemetrySetupBlock({ svc }: { svc: ExternalServiceData }) {
               <div className="flex items-center gap-1 flex-shrink-0">
                 <button
                   onClick={() => setShowToken(!showToken)}
-                  className="p-1 rounded hover:bg-surface-dark/50 text-muted hover:text-white transition-colors"
+                  className="p-1 rounded hover:bg-gray-50/50 text-muted hover:text-gray-900 transition-colors"
                   title={showToken ? 'Hide token' : 'Show token'}
                 >
                   {showToken ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                 </button>
                 <button
                   onClick={() => copyToClipboard(svc.telemetry_token!, 'token')}
-                  className="p-1 rounded hover:bg-surface-dark/50 text-muted hover:text-white transition-colors"
+                  className="p-1 rounded hover:bg-gray-50/50 text-muted hover:text-gray-900 transition-colors"
                   title="Copy Token"
                 >
                   {copiedField === 'token' ? <CheckCircle className="w-3.5 h-3.5 text-success" /> : <Copy className="w-3.5 h-3.5" />}
@@ -624,7 +624,7 @@ function TelemetrySetupBlock({ svc }: { svc: ExternalServiceData }) {
           <p className="text-xs uppercase tracking-wider text-muted font-medium">Enabled Signals</p>
           <div className="flex flex-wrap gap-2">
             {signals.map(s => (
-              <span key={s.label} className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium ${s.enabled ? 'bg-surface-dark/50 text-white border border-border/40' : 'bg-surface/30 text-muted line-through border border-border/30'}`}>
+              <span key={s.label} className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium ${s.enabled ? 'bg-gray-50/50 text-gray-900 border border-border/40' : 'bg-surface/30 text-muted line-through border border-border/30'}`}>
                 <s.Icon className={`w-3 h-3 ${s.enabled ? s.color : 'text-muted'}`} />
                 {s.label}
               </span>
@@ -649,7 +649,7 @@ function TelemetrySetupBlock({ svc }: { svc: ExternalServiceData }) {
         <div className="bg-surface/40 rounded-lg border border-border/30 p-4 space-y-4">
           <div className="flex items-center gap-2">
             <Terminal className="w-4 h-4 text-info" />
-            <h5 className="text-sm font-semibold text-white">Collector Setup</h5>
+            <h5 className="text-sm font-semibold text-gray-900">Collector Setup</h5>
           </div>
 
           {/* Collector Image */}
@@ -675,7 +675,7 @@ function TelemetrySetupBlock({ svc }: { svc: ExternalServiceData }) {
                   <code className="text-xs text-primary font-mono flex-1 truncate">{env.value}</code>
                   <button
                     onClick={() => copyToClipboard(env.value, env.field)}
-                    className="p-1 rounded hover:bg-surface-dark/50 text-muted hover:text-white transition-colors flex-shrink-0"
+                    className="p-1 rounded hover:bg-gray-50/50 text-muted hover:text-gray-900 transition-colors flex-shrink-0"
                     title={`Copy ${env.name}`}
                   >
                     {copiedField === env.field ? <CheckCircle className="w-3.5 h-3.5 text-success" /> : <Copy className="w-3.5 h-3.5" />}
@@ -738,7 +738,7 @@ function TelemetrySetupBlock({ svc }: { svc: ExternalServiceData }) {
                 document.body.removeChild(a);
                 URL.revokeObjectURL(url);
               }}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-surface-dark/50 text-secondary hover:bg-surface-dark/50 hover:text-white border border-border/30 transition-colors"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-50/50 text-secondary hover:bg-gray-50/50 hover:text-gray-900 border border-border/30 transition-colors"
             >
               <Download className="w-3.5 h-3.5" />
               Download .env Template
@@ -768,7 +768,7 @@ function TelemetrySetupBlock({ svc }: { svc: ExternalServiceData }) {
 function MonitoringDetailPanel({ svc }: { svc: ExternalServiceData }) {
   return (
     <div className="bg-background/60 border-t border-border/30 px-6 py-5">
-      <h4 className="text-sm font-semibold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+      <h4 className="text-sm font-semibold text-slate-900 mb-4 flex items-center gap-2">
         <Activity className="w-4 h-4 text-info" />
         Endpoint Configuration
       </h4>
@@ -778,9 +778,9 @@ function MonitoringDetailPanel({ svc }: { svc: ExternalServiceData }) {
           <p className="text-xs uppercase tracking-wider text-muted font-medium">Synthetic Monitoring</p>
           <div className="space-y-1 text-sm">
             <div className="flex items-center gap-2">
-              <span className={`w-1.5 h-1.5 rounded-full ${svc.enabled ? 'bg-success' : 'bg-surface-dark'}`} />
+              <span className={`w-1.5 h-1.5 rounded-full ${svc.enabled ? 'bg-success' : 'bg-gray-50'}`} />
               <span className="text-muted">Status:</span>
-              <span className="text-slate-900 dark:text-white">{svc.enabled ? 'Enabled' : 'Disabled'}</span>
+              <span className="text-slate-900">{svc.enabled ? 'Enabled' : 'Disabled'}</span>
             </div>
             <div className="flex items-center gap-2">
               <span className="text-muted">Target:</span>
@@ -788,11 +788,11 @@ function MonitoringDetailPanel({ svc }: { svc: ExternalServiceData }) {
             </div>
             <div className="flex items-center gap-2">
               <span className="text-muted">Interval:</span>
-              <span className="text-slate-900 dark:text-white">{svc.check_interval_seconds}s</span>
+              <span className="text-slate-900">{svc.check_interval_seconds}s</span>
             </div>
             <div className="flex items-center gap-2">
               <span className="text-muted">Timeout:</span>
-              <span className="text-slate-900 dark:text-white">{svc.timeout_seconds}s</span>
+              <span className="text-slate-900">{svc.timeout_seconds}s</span>
             </div>
           </div>
         </div>
@@ -802,15 +802,15 @@ function MonitoringDetailPanel({ svc }: { svc: ExternalServiceData }) {
           <div className="space-y-1 text-sm">
             <div className="flex items-center gap-2">
               <span className="text-muted">Group:</span>
-              <span className="text-slate-900 dark:text-white">{svc.group_name || 'Default'}</span>
+              <span className="text-slate-900">{svc.group_name || 'Default'}</span>
             </div>
             <div className="flex items-center gap-2">
               <span className="text-muted">Category:</span>
-              <span className="text-slate-900 dark:text-white">{svc.category || '—'}</span>
+              <span className="text-slate-900">{svc.category || '—'}</span>
             </div>
             <div className="flex items-center gap-2">
               <span className="text-muted">Type:</span>
-              <span className="text-slate-900 dark:text-white">{svc.catalog_type || 'default'}</span>
+              <span className="text-slate-900">{svc.catalog_type || 'default'}</span>
             </div>
           </div>
         </div>
@@ -825,12 +825,12 @@ function MonitoringDetailPanel({ svc }: { svc: ExternalServiceData }) {
             {svc.last_response_time_ms != null && (
               <div className="flex items-center gap-2">
                 <span className="text-muted">Response:</span>
-                <span className="text-slate-900 dark:text-white">{svc.last_response_time_ms.toFixed(0)}ms</span>
+                <span className="text-slate-900">{svc.last_response_time_ms.toFixed(0)}ms</span>
               </div>
             )}
             <div className="flex items-center gap-2">
               <span className="text-muted">Checked:</span>
-              <span className="text-slate-900 dark:text-white">{svc.last_check_at ? new Date(svc.last_check_at).toLocaleString() : 'Never'}</span>
+              <span className="text-slate-900">{svc.last_check_at ? new Date(svc.last_check_at).toLocaleString() : 'Never'}</span>
             </div>
           </div>
         </div>
@@ -859,18 +859,18 @@ function HttpForm({ config, onChange }: { config: Record<string,any>; onChange: 
       <div>
         <label className="block text-sm font-medium text-secondary mb-1">Endpoint URL *</label>
         <input type="url" value={config.url || ''} onChange={e => set('url', e.target.value)}
-          placeholder="https://api.example.com" className="w-full bg-white dark:bg-background/50 border border-border rounded-lg px-3 py-2 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-gray-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
+          placeholder="https://api.example.com" className="w-full bg-white border border-border rounded-lg px-3 py-2 text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium text-secondary mb-1">Health Path</label>
           <input type="text" value={config.health_path || ''} onChange={e => set('health_path', e.target.value)}
-            placeholder="/health" className="w-full bg-white dark:bg-background/50 border border-border rounded-lg px-3 py-2 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-gray-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
+            placeholder="/health" className="w-full bg-white border border-border rounded-lg px-3 py-2 text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
         </div>
         <div>
           <label className="block text-sm font-medium text-secondary mb-1">Method</label>
           <select value={config.method || 'GET'} onChange={e => set('method', e.target.value)}
-            className="w-full bg-white dark:bg-background/50 border border-border rounded-lg px-3 py-2 text-slate-900 dark:text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
+            className="w-full bg-white border border-border rounded-lg px-3 py-2 text-slate-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
             <option value="GET">GET</option><option value="POST">POST</option><option value="HEAD">HEAD</option>
           </select>
         </div>
@@ -879,7 +879,7 @@ function HttpForm({ config, onChange }: { config: Record<string,any>; onChange: 
         <div>
           <label className="block text-sm font-medium text-secondary mb-1">Auth Type</label>
           <select value={config.auth_type || ''} onChange={e => set('auth_type', e.target.value)}
-            className="w-full bg-white dark:bg-background/50 border border-border rounded-lg px-3 py-2 text-slate-900 dark:text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
+            className="w-full bg-white border border-border rounded-lg px-3 py-2 text-slate-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
             <option value="">None</option><option value="bearer">Bearer Token</option><option value="api_key">API Key</option><option value="basic">Basic Auth</option>
           </select>
         </div>
@@ -887,7 +887,7 @@ function HttpForm({ config, onChange }: { config: Record<string,any>; onChange: 
           <div>
             <label className="block text-sm font-medium text-secondary mb-1">Auth Value</label>
             <input type="password" value={config.auth_value || ''} onChange={e => set('auth_value', e.target.value)}
-              placeholder="Token or key" className="w-full bg-white dark:bg-background/50 border border-border rounded-lg px-3 py-2 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-gray-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
+              placeholder="Token or key" className="w-full bg-white border border-border rounded-lg px-3 py-2 text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
           </div>
         )}
       </div>
@@ -905,35 +905,35 @@ function PgForm({ config, onChange }: { config: Record<string,any>; onChange: (c
         <div className="col-span-2">
           <label className="block text-sm font-medium text-secondary mb-1">Host *</label>
           <input type="text" value={config.host || ''} onChange={e => set('host', e.target.value)}
-            placeholder="db.example.com" className="w-full bg-white dark:bg-background/50 border border-border rounded-lg px-3 py-2 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-gray-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
+            placeholder="db.example.com" className="w-full bg-white border border-border rounded-lg px-3 py-2 text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
         </div>
         <div>
           <label className="block text-sm font-medium text-secondary mb-1">Port</label>
           <input type="number" value={config.port || 5432} onChange={e => set('port', parseInt(e.target.value) || 5432)}
-            className="w-full bg-white dark:bg-background/50 border border-border rounded-lg px-3 py-2 text-slate-900 dark:text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
+            className="w-full bg-white border border-border rounded-lg px-3 py-2 text-slate-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
         </div>
       </div>
       <div>
         <label className="block text-sm font-medium text-secondary mb-1">Database Name *</label>
         <input type="text" value={config.database_name || ''} onChange={e => set('database_name', e.target.value)}
-          placeholder="mydb" className="w-full bg-white dark:bg-background/50 border border-border rounded-lg px-3 py-2 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-gray-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
+          placeholder="mydb" className="w-full bg-white border border-border rounded-lg px-3 py-2 text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium text-secondary mb-1">Username *</label>
           <input type="text" value={config.username || ''} onChange={e => set('username', e.target.value)}
-            placeholder="postgres" className="w-full bg-white dark:bg-background/50 border border-border rounded-lg px-3 py-2 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-gray-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
+            placeholder="postgres" className="w-full bg-white border border-border rounded-lg px-3 py-2 text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
         </div>
         <div>
           <label className="block text-sm font-medium text-secondary mb-1">Password *</label>
           <input type="password" value={config.password || ''} onChange={e => set('password', e.target.value)}
-            placeholder="password" className="w-full bg-white dark:bg-background/50 border border-border rounded-lg px-3 py-2 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-gray-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
+            placeholder="password" className="w-full bg-white border border-border rounded-lg px-3 py-2 text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
         </div>
       </div>
       <div>
         <label className="block text-sm font-medium text-secondary mb-1">SSL Mode</label>
         <select value={config.ssl_mode || 'prefer'} onChange={e => set('ssl_mode', e.target.value)}
-          className="w-full bg-white dark:bg-background/50 border border-border rounded-lg px-3 py-2 text-slate-900 dark:text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
+          className="w-full bg-white border border-border rounded-lg px-3 py-2 text-slate-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
           <option value="disable">Disable</option><option value="prefer">Prefer</option><option value="require">Require</option>
         </select>
       </div>
@@ -1271,7 +1271,7 @@ export default function Services() {
   if (isLoading) {
     return (
       <div className="space-y-6">
-        <h1 className="text-3xl font-bold text-white">Services</h1>
+        <h1 className="text-3xl font-bold text-gray-900">Services</h1>
         <div className="flex items-center justify-center h-64">
           <Activity className="w-8 h-8 text-info animate-spin" />
         </div>
@@ -1499,11 +1499,11 @@ export default function Services() {
     return (
       <div className="space-y-6 max-w-4xl">
         <div className="flex items-center gap-3">
-          <button onClick={() => { setView('list'); resetBulkHttp() }} className="p-2 rounded-lg hover:bg-surface-dark/50 text-muted hover:text-white">
+          <button onClick={() => { setView('list'); resetBulkHttp() }} className="p-2 rounded-lg hover:bg-gray-50/50 text-muted hover:text-gray-900">
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div>
-            <h1 className="text-2xl font-bold text-white">Multiple Endpoints</h1>
+            <h1 className="text-2xl font-bold text-gray-900">Multiple Endpoints</h1>
             <p className="text-muted text-sm">Create multiple HTTP services in one operation</p>
           </div>
         </div>
@@ -1522,47 +1522,47 @@ export default function Services() {
           <div className="space-y-6">
             {/* Common Settings */}
             <div className="bg-surface/50 rounded-xl border border-border/50 p-5 space-y-4">
-              <h3 className="text-white font-medium flex items-center gap-2"><Globe className="w-4 h-4 text-info" /> Common Settings</h3>
+              <h3 className="text-gray-900 font-medium flex items-center gap-2"><Globe className="w-4 h-4 text-info" /> Common Settings</h3>
               <div className="grid grid-cols-2 gap-4">
                 <div className="col-span-2">
                   <label className="block text-sm text-muted mb-1">Base URL <span className="text-gray-600">(optional)</span></label>
                   <input value={bulkBaseUrl} onChange={(e: React.ChangeEvent<HTMLInputElement>) => canManage && setBulkBaseUrl(e.target.value)} readOnly={!canManage}
-                    placeholder="https://api.company.com" className={`w-full bg-background/50 border border-border rounded-lg px-3 py-2 placeholder-gray-600 focus:outline-none ${canManage ? 'text-white focus:border-blue-500' : 'text-muted cursor-not-allowed'}`} />
+                    placeholder="https://api.company.com" className={`w-full bg-background/50 border border-border rounded-lg px-3 py-2 placeholder-gray-600 focus:outline-none ${canManage ? 'text-gray-900 focus:border-blue-500' : 'text-muted cursor-not-allowed'}`} />
                   <p className="text-gray-600 text-xs mt-1">If set, endpoint paths will be appended to this URL</p>
                 </div>
                 <div>
                   <label className="block text-sm text-muted mb-1">Method</label>
                   <select value={bulkMethod} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => canManage && setBulkMethod(e.target.value)} disabled={!canManage}
-                    className={`w-full bg-background/50 border border-border rounded-lg px-3 py-2 focus:outline-none ${canManage ? 'text-white focus:border-blue-500' : 'text-muted cursor-not-allowed'}`}>
+                    className={`w-full bg-background/50 border border-border rounded-lg px-3 py-2 focus:outline-none ${canManage ? 'text-gray-900 focus:border-blue-500' : 'text-muted cursor-not-allowed'}`}>
                     {['GET','POST','PUT','DELETE','PATCH','HEAD','OPTIONS'].map((m: string) => <option key={m} value={m}>{m}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="block text-sm text-muted mb-1">Environment</label>
                   <input value={bulkEnv} onChange={(e: React.ChangeEvent<HTMLInputElement>) => canManage && setBulkEnv(e.target.value)} readOnly={!canManage}
-                    placeholder="production" className={`w-full bg-background/50 border border-border rounded-lg px-3 py-2 placeholder-gray-600 focus:outline-none ${canManage ? 'text-white focus:border-blue-500' : 'text-muted cursor-not-allowed'}`} />
+                    placeholder="production" className={`w-full bg-background/50 border border-border rounded-lg px-3 py-2 placeholder-gray-600 focus:outline-none ${canManage ? 'text-gray-900 focus:border-blue-500' : 'text-muted cursor-not-allowed'}`} />
                 </div>
                 <div>
                   <label className="block text-sm text-muted mb-1">Timeout (s)</label>
                   <input type="number" value={bulkTimeout} onChange={(e: React.ChangeEvent<HTMLInputElement>) => canManage && setBulkTimeout(Number(e.target.value))} readOnly={!canManage}
-                    min={1} max={120} className={`w-full bg-background/50 border border-border rounded-lg px-3 py-2 focus:outline-none ${canManage ? 'text-white focus:border-blue-500' : 'text-muted cursor-not-allowed'}`} />
+                    min={1} max={120} className={`w-full bg-background/50 border border-border rounded-lg px-3 py-2 focus:outline-none ${canManage ? 'text-gray-900 focus:border-blue-500' : 'text-muted cursor-not-allowed'}`} />
                 </div>
                 <div>
                   <label className="block text-sm text-muted mb-1">Check Interval (s)</label>
                   <input type="number" value={bulkInterval} onChange={(e: React.ChangeEvent<HTMLInputElement>) => canManage && setBulkInterval(Number(e.target.value))} readOnly={!canManage}
-                    min={10} max={86400} className={`w-full bg-background/50 border border-border rounded-lg px-3 py-2 focus:outline-none ${canManage ? 'text-white focus:border-blue-500' : 'text-muted cursor-not-allowed'}`} />
+                    min={10} max={86400} className={`w-full bg-background/50 border border-border rounded-lg px-3 py-2 focus:outline-none ${canManage ? 'text-gray-900 focus:border-blue-500' : 'text-muted cursor-not-allowed'}`} />
                 </div>
                 <div>
                   <label className="block text-sm text-muted mb-1">Catalog Type</label>
                   <select value={bulkCatalogType} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => canManage && setBulkCatalogType(e.target.value)} disabled={!canManage}
-                    className={`w-full bg-background/50 border border-border rounded-lg px-3 py-2 focus:outline-none ${canManage ? 'text-white focus:border-blue-500' : 'text-muted cursor-not-allowed'}`}>
+                    className={`w-full bg-background/50 border border-border rounded-lg px-3 py-2 focus:outline-none ${canManage ? 'text-gray-900 focus:border-blue-500' : 'text-muted cursor-not-allowed'}`}>
                     {CATALOG_TYPE_OPTIONS.map((o: {value:string;label:string}) => <option key={o.value} value={o.value}>{o.label}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="block text-sm text-muted mb-1">Category</label>
                   <input value={bulkCategory} onChange={(e: React.ChangeEvent<HTMLInputElement>) => canManage && setBulkCategory(e.target.value)} readOnly={!canManage}
-                    placeholder="payments, auth, mobile..." className={`w-full bg-background/50 border border-border rounded-lg px-3 py-2 placeholder-gray-600 focus:outline-none ${canManage ? 'text-white focus:border-blue-500' : 'text-muted cursor-not-allowed'}`} />
+                    placeholder="payments, auth, mobile..." className={`w-full bg-background/50 border border-border rounded-lg px-3 py-2 placeholder-gray-600 focus:outline-none ${canManage ? 'text-gray-900 focus:border-blue-500' : 'text-muted cursor-not-allowed'}`} />
                 </div>
               </div>
               {/* Tags */}
@@ -1578,7 +1578,7 @@ export default function Services() {
                         setBulkTagInput('')
                       }
                     }}
-                    placeholder="Press Enter to add tag" className={`flex-1 bg-background/50 border border-border rounded-lg px-3 py-2 placeholder-gray-600 focus:outline-none text-sm ${canManage ? 'text-white focus:border-blue-500' : 'text-muted cursor-not-allowed'}`} />
+                    placeholder="Press Enter to add tag" className={`flex-1 bg-background/50 border border-border rounded-lg px-3 py-2 placeholder-gray-600 focus:outline-none text-sm ${canManage ? 'text-gray-900 focus:border-blue-500' : 'text-muted cursor-not-allowed'}`} />
                 </div>
                 {bulkTags.length > 0 && (
                   <div className="flex flex-wrap gap-1.5 mt-2">
@@ -1601,7 +1601,7 @@ export default function Services() {
                   <div>
                     <label className="block text-sm text-muted mb-1">Auth Type</label>
                     <select value={bulkAuthType} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => canManage && setBulkAuthType(e.target.value)} disabled={!canManage}
-                      className={`w-full bg-background/50 border border-border rounded-lg px-3 py-2 focus:outline-none ${canManage ? 'text-white focus:border-blue-500' : 'text-muted cursor-not-allowed'}`}>
+                      className={`w-full bg-background/50 border border-border rounded-lg px-3 py-2 focus:outline-none ${canManage ? 'text-gray-900 focus:border-blue-500' : 'text-muted cursor-not-allowed'}`}>
                       <option value="">None</option>
                       <option value="bearer">Bearer Token</option>
                       <option value="api_key">API Key</option>
@@ -1612,7 +1612,7 @@ export default function Services() {
                     <div>
                       <label className="block text-sm text-muted mb-1">Auth Value</label>
                       <input value={bulkAuthValue} onChange={(e: React.ChangeEvent<HTMLInputElement>) => canManage && setBulkAuthValue(e.target.value)} readOnly={!canManage}
-                        placeholder="Token or credentials" className={`w-full bg-background/50 border border-border rounded-lg px-3 py-2 placeholder-gray-600 focus:outline-none ${canManage ? 'text-white focus:border-blue-500' : 'text-muted cursor-not-allowed'}`} />
+                        placeholder="Token or credentials" className={`w-full bg-background/50 border border-border rounded-lg px-3 py-2 placeholder-gray-600 focus:outline-none ${canManage ? 'text-gray-900 focus:border-blue-500' : 'text-muted cursor-not-allowed'}`} />
                     </div>
                   )}
                 </div>
@@ -1620,7 +1620,7 @@ export default function Services() {
               {/* Enabled toggle */}
               <div className="flex items-center gap-3">
                 <button onClick={() => canManage && setBulkEnabled(!bulkEnabled)} disabled={!canManage}
-                  className={`relative w-10 h-5 rounded-full transition-colors ${!canManage ? 'bg-surface-dark cursor-not-allowed opacity-50' : bulkEnabled ? 'bg-emerald-500' : 'bg-surface-dark'}`}>
+                  className={`relative w-10 h-5 rounded-full transition-colors ${!canManage ? 'bg-gray-50 cursor-not-allowed opacity-50' : bulkEnabled ? 'bg-emerald-500' : 'bg-gray-50'}`}>
                   <div className={`absolute w-4 h-4 rounded-full bg-white top-0.5 transition-transform ${bulkEnabled ? 'translate-x-5' : 'translate-x-0.5'}`} />
                 </button>
                 <span className="text-sm text-muted">Enable monitoring after creation</span>
@@ -1630,17 +1630,17 @@ export default function Services() {
             {/* Endpoints List */}
             <div className="bg-surface/50 rounded-xl border border-border/50 p-5 space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="text-white font-medium flex items-center gap-2"><Layers className="w-4 h-4 text-emerald-400" /> API Endpoints</h3>
+                <h3 className="text-gray-900 font-medium flex items-center gap-2"><Layers className="w-4 h-4 text-emerald-400" /> API Endpoints</h3>
                 <div className="flex items-center gap-2">
                   <button onClick={() => canManage && setBulkPasteMode(!bulkPasteMode)} disabled={!canManage}
                     title={!canManage ? 'Only administrators can create services' : ''}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm border transition-colors ${canManage ? 'border-border text-muted hover:text-white hover:border-gray-500' : 'border-border text-gray-600 cursor-not-allowed opacity-50'}`}>
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm border transition-colors ${canManage ? 'border-border text-muted hover:text-gray-900 hover:border-gray-500' : 'border-border text-gray-600 cursor-not-allowed opacity-50'}`}>
                     <Copy className="w-3.5 h-3.5" /> {bulkPasteMode ? 'Manual Entry' : 'Quick Paste'}
                   </button>
                   {!bulkPasteMode && (
                     <button onClick={canManage ? bulkAddItem : undefined} disabled={!canManage}
                       title={!canManage ? 'Only administrators can create services' : ''}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm transition-colors ${canManage ? 'bg-surface-dark text-secondary hover:bg-surface-dark hover:text-white' : 'bg-surface text-gray-600 cursor-not-allowed opacity-50'}`}>
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm transition-colors ${canManage ? 'bg-gray-50 text-secondary hover:bg-gray-50 hover:text-gray-900' : 'bg-surface text-gray-600 cursor-not-allowed opacity-50'}`}>
                       <Plus className="w-3.5 h-3.5" /> Add Row
                     </button>
                   )}
@@ -1652,10 +1652,10 @@ export default function Services() {
                   <p className="text-muted text-xs">Paste one API per line. Format: <code className="text-muted">Name, /path</code> or just <code className="text-muted">/path</code> (name auto-generated)</p>
                   <textarea value={bulkPasteText} onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => canManage && setBulkPasteText(e.target.value)} readOnly={!canManage}
                     rows={8} placeholder={"Auth API, /auth\nPayments API, /payments\nCustomers API, /customers\n/orders\n/inventory"}
-                    className={`w-full bg-background/50 border border-border rounded-lg px-3 py-2 placeholder-gray-600 focus:outline-none font-mono text-sm ${canManage ? 'text-white focus:border-blue-500' : 'text-muted cursor-not-allowed'}`} />
+                    className={`w-full bg-background/50 border border-border rounded-lg px-3 py-2 placeholder-gray-600 focus:outline-none font-mono text-sm ${canManage ? 'text-gray-900 focus:border-blue-500' : 'text-muted cursor-not-allowed'}`} />
                   <button onClick={canManage ? bulkParsePaste : undefined} disabled={!canManage || !bulkPasteText.trim()}
                     title={!canManage ? 'Only administrators can create services' : ''}
-                    className="px-4 py-2 rounded-lg bg-primary text-white hover:bg-primary disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium transition-colors">
+                    className="px-4 py-2 rounded-lg bg-primary text-gray-900 hover:bg-primary disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium transition-colors">
                     Parse {bulkPasteText.split('\n').filter((l: string) => l.trim()).length} lines
                   </button>
                 </div>
@@ -1675,15 +1675,15 @@ export default function Services() {
                       <div className="col-span-1 text-gray-600 text-sm text-center">{idx + 1}</div>
                       <div className="col-span-4">
                         <input value={item.name} onChange={(e: React.ChangeEvent<HTMLInputElement>) => canManage && bulkUpdateItem(idx, 'name', e.target.value)} readOnly={!canManage}
-                          placeholder="API name" className={`w-full bg-background/50 border border-border rounded-lg px-2.5 py-1.5 text-sm placeholder-gray-600 focus:outline-none ${canManage ? 'text-white focus:border-blue-500' : 'text-muted cursor-not-allowed'}`} />
+                          placeholder="API name" className={`w-full bg-background/50 border border-border rounded-lg px-2.5 py-1.5 text-sm placeholder-gray-600 focus:outline-none ${canManage ? 'text-gray-900 focus:border-blue-500' : 'text-muted cursor-not-allowed'}`} />
                       </div>
                       <div className="col-span-5">
                         <input value={item.path} onChange={(e: React.ChangeEvent<HTMLInputElement>) => canManage && bulkUpdateItem(idx, 'path', e.target.value)} readOnly={!canManage}
-                          placeholder="/endpoint or https://..." className={`w-full bg-background/50 border border-border rounded-lg px-2.5 py-1.5 text-sm placeholder-gray-600 focus:outline-none ${canManage ? 'text-white focus:border-blue-500' : 'text-muted cursor-not-allowed'}`} />
+                          placeholder="/endpoint or https://..." className={`w-full bg-background/50 border border-border rounded-lg px-2.5 py-1.5 text-sm placeholder-gray-600 focus:outline-none ${canManage ? 'text-gray-900 focus:border-blue-500' : 'text-muted cursor-not-allowed'}`} />
                       </div>
                       <div className="col-span-1">
                         <input value={item.method || ''} onChange={(e: React.ChangeEvent<HTMLInputElement>) => canManage && bulkUpdateItem(idx, 'method', e.target.value)} readOnly={!canManage}
-                          placeholder="" className={`w-full bg-background/50 border border-border rounded-lg px-2 py-1.5 text-sm text-center placeholder-gray-700 focus:outline-none ${canManage ? 'text-white focus:border-blue-500' : 'text-muted cursor-not-allowed'}`} title="Override method (leave empty for common)" />
+                          placeholder="" className={`w-full bg-background/50 border border-border rounded-lg px-2 py-1.5 text-sm text-center placeholder-gray-700 focus:outline-none ${canManage ? 'text-gray-900 focus:border-blue-500' : 'text-muted cursor-not-allowed'}`} title="Override method (leave empty for common)" />
                       </div>
                       <div className="col-span-1 flex justify-center">
                         <button onClick={() => canManage && bulkRemoveItem(idx)} disabled={!canManage || bulkItems.length <= 1}
@@ -1709,10 +1709,10 @@ export default function Services() {
               <p className="text-muted text-sm">{filledItems.length} endpoint{filledItems.length !== 1 ? 's' : ''} ready</p>
               <div className="flex items-center gap-3">
                 <button onClick={() => { setView('list'); resetBulkHttp() }}
-                  className="px-4 py-2 rounded-lg text-muted hover:text-white transition-colors">Cancel</button>
+                  className="px-4 py-2 rounded-lg text-muted hover:text-gray-900 transition-colors">Cancel</button>
                 <button onClick={canManage ? handleBulkPreview : undefined} disabled={!canManage || filledItems.length === 0 || bulkLoading}
                   title={!canManage ? 'Only administrators can create services' : ''}
-                  className="flex items-center gap-2 px-5 py-2 rounded-lg bg-primary text-white hover:bg-primary disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors">
+                  className="flex items-center gap-2 px-5 py-2 rounded-lg bg-primary text-gray-900 hover:bg-primary disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors">
                   {bulkLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
                   Validate & Preview
                 </button>
@@ -1762,7 +1762,7 @@ export default function Services() {
                           {bulkPreview.valid_preview.map((s: any) => (
                             <tr key={s.row} className="border-b border-border/30">
                               <td className="p-2 text-muted">{s.row}</td>
-                              <td className="p-2 text-white">{s.name}</td>
+                              <td className="p-2 text-gray-900">{s.name}</td>
                               <td className="p-2 text-muted truncate max-w-[300px]">{s.url}</td>
                               <td className="p-2 text-muted">{s.method}</td>
                             </tr>
@@ -1792,10 +1792,10 @@ export default function Services() {
             {/* Actions */}
             <div className="flex justify-between">
               <button onClick={() => { setBulkStep('form'); setBulkPreview(null) }}
-                className="px-4 py-2 rounded-lg text-muted hover:text-white transition-colors">\u2190 Back</button>
+                className="px-4 py-2 rounded-lg text-muted hover:text-gray-900 transition-colors">\u2190 Back</button>
               <div className="flex gap-3">
                 <button onClick={() => { setView('list'); resetBulkHttp() }}
-                  className="px-4 py-2 rounded-lg text-muted hover:text-white transition-colors">Cancel</button>
+                  className="px-4 py-2 rounded-lg text-muted hover:text-gray-900 transition-colors">Cancel</button>
                 {bulkPreview && !bulkPreview.error && bulkPreview.valid_count > 0 && (
                   <button onClick={canManage ? handleBulkConfirm : undefined} disabled={!canManage || bulkLoading}
                     title={!canManage ? 'Only administrators can create services' : ''}
@@ -1838,7 +1838,7 @@ export default function Services() {
                       {bulkResult.created_services.map((s: any) => (
                         <div key={s.id} className="flex items-center gap-2 p-2 bg-success/5 rounded text-sm border border-green-500/10">
                           <CheckCircle className="w-3.5 h-3.5 text-success flex-shrink-0" />
-                          <span className="text-slate-900 dark:text-white">{s.name}</span>
+                          <span className="text-slate-900">{s.name}</span>
                           <span className="text-muted truncate ml-auto max-w-[250px]">{s.url}</span>
                         </div>
                       ))}
@@ -1863,7 +1863,7 @@ export default function Services() {
 
             <div className="flex justify-end">
               <button onClick={() => { setView('list'); resetBulkHttp() }}
-                className="px-5 py-2 rounded-lg bg-primary text-white hover:bg-primary font-medium transition-colors">Done</button>
+                className="px-5 py-2 rounded-lg bg-primary text-gray-900 hover:bg-primary font-medium transition-colors">Done</button>
             </div>
           </div>
         )}
@@ -1880,10 +1880,10 @@ export default function Services() {
     return (
       <div className="space-y-6 max-w-3xl">
         <div className="flex items-center gap-3">
-          <button onClick={() => { setView('list'); resetForm() }} className="p-2 rounded-lg hover:bg-surface-dark/50 text-muted hover:text-white">
+          <button onClick={() => { setView('list'); resetForm() }} className="p-2 rounded-lg hover:bg-gray-50/50 text-muted hover:text-gray-900">
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <h1 className="text-2xl font-bold text-white">
+          <h1 className="text-2xl font-bold text-gray-900">
             {view === 'edit' ? 'Edit Service' : 'Add Endpoint'}
           </h1>
         </div>
@@ -1902,20 +1902,20 @@ export default function Services() {
         {view === 'edit' && (
           <div className="flex items-center bg-surface/60 rounded-lg p-1 gap-1">
             <button onClick={() => setEditTab('connection')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${editTab === 'connection' ? 'bg-surface-dark text-white shadow-sm' : 'text-muted hover:text-primary'}`}>
+              className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${editTab === 'connection' ? 'bg-gray-50 text-gray-900 shadow-sm' : 'text-muted hover:text-primary'}`}>
               <Network className="w-4 h-4" /> Connection
             </button>
             <button onClick={() => setEditTab('assertions')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${editTab === 'assertions' ? 'bg-surface-dark text-white shadow-sm' : 'text-muted hover:text-primary'}`}>
+              className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${editTab === 'assertions' ? 'bg-gray-50 text-gray-900 shadow-sm' : 'text-muted hover:text-primary'}`}>
               <Shield className="w-4 h-4" /> Assertions
               {assertions.length > 0 && (
-                <span className={`ml-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold ${assertions.some((a: any) => a.enabled) ? 'bg-primary/20 text-info' : 'bg-surface-dark text-muted'}`}>
+                <span className={`ml-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold ${assertions.some((a: any) => a.enabled) ? 'bg-primary/20 text-info' : 'bg-gray-50 text-muted'}`}>
                   {assertions.length}
                 </span>
               )}
             </button>
             <button onClick={() => setEditTab('classification')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${editTab === 'classification' ? 'bg-surface-dark text-white shadow-sm' : 'text-muted hover:text-primary'}`}>
+              className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${editTab === 'classification' ? 'bg-gray-50 text-gray-900 shadow-sm' : 'text-muted hover:text-primary'}`}>
               <Tag className="w-4 h-4" /> Classification
             </button>
           </div>
@@ -1926,42 +1926,42 @@ export default function Services() {
           <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-orange-500/10 border border-orange-500/30">
             <Database className="w-4 h-4 text-orange-400" />
             <span className="text-orange-300 text-sm">PostgreSQL mode</span>
-            <button onClick={() => { setFormType('http'); setFormConfig({}) }} className="ml-auto text-xs text-muted hover:text-white">Switch to HTTP</button>
+            <button onClick={() => { setFormType('http'); setFormConfig({}) }} className="ml-auto text-xs text-muted hover:text-gray-900">Switch to HTTP</button>
           </div>
         )}
 
         {/* Common fields — visible in create, in edit only on connection tab */}
         {(view === 'create' || editTab === 'connection') && (
         <div className="bg-surface/50 rounded-lg border border-border/50 p-6 space-y-4">
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">General</h2>
+          <h2 className="text-lg font-semibold text-slate-900 mb-2">General</h2>
           <div>
             <label className="block text-sm font-medium text-secondary mb-1">Service Name *</label>
             <input type="text" value={formName} onChange={e => setFormName(e.target.value)}
-              placeholder="My API Service" className="w-full bg-white dark:bg-background/50 border border-border rounded-lg px-3 py-2 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-gray-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
+              placeholder="My API Service" className="w-full bg-white border border-border rounded-lg px-3 py-2 text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-secondary mb-1">Environment</label>
               <input type="text" value={formEnv} onChange={e => setFormEnv(e.target.value)}
-                placeholder="production" className="w-full bg-white dark:bg-background/50 border border-border rounded-lg px-3 py-2 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-gray-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
+                placeholder="production" className="w-full bg-white border border-border rounded-lg px-3 py-2 text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
             </div>
             <div>
               <label className="block text-sm font-medium text-secondary mb-1">Timeout (s)</label>
               <input type="number" value={formTimeout} onChange={e => setFormTimeout(parseInt(e.target.value) || 10)}
-                min={1} max={120} className="w-full bg-white dark:bg-background/50 border border-border rounded-lg px-3 py-2 text-slate-900 dark:text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
+                min={1} max={120} className="w-full bg-white border border-border rounded-lg px-3 py-2 text-slate-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-secondary mb-1">Check Interval (s)</label>
               <input type="number" value={formInterval} onChange={e => setFormInterval(parseInt(e.target.value) || 60)}
-                min={10} max={86400} className="w-full bg-white dark:bg-background/50 border border-border rounded-lg px-3 py-2 text-slate-900 dark:text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
+                min={10} max={86400} className="w-full bg-white border border-border rounded-lg px-3 py-2 text-slate-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
               <p className="text-gray-600 text-xs mt-1">How often to check (default: 60s)</p>
             </div>
             <div>
               <label className="block text-sm font-medium text-secondary mb-1">Method</label>
               <select value={formConfig.method || 'GET'} onChange={e => setFormConfig({...formConfig, method: e.target.value})}
-                className="w-full bg-white dark:bg-background/50 border border-border rounded-lg px-3 py-2 text-slate-900 dark:text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
+                className="w-full bg-white border border-border rounded-lg px-3 py-2 text-slate-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
                 <option value="GET">GET</option><option value="POST">POST</option><option value="HEAD">HEAD</option>
               </select>
             </div>
@@ -1969,7 +1969,7 @@ export default function Services() {
           <div>
             <label className="block text-sm font-medium text-secondary mb-1">Description</label>
             <textarea value={formDesc} onChange={e => setFormDesc(e.target.value)} rows={2}
-              placeholder="Optional description" className="w-full bg-white dark:bg-background/50 border border-border rounded-lg px-3 py-2 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-gray-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
+              placeholder="Optional description" className="w-full bg-white border border-border rounded-lg px-3 py-2 text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
           </div>
         </div>
         )}
@@ -1977,19 +1977,19 @@ export default function Services() {
         {/* Classification — shown in create, in edit only on classification tab */}
         {(view === 'create' || editTab === 'classification') && (
         <div className="bg-surface/50 rounded-lg border border-border/50 p-6 space-y-4">
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">Classification</h2>
+          <h2 className="text-lg font-semibold text-slate-900 mb-2">Classification</h2>
           <p className="text-muted text-xs -mt-1">Optional metadata for organizing and filtering services.</p>
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-secondary mb-1">Group Name</label>
               <input type="text" value={formGroupName} onChange={e => setFormGroupName(e.target.value)}
-                placeholder="Default" className="w-full bg-white dark:bg-background/50 border border-border rounded-lg px-3 py-2 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-gray-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-sm" />
+                placeholder="Default" className="w-full bg-white border border-border rounded-lg px-3 py-2 text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-sm" />
               <p className="text-muted text-xs mt-1">Group for organizing services (e.g., Payments, Infrastructure)</p>
             </div>
             <div>
               <label className="block text-sm font-medium text-secondary mb-1">Catalog Type</label>
               <select value={formCatalogType} onChange={e => setFormCatalogType(e.target.value)}
-                className="w-full bg-white dark:bg-background/50 border border-border rounded-lg px-3 py-2 text-slate-900 dark:text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
+                className="w-full bg-white border border-border rounded-lg px-3 py-2 text-slate-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
                 {CATALOG_TYPE_OPTIONS.map((o: { value: string; label: string }) => <option key={o.value} value={o.value}>{o.label}</option>)}
               </select>
             </div>
@@ -1997,7 +1997,7 @@ export default function Services() {
               <label className="block text-sm font-medium text-secondary mb-1">Category</label>
               <input type="text" value={formCategory} onChange={e => setFormCategory(e.target.value)}
                 placeholder="e.g. payments, auth, infrastructure"
-                className="w-full bg-white dark:bg-background/50 border border-border rounded-lg px-3 py-2 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-gray-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
+                className="w-full bg-white border border-border rounded-lg px-3 py-2 text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
             </div>
           </div>
           <div>
@@ -2024,7 +2024,7 @@ export default function Services() {
                   }
                 }}
                 placeholder="Type a tag and press Enter"
-                className="flex-1 bg-background/50 border border-border rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
+                className="flex-1 bg-background/50 border border-border rounded-lg px-3 py-2 text-sm text-gray-900 placeholder-gray-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
               <button type="button" onClick={() => {
                   const newTag = formTagInput.trim().toLowerCase().replace(/,/g, '')
                   if (newTag && !formTags.includes(newTag)) setFormTags([...formTags, newTag])
@@ -2045,7 +2045,7 @@ export default function Services() {
         {view === 'edit' && editTab === 'assertions' && editId && (
           <div className="bg-surface/50 rounded-lg border border-border/50 p-6 space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+              <h2 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
                 <Shield className="w-5 h-5 text-info" /> Assertions
               </h2>
               {canManage && (
@@ -2067,7 +2067,7 @@ export default function Services() {
                         const t = e.target.value
                         setAssertionForm({...assertionForm, type: t, expected: t === 'status_code' ? '200' : t === 'response_time' ? '5000' : '', jsonPath: '', name: ''})
                       }}
-                      className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm text-white focus:border-blue-500">
+                      className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm text-gray-900 focus:border-blue-500">
                       <option value="status_code">Status Code</option>
                       <option value="response_time">Response Time (ms)</option>
                       <option value="text_contains">Body Contains Text</option>
@@ -2077,7 +2077,7 @@ export default function Services() {
                   <div>
                     <label className="block text-xs font-medium text-muted mb-1">Severity</label>
                     <select value={assertionForm.severity} onChange={e => setAssertionForm({...assertionForm, severity: e.target.value})}
-                      className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm text-white focus:border-blue-500">
+                      className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm text-gray-900 focus:border-blue-500">
                       <option value="info">Info</option>
                       <option value="warning">Warning</option>
                       <option value="critical">Critical</option>
@@ -2089,7 +2089,7 @@ export default function Services() {
                     <label className="block text-xs font-medium text-muted mb-1">JSON Path</label>
                     <input type="text" value={assertionForm.jsonPath}
                       onChange={e => setAssertionForm({...assertionForm, jsonPath: e.target.value})}
-                      placeholder="$.data.status" className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:border-blue-500" />
+                      placeholder="$.data.status" className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm text-gray-900 placeholder-gray-500 focus:border-blue-500" />
                   </div>
                 )}
                 <div>
@@ -2099,14 +2099,14 @@ export default function Services() {
                   <input type="text" value={assertionForm.expected}
                     onChange={e => setAssertionForm({...assertionForm, expected: e.target.value})}
                     placeholder={assertionForm.type === 'status_code' ? '200' : assertionForm.type === 'response_time' ? '5000' : 'expected value'}
-                    className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:border-blue-500" />
+                    className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm text-gray-900 placeholder-gray-500 focus:border-blue-500" />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-muted mb-1">Name (optional)</label>
                   <input type="text" value={assertionForm.name}
                     onChange={e => setAssertionForm({...assertionForm, name: e.target.value})}
                     placeholder="e.g. Check status is 200"
-                    className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:border-blue-500" />
+                    className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm text-gray-900 placeholder-gray-500 focus:border-blue-500" />
                 </div>
                 {/* Quick templates */}
                 <div className="flex flex-wrap gap-2 pt-1">
@@ -2122,10 +2122,10 @@ export default function Services() {
                 </div>
                 <div className="flex justify-end gap-2 pt-1">
                   <button onClick={() => setShowAssertionForm(false)}
-                    className="px-3 py-1.5 rounded-lg text-sm text-muted hover:text-white">Cancel</button>
+                    className="px-3 py-1.5 rounded-lg text-sm text-muted hover:text-gray-900">Cancel</button>
                   <button onClick={() => editId && createAssertion(editId)}
                     disabled={!assertionForm.expected.trim() || (assertionForm.type === 'json_path_equals' && !assertionForm.jsonPath.trim())}
-                    className="px-4 py-1.5 rounded-lg text-sm bg-primary text-white hover:bg-primary disabled:opacity-50 disabled:cursor-not-allowed font-medium">
+                    className="px-4 py-1.5 rounded-lg text-sm bg-primary text-gray-900 hover:bg-primary disabled:opacity-50 disabled:cursor-not-allowed font-medium">
                     Create Assertion
                   </button>
                 </div>
@@ -2146,12 +2146,12 @@ export default function Services() {
                 {assertions.map((a: any) => (
                   <div key={a.id} className={`flex items-center gap-3 p-3 rounded-lg border ${a.enabled ? 'border-border bg-background/30' : 'border-border bg-background/10 opacity-60'}`}>
                     <button onClick={() => canManage && editId && toggleAssertion(editId, a.id, a.enabled)}
-                      className={`w-8 h-5 rounded-full transition-colors flex items-center ${a.enabled ? 'bg-primary justify-end' : 'bg-surface-dark justify-start'}`}>
+                      className={`w-8 h-5 rounded-full transition-colors flex items-center ${a.enabled ? 'bg-primary justify-end' : 'bg-gray-50 justify-start'}`}>
                       <span className="w-3.5 h-3.5 rounded-full bg-white mx-0.5 shadow-sm" />
                     </button>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="text-xs font-mono px-1.5 py-0.5 rounded bg-surface-dark text-secondary">{a.assertion_type}</span>
+                        <span className="text-xs font-mono px-1.5 py-0.5 rounded bg-gray-50 text-secondary">{a.assertion_type}</span>
                         <span className={`text-xs px-1.5 py-0.5 rounded ${a.severity === 'critical' ? 'bg-critical/10 text-critical' : a.severity === 'warning' ? 'bg-warning/10 text-warning' : 'bg-primary/10 text-info'}`}>{a.severity}</span>
                         {a.name && <span className="text-sm text-secondary truncate">{a.name}</span>}
                       </div>
@@ -2164,7 +2164,7 @@ export default function Services() {
                     </div>
                     {canManage && (
                       <button onClick={() => editId && deleteAssertion(editId, a.id)}
-                        className="p-1.5 rounded hover:bg-surface-dark/50 text-muted hover:text-critical transition-colors">
+                        className="p-1.5 rounded hover:bg-gray-50/50 text-muted hover:text-critical transition-colors">
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     )}
@@ -2180,7 +2180,7 @@ export default function Services() {
         {/* Type-specific fields */}
         {(view === 'create' || editTab === 'connection') && (
         <div className="bg-surface/50 rounded-lg border border-border/50 p-6">
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
+          <h2 className="text-lg font-semibold text-slate-900 mb-4">
             {formType === 'http' ? 'HTTP Connection' : 'PostgreSQL Connection'}
           </h2>
           {formType === 'http' ? <HttpForm config={formConfig} onChange={setFormConfig} /> : <PgForm config={formConfig} onChange={setFormConfig} />}
@@ -2219,17 +2219,17 @@ export default function Services() {
         <div className="flex items-center gap-3">
           <button onClick={canManage ? handleTestConnection : undefined} disabled={!canManage || !isValid || testing}
             title={!canManage ? 'Only administrators can test connections' : ''}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border text-secondary hover:text-white hover:border-gray-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+            className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border text-secondary hover:text-gray-900 hover:border-gray-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
             {testing ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
             Test Connection
           </button>
           <button onClick={canManage ? handleSave : undefined} disabled={!canManage || !isValid}
             title={!canManage ? 'Only administrators can create or modify services' : ''}
-            className="flex items-center gap-2 px-6 py-2 rounded-lg bg-primary text-white hover:bg-primary disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors">
+            className="flex items-center gap-2 px-6 py-2 rounded-lg bg-primary text-gray-900 hover:bg-primary disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors">
             {view === 'edit' ? 'Save Changes' : 'Create Service'}
           </button>
           <button onClick={() => { setView('list'); resetForm() }}
-            className="px-4 py-2 rounded-lg text-muted hover:text-white transition-colors">
+            className="px-4 py-2 rounded-lg text-muted hover:text-gray-900 transition-colors">
             Cancel
           </button>
         </div>
@@ -2242,23 +2242,23 @@ export default function Services() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-white">Services</h1>
+          <h1 className="text-3xl font-bold text-gray-900">Services</h1>
           <p className="text-muted mt-1">Monitor your HTTP endpoints and API services</p>
         </div>
           <div className="flex items-center gap-3">
             {/* View mode toggle (Task 22) */}
             <div className="flex items-center bg-surface/60 rounded-lg p-0.5">
               <button onClick={() => setGroupViewMode('grouped')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${groupViewMode === 'grouped' ? 'bg-surface-dark text-white shadow-sm' : 'text-muted hover:text-primary'}`}>
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${groupViewMode === 'grouped' ? 'bg-gray-50 text-gray-900 shadow-sm' : 'text-muted hover:text-primary'}`}>
                 <FolderOpen className="w-3.5 h-3.5" /> Grouped
               </button>
               <button onClick={() => setGroupViewMode('list')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${groupViewMode === 'list' ? 'bg-surface-dark text-white shadow-sm' : 'text-muted hover:text-primary'}`}>
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${groupViewMode === 'list' ? 'bg-gray-50 text-gray-900 shadow-sm' : 'text-muted hover:text-primary'}`}>
                 <Layers className="w-3.5 h-3.5" /> Flat List
               </button>
             </div>
             <button onClick={() => setShowAddModal(true)}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-primary text-white hover:bg-primary font-medium transition-colors shadow-md">
+              className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-primary text-gray-900 hover:bg-primary font-medium transition-colors shadow-md">
               <Plus className="w-4 h-4" /> Add Services
             </button>
           </div>
@@ -2280,7 +2280,7 @@ export default function Services() {
                   <div className={`p-2.5 rounded-lg ${c.bg}`}><c.Icon className={`w-5 h-5 ${c.color}`} /></div>
                   <div>
                     <p className="text-muted text-sm">{c.label}</p>
-                    <p className="text-xl font-bold text-white">{c.value}</p>
+                    <p className="text-xl font-bold text-gray-900">{c.value}</p>
                   </div>
                 </div>
               </div>
@@ -2300,14 +2300,14 @@ export default function Services() {
                     placeholder="Search services..."
                     value={filterSearch}
                     onChange={e => setFilterSearch(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2 bg-background/50 border border-border rounded-lg text-sm text-white placeholder-gray-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                    className="w-full pl-9 pr-3 py-2 bg-background/50 border border-border rounded-lg text-sm text-gray-900 placeholder-gray-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                   />
                 </div>
                 {/* Catalog Type filter */}
                 <select
                   value={filterCatalogType}
                   onChange={e => setFilterCatalogType(e.target.value)}
-                  className="px-3 py-2 bg-background/50 border border-border rounded-lg text-sm text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                  className="px-3 py-2 bg-background/50 border border-border rounded-lg text-sm text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                 >
                   <option value="">All Catalog Types</option>
                   {catalogTypes.map(ct => <option key={ct} value={ct}>{ct}</option>)}
@@ -2316,7 +2316,7 @@ export default function Services() {
                 <select
                   value={filterCategory}
                   onChange={e => setFilterCategory(e.target.value)}
-                  className="px-3 py-2 bg-background/50 border border-border rounded-lg text-sm text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                  className="px-3 py-2 bg-background/50 border border-border rounded-lg text-sm text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                 >
                   <option value="">All Categories</option>
                   {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
@@ -2325,14 +2325,14 @@ export default function Services() {
                 <select
                   value={filterGroupName}
                   onChange={e => setFilterGroupName(e.target.value)}
-                  className="px-3 py-2 bg-background/50 border border-border rounded-lg text-sm text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                  className="px-3 py-2 bg-background/50 border border-border rounded-lg text-sm text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                 >
                   <option value="">All Groups</option>
                   {groupNames.map(gn => <option key={gn} value={gn}>{gn}</option>)}
                 </select>
                 {/* Clear button */}
                 {hasActiveFilters && (
-                  <button onClick={clearFilters} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm text-muted hover:text-white hover:bg-surface-dark/50 transition-colors">
+                  <button onClick={clearFilters} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm text-muted hover:text-gray-900 hover:bg-gray-50/50 transition-colors">
                     <X className="w-4 h-4" /> Clear
                   </button>
                 )}
@@ -2352,9 +2352,9 @@ export default function Services() {
                   {groupedData.length} group{groupedData.length !== 1 ? 's' : ''} &middot; {groupedData.reduce((a, g) => a + g.total, 0)} services
                 </p>
                 <div className="flex items-center gap-2">
-                  <button onClick={expandAllGroups} className="text-xs text-muted hover:text-white transition-colors">Expand all</button>
+                  <button onClick={expandAllGroups} className="text-xs text-muted hover:text-gray-900 transition-colors">Expand all</button>
                   <span className="text-gray-600">|</span>
-                  <button onClick={collapseAllGroups} className="text-xs text-muted hover:text-white transition-colors">Collapse all</button>
+                  <button onClick={collapseAllGroups} className="text-xs text-muted hover:text-gray-900 transition-colors">Collapse all</button>
                 </div>
               </div>
 
@@ -2365,7 +2365,7 @@ export default function Services() {
                   <div key={group.group_name} className="bg-surface/50 rounded-lg border border-border/50 overflow-hidden">
                     {/* Group Header */}
                     <button
-                      className="w-full flex items-center justify-between p-4 hover:bg-surface-dark/30 transition-colors"
+                      className="w-full flex items-center justify-between p-4 hover:bg-gray-50/30 transition-colors"
                       onClick={() => toggleGroup(group.group_name)}
                     >
                       <div className="flex items-center gap-3">
@@ -2376,7 +2376,7 @@ export default function Services() {
                           ? <FolderOpen className="w-5 h-5 text-emerald-400" />
                           : <Folder className="w-5 h-5 text-muted" />}
                         <div className="text-left">
-                          <h3 className="text-white font-semibold text-sm">{group.group_name}</h3>
+                          <h3 className="text-gray-900 font-semibold text-sm">{group.group_name}</h3>
                           <p className="text-muted text-xs mt-0.5">
                             {group.total} service{group.total !== 1 ? 's' : ''}
                             {group.up > 0 && <span className="text-success ml-2">{group.up} up</span>}
@@ -2388,7 +2388,7 @@ export default function Services() {
                       <div className="flex items-center gap-3">
                         <GroupHealthBadge status={group.status} />
                         {/* Health bar */}
-                        <div className="w-24 h-2 bg-surface-dark rounded-full overflow-hidden flex">
+                        <div className="w-24 h-2 bg-gray-50 rounded-full overflow-hidden flex">
                           {group.up > 0 && <div className="bg-success h-full" style={{ width: `${(group.up / group.total) * 100}%` }} />}
                           {group.total - group.up - group.down > 0 && <div className="bg-warning h-full" style={{ width: `${((group.total - group.up - group.down) / group.total) * 100}%` }} />}
                           {group.down > 0 && <div className="bg-critical h-full" style={{ width: `${(group.down / group.total) * 100}%` }} />}
@@ -2413,15 +2413,15 @@ export default function Services() {
                           </thead>
                           <tbody>
                             {group.services.map(svc => (
-                              <tr key={svc.id} className="border-b border-border/20 hover:bg-surface-dark/20 transition-colors">
+                              <tr key={svc.id} className="border-b border-border/20 hover:bg-gray-50/20 transition-colors">
                                 <td className="px-4 py-3">
                                   <div className="flex items-center gap-2.5">
-                                    <div className={`p-1.5 rounded ${svc.enabled ? 'bg-emerald-400/10' : 'bg-surface-dark/50'}`}>
+                                    <div className={`p-1.5 rounded ${svc.enabled ? 'bg-emerald-400/10' : 'bg-gray-50/50'}`}>
                                       {svc.service_type === 'http'
                                         ? <Network className="w-3.5 h-3.5 text-violet-400" />
                                         : <Database className="w-3.5 h-3.5 text-orange-400" />}
                                     </div>
-                                    <span className="text-white text-sm font-medium">{svc.name}</span>
+                                    <span className="text-gray-900 text-sm font-medium">{svc.name}</span>
                                   </div>
                                 </td>
                                 <td className="px-4 py-3"><TypeBadge type={svc.service_type} catalogType={svc.catalog_type} /></td>
@@ -2454,7 +2454,7 @@ export default function Services() {
                 <TypeBadge type="postgresql" />
               </div>
               <button onClick={openCreate}
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-primary text-white hover:bg-primary font-medium transition-colors shadow-md">
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-primary text-gray-900 hover:bg-primary font-medium transition-colors shadow-md">
                 <Plus className="w-5 h-5" /> Connect Your First Service
               </button>
             </div>
@@ -2486,15 +2486,15 @@ export default function Services() {
                     )}
                     {filteredServices.map(svc => (
                       <React.Fragment key={svc.id}>
-                      <tr className={`border-b border-border/30 hover:bg-surface-dark/30 transition-colors cursor-pointer ${!svc.enabled ? 'opacity-50' : ''}`}
+                      <tr className={`border-b border-border/30 hover:bg-gray-50/30 transition-colors cursor-pointer ${!svc.enabled ? 'opacity-50' : ''}`}
                         onClick={() => setExpandedServiceId(expandedServiceId === svc.id ? null : svc.id)}>
                         <td className="p-4">
                           <div className="flex items-center gap-3">
-                            <div className={`p-2 rounded ${svc.enabled ? 'bg-emerald-400/10' : 'bg-surface-dark/50'}`}>
+                            <div className={`p-2 rounded ${svc.enabled ? 'bg-emerald-400/10' : 'bg-gray-50/50'}`}>
                               {svc.service_type === 'http' ? <Network className="w-4 h-4 text-violet-400" /> : <Database className="w-4 h-4 text-orange-400" />}
                             </div>
                             <div>
-                              <p className="text-white font-medium">{svc.name}</p>
+                              <p className="text-gray-900 font-medium">{svc.name}</p>
                               {svc.environment && <p className="text-muted text-xs">{svc.environment}</p>}
                               {svc.tags && svc.tags.length > 0 && (
                                 <div className="flex flex-wrap gap-1 mt-1">
@@ -2535,19 +2535,19 @@ export default function Services() {
                         <td className="p-4" onClick={e => e.stopPropagation()}>
                           <div className="flex items-center justify-end gap-1">
                             <button onClick={() => canManage && handleTestSaved(svc.id)} disabled={!canManage || actionLoading === svc.id}
-                              title={canManage ? "Test connection" : "Admin only"} className={`p-1.5 rounded transition-colors disabled:opacity-50 ${canManage ? 'hover:bg-surface-dark/50 text-muted hover:text-success' : 'text-gray-600 cursor-not-allowed'}`}>
+                              title={canManage ? "Test connection" : "Admin only"} className={`p-1.5 rounded transition-colors disabled:opacity-50 ${canManage ? 'hover:bg-gray-50/50 text-muted hover:text-success' : 'text-gray-600 cursor-not-allowed'}`}>
                               {actionLoading === svc.id ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
                             </button>
                             <button onClick={() => canManage && openEdit(svc)} disabled={!canManage}
-                              title={canManage ? "Edit" : "Admin only"} className={`p-1.5 rounded transition-colors ${canManage ? 'hover:bg-surface-dark/50 text-muted hover:text-info' : 'text-gray-600 cursor-not-allowed opacity-50'}`}>
+                              title={canManage ? "Edit" : "Admin only"} className={`p-1.5 rounded transition-colors ${canManage ? 'hover:bg-gray-50/50 text-muted hover:text-info' : 'text-gray-600 cursor-not-allowed opacity-50'}`}>
                               <Edit className="w-4 h-4" />
                             </button>
                             <button onClick={() => canManage && handleToggle(svc.id)} disabled={!canManage}
-                              title={canManage ? (svc.enabled ? 'Disable' : 'Enable') : 'Admin only'} className={`p-1.5 rounded transition-colors ${canManage ? 'hover:bg-surface-dark/50 text-muted hover:text-warning' : 'text-gray-600 cursor-not-allowed opacity-50'}`}>
+                              title={canManage ? (svc.enabled ? 'Disable' : 'Enable') : 'Admin only'} className={`p-1.5 rounded transition-colors ${canManage ? 'hover:bg-gray-50/50 text-muted hover:text-warning' : 'text-gray-600 cursor-not-allowed opacity-50'}`}>
                               {svc.enabled ? <Power className="w-4 h-4" /> : <PowerOff className="w-4 h-4" />}
                             </button>
                             <button onClick={() => canManage && handleDelete(svc.id)} disabled={!canManage}
-                              title={canManage ? "Delete" : "Admin only"} className={`p-1.5 rounded transition-colors ${canManage ? 'hover:bg-surface-dark/50 text-muted hover:text-critical' : 'text-gray-600 cursor-not-allowed opacity-50'}`}>
+                              title={canManage ? "Delete" : "Admin only"} className={`p-1.5 rounded transition-colors ${canManage ? 'hover:bg-gray-50/50 text-muted hover:text-critical' : 'text-gray-600 cursor-not-allowed opacity-50'}`}>
                               <Trash2 className="w-4 h-4" />
                             </button>
                           </div>
@@ -2577,10 +2577,10 @@ export default function Services() {
           <div className="bg-surface rounded-xl border border-border shadow-2xl w-full max-w-lg">
             <div className="flex items-center justify-between p-6 border-b border-border">
               <div>
-                <h2 className="text-lg font-semibold text-white">Add Services</h2>
+                <h2 className="text-lg font-semibold text-gray-900">Add Services</h2>
                 <p className="text-muted text-sm mt-0.5">Choose how you want to add endpoints</p>
               </div>
-              <button onClick={() => setShowAddModal(false)} className="p-2 rounded-lg hover:bg-surface-dark text-muted hover:text-white transition-colors">
+              <button onClick={() => setShowAddModal(false)} className="p-2 rounded-lg hover:bg-gray-50 text-muted hover:text-gray-900 transition-colors">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -2591,7 +2591,7 @@ export default function Services() {
                   <Network className="w-6 h-6 text-info" />
                 </div>
                 <div className="flex-1">
-                  <p className="text-white font-semibold">Single endpoint</p>
+                  <p className="text-gray-900 font-semibold">Single endpoint</p>
                   <p className="text-muted text-sm">Monitor one HTTP/API endpoint with full configuration</p>
                 </div>
                 <ChevronRight className="w-5 h-5 text-gray-600 group-hover:text-info transition-colors" />
@@ -2602,7 +2602,7 @@ export default function Services() {
                   <Layers className="w-6 h-6 text-emerald-400" />
                 </div>
                 <div className="flex-1">
-                  <p className="text-white font-semibold">Multiple endpoints</p>
+                  <p className="text-gray-900 font-semibold">Multiple endpoints</p>
                   <p className="text-muted text-sm">Quickly add many endpoints with shared settings</p>
                 </div>
                 <ChevronRight className="w-5 h-5 text-gray-600 group-hover:text-emerald-400 transition-colors" />
@@ -2613,7 +2613,7 @@ export default function Services() {
                   <Upload className="w-6 h-6 text-violet-400" />
                 </div>
                 <div className="flex-1">
-                  <p className="text-white font-semibold">Import file</p>
+                  <p className="text-gray-900 font-semibold">Import file</p>
                   <p className="text-muted text-sm">Upload a CSV or JSON file with service definitions</p>
                 </div>
                 <ChevronRight className="w-5 h-5 text-gray-600 group-hover:text-violet-400 transition-colors" />
@@ -2626,7 +2626,7 @@ export default function Services() {
                     <Database className="w-5 h-5 text-orange-400" />
                   </div>
                   <div className="flex-1">
-                    <p className="text-white font-medium text-sm">PostgreSQL database</p>
+                    <p className="text-gray-900 font-medium text-sm">PostgreSQL database</p>
                     <p className="text-muted text-xs">Monitor database connectivity</p>
                   </div>
                 </button>
@@ -2645,11 +2645,11 @@ export default function Services() {
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-info/10 rounded-lg"><Upload className="w-5 h-5 text-info" /></div>
                 <div>
-                  <h2 className="text-lg font-semibold text-white">Import File</h2>
+                  <h2 className="text-lg font-semibold text-gray-900">Import File</h2>
                   <p className="text-muted text-sm">Upload a CSV or JSON file with service definitions</p>
                 </div>
               </div>
-              <button onClick={closeImportModal} className="p-2 rounded-lg hover:bg-surface-dark text-muted hover:text-white transition-colors">
+              <button onClick={closeImportModal} className="p-2 rounded-lg hover:bg-gray-50 text-muted hover:text-gray-900 transition-colors">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -2689,7 +2689,7 @@ export default function Services() {
                         {importFile ? (
                           <div className="space-y-1">
                             <FileText className="w-8 h-8 text-info mx-auto" />
-                            <p className="text-white font-medium">{importFile.name}</p>
+                            <p className="text-gray-900 font-medium">{importFile.name}</p>
                             <p className="text-muted text-sm">{(importFile.size / 1024).toFixed(1)} KB</p>
                           </div>
                         ) : (
@@ -2720,10 +2720,10 @@ export default function Services() {
 
                   {/* Action */}
                   <div className="flex justify-end gap-3 pt-2">
-                    <button onClick={closeImportModal} className="px-4 py-2 rounded-lg text-muted hover:text-white transition-colors">Cancel</button>
+                    <button onClick={closeImportModal} className="px-4 py-2 rounded-lg text-muted hover:text-gray-900 transition-colors">Cancel</button>
                     <button onClick={canManage ? handleImportValidate : undefined} disabled={!canManage || !importFile || importLoading}
                       title={!canManage ? 'Only administrators can import services' : ''}
-                      className="flex items-center gap-2 px-5 py-2 rounded-lg bg-primary text-white hover:bg-primary disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors">
+                      className="flex items-center gap-2 px-5 py-2 rounded-lg bg-primary text-gray-900 hover:bg-primary disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors">
                       {importLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
                       Validate & Preview
                     </button>
@@ -2772,7 +2772,7 @@ export default function Services() {
                                 {importPreview.valid_preview.map((s: any) => (
                                   <tr key={s.row} className="border-b border-border/30">
                                     <td className="p-2 text-muted">{s.row}</td>
-                                    <td className="p-2 text-white">{s.name}</td>
+                                    <td className="p-2 text-gray-900">{s.name}</td>
                                     <td className="p-2 text-muted">{s.service_type}</td>
                                     <td className="p-2 text-muted truncate max-w-[200px]">{s.target}</td>
                                   </tr>
@@ -2803,11 +2803,11 @@ export default function Services() {
                   {/* Actions */}
                   <div className="flex justify-between pt-2">
                     <button onClick={() => { setImportStep('upload'); setImportPreview(null) }}
-                      className="px-4 py-2 rounded-lg text-muted hover:text-white transition-colors">
+                      className="px-4 py-2 rounded-lg text-muted hover:text-gray-900 transition-colors">
                       ← Back
                     </button>
                     <div className="flex gap-3">
-                      <button onClick={closeImportModal} className="px-4 py-2 rounded-lg text-muted hover:text-white transition-colors">Cancel</button>
+                      <button onClick={closeImportModal} className="px-4 py-2 rounded-lg text-muted hover:text-gray-900 transition-colors">Cancel</button>
                       {importPreview && !importPreview.error && importPreview.valid_count > 0 && (
                         <button onClick={canManage ? handleImportConfirm : undefined} disabled={!canManage || importLoading}
                           title={!canManage ? 'Only administrators can import services' : ''}
@@ -2853,7 +2853,7 @@ export default function Services() {
                             {importResult.created_services.map((s: any) => (
                               <div key={s.id} className="flex items-center gap-2 p-2 bg-success/5 rounded text-sm border border-green-500/10">
                                 <CheckCircle className="w-3.5 h-3.5 text-success flex-shrink-0" />
-                                <span className="text-slate-900 dark:text-white">{s.name}</span>
+                                <span className="text-slate-900">{s.name}</span>
                                 <span className="text-muted">({s.service_type})</span>
                                 <span className="text-gray-600 ml-auto">id={s.id}</span>
                               </div>
@@ -2879,7 +2879,7 @@ export default function Services() {
 
                   <div className="flex justify-end pt-2">
                     <button onClick={closeImportModal}
-                      className="px-5 py-2 rounded-lg bg-primary text-white hover:bg-primary font-medium transition-colors">
+                      className="px-5 py-2 rounded-lg bg-primary text-gray-900 hover:bg-primary font-medium transition-colors">
                       Done
                     </button>
                   </div>

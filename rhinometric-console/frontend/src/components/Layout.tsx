@@ -264,7 +264,7 @@ export function Layout() {
         {/* User footer */}
         <div className="px-4 py-4" style={{ borderTop: '1px solid var(--c-sidebar-border)' }}>
           <div className="flex items-center gap-3 mb-3">
-            <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white font-semibold text-xs flex-shrink-0">
+            <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-gray-900 font-semibold text-xs flex-shrink-0">
               {user?.username?.[0]?.toUpperCase()}
             </div>
             <div className="flex-1 min-w-0">

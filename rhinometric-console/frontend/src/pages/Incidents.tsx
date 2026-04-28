@@ -196,7 +196,7 @@ function StatusBadge({ status }: { status: string }) {
     investigating: { bg: 'bg-blue-500/20',   text: 'text-blue-400',   icon: Eye },
     resolved:      { bg: 'bg-green-500/20',  text: 'text-green-400',  icon: CheckCircle2 },
   }
-  const cfg = map[status] || { bg: 'bg-gray-500/20', text: 'text-gray-400', icon: Bell }
+  const cfg = map[status] || { bg: 'bg-gray-100', text: 'text-gray-500', icon: Bell }
   const Icon = cfg.icon
   return (
     <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${cfg.bg} ${cfg.text}`}>
@@ -212,7 +212,7 @@ function SeverityBadge({ severity }: { severity: string }) {
     warning:  { bg: 'bg-amber-500/20',  text: 'text-amber-400' },
     info:     { bg: 'bg-sky-500/20',    text: 'text-sky-400' },
   }
-  const cfg = map[severity] || { bg: 'bg-gray-500/20', text: 'text-gray-400' }
+  const cfg = map[severity] || { bg: 'bg-gray-100', text: 'text-gray-500' }
   return (
     <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${cfg.bg} ${cfg.text}`}>
       {severity}
@@ -221,9 +221,9 @@ function SeverityBadge({ severity }: { severity: string }) {
 }
 
 function PriorityBadge({ severity }: { severity: string }) {
-  const p = severity === 'critical' ? { label: 'P1', bg: 'bg-red-100 dark:bg-red-500/20', text: 'text-red-700 dark:text-red-400', border: 'border-red-300 dark:border-red-500/30' }
-    : severity === 'warning' ? { label: 'P2', bg: 'bg-amber-100 dark:bg-amber-500/20', text: 'text-amber-700 dark:text-amber-400', border: 'border-amber-300 dark:border-amber-500/30' }
-    : { label: 'P3', bg: 'bg-slate-100 dark:bg-gray-500/20', text: 'text-slate-500 dark:text-gray-400', border: 'border-slate-300 dark:border-gray-500/30' }
+  const p = severity === 'critical' ? { label: 'P1', bg: 'bg-red-100', text: 'text-red-700', border: 'border-red-300' }
+    : severity === 'warning' ? { label: 'P2', bg: 'bg-amber-100', text: 'text-amber-700', border: 'border-amber-300' }
+    : { label: 'P3', bg: 'bg-slate-100', text: 'text-slate-500', border: 'border-slate-300' }
   return (
     <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-bold border ${p.bg} ${p.text} ${p.border}`}>
       {p.label}
@@ -237,7 +237,7 @@ function AlertStatusBadge({ status }: { status: string }) {
     resolved:     { bg: 'bg-green-500/20',  text: 'text-green-400' },
     acknowledged: { bg: 'bg-blue-500/20',   text: 'text-blue-400' },
   }
-  const cfg = map[status] || { bg: 'bg-gray-500/20', text: 'text-gray-400' }
+  const cfg = map[status] || { bg: 'bg-gray-100', text: 'text-gray-500' }
   return (
     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${cfg.bg} ${cfg.text}`}>
       {status}
@@ -251,13 +251,13 @@ function StatCard({ label, value, icon: Icon, color }: {
   label: string; value: string | number; icon: typeof Bell; color: string
 }) {
   return (
-    <div className="bg-white dark:bg-surface rounded-lg border border-slate-200 dark:border-gray-700 p-4">
+    <div className="bg-white rounded-lg border border-slate-200 p-4">
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-xs text-gray-400 uppercase tracking-wider">{label}</p>
+          <p className="text-xs text-gray-500 uppercase tracking-wider">{label}</p>
           <p className={`text-2xl font-bold mt-1 ${color}`}>{value}</p>
         </div>
-        <div className={`p-2 rounded-lg bg-gray-800/50`}>
+        <div className={`p-2 rounded-lg bg-gray-50/50`}>
           <Icon size={20} className={color} />
         </div>
       </div>
@@ -314,8 +314,8 @@ function PurgeModal({ module, isOpen, onClose, token }: {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-      <div className="bg-surface border border-gray-700 rounded-xl p-6 w-full max-w-md shadow-2xl">
-        <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+      <div className="bg-surface border border-gray-200 rounded-xl p-6 w-full max-w-md shadow-2xl">
+        <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
           <Trash2 size={20} className="text-red-400" />
           Clear {module.charAt(0).toUpperCase() + module.slice(1)} History
         </h3>
@@ -326,20 +326,20 @@ function PurgeModal({ module, isOpen, onClose, token }: {
               {result.message}
             </div>
             <button onClick={() => onClose(true)}
-              className="w-full px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg text-sm">
+              className="w-full px-4 py-2 bg-gray-100 hover:bg-gray-300 text-gray-900 rounded-lg text-sm">
               Close
             </button>
           </div>
         ) : (
           <div className="space-y-4">
-            <p className="text-sm text-gray-300">
+            <p className="text-sm text-gray-600">
               Permanently delete <strong>{labels[module]}</strong> older than:
             </p>
             <div className="flex items-center gap-3">
               <input type="number" min={1} max={365} value={days}
                 onChange={(e) => setDays(Math.max(1, Math.min(365, parseInt(e.target.value) || 30)))}
-                className="w-24 px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white text-sm" />
-              <span className="text-sm text-gray-400">days</span>
+                className="w-24 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 text-sm" />
+              <span className="text-sm text-gray-500">days</span>
             </div>
 
             {error && (
@@ -351,7 +351,7 @@ function PurgeModal({ module, isOpen, onClose, token }: {
             {!confirming ? (
               <div className="flex gap-3">
                 <button onClick={() => onClose(false)}
-                  className="flex-1 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg text-sm">
+                  className="flex-1 px-4 py-2 bg-gray-100 hover:bg-gray-300 text-gray-900 rounded-lg text-sm">
                   Cancel
                 </button>
                 <button onClick={() => setConfirming(true)}
@@ -366,7 +366,7 @@ function PurgeModal({ module, isOpen, onClose, token }: {
                 </div>
                 <div className="flex gap-3">
                   <button onClick={() => setConfirming(false)}
-                    className="flex-1 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg text-sm">
+                    className="flex-1 px-4 py-2 bg-gray-100 hover:bg-gray-300 text-gray-900 rounded-lg text-sm">
                     Cancel
                   </button>
                   <button onClick={handlePurge}
@@ -394,7 +394,7 @@ function SimpleMarkdown({ text, className = '' }: { text: string; className?: st
   const flushList = () => {
     if (listItems.length > 0) {
       elements.push(
-        <ul key={key++} className="list-disc list-inside space-y-1 my-2 text-gray-300">
+        <ul key={key++} className="list-disc list-inside space-y-1 my-2 text-gray-600">
           {listItems.map((item, i) => (
             <li key={i} className="leading-relaxed">{renderInline(item)}</li>
           ))}
@@ -439,7 +439,7 @@ function SimpleMarkdown({ text, className = '' }: { text: string; className?: st
 
     flushList()
     elements.push(
-      <p key={key++} className="text-sm text-gray-300 leading-relaxed mb-1">
+      <p key={key++} className="text-sm text-gray-600 leading-relaxed mb-1">
         {renderInline(trimmed)}
       </p>
     )
@@ -538,10 +538,10 @@ function IncidentsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Incidents</h1>
-          <p className="text-sm text-slate-500 dark:text-gray-400 mt-1">AI-powered incident management -- track, investigate, and resolve with contextual guidance</p>
+          <h1 className="text-2xl font-bold text-slate-900">Incidents</h1>
+          <p className="text-sm text-slate-500 mt-1">AI-powered incident management -- track, investigate, and resolve with contextual guidance</p>
         </div>
-        <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-gray-400">
+        <div className="flex items-center gap-3 text-xs text-slate-500">
           <Activity size={14} className="text-green-400" />
           <span>{listData?.total ?? 0} incidents</span>
           {isAdmin() && (
@@ -559,7 +559,7 @@ function IncidentsPage() {
       {/* Stats cards */}
       {stats && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <StatCard label="Total" value={stats.total} icon={BarChart3} color="text-slate-700 dark:text-gray-300" />
+          <StatCard label="Total" value={stats.total} icon={BarChart3} color="text-slate-700" />
           <StatCard label="Open" value={stats.open} icon={Flame} color="text-red-400" />
           <StatCard label="Investigating" value={stats.investigating} icon={Eye} color="text-blue-400" />
           <StatCard label="Avg Resolution" value={stats.avg_resolution_seconds != null ? formatDuration(stats.avg_resolution_seconds) : '\u2014'} icon={Clock} color="text-green-400" />
@@ -567,18 +567,18 @@ function IncidentsPage() {
       )}
 
       {/* Filters */}
-      <div className="bg-surface rounded-lg border border-gray-700 p-4">
+      <div className="bg-surface rounded-lg border border-gray-200 p-4">
         <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
           <div className="flex items-center gap-2">
-            <Filter size={16} className="text-gray-400" />
-            <span className="text-sm font-medium text-slate-700 dark:text-gray-300">Filters</span>
+            <Filter size={16} className="text-gray-500" />
+            <span className="text-sm font-medium text-slate-700">Filters</span>
           </div>
 
           <div className="flex flex-wrap gap-2 flex-1">
             <select
               value={timeRange}
               onChange={(e) => setTimeRange(e.target.value)}
-              className="bg-white dark:bg-gray-800 border border-slate-300 dark:border-gray-600 rounded-md px-3 py-1.5 text-sm text-slate-700 dark:text-gray-300 focus:outline-none focus:border-primary"
+              className="bg-white border border-slate-300 rounded-md px-3 py-1.5 text-sm text-slate-700 focus:outline-none focus:border-primary"
             >
               <option value="24h">Last 24h</option>
               <option value="7d">Last 7 days</option>
@@ -589,7 +589,7 @@ function IncidentsPage() {
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="bg-white dark:bg-gray-800 border border-slate-300 dark:border-gray-600 rounded-md px-3 py-1.5 text-sm text-slate-700 dark:text-gray-300 focus:outline-none focus:border-primary"
+              className="bg-white border border-slate-300 rounded-md px-3 py-1.5 text-sm text-slate-700 focus:outline-none focus:border-primary"
             >
               <option value="">All statuses</option>
               <option value="open">Open</option>
@@ -600,7 +600,7 @@ function IncidentsPage() {
             <select
               value={severityFilter}
               onChange={(e) => setSeverityFilter(e.target.value)}
-              className="bg-white dark:bg-gray-800 border border-slate-300 dark:border-gray-600 rounded-md px-3 py-1.5 text-sm text-slate-700 dark:text-gray-300 focus:outline-none focus:border-primary"
+              className="bg-white border border-slate-300 rounded-md px-3 py-1.5 text-sm text-slate-700 focus:outline-none focus:border-primary"
             >
               <option value="">All severities</option>
               <option value="critical">Critical</option>
@@ -615,7 +615,7 @@ function IncidentsPage() {
                 value={entitySearch}
                 onChange={(e) => setEntitySearch(e.target.value)}
                 placeholder="Search entity..."
-                className="bg-white dark:bg-gray-800 border border-slate-300 dark:border-gray-600 rounded-md pl-8 pr-3 py-1.5 text-sm text-slate-700 dark:text-gray-300 focus:outline-none focus:border-primary w-48"
+                className="bg-white border border-slate-300 rounded-md pl-8 pr-3 py-1.5 text-sm text-slate-700 focus:outline-none focus:border-primary w-48"
               />
             </div>
           </div>
@@ -623,11 +623,11 @@ function IncidentsPage() {
       </div>
 
       {/* Incidents table -- desktop */}
-      <div className="hidden md:block bg-white dark:bg-surface rounded-lg border border-slate-200 dark:border-gray-700 overflow-hidden">
+      <div className="hidden md:block bg-white rounded-lg border border-slate-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="bg-slate-50 dark:bg-gray-800/50 text-left text-xs uppercase tracking-wider text-slate-500 dark:text-gray-400">
+              <tr className="bg-slate-50 text-left text-xs uppercase tracking-wider text-slate-500">
                 <th className="px-4 py-3">Pri</th>
                 <th className="px-4 py-3">Incident</th>
                 <th className="px-4 py-3">Entity</th>
@@ -639,17 +639,17 @@ function IncidentsPage() {
                 <th className="px-4 py-3">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-gray-700/50">
+            <tbody className="divide-y divide-slate-100">
               {listLoading && (
-                <tr><td colSpan={9} className="px-4 py-8 text-center text-gray-400">Loading...</td></tr>
+                <tr><td colSpan={9} className="px-4 py-8 text-center text-gray-500">Loading...</td></tr>
               )}
               {!listLoading && incidents.length === 0 && (
                 <tr><td colSpan={9} className="px-4 py-12 text-center">
                   <div className="flex flex-col items-center">
                     <Shield size={40} className="text-gray-600 mb-3" />
-                    <p className="text-slate-800 dark:text-gray-300 text-base font-semibold mb-1">No customer incidents</p>
-                    <p className="text-slate-500 dark:text-gray-500 text-sm">There are currently no incidents affecting customer services.</p>
-                    <p className="text-slate-400 dark:text-gray-600 text-xs mt-2">Create incidents from the Alerts page when anomalies are detected.</p>
+                    <p className="text-slate-800 text-base font-semibold mb-1">No customer incidents</p>
+                    <p className="text-slate-500 text-sm">There are currently no incidents affecting customer services.</p>
+                    <p className="text-slate-400 text-xs mt-2">Create incidents from the Alerts page when anomalies are detected.</p>
                   </div>
                 </td></tr>
               )}
@@ -674,13 +674,13 @@ function IncidentsPage() {
 
       {/* Incidents cards -- mobile */}
       <div className="md:hidden space-y-3">
-        {listLoading && <p className="text-center text-gray-400 py-8">Loading...</p>}
+        {listLoading && <p className="text-center text-gray-500 py-8">Loading...</p>}
         {!listLoading && incidents.length === 0 && (
-          <div className="bg-surface rounded-lg border border-gray-700 p-12 text-center">
+          <div className="bg-surface rounded-lg border border-gray-200 p-12 text-center">
             <Shield size={40} className="mx-auto text-gray-600 mb-3" />
-            <p className="text-gray-300 text-base font-semibold mb-1">No customer incidents</p>
+            <p className="text-gray-600 text-base font-semibold mb-1">No customer incidents</p>
             <p className="text-gray-500 text-sm">There are currently no incidents affecting customer services.</p>
-            <p className="text-slate-500 dark:text-gray-500 text-xs mt-2">Create incidents from the Alerts page when anomalies are detected.</p>
+            <p className="text-slate-500 text-xs mt-2">Create incidents from the Alerts page when anomalies are detected.</p>
           </div>
         )}
         {incidents.map((inc) => (
@@ -712,7 +712,7 @@ function IncidentRow({ inc, isExpanded, detail, onToggle, onStatusChange, isMuta
   return (
     <>
       <tr
-        className="hover:bg-slate-50 dark:hover:bg-gray-800/30 cursor-pointer transition-colors"
+        className="hover:bg-slate-50 cursor-pointer transition-colors"
         onClick={onToggle}
       >
         <td className="px-4 py-3">
@@ -722,18 +722,18 @@ function IncidentRow({ inc, isExpanded, detail, onToggle, onStatusChange, isMuta
           <div className="flex items-center gap-2">
             {isExpanded ? <ChevronUp size={14} className="text-gray-500" /> : <ChevronDown size={14} className="text-gray-500" />}
             <div>
-              <span className="text-slate-900 dark:text-gray-200 text-sm font-medium">{inc.title || inc.entity_name}</span>
-              <p className="text-slate-500 dark:text-gray-500 font-mono text-xs">{inc.incident_key}</p>
+              <span className="text-slate-900 text-sm font-medium">{inc.title || inc.entity_name}</span>
+              <p className="text-slate-500 font-mono text-xs">{inc.incident_key}</p>
             </div>
           </div>
         </td>
-        <td className="px-4 py-3 text-slate-700 dark:text-gray-300">{inc.entity_name}</td>
+        <td className="px-4 py-3 text-slate-700">{inc.entity_name}</td>
         <td className="px-4 py-3"><SeverityBadge severity={inc.severity} /></td>
         <td className="px-4 py-3"><StatusBadge status={inc.status} /></td>
-        <td className="px-4 py-3 text-slate-500 dark:text-gray-400 text-xs" title={formatTs(inc.started_at)}>{timeAgo(inc.started_at)}</td>
-        <td className="px-4 py-3 text-slate-500 dark:text-gray-400 text-xs">{liveDuration(inc.started_at, inc.resolved_at)}</td>
+        <td className="px-4 py-3 text-slate-500 text-xs" title={formatTs(inc.started_at)}>{timeAgo(inc.started_at)}</td>
+        <td className="px-4 py-3 text-slate-500 text-xs">{liveDuration(inc.started_at, inc.resolved_at)}</td>
         <td className="px-4 py-3">
-          <span className="inline-flex items-center gap-1 text-slate-700 dark:text-gray-300">
+          <span className="inline-flex items-center gap-1 text-slate-700">
             <Bell size={12} className="text-gray-500" />{inc.alert_count}
           </span>
         </td>
@@ -764,9 +764,9 @@ function IncidentRow({ inc, isExpanded, detail, onToggle, onStatusChange, isMuta
       {/* Expanded detail */}
       {isExpanded && (
         <tr>
-          <td colSpan={9} className="px-4 py-4 bg-slate-50 dark:bg-gray-800/20 border-t border-slate-200 dark:border-gray-700/50">
+          <td colSpan={9} className="px-4 py-4 bg-slate-50 border-t border-slate-200">
             {!detail ? (
-              <p className="text-sm text-gray-400">Loading alert events...</p>
+              <p className="text-sm text-gray-500">Loading alert events...</p>
             ) : (
               <IncidentDetailPanel detail={detail} />
             )}
@@ -939,7 +939,7 @@ function IncidentDetailPanel({ detail }: { detail: IncidentDetail }) {
     comment_added:         { color: 'text-purple-400', label: 'Comment added' },
     incident_resolved:     { color: 'text-green-400',  label: 'Incident resolved' },
     tag_added:             { color: 'text-cyan-400',   label: 'Tag added' },
-    tag_removed:           { color: 'text-gray-400',   label: 'Tag removed' },
+    tag_removed:           { color: 'text-gray-500',   label: 'Tag removed' },
     status_changed:        { color: 'text-blue-400',   label: 'Status changed' },
     ai_analysis:           { color: 'text-purple-400', label: 'AI analysis' },
     ai_regenerated:        { color: 'text-purple-400', label: 'AI regenerated' },
@@ -949,8 +949,8 @@ function IncidentDetailPanel({ detail }: { detail: IncidentDetail }) {
   return (
     <div className="space-y-3">
       {/* Header info */}
-      <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-gray-400 flex-wrap">
-        <span>ID: <span className="font-mono text-slate-700 dark:text-gray-300">{inc.id.slice(0, 8)}</span></span>
+      <div className="flex items-center gap-3 text-xs text-slate-500 flex-wrap">
+        <span>ID: <span className="font-mono text-slate-700">{inc.id.slice(0, 8)}</span></span>
         <span>|</span>
         <span>Created: {formatTs(inc.created_at)}</span>
         {inc.resolved_at && (
@@ -974,7 +974,7 @@ function IncidentDetailPanel({ detail }: { detail: IncidentDetail }) {
       <div className="flex items-center gap-2 flex-wrap">
         <Tag size={14} className="text-gray-500" />
         {currentTags.map((tag) => (
-          <span key={tag} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-cyan-50 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-400 border border-cyan-200 dark:border-cyan-800/50">
+          <span key={tag} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-cyan-50 text-cyan-700 border border-cyan-200">
             {tag}
             <button onClick={() => removeTag(tag)} className="hover:text-red-400 transition-colors"><X size={10} /></button>
           </span>
@@ -986,14 +986,14 @@ function IncidentDetailPanel({ detail }: { detail: IncidentDetail }) {
             onChange={(e) => setNewTag(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addTag() } }}
             placeholder="Add tag..."
-            className="bg-white dark:bg-gray-800/50 border border-slate-200 dark:border-gray-700 rounded px-2 py-0.5 text-xs text-slate-700 dark:text-gray-300 w-24 focus:outline-none focus:border-cyan-500"
+            className="bg-white border border-slate-200 rounded px-2 py-0.5 text-xs text-slate-700 w-24 focus:outline-none focus:border-cyan-500"
           />
           <button onClick={addTag} className="text-gray-500 hover:text-cyan-400"><Plus size={14} /></button>
         </div>
       </div>
 
       {/* Tab bar */}
-      <div className="flex gap-1 border-b border-slate-200 dark:border-gray-700 overflow-x-auto">
+      <div className="flex gap-1 border-b border-slate-200 overflow-x-auto">
         {([
           { key: 'summary' as const, label: 'AI Summary', icon: Brain },
           { key: 'alerts' as const, label: `Alerts (${events.length})`, icon: Bell },
@@ -1009,7 +1009,7 @@ function IncidentDetailPanel({ detail }: { detail: IncidentDetail }) {
             className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium border-b-2 transition-colors whitespace-nowrap ${
               activeTab === key
                 ? 'border-blue-500 text-blue-400'
-                : 'border-transparent text-slate-500 dark:text-gray-500 hover:text-slate-800 dark:hover:text-gray-300'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
             }`}
           >
             <TabIcon size={12} />
@@ -1023,9 +1023,9 @@ function IncidentDetailPanel({ detail }: { detail: IncidentDetail }) {
         <div className="space-y-4">
           {/* AI Summary */}
           {inc.summary ? (
-            <div className="rounded-lg border border-purple-200 dark:border-purple-500/20 bg-purple-50 dark:bg-purple-500/5 p-4">
+            <div className="rounded-lg border border-purple-200 bg-purple-50 p-4">
               <div className="flex items-center justify-between mb-3">
-                <h4 className="text-sm font-semibold text-purple-700 dark:text-purple-300 flex items-center gap-2">
+                <h4 className="text-sm font-semibold text-purple-700 flex items-center gap-2">
                   <Brain size={14} className="text-purple-400" />
                   AI Summary
                 </h4>
@@ -1042,9 +1042,9 @@ function IncidentDetailPanel({ detail }: { detail: IncidentDetail }) {
               <SimpleMarkdown text={inc.summary} />
             </div>
           ) : (
-            <div className="rounded-lg border border-slate-200 dark:border-gray-700/50 bg-slate-50 dark:bg-gray-800/20 p-4 text-center">
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-center">
               <Brain size={24} className="mx-auto text-gray-600 mb-2" />
-              <p className="text-sm text-slate-500 dark:text-gray-500">No AI summary available</p>
+              <p className="text-sm text-slate-500">No AI summary available</p>
               <button
                 onClick={handleRegenerate}
                 disabled={regenerating}
@@ -1058,15 +1058,15 @@ function IncidentDetailPanel({ detail }: { detail: IncidentDetail }) {
 
           {/* Investigation Hints */}
           {hints.length > 0 && (
-            <div className="rounded-lg border border-amber-200 dark:border-amber-500/20 bg-amber-50 dark:bg-amber-500/5 p-4">
-              <h4 className="text-sm font-semibold text-amber-700 dark:text-amber-300 flex items-center gap-2 mb-3">
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+              <h4 className="text-sm font-semibold text-amber-700 flex items-center gap-2 mb-3">
                 <Lightbulb size={14} className="text-amber-400" />
                 Investigation Hints
               </h4>
               <ul className="space-y-2">
                 {hints.map((hint, i) => (
-                  <li key={i} className="flex items-start gap-2 text-sm text-slate-700 dark:text-gray-300">
-                    <span className="text-amber-600 dark:text-amber-500 mt-0.5 flex-shrink-0">{i + 1}.</span>
+                  <li key={i} className="flex items-start gap-2 text-sm text-slate-700">
+                    <span className="text-amber-600 mt-0.5 flex-shrink-0">{i + 1}.</span>
                     <span className="leading-relaxed">{hint}</span>
                   </li>
                 ))}
@@ -1076,8 +1076,8 @@ function IncidentDetailPanel({ detail }: { detail: IncidentDetail }) {
 
           {/* Postmortem (only when resolved) */}
           {inc.postmortem && (
-            <div className="rounded-lg border border-green-200 dark:border-green-500/20 bg-green-50 dark:bg-green-500/5 p-4">
-              <h4 className="text-sm font-semibold text-green-700 dark:text-green-300 flex items-center gap-2 mb-3">
+            <div className="rounded-lg border border-green-200 bg-green-50 p-4">
+              <h4 className="text-sm font-semibold text-green-700 flex items-center gap-2 mb-3">
                 <BookOpen size={14} className="text-green-400" />
                 Postmortem
               </h4>
@@ -1087,21 +1087,21 @@ function IncidentDetailPanel({ detail }: { detail: IncidentDetail }) {
 
           {/* Quick info cards */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            <div className="bg-slate-50 dark:bg-gray-800/40 rounded-lg border border-slate-200 dark:border-gray-700/30 p-3 text-center">
-              <p className="text-xs text-slate-500 dark:text-gray-500 mb-1">Severity</p>
+            <div className="bg-slate-50 rounded-lg border border-slate-200 p-3 text-center">
+              <p className="text-xs text-slate-500 mb-1">Severity</p>
               <SeverityBadge severity={inc.severity} />
             </div>
-            <div className="bg-gray-800/40 rounded-lg border border-gray-700/30 p-3 text-center">
-              <p className="text-xs text-slate-500 dark:text-gray-500 mb-1">Status</p>
+            <div className="bg-gray-50/40 rounded-lg border border-gray-200/30 p-3 text-center">
+              <p className="text-xs text-slate-500 mb-1">Status</p>
               <StatusBadge status={inc.status} />
             </div>
-            <div className="bg-gray-800/40 rounded-lg border border-gray-700/30 p-3 text-center">
-              <p className="text-xs text-slate-500 dark:text-gray-500 mb-1">Alerts</p>
-              <p className="text-lg font-bold text-slate-900 dark:text-gray-200">{events.length}</p>
+            <div className="bg-gray-50/40 rounded-lg border border-gray-200/30 p-3 text-center">
+              <p className="text-xs text-slate-500 mb-1">Alerts</p>
+              <p className="text-lg font-bold text-slate-900">{events.length}</p>
             </div>
-            <div className="bg-gray-800/40 rounded-lg border border-gray-700/30 p-3 text-center">
-              <p className="text-xs text-slate-500 dark:text-gray-500 mb-1">Duration</p>
-              <p className="text-sm font-medium text-slate-800 dark:text-gray-200">{liveDuration(inc.started_at, inc.resolved_at)}</p>
+            <div className="bg-gray-50/40 rounded-lg border border-gray-200/30 p-3 text-center">
+              <p className="text-xs text-slate-500 mb-1">Duration</p>
+              <p className="text-sm font-medium text-slate-800">{liveDuration(inc.started_at, inc.resolved_at)}</p>
             </div>
           </div>
         </div>
@@ -1113,10 +1113,10 @@ function IncidentDetailPanel({ detail }: { detail: IncidentDetail }) {
           {events.length === 0 ? (
             <p className="text-sm text-gray-500 italic">No alert events linked yet</p>
           ) : (
-            <div className="overflow-x-auto rounded-md border border-gray-700/50">
+            <div className="overflow-x-auto rounded-md border border-gray-200/50">
               <table className="w-full text-xs">
                 <thead>
-                  <tr className="bg-slate-50 dark:bg-gray-800/30 text-slate-500 dark:text-gray-400 uppercase tracking-wider text-left">
+                  <tr className="bg-slate-50 text-slate-500 uppercase tracking-wider text-left">
                     <th className="px-3 py-2">Alert</th>
                     <th className="px-3 py-2">Severity</th>
                     <th className="px-3 py-2">Status</th>
@@ -1126,16 +1126,16 @@ function IncidentDetailPanel({ detail }: { detail: IncidentDetail }) {
                     <th className="px-3 py-2">Summary</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-gray-700/30">
+                <tbody className="divide-y divide-slate-100">
                   {events.map((ev) => (
-                    <tr key={ev.id} className="hover:bg-slate-50 dark:hover:bg-gray-800/20">
-                      <td className="px-3 py-2 text-slate-800 dark:text-gray-300 font-medium">{ev.alert_name}</td>
+                    <tr key={ev.id} className="hover:bg-slate-50">
+                      <td className="px-3 py-2 text-slate-800 font-medium">{ev.alert_name}</td>
                       <td className="px-3 py-2"><SeverityBadge severity={ev.severity} /></td>
                       <td className="px-3 py-2"><AlertStatusBadge status={ev.status} /></td>
-                      <td className="px-3 py-2 text-slate-500 dark:text-gray-400" title={formatTs(ev.started_at)}>{timeAgo(ev.started_at)}</td>
-                      <td className="px-3 py-2 text-slate-500 dark:text-gray-400">{ev.ended_at ? timeAgo(ev.ended_at) : '\u2014'}</td>
-                      <td className="px-3 py-2 text-slate-500 dark:text-gray-400">{formatDuration(ev.duration_seconds)}</td>
-                      <td className="px-3 py-2 text-slate-500 dark:text-gray-400 max-w-xs truncate">{ev.summary || '\u2014'}</td>
+                      <td className="px-3 py-2 text-slate-500" title={formatTs(ev.started_at)}>{timeAgo(ev.started_at)}</td>
+                      <td className="px-3 py-2 text-slate-500">{ev.ended_at ? timeAgo(ev.ended_at) : '\u2014'}</td>
+                      <td className="px-3 py-2 text-slate-500">{formatDuration(ev.duration_seconds)}</td>
+                      <td className="px-3 py-2 text-slate-500 max-w-xs truncate">{ev.summary || '\u2014'}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -1152,9 +1152,9 @@ function IncidentDetailPanel({ detail }: { detail: IncidentDetail }) {
             <p className="text-sm text-gray-500 italic py-2">No timeline events</p>
           ) : (
             <div className="relative pl-4">
-              <div className="absolute left-[7px] top-2 bottom-2 w-px bg-gray-700" />
+              <div className="absolute left-[7px] top-2 bottom-2 w-px bg-gray-100" />
               {timeline.map((evt) => {
-                const cfg = eventTypeIcon[evt.event_type] || { color: 'text-gray-400', label: evt.event_type }
+                const cfg = eventTypeIcon[evt.event_type] || { color: 'text-gray-500', label: evt.event_type }
                 const ts = evt.created_at ? new Date(evt.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''
                 return (
                   <div key={evt.id} className="relative flex items-start gap-3 py-2">
@@ -1162,10 +1162,10 @@ function IncidentDetailPanel({ detail }: { detail: IncidentDetail }) {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <span className={`text-xs font-medium ${cfg.color}`}>{cfg.label}</span>
-                        <span className="text-xs text-slate-500 dark:text-gray-500">{ts}</span>
-                        {evt.created_by && <span className="text-xs text-slate-500 dark:text-gray-500">by {evt.created_by}</span>}
+                        <span className="text-xs text-slate-500">{ts}</span>
+                        {evt.created_by && <span className="text-xs text-slate-500">by {evt.created_by}</span>}
                       </div>
-                      {evt.description && <p className="text-xs text-slate-600 dark:text-gray-400 mt-0.5">{evt.description}</p>}
+                      {evt.description && <p className="text-xs text-slate-600 mt-0.5">{evt.description}</p>}
                     </div>
                   </div>
                 )
@@ -1182,12 +1182,12 @@ function IncidentDetailPanel({ detail }: { detail: IncidentDetail }) {
             <p className="text-sm text-gray-500 italic py-2">No comments yet</p>
           )}
           {comments.map((c) => (
-            <div key={c.id} className="bg-slate-50 dark:bg-gray-800/40 rounded-lg p-3 border border-slate-200 dark:border-gray-700/30">
+            <div key={c.id} className="bg-slate-50 rounded-lg p-3 border border-slate-200">
               <div className="flex items-center gap-2 mb-1.5">
-                <span className="text-xs font-medium text-blue-600 dark:text-blue-400">{c.author}</span>
-                <span className="text-xs text-slate-400 dark:text-gray-600">{c.created_at ? new Date(c.created_at).toLocaleString() : ''}</span>
+                <span className="text-xs font-medium text-blue-600">{c.author}</span>
+                <span className="text-xs text-slate-400">{c.created_at ? new Date(c.created_at).toLocaleString() : ''}</span>
               </div>
-              <p className="text-sm text-slate-700 dark:text-gray-300 whitespace-pre-wrap">{c.comment}</p>
+              <p className="text-sm text-slate-700 whitespace-pre-wrap">{c.comment}</p>
             </div>
           ))}
 
@@ -1197,7 +1197,7 @@ function IncidentDetailPanel({ detail }: { detail: IncidentDetail }) {
               value={newComment}
               onChange={(e) => setNewComment(e.target.value)}
               placeholder="Add a comment..."
-              className="flex-1 bg-white dark:bg-gray-800/50 border border-slate-300 dark:border-gray-700 rounded-lg px-3 py-2 text-sm text-slate-700 dark:text-gray-300 focus:outline-none focus:border-blue-500"
+              className="flex-1 bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-700 focus:outline-none focus:border-blue-500"
             />
             <button
               type="submit"
@@ -1214,7 +1214,7 @@ function IncidentDetailPanel({ detail }: { detail: IncidentDetail }) {
       {activeTab === 'root-cause' && (
         <div className="space-y-3">
           {rootCauseLoading ? (
-            <div className="flex items-center gap-2 text-sm text-gray-400 py-4 justify-center">
+            <div className="flex items-center gap-2 text-sm text-gray-500 py-4 justify-center">
               <Loader2 size={14} className="animate-spin" /> Analyzing root cause...
             </div>
           ) : rootCauseData ? (
@@ -1223,28 +1223,28 @@ function IncidentDetailPanel({ detail }: { detail: IncidentDetail }) {
                 <h4 className="text-sm font-semibold text-orange-300 mb-2 flex items-center gap-2">
                   <Crosshair size={14} /> Root Cause Analysis
                 </h4>
-                <p className="text-sm text-gray-300 leading-relaxed">
+                <p className="text-sm text-gray-600 leading-relaxed">
                   {rootCauseData.likely_root_cause?.description || 'No root cause determined yet.'}
                 </p>
                 {rootCauseData.likely_root_cause?.entity && (
-                  <div className="flex items-center gap-3 mt-2 text-xs text-slate-500 dark:text-gray-400">
-                    <span>Entity: <span className="text-gray-300">{rootCauseData.likely_root_cause.entity}</span></span>
+                  <div className="flex items-center gap-3 mt-2 text-xs text-slate-500">
+                    <span>Entity: <span className="text-gray-600">{rootCauseData.likely_root_cause.entity}</span></span>
                     {rootCauseData.likely_root_cause.metric && (
-                      <span>Metric: <span className="text-gray-300">{rootCauseData.likely_root_cause.metric}</span></span>
+                      <span>Metric: <span className="text-gray-600">{rootCauseData.likely_root_cause.metric}</span></span>
                     )}
-                    <span>Confidence: <span className="text-gray-300">{rootCauseData.likely_root_cause.confidence}</span></span>
+                    <span>Confidence: <span className="text-gray-600">{rootCauseData.likely_root_cause.confidence}</span></span>
                   </div>
                 )}
               </div>
 
               {rootCauseData.evidence && rootCauseData.evidence.length > 0 && (
                 <div>
-                  <h5 className="text-xs font-semibold text-gray-400 uppercase mb-2">Evidence ({rootCauseData.evidence.length})</h5>
+                  <h5 className="text-xs font-semibold text-gray-500 uppercase mb-2">Evidence ({rootCauseData.evidence.length})</h5>
                   <div className="space-y-2">
                     {rootCauseData.evidence.map((ev, i) => (
-                      <div key={i} className="bg-slate-50 dark:bg-gray-800/40 rounded p-2 border border-slate-200 dark:border-gray-700/30 text-sm">
+                      <div key={i} className="bg-slate-50 rounded p-2 border border-slate-200 text-sm">
                         <span className="text-xs px-1.5 py-0.5 rounded bg-orange-500/10 text-orange-400 mr-2">{ev.type}</span>
-                        <span className="text-slate-700 dark:text-gray-300">{ev.detail || ev.metric || 'Signal detected'}</span>
+                        <span className="text-slate-700">{ev.detail || ev.metric || 'Signal detected'}</span>
                         {ev.value !== undefined && (
                           <span className="text-xs text-gray-500 ml-2">
                             (value: {ev.value}{ev.baseline !== undefined ? `, baseline: ${ev.baseline}` : ''})
@@ -1258,14 +1258,14 @@ function IncidentDetailPanel({ detail }: { detail: IncidentDetail }) {
 
               <div className="grid grid-cols-4 gap-2">
                 {Object.entries(rootCauseData.signal_counts || {}).map(([key, val]) => (
-                  <div key={key} className="bg-slate-50 dark:bg-gray-800/40 rounded p-2 border border-slate-200 dark:border-gray-700/30 text-center">
-                    <p className="text-lg font-bold text-slate-900 dark:text-gray-200">{val as number}</p>
-                    <p className="text-xs text-slate-500 dark:text-gray-500">{key.replace(/_/g, ' ')}</p>
+                  <div key={key} className="bg-slate-50 rounded p-2 border border-slate-200 text-center">
+                    <p className="text-lg font-bold text-slate-900">{val as number}</p>
+                    <p className="text-xs text-slate-500">{key.replace(/_/g, ' ')}</p>
                   </div>
                 ))}
               </div>
 
-              <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-gray-500 pt-2 border-t border-slate-200 dark:border-gray-700/30">
+              <div className="flex items-center gap-2 text-xs text-slate-500 pt-2 border-t border-slate-200">
                 <span>Score: {rootCauseData.score.toFixed(2)}</span>
                 <span>{'\u00b7'}</span>
                 <span>Analyzed: {new Date(rootCauseData.analyzed_at).toLocaleString()}</span>
@@ -1299,16 +1299,16 @@ function IncidentDetailPanel({ detail }: { detail: IncidentDetail }) {
               isRegenerating={decisionMutation.isPending}
             />
           ) : (
-            <div className="rounded-lg border border-slate-200 dark:border-gray-700/30 bg-slate-50 dark:bg-gray-800/20 p-6 text-center">
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-6 text-center">
               <Shield size={28} className="mx-auto text-slate-400 mb-3" />
-              <p className="text-sm font-medium text-slate-700 dark:text-gray-300 mb-1">AI Triage Decision</p>
-              <p className="text-xs text-slate-500 dark:text-gray-500 mb-4">
+              <p className="text-sm font-medium text-slate-700 mb-1">AI Triage Decision</p>
+              <p className="text-xs text-slate-500 mb-4">
                 Classify this incident: ignore, monitor, notify, or escalate — with evidence and recommended actions.
               </p>
               <button
                 onClick={() => decisionMutation.mutate()}
                 disabled={decisionMutation.isPending}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-700 dark:bg-gray-700 text-white text-sm font-medium hover:bg-slate-800 dark:hover:bg-gray-600 disabled:opacity-50 transition-colors"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-100 text-gray-900 text-sm font-medium hover:bg-gray-50 disabled:opacity-50 transition-colors"
               >
                 {decisionMutation.isPending
                   ? <Loader2 size={14} className="animate-spin" />
@@ -1333,10 +1333,10 @@ function IncidentDetailPanel({ detail }: { detail: IncidentDetail }) {
               isRegenerating={briefingMutation.isPending}
             />
           ) : (
-            <div className="rounded-lg border border-indigo-200 dark:border-indigo-500/20 bg-indigo-50 dark:bg-indigo-500/5 p-6 text-center">
+            <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-6 text-center">
               <Zap size={28} className="mx-auto text-indigo-400 mb-3" />
-              <p className="text-sm font-medium text-slate-700 dark:text-gray-300 mb-1">AI Incident Briefing</p>
-              <p className="text-xs text-slate-500 dark:text-gray-500 mb-4">
+              <p className="text-sm font-medium text-slate-700 mb-1">AI Incident Briefing</p>
+              <p className="text-xs text-slate-500 mb-4">
                 Generate a structured 10-point operational briefing based on real incident data.
               </p>
               <button
@@ -1373,34 +1373,34 @@ function AiBriefingPanel({
 }) {
   const confBadge =
     briefing.confidence === 'high'
-      ? 'text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-500/10 border-green-200 dark:border-green-500/20'
+      ? 'text-green-700 bg-green-50 border-green-200'
       : briefing.confidence === 'medium'
-      ? 'text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/20'
-      : 'text-slate-600 dark:text-gray-400 bg-slate-100 dark:bg-gray-700/30 border-slate-200 dark:border-gray-600/30'
+      ? 'text-amber-700 bg-amber-50 border-amber-200'
+      : 'text-slate-600 bg-slate-100 border-slate-200'
 
   const sevColor = (sev: string) =>
     sev === 'critical'
-      ? 'bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-400'
+      ? 'bg-red-100 text-red-700'
       : sev === 'warning'
-      ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400'
-      : 'bg-slate-100 text-slate-600 dark:bg-gray-700/40 dark:text-gray-400'
+      ? 'bg-amber-100 text-amber-700'
+      : 'bg-slate-100 text-slate-600'
 
   const statusColor = (st: string) =>
     st === 'firing' || st === 'escalated'
-      ? 'text-red-600 dark:text-red-400'
+      ? 'text-red-600'
       : st === 'resolved'
-      ? 'text-green-600 dark:text-green-400'
-      : 'text-slate-500 dark:text-gray-500'
+      ? 'text-green-600'
+      : 'text-slate-500'
 
   return (
     <div className="space-y-0.5">
 
       {/* ── Top strip: Status Snapshot ── */}
-      <div className="rounded-lg bg-slate-100 dark:bg-gray-800/60 border border-slate-200 dark:border-gray-700/50 px-3 py-2 flex flex-wrap gap-x-4 gap-y-1 items-center">
+      <div className="rounded-lg bg-slate-100 border border-slate-200 px-3 py-2 flex flex-wrap gap-x-4 gap-y-1 items-center">
         {(briefing.status_snapshot || '').split('  ·  ').map((part, i) => (
-          <span key={i} className="text-xs font-medium text-slate-600 dark:text-gray-300">{part}</span>
+          <span key={i} className="text-xs font-medium text-slate-600">{part}</span>
         ))}
-        <span className="ml-auto text-xs text-slate-400 dark:text-gray-500">
+        <span className="ml-auto text-xs text-slate-400">
           {new Date(briefing.generated_at).toLocaleString()}
         </span>
       </div>
@@ -1409,16 +1409,16 @@ function AiBriefingPanel({
       <div className="flex items-center justify-between pt-2 pb-1 flex-wrap gap-2">
         <div className="flex items-center gap-2">
           <Zap size={13} className="text-indigo-500" />
-          <span className="text-sm font-semibold text-slate-900 dark:text-white">AI Incident Briefing</span>
+          <span className="text-sm font-semibold text-slate-900">AI Incident Briefing</span>
           <span className={`inline-flex items-center px-2 py-0.5 rounded border text-xs font-medium ${confBadge}`}>
             {briefing.confidence} confidence
           </span>
-          <span className="text-xs text-slate-400 dark:text-gray-500">{briefing.engine}</span>
+          <span className="text-xs text-slate-400">{briefing.engine}</span>
         </div>
         <button
           onClick={onRegenerate}
           disabled={isRegenerating}
-          className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 border border-indigo-200 dark:border-indigo-500/20 transition-colors disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium bg-indigo-50 text-indigo-600 hover:bg-indigo-100 border border-indigo-200 transition-colors disabled:opacity-50"
         >
           <RefreshCw size={10} className={isRegenerating ? 'animate-spin' : ''} />
           {isRegenerating ? 'Regenerating...' : 'Regenerate'}
@@ -1430,12 +1430,12 @@ function AiBriefingPanel({
 
         {/* § 1 Executive Summary */}
         <BriefingSection index={1} label="Executive Summary">
-          <p className="text-sm text-slate-700 dark:text-gray-300 leading-relaxed">{briefing.executive_summary}</p>
+          <p className="text-sm text-slate-700 leading-relaxed">{briefing.executive_summary}</p>
         </BriefingSection>
 
         {/* § 2 Likely Cause */}
         <BriefingSection index={2} label="Likely Cause" accent="amber">
-          <p className="text-sm text-slate-700 dark:text-gray-300 leading-relaxed">{briefing.likely_cause || briefing.probable_cause || '—'}</p>
+          <p className="text-sm text-slate-700 leading-relaxed">{briefing.likely_cause || briefing.probable_cause || '—'}</p>
         </BriefingSection>
 
         {/* § 3 Operational Impact */}
@@ -1443,8 +1443,8 @@ function AiBriefingPanel({
           {(briefing.operational_impact || '').split('\n').map((line, i) => (
             <p key={i} className={`text-sm leading-relaxed ${
               i === 0
-                ? 'font-semibold text-slate-800 dark:text-gray-200 mb-0.5'
-                : 'text-slate-600 dark:text-gray-400'
+                ? 'font-semibold text-slate-800 mb-0.5'
+                : 'text-slate-600'
             }`}>{line}</p>
           ))}
         </BriefingSection>
@@ -1453,8 +1453,8 @@ function AiBriefingPanel({
         <BriefingSection index={4} label="Evidence Used" accent="blue">
           <ul className="space-y-1">
             {(briefing.evidence || []).map((e, i) => (
-              <li key={i} className="flex items-start gap-2 text-sm text-slate-700 dark:text-gray-300">
-                <span className="text-blue-400 dark:text-blue-500 flex-shrink-0 mt-0.5">▸</span>
+              <li key={i} className="flex items-start gap-2 text-sm text-slate-700">
+                <span className="text-blue-400 flex-shrink-0 mt-0.5">▸</span>
                 <span>{e}</span>
               </li>
             ))}
@@ -1465,8 +1465,8 @@ function AiBriefingPanel({
         <BriefingSection index={5} label="Recommended Actions" accent="green">
           <ol className="space-y-2">
             {(briefing.recommended_actions || []).map((a, i) => (
-              <li key={i} className="flex items-start gap-2 text-sm text-slate-700 dark:text-gray-300">
-                <span className="flex-shrink-0 w-5 h-5 rounded-full bg-green-100 dark:bg-green-500/15 text-green-700 dark:text-green-400 text-xs font-bold flex items-center justify-center mt-0.5">{i + 1}</span>
+              <li key={i} className="flex items-start gap-2 text-sm text-slate-700">
+                <span className="flex-shrink-0 w-5 h-5 rounded-full bg-green-100 text-green-700 text-xs font-bold flex items-center justify-center mt-0.5">{i + 1}</span>
                 <span className="leading-relaxed">{a}</span>
               </li>
             ))}
@@ -1480,7 +1480,7 @@ function AiBriefingPanel({
               {(briefing.related_alerts || []).slice(0, 6).map((a, i) => (
                 <div key={i} className="flex items-center gap-2 text-xs">
                   <span className={`px-1.5 py-0.5 rounded font-semibold ${sevColor(a.severity)}`}>{a.severity}</span>
-                  <span className="text-slate-700 dark:text-gray-300 font-mono truncate flex-1">{a.alert_name}</span>
+                  <span className="text-slate-700 font-mono truncate flex-1">{a.alert_name}</span>
                   <span className={`font-medium ${statusColor(a.status)}`}>{a.status}</span>
                 </div>
               ))}
@@ -1494,13 +1494,13 @@ function AiBriefingPanel({
             <div className="space-y-1.5">
               {(briefing.related_anomalies || []).map((a, i) => (
                 <div key={i} className="flex items-center gap-2 text-xs">
-                  <span className="text-indigo-600 dark:text-indigo-400 font-medium">{a.service}</span>
-                  {a.severity && <span className="text-slate-500 dark:text-gray-500">{a.severity}</span>}
+                  <span className="text-indigo-600 font-medium">{a.service}</span>
+                  {a.severity && <span className="text-slate-500">{a.severity}</span>}
                   {a.predicted_risk && (
-                    <span className="text-slate-400 dark:text-gray-500">risk: {a.predicted_risk}</span>
+                    <span className="text-slate-400">risk: {a.predicted_risk}</span>
                   )}
                   {a.score != null && (
-                    <span className="ml-auto text-slate-400 dark:text-gray-500">score: {a.score}</span>
+                    <span className="ml-auto text-slate-400">score: {a.score}</span>
                   )}
                 </div>
               ))}
@@ -1510,7 +1510,7 @@ function AiBriefingPanel({
 
         {/* § 8 Confidence Explanation */}
         <BriefingSection index={8} label="Confidence">
-          <p className="text-sm text-slate-600 dark:text-gray-400 leading-relaxed">{briefing.confidence_explanation || `Confidence: ${briefing.confidence}`}</p>
+          <p className="text-sm text-slate-600 leading-relaxed">{briefing.confidence_explanation || `Confidence: ${briefing.confidence}`}</p>
         </BriefingSection>
 
       </div>
@@ -1521,23 +1521,23 @@ function AiBriefingPanel({
 /* -- AiDecisionPanel component (Phase 5.2) -- */
 
 const DECISION_COLORS: Record<string, string> = {
-  ignore:   'bg-slate-100 text-slate-600 dark:bg-gray-700/40 dark:text-gray-400 border-slate-200 dark:border-gray-600',
-  monitor:  'bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400 border-blue-200 dark:border-blue-500/30',
-  notify:   'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400 border-amber-200 dark:border-amber-500/30',
-  escalate: 'bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-400 border-red-200 dark:border-red-500/30',
+  ignore:   'bg-slate-100 text-slate-600 border-slate-200',
+  monitor:  'bg-blue-50 text-blue-700 border-blue-200',
+  notify:   'bg-amber-50 text-amber-700 border-amber-200',
+  escalate: 'bg-red-50 text-red-700 border-red-200',
 }
 
 const RISK_COLORS: Record<string, string> = {
-  low:      'text-green-600 dark:text-green-400',
-  medium:   'text-amber-600 dark:text-amber-400',
-  high:     'text-orange-600 dark:text-orange-400',
-  critical: 'text-red-600 dark:text-red-400',
+  low:      'text-green-600',
+  medium:   'text-amber-600',
+  high:     'text-orange-600',
+  critical: 'text-red-600',
 }
 
 const CONFIDENCE_COLORS: Record<string, string> = {
-  low:    'text-slate-400 dark:text-gray-500',
-  medium: 'text-amber-500 dark:text-amber-400',
-  high:   'text-green-500 dark:text-green-400',
+  low:    'text-slate-400',
+  medium: 'text-amber-500',
+  high:   'text-green-500',
 }
 
 function AiDecisionPanel({
@@ -1563,17 +1563,17 @@ function AiDecisionPanel({
             {decision.decision}
           </span>
           <span className={`text-xs font-medium ${riskColor}`}>Risk: {decision.risk_level}</span>
-          <span className="text-xs text-slate-300 dark:text-gray-600">·</span>
+          <span className="text-xs text-slate-300">·</span>
           <span className={`text-xs font-medium ${confColor}`}>{decision.confidence} confidence</span>
-          <span className="text-xs text-slate-300 dark:text-gray-600">·</span>
-          <span className="text-xs text-slate-500 dark:text-gray-500">
-            Customer impact: <span className="font-medium text-slate-700 dark:text-gray-300">{decision.customer_impact}</span>
+          <span className="text-xs text-slate-300">·</span>
+          <span className="text-xs text-slate-500">
+            Customer impact: <span className="font-medium text-slate-700">{decision.customer_impact}</span>
           </span>
         </div>
         <button
           onClick={onRegenerate}
           disabled={isRegenerating}
-          className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-gray-700/60 text-slate-500 dark:text-gray-400 text-xs font-medium hover:bg-slate-200 dark:hover:bg-gray-600 disabled:opacity-50 transition-colors"
+          className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 text-slate-500 text-xs font-medium hover:bg-slate-200 disabled:opacity-50 transition-colors"
         >
           {isRegenerating ? <Loader2 size={11} className="animate-spin" /> : <RefreshCw size={11} />}
           Regenerate
@@ -1581,28 +1581,28 @@ function AiDecisionPanel({
       </div>
 
       {/* Summary */}
-      <div className="rounded-lg border border-slate-200 dark:border-gray-700/30 bg-slate-50/50 dark:bg-gray-800/20 p-4">
-        <p className="text-xs font-semibold text-slate-400 dark:text-gray-500 uppercase tracking-wide mb-1">Summary</p>
-        <p className="text-sm text-slate-700 dark:text-gray-300">{decision.summary}</p>
+      <div className="rounded-lg border border-slate-200 bg-slate-50/50 p-4">
+        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">Summary</p>
+        <p className="text-sm text-slate-700">{decision.summary}</p>
       </div>
 
       {/* Reason */}
       <div className="flex gap-3">
-        <div className="w-0.5 rounded-full flex-shrink-0 mt-1 bg-slate-300 dark:bg-gray-600" style={{ minHeight: '1.5rem' }} />
+        <div className="w-0.5 rounded-full flex-shrink-0 mt-1 bg-slate-300" style={{ minHeight: '1.5rem' }} />
         <div className="flex-1 min-w-0">
-          <p className="text-xs font-semibold text-slate-400 dark:text-gray-500 uppercase tracking-wide mb-1">01  Why this decision</p>
-          <p className="text-sm text-slate-700 dark:text-gray-300">{decision.reason}</p>
+          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">01  Why this decision</p>
+          <p className="text-sm text-slate-700">{decision.reason}</p>
         </div>
       </div>
 
       {/* Evidence */}
       <div className="flex gap-3">
-        <div className="w-0.5 rounded-full flex-shrink-0 mt-1 bg-blue-400 dark:bg-blue-500" style={{ minHeight: '1.5rem' }} />
+        <div className="w-0.5 rounded-full flex-shrink-0 mt-1 bg-blue-400" style={{ minHeight: '1.5rem' }} />
         <div className="flex-1 min-w-0">
-          <p className="text-xs font-semibold text-slate-400 dark:text-gray-500 uppercase tracking-wide mb-1">02  Evidence</p>
+          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">02  Evidence</p>
           <ul className="space-y-1">
             {decision.evidence.map((e, i) => (
-              <li key={i} className="flex items-start gap-1.5 text-sm text-slate-700 dark:text-gray-300">
+              <li key={i} className="flex items-start gap-1.5 text-sm text-slate-700">
                 <span className="mt-1.5 w-1 h-1 rounded-full bg-blue-400 flex-shrink-0" />
                 {e}
               </li>
@@ -1613,12 +1613,12 @@ function AiDecisionPanel({
 
       {/* Recommended actions */}
       <div className="flex gap-3">
-        <div className="w-0.5 rounded-full flex-shrink-0 mt-1 bg-green-400 dark:bg-green-500" style={{ minHeight: '1.5rem' }} />
+        <div className="w-0.5 rounded-full flex-shrink-0 mt-1 bg-green-400" style={{ minHeight: '1.5rem' }} />
         <div className="flex-1 min-w-0">
-          <p className="text-xs font-semibold text-slate-400 dark:text-gray-500 uppercase tracking-wide mb-1">03  Recommended actions</p>
+          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">03  Recommended actions</p>
           <ul className="space-y-1">
             {decision.recommended_actions.map((a, i) => (
-              <li key={i} className="flex items-start gap-1.5 text-sm text-slate-700 dark:text-gray-300">
+              <li key={i} className="flex items-start gap-1.5 text-sm text-slate-700">
                 <span className="mt-1.5 w-1 h-1 rounded-full bg-green-400 flex-shrink-0" />
                 {a}
               </li>
@@ -1629,27 +1629,27 @@ function AiDecisionPanel({
 
       {/* Noise assessment */}
       <div className="flex gap-3">
-        <div className={`w-0.5 rounded-full flex-shrink-0 mt-1 ${decision.noise_assessment.is_likely_noise ? 'bg-slate-300 dark:bg-gray-600' : 'bg-amber-400 dark:bg-amber-500'}`} style={{ minHeight: '1.5rem' }} />
+        <div className={`w-0.5 rounded-full flex-shrink-0 mt-1 ${decision.noise_assessment.is_likely_noise ? 'bg-slate-300' : 'bg-amber-400'}`} style={{ minHeight: '1.5rem' }} />
         <div className="flex-1 min-w-0">
-          <p className="text-xs font-semibold text-slate-400 dark:text-gray-500 uppercase tracking-wide mb-1">04  Noise assessment</p>
+          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">04  Noise assessment</p>
           <div className="flex items-center gap-2 mb-1">
             <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
               decision.noise_assessment.is_likely_noise
-                ? 'bg-slate-100 text-slate-500 dark:bg-gray-700 dark:text-gray-400'
-                : 'bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400'
+                ? 'bg-slate-100 text-slate-500'
+                : 'bg-amber-50 text-amber-600'
             }`}>
               {decision.noise_assessment.is_likely_noise ? 'Likely noise' : 'Operational signal'}
             </span>
             {decision.noise_assessment.recurrence_detected && (
-              <span className="text-xs bg-orange-50 text-orange-600 dark:bg-orange-500/10 dark:text-orange-400 px-2 py-0.5 rounded-full">Recurrence detected</span>
+              <span className="text-xs bg-orange-50 text-orange-600 px-2 py-0.5 rounded-full">Recurrence detected</span>
             )}
           </div>
-          <p className="text-sm text-slate-600 dark:text-gray-400">{decision.noise_assessment.noise_reason}</p>
+          <p className="text-sm text-slate-600">{decision.noise_assessment.noise_reason}</p>
         </div>
       </div>
 
       {/* Footer */}
-      <div className="border-t border-slate-200 dark:border-gray-700/30 pt-3 flex items-center gap-3 text-xs text-slate-400 dark:text-gray-500">
+      <div className="border-t border-slate-200 pt-3 flex items-center gap-3 text-xs text-slate-400">
         <span>Engine: {decision.engine}</span>
         {decision.model && <><span>·</span><span>{decision.model}</span></>}
         <span>·</span>
@@ -1673,18 +1673,18 @@ function BriefingSection({
   children: ReactNode
 }) {
   const accentLine =
-    accent === 'amber' ? 'bg-amber-400 dark:bg-amber-500'
-    : accent === 'red'   ? 'bg-red-400 dark:bg-red-500'
-    : accent === 'blue'  ? 'bg-blue-400 dark:bg-blue-500'
-    : accent === 'green' ? 'bg-green-400 dark:bg-green-500'
-    : accent === 'indigo'? 'bg-indigo-400 dark:bg-indigo-500'
-    : 'bg-slate-300 dark:bg-gray-600'
+    accent === 'amber' ? 'bg-amber-400'
+    : accent === 'red'   ? 'bg-red-400'
+    : accent === 'blue'  ? 'bg-blue-400'
+    : accent === 'green' ? 'bg-green-400'
+    : accent === 'indigo'? 'bg-indigo-400'
+    : 'bg-slate-300'
 
   return (
     <div className="flex gap-3">
       <div className={`w-0.5 rounded-full flex-shrink-0 mt-1 ${accentLine}`} style={{ minHeight: '1.5rem' }} />
       <div className="flex-1 min-w-0">
-        <p className="text-xs font-semibold text-slate-400 dark:text-gray-500 uppercase tracking-wide mb-1">
+        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">
           {String(index).padStart(2, '0')}  {label}
         </p>
         {children}
@@ -1711,16 +1711,16 @@ function MobileIncidentCard({
   onStatusChange: (id: string, status: string) => void
 }) {
   return (
-    <div className="bg-white dark:bg-gray-800/30 rounded-lg border border-slate-200 dark:border-gray-700/30 overflow-hidden">
-      <div className="p-3 cursor-pointer active:bg-gray-800/50" onClick={onToggle}>
+    <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
+      <div className="p-3 cursor-pointer active:bg-gray-50/50" onClick={onToggle}>
         <div className="flex items-center gap-2 mb-2">
           <SeverityBadge severity={inc.severity} />
           <StatusBadge status={inc.status} />
           <span className="text-xs text-gray-500 ml-auto">{timeAgo(inc.created_at)}</span>
         </div>
-        <div className="text-sm font-medium text-slate-900 dark:text-gray-200">{inc.title || inc.entity_name}</div>
-        <div className="text-xs text-slate-500 dark:text-gray-500 mt-0.5">{inc.incident_key}</div>
-        <div className="flex items-center gap-3 mt-2 text-xs text-gray-400">
+        <div className="text-sm font-medium text-slate-900">{inc.title || inc.entity_name}</div>
+        <div className="text-xs text-slate-500 mt-0.5">{inc.incident_key}</div>
+        <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">
           <span>{inc.alert_count} alerts</span>
           <span>{liveDuration(inc.started_at, inc.resolved_at)}</span>
           {inc.status === 'open' && (
@@ -1739,9 +1739,9 @@ function MobileIncidentCard({
       </div>
 
       {isExpanded && (
-        <div className="border-t border-gray-700/30 p-3">
+        <div className="border-t border-gray-200/30 p-3">
           {detailLoading ? (
-            <div className="flex items-center gap-2 text-sm text-gray-400 py-4 justify-center">
+            <div className="flex items-center gap-2 text-sm text-gray-500 py-4 justify-center">
               <Loader2 size={14} className="animate-spin" /> Loading detail...
             </div>
           ) : detail ? (

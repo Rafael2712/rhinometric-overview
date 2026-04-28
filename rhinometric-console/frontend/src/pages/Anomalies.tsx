@@ -45,8 +45,8 @@ export function AnomaliesPage() {
   return (
     <div>
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-white mb-2">AI Anomaly Detection</h1>
-        <p className="text-gray-400">Monitor and manage detected anomalies across your infrastructure</p>
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">AI Anomaly Detection</h1>
+        <p className="text-gray-500">Monitor and manage detected anomalies across your infrastructure</p>
       </div>
 
       {/* Action Bar */}
@@ -56,13 +56,13 @@ export function AnomaliesPage() {
             <Filter size={16} />
             Filters
           </button>
-          <select className="input bg-surface border-gray-600">
+          <select className="input bg-surface border-gray-200">
             <option>All Severities</option>
             <option>High</option>
             <option>Medium</option>
             <option>Low</option>
           </select>
-          <select className="input bg-surface border-gray-600">
+          <select className="input bg-surface border-gray-200">
             <option>Last 24 hours</option>
             <option>Last 7 days</option>
             <option>Last 30 days</option>
@@ -96,28 +96,28 @@ export function AnomaliesPage() {
       <div className="card overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-surface-light">
-              <tr className="border-b border-gray-700">
-                <th className="text-left px-6 py-4 text-sm font-semibold text-gray-300">Timestamp</th>
-                <th className="text-left px-6 py-4 text-sm font-semibold text-gray-300">Metric</th>
-                <th className="text-left px-6 py-4 text-sm font-semibold text-gray-300">Service</th>
-                <th className="text-left px-6 py-4 text-sm font-semibold text-gray-300">Severity</th>
-                <th className="text-right px-6 py-4 text-sm font-semibold text-gray-300">Deviation</th>
-                <th className="text-right px-6 py-4 text-sm font-semibold text-gray-300">Baseline</th>
-                <th className="text-right px-6 py-4 text-sm font-semibold text-gray-300">Current</th>
-                <th className="text-center px-6 py-4 text-sm font-semibold text-gray-300">Actions</th>
+            <thead className="bg-gray-50">
+              <tr className="border-b border-gray-200">
+                <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">Timestamp</th>
+                <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">Metric</th>
+                <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">Service</th>
+                <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">Severity</th>
+                <th className="text-right px-6 py-4 text-sm font-semibold text-gray-600">Deviation</th>
+                <th className="text-right px-6 py-4 text-sm font-semibold text-gray-600">Baseline</th>
+                <th className="text-right px-6 py-4 text-sm font-semibold text-gray-600">Current</th>
+                <th className="text-center px-6 py-4 text-sm font-semibold text-gray-600">Actions</th>
               </tr>
             </thead>
             <tbody>
               {mockAnomalies.map((anomaly) => (
-                <tr key={anomaly.id} className="border-b border-gray-700/50 hover:bg-surface-light/30 transition-colors">
-                  <td className="px-6 py-4 text-sm text-gray-300">{anomaly.timestamp}</td>
+                <tr key={anomaly.id} className="border-b border-gray-200/50 hover:bg-gray-50/30 transition-colors">
+                  <td className="px-6 py-4 text-sm text-gray-600">{anomaly.timestamp}</td>
                   <td className="px-6 py-4">
                     <code className="text-sm text-primary bg-primary/10 px-2 py-1 rounded">
                       {anomaly.metric}
                     </code>
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-300">{anomaly.service}</td>
+                  <td className="px-6 py-4 text-sm text-gray-600">{anomaly.service}</td>
                   <td className="px-6 py-4">
                     <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
                       anomaly.severity === 'high' ? 'bg-error/20 text-error' :
@@ -133,8 +133,8 @@ export function AnomaliesPage() {
                       {anomaly.deviation}
                     </div>
                   </td>
-                  <td className="px-6 py-4 text-right text-sm text-gray-400">{anomaly.baseline}</td>
-                  <td className="px-6 py-4 text-right text-sm text-white font-medium">{anomaly.current}</td>
+                  <td className="px-6 py-4 text-right text-sm text-gray-500">{anomaly.baseline}</td>
+                  <td className="px-6 py-4 text-right text-sm text-gray-900 font-medium">{anomaly.current}</td>
                   <td className="px-6 py-4 text-center">
                     <button 
                       onClick={() => setSelectedAnomaly(anomaly)}
@@ -153,7 +153,7 @@ export function AnomaliesPage() {
         {mockAnomalies.length === 0 && (
           <div className="text-center py-16">
             <AlertTriangle className="mx-auto mb-4 text-gray-500" size={48} />
-            <p className="text-gray-400">No anomalies detected in the selected time range</p>
+            <p className="text-gray-500">No anomalies detected in the selected time range</p>
           </div>
         )}
       </div>
@@ -161,18 +161,18 @@ export function AnomaliesPage() {
       {/* Details Modal */}
       {selectedAnomaly && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-surface border border-gray-700 rounded-lg shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="bg-surface border border-gray-200 rounded-lg shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
             {/* Header */}
-            <div className="flex items-center justify-between p-6 border-b border-gray-700">
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
               <div>
-                <h2 className="text-2xl font-bold text-white mb-1">Anomaly Details</h2>
-                <p className="text-sm text-gray-400">{selectedAnomaly.timestamp}</p>
+                <h2 className="text-2xl font-bold text-gray-900 mb-1">Anomaly Details</h2>
+                <p className="text-sm text-gray-500">{selectedAnomaly.timestamp}</p>
               </div>
               <button 
                 onClick={() => setSelectedAnomaly(null)}
-                className="p-2 hover:bg-surface-light rounded-lg transition-colors"
+                className="p-2 hover:bg-gray-50 rounded-lg transition-colors"
               >
-                <X className="text-gray-400 hover:text-white" size={24} />
+                <X className="text-gray-500 hover:text-gray-900" size={24} />
               </button>
             </div>
 
@@ -180,16 +180,16 @@ export function AnomaliesPage() {
             <div className="p-6 space-y-6">
               {/* Overview */}
               <div className="grid grid-cols-2 gap-4">
-                <div className="card bg-surface-light">
-                  <p className="text-xs text-gray-400 mb-1">Metric</p>
+                <div className="card bg-gray-50">
+                  <p className="text-xs text-gray-500 mb-1">Metric</p>
                   <code className="text-lg text-primary font-mono">{selectedAnomaly.metric}</code>
                 </div>
-                <div className="card bg-surface-light">
-                  <p className="text-xs text-gray-400 mb-1">Service</p>
-                  <p className="text-lg text-white font-semibold">{selectedAnomaly.service}</p>
+                <div className="card bg-gray-50">
+                  <p className="text-xs text-gray-500 mb-1">Service</p>
+                  <p className="text-lg text-gray-900 font-semibold">{selectedAnomaly.service}</p>
                 </div>
-                <div className="card bg-surface-light">
-                  <p className="text-xs text-gray-400 mb-1">Severity</p>
+                <div className="card bg-gray-50">
+                  <p className="text-xs text-gray-500 mb-1">Severity</p>
                   <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium ${
                     selectedAnomaly.severity === 'high' ? 'bg-error/20 text-error' :
                     selectedAnomaly.severity === 'medium' ? 'bg-warning/20 text-warning' :
@@ -198,8 +198,8 @@ export function AnomaliesPage() {
                     {selectedAnomaly.severity.toUpperCase()}
                   </span>
                 </div>
-                <div className="card bg-surface-light">
-                  <p className="text-xs text-gray-400 mb-1">Deviation</p>
+                <div className="card bg-gray-50">
+                  <p className="text-xs text-gray-500 mb-1">Deviation</p>
                   <div className="flex items-center gap-2 text-error text-lg font-bold">
                     <TrendingUp size={20} />
                     {selectedAnomaly.deviation}
@@ -209,18 +209,18 @@ export function AnomaliesPage() {
 
               {/* Metrics Comparison */}
               <div className="card">
-                <h3 className="text-lg font-semibold text-white mb-4">Metrics Comparison</h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Metrics Comparison</h3>
                 <div className="space-y-3">
                   <div className="flex justify-between items-center">
-                    <span className="text-gray-400">Baseline Value</span>
-                    <span className="text-xl font-mono text-gray-300">{selectedAnomaly.baseline}</span>
+                    <span className="text-gray-500">Baseline Value</span>
+                    <span className="text-xl font-mono text-gray-600">{selectedAnomaly.baseline}</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-gray-400">Current Value</span>
-                    <span className="text-xl font-mono text-white font-bold">{selectedAnomaly.current}</span>
+                    <span className="text-gray-500">Current Value</span>
+                    <span className="text-xl font-mono text-gray-900 font-bold">{selectedAnomaly.current}</span>
                   </div>
-                  <div className="flex justify-between items-center pt-3 border-t border-gray-700">
-                    <span className="text-gray-400">Absolute Change</span>
+                  <div className="flex justify-between items-center pt-3 border-t border-gray-200">
+                    <span className="text-gray-500">Absolute Change</span>
                     <span className="text-xl font-mono text-error">
                       +{(selectedAnomaly.current - selectedAnomaly.baseline).toFixed(2)}
                     </span>
@@ -231,11 +231,11 @@ export function AnomaliesPage() {
               {/* AI Analysis */}
               <div className="card bg-primary/5 border-primary/20">
                 <h3 className="text-lg font-semibold text-primary mb-3">AI Analysis</h3>
-                <p className="text-sm text-gray-300 mb-3">
+                <p className="text-sm text-gray-600 mb-3">
                   The anomaly detection algorithm identified this deviation based on historical patterns 
                   and statistical analysis over the last 30 days.
                 </p>
-                <ul className="space-y-2 text-sm text-gray-400">
+                <ul className="space-y-2 text-sm text-gray-500">
                   <li>• Pattern recognition: Outlier detected outside 3σ confidence interval</li>
                   <li>• Similar incidents: 2 occurrences in the last 90 days</li>
                   <li>• Recommended action: Investigate service load and resource allocation</li>
