@@ -1,0 +1,297 @@
+"""
+Service Summary Aggregation Service
+
+Aggregates health data from BOTH external monitored services
+and internal platform services to produce a structured health overview
+with clear separation between customer-monitored services and
+internal platform components.
+
+Used by: GET /api/services/summary
+"""
+
+import logging
+from typing import Dict, Any
+
+import httpx
+from sqlalchemy.orm import Session
+
+from config import settings
+from models.external_service import ExternalService, ServiceStatus
+from models.alert_event import AlertEvent
+
+logger = logging.getLogger("rhinometric.service_summary")
+
+# Platform jobs that represent internal infrastructure services.
+# Mirrors the canonical set from kpis.py — do NOT duplicate logic,
+# just reference the same classification.
+PLATFORM_JOBS = {
+    "prometheus", "grafana", "loki", "jaeger", "alertmanager",
+    "otel-collector", "console-backend", "license-server-v2",
+    "ai-anomaly", "postgres", "redis", "promtail",
+}
+
+INFRA_JOBS = {
+    "node-exporter", "cadvisor", "blackbox-exporter",
+}
+
+INTERNAL_PROBE_JOBS = {
+    "blackbox-http",
+}
+
+ALL_INTERNAL_JOBS = PLATFORM_JOBS | INFRA_JOBS | INTERNAL_PROBE_JOBS
+
+
+async def _fetch_prometheus_up_targets() -> Dict[str, Any]:
+    """
+    Query Prometheus `up` metric to get all scrape targets and their status.
+    Returns dict with 'internal' and 'prom_external' counts.
+    Timeout: 5 seconds max.
+    """
+    internal_up = 0
+    internal_down = 0
+    prom_external_up = 0
+    prom_external_down = 0
+
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            resp = await client.get(
+                f"{settings.PROMETHEUS_URL}/api/v1/query",
+                params={"query": "up"},
+            )
+            data = resp.json()
+
+            if data.get("status") == "success":
+                for result in data.get("data", {}).get("result", []):
+                    job = result.get("metric", {}).get("job", "unknown")
+                    is_up = result.get("value", [None, "0"])[1] == "1"
+
+                    if job in ALL_INTERNAL_JOBS:
+                        if is_up:
+                            internal_up += 1
+                        else:
+                            internal_down += 1
+                    else:
+                        # Prometheus-scraped external targets
+                        if is_up:
+                            prom_external_up += 1
+                        else:
+                            prom_external_down += 1
+
+    except Exception as e:
+        logger.warning(f"Prometheus query failed: {e}")
+
+    return {
+        "internal_up": internal_up,
+        "internal_down": internal_down,
+        "prom_external_up": prom_external_up,
+        "prom_external_down": prom_external_down,
+    }
+
+
+def _fetch_external_services_from_db(db: Session) -> Dict[str, int]:
+    """
+    Query PostgreSQL for registered external service statuses.
+    Only counts enabled services.
+    """
+    try:
+        enabled = db.query(ExternalService).filter(
+            ExternalService.enabled == True
+        ).all()
+
+        up = sum(1 for s in enabled if s.status == ServiceStatus.UP)
+        down = sum(1 for s in enabled if s.status == ServiceStatus.DOWN)
+        degraded = sum(1 for s in enabled if s.status == ServiceStatus.DEGRADED)
+        unknown = sum(
+            1 for s in enabled
+            if s.status in (ServiceStatus.UNKNOWN, ServiceStatus.ERROR)
+        )
+
+        return {
+            "total": len(enabled),
+            "up": up,
+            "down": down,
+            "degraded": degraded,
+            "unknown": unknown,
+        }
+    except Exception as e:
+        logger.warning(f"External services DB query failed: {e}")
+        return {"total": 0, "up": 0, "down": 0, "degraded": 0, "unknown": 0}
+
+
+def _calculate_overall_status(
+    healthy: int,
+    degraded: int,
+    down: int,
+    total: int,
+    has_active_critical_alerts: bool = False,
+) -> str:
+    """
+    Determine platform health status based on service state and alert data.
+
+    Phase 1.5 — Official semantic priority (highest to lowest):
+      1. ANY service DOWN           → "DOWN"
+      2. Active CRITICAL alerts     → "CRITICAL"
+      3. ANY service DEGRADED       → "DEGRADED"
+      4. Everything healthy         → "HEALTHY"
+
+    Note: AI anomalies are informational and intentionally excluded.
+    They have their own dedicated card on the Home dashboard.
+    """
+    if total == 0:
+        return "HEALTHY"
+
+    if down > 0:
+        return "DOWN"
+
+    if has_active_critical_alerts:
+        return "CRITICAL"
+
+    if degraded > 0:
+        return "DEGRADED"
+
+    return "HEALTHY"
+
+
+async def _check_latency_anomalies() -> bool:
+    """
+    Quick check against the AI anomaly service for active latency-related
+    anomaly groups.  Returns True only when significant anomalies exist.
+
+    Filters:
+      - status must be "active"
+      - metric must contain "latency"
+      - severity must be "high" or "critical" (ignore low/medium noise)
+
+    Timeout: 3 seconds -- this is a best-effort enrichment.
+    """
+    SIGNIFICANT_SEVERITIES = {"high", "critical"}
+    try:
+        async with httpx.AsyncClient(timeout=3.0) as client:
+            resp = await client.get(
+                f"{settings.AI_ANOMALY_URL}/anomalies",
+                params={"limit": 50},
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                anomalies = data.get("anomalies", [])
+                for a in anomalies:
+                    metric = a.get("metric_name", "") or a.get("metric", "")
+                    status = a.get("status", "")
+                    severity = (a.get("severity", "") or "").lower()
+                    if (
+                        status == "active"
+                        and "latency" in metric.lower()
+                        and severity in SIGNIFICANT_SEVERITIES
+                    ):
+                        return True
+    except Exception as e:
+        logger.debug(f"Latency anomaly check skipped: {e}")
+
+    return False
+
+
+async def get_services_summary(db: Session) -> Dict[str, Any]:
+    """
+    Main aggregation function.
+
+    Combines:
+      - Internal platform services (from Prometheus `up` metric)
+      - External monitored services (from PostgreSQL external_services table)
+
+    Returns a structured summary with SEPARATE sections for:
+      - monitored_services: customer external services only
+      - platform_components: internal platform services only
+    Plus backward-compatible flat fields.
+    """
+
+    # --- Parallel-ish data collection ---
+    prom_data = await _fetch_prometheus_up_targets()
+    ext_data = _fetch_external_services_from_db(db)
+
+    # --- Internal (platform) services ---
+    internal_total = prom_data["internal_up"] + prom_data["internal_down"]
+    internal_healthy = prom_data["internal_up"]
+    internal_down = prom_data["internal_down"]
+
+    # --- External services (DB-registered + Prometheus-scraped external) ---
+    ext_healthy = ext_data["up"]
+    ext_degraded = ext_data["degraded"]
+    ext_down = ext_data["down"]
+    ext_total = ext_data["total"]
+
+    # Prometheus-scraped external targets (not in DB)
+    prom_ext_up = prom_data["prom_external_up"]
+    prom_ext_down = prom_data["prom_external_down"]
+
+    # Combined external counts (= monitored services)
+    monitored_total = ext_total + prom_ext_up + prom_ext_down
+    monitored_healthy = ext_healthy + prom_ext_up
+    monitored_degraded = ext_degraded
+    monitored_down = ext_down + prom_ext_down
+
+    # --- Phase 1.5: Check for active CRITICAL alerts ---
+    has_critical_alerts = False
+    try:
+        critical_count = db.query(AlertEvent).filter(
+            AlertEvent.status == "firing",
+            AlertEvent.severity == "critical",
+        ).count()
+        has_critical_alerts = critical_count > 0
+    except Exception as _crit_err:
+        logger.warning("Failed to query critical alerts: %s", _crit_err)
+
+    # --- Overall statuses computed SEPARATELY ---
+    monitored_status = _calculate_overall_status(
+        healthy=monitored_healthy,
+        degraded=monitored_degraded,
+        down=monitored_down,
+        total=monitored_total,
+        has_active_critical_alerts=has_critical_alerts,
+    )
+
+    platform_status = _calculate_overall_status(
+        healthy=internal_healthy,
+        degraded=0,  # internal services are only up/down
+        down=internal_down,
+        total=internal_total,
+        has_active_critical_alerts=has_critical_alerts,
+    )
+
+    # --- Grand totals (backward compat) ---
+    total_services = internal_total + monitored_total
+    total_healthy = internal_healthy + monitored_healthy
+    total_degraded = monitored_degraded
+    total_down = internal_down + monitored_down
+
+    overall_status = _calculate_overall_status(
+        healthy=total_healthy,
+        degraded=total_degraded,
+        down=total_down,
+        total=total_services,
+        has_active_critical_alerts=has_critical_alerts,
+    )
+
+    return {
+        # === NEW: Separated sections ===
+        "monitored_services": {
+            "total": monitored_total,
+            "healthy": monitored_healthy,
+            "degraded": monitored_degraded,
+            "down": monitored_down,
+            "status": monitored_status,
+        },
+        "platform_components": {
+            "total": internal_total,
+            "healthy": internal_healthy,
+            "down": internal_down,
+            "status": platform_status,
+        },
+        # === Backward-compatible flat fields ===
+        "total_services": total_services,
+        "external_services": monitored_total,
+        "internal_services": internal_total,
+        "healthy": total_healthy,
+        "degraded": total_degraded,
+        "down": total_down,
+        "overall_status": overall_status,
+    }
