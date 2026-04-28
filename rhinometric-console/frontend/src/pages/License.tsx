@@ -256,13 +256,13 @@ export function LicensePage() {
 
       {/* Warnings / Breaches */}
       {data.breaches && data.breaches.length > 0 && (
-        <div className="card bg-error/10 border-error/30">
+        <div className="card bg-red-50 border border-red-200">
           <div className="flex items-start gap-3">
-            <AlertTriangle className="text-error flex-shrink-0 mt-0.5" size={20} />
+            <AlertTriangle className="text-red-600 flex-shrink-0 mt-0.5" size={20} />
             <div>
-              <p className="text-error font-semibold text-sm mb-1">Limit Exceeded</p>
+              <p className="text-red-700 font-semibold text-sm mb-1">Limit Exceeded</p>
               {data.breaches.map((b: string, i: number) => (
-                <p key={i} className="text-error/80 text-sm">{b}</p>
+                <p key={i} className="text-red-700 text-sm">{b}</p>
               ))}
             </div>
           </div>
@@ -270,18 +270,18 @@ export function LicensePage() {
       )}
 
       {data.warning && !data.breaches && (
-        <div className="card bg-warning/10 border-warning/30">
+        <div className="card bg-amber-50 border border-amber-200">
           <div className="flex items-center gap-3">
-            <AlertTriangle className="text-warning flex-shrink-0" size={20} />
-            <p className="text-warning font-medium text-sm">{data.warning}</p>
+            <AlertTriangle className="text-amber-600 flex-shrink-0" size={20} />
+            <p className="text-amber-700 font-medium text-sm">{data.warning}</p>
           </div>
         </div>
       )}
 
       {displayStatus === 'about_to_expire' && !data.warning && (
-        <div className="card bg-warning/10 border-warning/30">
+        <div className="card bg-amber-50 border border-amber-200">
           <div className="flex items-center gap-3">
-            <Clock className="text-warning flex-shrink-0" size={20} />
+            <Clock className="text-amber-600 flex-shrink-0" size={20} />
             <p className="text-warning font-medium text-sm">
               License expires in {data.days_remaining} days. Contact sales to renew.
             </p>
@@ -317,8 +317,7 @@ export function LicensePage() {
               </div>
             )}
           </div>
-          <div className="p-3 bg-primary/10 rounded-lg self-start flex-shrink-0">
-            <ShieldCheck className="w-7 h-7 sm:w-8 sm:h-8 text-primary" />
+          <div className="p-3 bg-slate-100 rounded-lg self-start flex-shrink-0"><ShieldCheck className="w-7 h-7 sm:w-8 sm:h-8 text-primary" />
           </div>
         </div>
 
@@ -402,7 +401,7 @@ export function LicensePage() {
             <span>Extra endpoints: <span className="text-gray-900 font-medium">{data.price_per_extra_service}{data.currency === 'EUR' ? '\u20AC' : ` ${data.currency}`} / endpoint</span></span>
           </div>
           {data.extra_services_used > 0 && (
-            <div className="flex items-center gap-1.5 text-warning">
+            <div className="flex items-center gap-1.5 text-amber-600">
               <TrendingUp className="w-4 h-4 flex-shrink-0" />
               <span className="font-medium">
                 Estimated extra cost: {data.estimated_extra_cost}{data.currency === 'EUR' ? '\u20AC' : ` ${data.currency}`}/month
@@ -443,7 +442,7 @@ export function LicensePage() {
           {(data.features ?? []).map((mod) => (
             <span
               key={mod}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-primary/10 text-primary border border-primary/20"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200"
             >
               <Zap className="w-3 h-3" />
               {mod}
@@ -454,9 +453,9 @@ export function LicensePage() {
 
       {/* Licensed to */}
       {data.organization && (
-        <div className="card bg-primary/5 border-primary/20">
+        <div className="card bg-slate-50 border border-slate-200">
           <p className="text-sm text-text-muted">
-            <span className="font-semibold text-primary">Licensed to:</span>{' '}
+            <span className="font-semibold text-slate-700">Licensed to:</span>{' '}
             {data.organization}
           </p>
         </div>
@@ -480,7 +479,7 @@ export function LicensePage() {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
                 <div>
                   <p className="text-text-muted">Tenant ID</p>
-                  <code className="block bg-gray-50 px-3 py-1.5 rounded text-xs text-primary font-mono break-all mt-1">
+                  <code className="block bg-slate-50 px-3 py-1.5 rounded text-xs text-slate-700 font-mono break-all mt-1">
                     {data.tenant_id || '\u2014'}
                   </code>
                 </div>
@@ -549,7 +548,7 @@ function UserRoleCard({
   icon: React.ReactNode; label: string; used: number; limit: number
 }) {
   return (
-    <div className="bg-gray-50/50 rounded-lg p-3">
+    <div className="bg-white border border-slate-100 rounded-lg p-3">
       <div className="flex items-center gap-1.5 mb-2">
         {icon}
         <span className="text-text-muted text-xs">{label}</span>

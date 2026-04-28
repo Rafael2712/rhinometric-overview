@@ -69,7 +69,7 @@ function SLICard({ title, icon, value, unit, targetLabel, budget, status, hint }
     <div className={`relative bg-white border border-slate-200 rounded-xl p-5 ring-1 ${cfg.ring} transition-all hover:bg-slate-50`}>
       {/* Status indicator */}
       <div className={`absolute top-3 right-3 w-2.5 h-2.5 rounded-full ${
-        status === 'healthy' ? 'bg-green-400' :
+        status === 'healthy' ? 'bg-emerald-500' :
         status === 'at_risk' ? 'bg-yellow-400 animate-pulse' :
         status === 'breached' ? 'bg-red-400 animate-pulse' :
         'bg-gray-300'
@@ -100,14 +100,14 @@ function SLICard({ title, icon, value, unit, targetLabel, budget, status, hint }
         <div>
           <div className="flex items-center justify-between text-xs mb-1">
             <span className="text-slate-500">Error budget</span>
-            <span className={`font-medium ${budget >= 50 ? 'text-green-400' : budget >= 20 ? 'text-yellow-400' : 'text-red-400'}`}>
+            <span className={`font-medium ${budget >= 50 ? 'text-emerald-600' : budget >= 20 ? 'text-yellow-400' : 'text-red-400'}`}>
               {budget.toFixed(1)}%
             </span>
           </div>
           <div className="h-1.5 bg-slate-200 rounded-full overflow-hidden">
             <div
               className={`h-full rounded-full transition-all duration-500 ${
-                budget >= 50 ? 'bg-green-500' : budget >= 20 ? 'bg-yellow-500' : 'bg-red-500'
+                budget >= 50 ? 'bg-emerald-500' : budget >= 20 ? 'bg-yellow-500' : 'bg-red-500'
               }`}
               style={{ width: `${Math.min(budget, 100)}%` }}
             />
@@ -153,7 +153,7 @@ function DataSourceBadge({ monitoringMode, telemetryStatus }: { monitoringMode?:
 
 function BudgetBar({ pct }: { pct: number | null }) {
   if (pct === null || pct === undefined) return <span className="text-gray-500 text-xs">—</span>
-  const color = pct >= 50 ? 'bg-green-500' : pct >= 20 ? 'bg-yellow-500' : 'bg-red-500'
+  const color = pct >= 50 ? 'bg-emerald-500' : pct >= 20 ? 'bg-yellow-500' : 'bg-red-500'
   return (
     <div className="flex items-center gap-2">
       <div className="flex-1 h-2 bg-slate-200 rounded-full overflow-hidden max-w-[100px]">
@@ -187,7 +187,7 @@ function ServiceDetailPanel({ serviceId, token, timeRange }: { serviceId: number
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <SLICard
           title="Availability"
-          icon={<Activity className="w-4 h-4 text-green-400" />}
+          icon={<Activity className="w-4 h-4 text-emerald-600" />}
           value={svc.availability_pct}
           unit="%"
           targetLabel={`≥ ${svc.targets?.availability ?? 99}%`}
@@ -227,7 +227,7 @@ function ServiceDetailPanel({ serviceId, token, timeRange }: { serviceId: number
             {trend.slice(-12).map((b: { time: string; availability_pct: number; avg_latency_ms: number }) => (
               <div key={b.time} className="flex justify-between text-slate-600">
                 <span>{b.time.split(' ')[1] || b.time}</span>
-                <span className={b.availability_pct >= 99 ? 'text-green-400' : b.availability_pct >= 95 ? 'text-yellow-400' : 'text-red-400'}>
+                <span className={b.availability_pct >= 99 ? 'text-emerald-600' : b.availability_pct >= 95 ? 'text-yellow-400' : 'text-red-400'}>
                   {b.availability_pct}%
                 </span>
                 <span>{b.avg_latency_ms} ms</span>
@@ -242,7 +242,7 @@ function ServiceDetailPanel({ serviceId, token, timeRange }: { serviceId: number
           {alerts.length === 0 && <p className="text-xs text-slate-500">None in this window</p>}
           {alerts.slice(0, 5).map((a: { id: string; alert_name: string; severity: string; status: string }) => (
             <div key={a.id} className="flex items-center gap-2 text-xs text-slate-600 mb-1">
-              <span className={`w-2 h-2 rounded-full ${a.status === 'firing' ? 'bg-red-500' : 'bg-green-500'}`} />
+              <span className={`w-2 h-2 rounded-full ${a.status === 'firing' ? 'bg-red-500' : 'bg-emerald-500'}`} />
               <span className="truncate">{a.alert_name}</span>
               <span className="text-slate-500">{a.severity}</span>
             </div>
@@ -414,7 +414,7 @@ export function SLOPage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <SLICard
           title="Platform Availability"
-          icon={<Activity className="w-4 h-4 text-green-400" />}
+          icon={<Activity className="w-4 h-4 text-emerald-600" />}
           value={s.availability_pct ?? null}
           unit="%"
           targetLabel={`≥ ${s.defaults?.availability ?? 99}%`}
@@ -449,7 +449,7 @@ export function SLOPage() {
         <div className="flex items-center gap-6">
           <CompactStat label="Services" value={summary.total} color="text-slate-900" />
           <div className="w-px h-8 bg-slate-200" />
-          <CompactStat label="Meeting SLO" value={summary.healthy} color="text-green-400" />
+          <CompactStat label="Meeting SLO" value={summary.healthy} color="text-emerald-600" />
           <CompactStat label="At Risk" value={summary.at_risk} color="text-yellow-400" />
           <CompactStat label="Breached" value={summary.breached} color="text-red-400" />
         </div>
