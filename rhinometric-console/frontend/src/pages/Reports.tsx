@@ -338,6 +338,112 @@ const badgeHtml = (status: string) => {
 
 const logoSvg = `<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>`;
 
+
+// ??? Derived-logic helpers ?????????????????????????????????????????????????????
+function deriveExecStatus(data: ExecutiveReport): string {
+  const anomCnt = data.kpis.anomalies_count ?? 0;
+  const alerts  = data.kpis.active_alerts ?? data.kpis.total_alerts;
+  if (anomCnt > 0 && alerts === 0 && data.kpis.total_incidents === 0)
+    return "Degraded (Anomaly-driven)";
+  return data.status;
+}
+
+function deriveExecSummary(data: ExecutiveReport): string {
+  const anomCnt  = data.kpis.anomalies_count ?? 0;
+  const alerts   = data.kpis.active_alerts ?? data.kpis.total_alerts;
+  const degraded = (data.kpis.degraded_count ?? 0) + (data.kpis.down_count ?? 0);
+  if (anomCnt > 0 && alerts === 0 && data.kpis.total_incidents === 0) {
+    const svcWord = anomCnt === 1 ? "service" : "services";
+    return (
+      `Anomalous behavior detected in ${anomCnt} ${svcWord}. ` +
+      `System operating without active incidents or firing alerts, but with ongoing anomaly signals. ` +
+      `No alerts have been triggered yet ? anomalies remain below the configured alert threshold. ` +
+      (degraded > 0
+        ? `Potential early-stage degradation detected in ${degraded} service${degraded > 1 ? "s" : ""}.`
+        : `All services remain operationally stable.`)
+    );
+  }
+  return data.summary || "No summary available.";
+}
+
+function deriveRisks(data: ExecutiveReport): string[] {
+  const anomCnt  = data.kpis.anomalies_count ?? 0;
+  const degraded = data.kpis.degraded_count ?? 0;
+  const down     = data.kpis.down_count ?? 0;
+  const alerts   = data.kpis.active_alerts ?? data.kpis.total_alerts;
+  const risks: string[] = [];
+  if (anomCnt > 0)
+    risks.push(`${anomCnt} service${anomCnt > 1 ? "s" : ""} showing abnormal patterns ? anomaly scores active but below alert threshold`);
+  if (degraded > 0)
+    risks.push(`${degraded} service${degraded > 1 ? "s" : ""} in degraded state ? potential early-stage degradation`);
+  if (down > 0)
+    risks.push(`${down} service${down > 1 ? "s" : ""} reported down`);
+  if (alerts === 0 && anomCnt > 0)
+    risks.push("Latency or health anomalies detected but no alerts triggered yet");
+  if (risks.length === 0 && (data.risks || []).length > 0)
+    return data.risks.slice(0, 3);
+  if (risks.length === 0)
+    risks.push("No significant operational risk identified in this period.");
+  return risks.slice(0, 3);
+}
+
+interface AnomalyGroup {
+  entity_name: string; metric_name: string; severity: string;
+  max_score: number; occurrences: number; status: string;
+}
+function groupAnomalies(anomalies: AnomalyRow[]): AnomalyGroup[] {
+  const map = new Map<string, AnomalyGroup>();
+  for (const a of anomalies) {
+    const key = `${a.entity_name}|${a.metric_name}|${a.severity}`;
+    if (map.has(key)) {
+      const e = map.get(key)!;
+      e.occurrences += (a.occurrence_count ?? 1);
+      if ((a.score ?? 0) > e.max_score) e.max_score = a.score ?? 0;
+    } else {
+      map.set(key, { entity_name: a.entity_name, metric_name: a.metric_name,
+        severity: a.severity, max_score: a.score ?? 0,
+        occurrences: a.occurrence_count ?? 1, status: a.status });
+    }
+  }
+  return [...map.values()]
+    .sort((a, b) => b.max_score - a.max_score || b.occurrences - a.occurrences)
+    .slice(0, 10);
+}
+
+function isInternalMetric(name: string): boolean {
+  return /^(node_|system_|process_|container_|kernel_|cpu_|mem_|disk_|net_)/.test((name || "").toLowerCase());
+}
+
+function buildTopFindings(data: TechnicalReport): string[] {
+  const findings: string[] = [];
+  const snap    = data.operational_snapshot;
+  const anomalies = data.anomalies || [];
+  const grouped = groupAnomalies(anomalies);
+  if (grouped.length > 0)
+    findings.push(`Highest anomaly concentration: ${grouped[0].entity_name} (${grouped[0].metric_name.replace(/_/g," ")})`);
+  const metricMap = new Map<string,number>();
+  for (const a of anomalies) metricMap.set(a.metric_name, (metricMap.get(a.metric_name) ?? 0) + 1);
+  if (metricMap.size > 0) {
+    const topM = [...metricMap.entries()].sort((a,b)=>b[1]-a[1])[0][0];
+    findings.push(`Most affected metric: ${topM.replace(/_/g," ")}`);
+  }
+  if (snap) {
+    if (snap.active_alerts === 0 && anomalies.length > 0)
+      findings.push("No critical alerts triggered ? anomalies below configured threshold");
+    else if (snap.active_alerts === 0)
+      findings.push("No critical alerts triggered in this period");
+    if (snap.services_down > 0)
+      findings.push(`${snap.services_down} service(s) reported down`);
+    else if (snap.services_degraded > 0)
+      findings.push(`${snap.services_degraded} service(s) in degraded state`);
+    else
+      findings.push("All services remain operational");
+  }
+  if ((data.incidents || []).length === 0)
+    findings.push("No incidents recorded in this period");
+  return findings.slice(0, 5);
+}
+
 function openPrint(html: string) {
   const w = window.open("", "_blank");
   if (!w) { alert("Please allow popups to export PDF."); return; }
@@ -389,8 +495,8 @@ function printExec(data: ExecutiveReport, range: string) {
       <td class="tbl-muted">${formatDt(g.last_occurrence)}</td>
     </tr>`).join("") || `<tr><td colspan="6" style="text-align:center;color:#9ca3af;padding:14px;">No incidents recorded in this period.</td></tr>`;
 
-  const risksHtml = (data.risks || []).slice(0, 3).map(r =>
-    `<li><span class="bullet-icon warn">!</span><span>${r}</span></li>`).join("") || "<li><span class='tbl-muted'>No risks identified.</span></li>";
+  const risksHtml = deriveRisks(data).map(r =>
+    `<li><span class="bullet-icon warn">!</span><span>${r}</span></li>`).join("");
 
   const recsHtml = (data.recommendations || []).slice(0, 3).map(r =>
     `<li><span class="bullet-icon ok">✓</span><span>${r}</span></li>`).join("") || "<li><span class='tbl-muted'>No recommendations at this time.</span></li>";
@@ -409,7 +515,7 @@ function printExec(data: ExecutiveReport, range: string) {
     <div class="header-right">
       <div class="report-title">Executive Report</div>
       <div class="report-meta">Time range: ${range} &nbsp;|&nbsp; Generated: ${formatDt(data.generated_at)}</div>
-      <div style="margin-top:6px;">${badgeHtml(data.status)}</div>
+      <div style="margin-top:6px;">${badgeHtml(deriveExecStatus(data))}</div>
     </div>
   </div>
 
@@ -417,7 +523,8 @@ function printExec(data: ExecutiveReport, range: string) {
   <div class="section">
     <div class="section-title">Executive Summary</div>
     <div class="summary-block">
-      <div class="summary-text">${data.summary || "No summary available."}</div>
+      <div class="summary-text">${deriveExecSummary(data)}</div>
+      ${deriveExecStatus(data) !== data.status ? '<div style="font-size:11px;color:#92400e;margin-top:8px;padding-top:8px;border-top:1px solid #fde68a;">&#9888; No alerts triggered yet — anomalies below alert threshold</div>' : ''}
     </div>
   </div>
 
@@ -530,7 +637,7 @@ function printTech(data: TechnicalReport, range: string) {
       <td class="tbl-muted">${formatDt(a.last_seen)}</td>
     </tr>`).join("") || `<tr><td colspan="6" style="text-align:center;color:#9ca3af;padding:14px;">No alerts recorded.</td></tr>`;
 
-  const tlRows = (data.timeline || []).slice(0, 60).map(t => `
+  const tlRows = (data.timeline || []).slice(0, 20).map(t => `
     <div class="tl-row">
       <div class="tl-time">${formatDt(t.timestamp)}</div>
       <div class="tl-dot"></div>
@@ -542,28 +649,50 @@ function printTech(data: TechnicalReport, range: string) {
     </div>`).join("") || `<p style="color:#9ca3af;font-size:11px;padding:8px 0;">No timeline events.</p>`;
 
   // Service health rows
-  const svcRows = (data.services || []).slice(0, 30).map(s => `
+  const _svcs = (data.services || []).slice(0, 30);
+  const _hasRT = _svcs.some(s => s.response_time_ms != null);
+  const _hasLC = _svcs.some(s => !!s.last_checked_at);
+  const svcRows = _svcs.map(s => `
     <tr>
       <td class="tbl-service">${s.name}</td>
       <td>${chipHtml(s.status)}</td>
-      <td class="tbl-muted">${s.response_time_ms != null ? s.response_time_ms + " ms" : "—"}</td>
-      <td class="tbl-muted">${formatDt(s.last_checked_at)}</td>
+      ${_hasRT ? `<td class="tbl-muted">${s.response_time_ms != null ? s.response_time_ms + " ms" : "N/A"}</td>` : ""}
+      ${_hasLC ? `<td class="tbl-muted">${formatDt(s.last_checked_at)}</td>` : ""}
     </tr>`).join("") || `<tr><td colspan="4" style="text-align:center;color:#9ca3af;padding:14px;">No monitored services found.</td></tr>`;
+  const svcTblHeaders = `<th>Service</th><th>Status</th>${_hasRT ? "<th>Response Time</th>" : ""}${_hasLC ? "<th>Last Checked</th>" : ""}`;
 
-  const anomalyRows = (data.anomalies || []).map(a => `
+  // ? Group anomalies: top 10 by score, split external vs internal ?
+  const _allAnom = data.anomalies || [];
+  const _extAnom = _allAnom.filter(a => !isInternalMetric(a.metric_name));
+  const _intAnom = _allAnom.filter(a => isInternalMetric(a.metric_name));
+  const _groupedAnom = groupAnomalies(_extAnom);
+  const anomalyRows = _groupedAnom.map(a => `
     <tr>
       <td class="tbl-service">${a.entity_name}</td>
-      <td>${a.metric_name}</td>
+      <td>${a.metric_name.replace(/_/g," ")}</td>
       <td>${sevHtml(a.severity)}</td>
-      <td>${chipHtml(a.status)}</td>
-      <td class="tbl-number">${a.occurrence_count ?? "—"}</td>
-    </tr>`).join("") || `<tr><td colspan="5" style="text-align:center;color:#9ca3af;padding:14px;">No anomalies detected in the selected period.</td></tr>`;
+      <td class="tbl-number">${a.occurrences}</td>
+      <td class="tbl-number">${a.max_score > 0 ? a.max_score : "—"}</td>
+    </tr>`).join("") || `<tr><td colspan="5" style="text-align:center;color:#9ca3af;padding:14px;">No external service anomalies detected.</td></tr>`;
+  const internalSummaryHtml = _intAnom.length > 0
+    ? `<div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:6px;padding:10px 14px;margin-top:12px;font-size:11px;color:#6b7280;">&#8250; ${_intAnom.length} internal signal${_intAnom.length > 1?"s":""} detected (node/system metrics) — no direct operational impact.</div>`
+    : "";
+
+  // ? Top Technical Findings (always shown) ?
+  const _topFindings = buildTopFindings(data);
+  const topFindingsHtml = _topFindings.length > 0 ? `
+    <div class="section">
+      <div class="section-title">Top Technical Findings</div>
+      <ul class="bullet-list">
+        ${_topFindings.map(f => `<li><span class="bullet-icon ok">&#10003;</span><span>${f}</span></li>`).join("")}
+      </ul>
+    </div>` : "";
 
   const snapSectionHtml = snap
     ? '<div class="section"><div class="section-title">Operational Snapshot</div>' + snapHtml + '</div>'
     : "";
   const svcSectionHtml = (data.services && data.services.length > 0)
-    ? '<div class="section"><div class="section-title">Service Health Summary</div><div class="table-wrap"><table><thead><tr><th>Service</th><th>Status</th><th>Response Time</th><th>Last Checked</th></tr></thead><tbody>' + svcRows + '</tbody></table></div></div>'
+    ? `<div class="section"><div class="section-title">Service Health Summary</div><div class="table-wrap"><table><thead><tr>${svcTblHeaders}</tr></thead><tbody>${svcRows}</tbody></table></div></div>`
     : "";
 
   const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Rhinometric Technical Report</title>
@@ -582,6 +711,8 @@ function printTech(data: TechnicalReport, range: string) {
       <div class="report-meta">Time range: ${range} &nbsp;|&nbsp; Generated: ${formatDt(data.generated_at)}</div>
     </div>
   </div>
+
+  ${topFindingsHtml}
 
   ${snapSectionHtml}
 
@@ -611,13 +742,14 @@ function printTech(data: TechnicalReport, range: string) {
 
   <!-- Anomaly Summary -->
   <div class="section">
-    <div class="section-title">Anomaly Summary</div>
+    <div class="section-title">Anomaly Summary — External Services (Top 10)</div>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>Service</th><th>Metric</th><th>Severity</th><th>Status</th><th>Occurrences</th></tr></thead>
+        <thead><tr><th>Service</th><th>Metric</th><th>Severity</th><th>Occurrences</th><th>Max Score</th></tr></thead>
         <tbody>${anomalyRows}</tbody>
       </table>
     </div>
+    ${internalSummaryHtml}
   </div>
 
   <!-- Alert Groups -->
@@ -749,7 +881,7 @@ export default function Reports() {
         {/* Status */}
         {execData && (
           <div className="ml-auto flex items-center gap-2">
-            <StatusChip status={execData.status} />
+            <StatusChip status={deriveExecStatus(execData)} />
             <span className="text-xs text-slate-400">Generated {fmtTime(execData.generated_at)}</span>
           </div>
         )}
@@ -775,7 +907,13 @@ export default function Reports() {
         <div className="space-y-5">
           {/* Summary */}
           <SectionCard title="Executive Summary">
-            <p className="text-sm text-slate-700 leading-relaxed">{execData.summary}</p>
+            <p className="text-sm text-slate-700 leading-relaxed">{deriveExecSummary(execData)}</p>
+            {deriveExecStatus(execData) !== execData.status && (
+              <p className="mt-3 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2 flex items-center gap-1.5">
+                <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
+                No alerts triggered yet — anomalies below alert threshold
+              </p>
+            )}
           </SectionCard>
 
           {/* KPIs */}
@@ -809,7 +947,7 @@ export default function Reports() {
           <div className="grid md:grid-cols-2 gap-5">
             <SectionCard title="Identified Risks">
               <ul className="space-y-2">
-                {execData.risks.map((r, i) => (
+                {deriveRisks(execData).map((r, i) => (
                   <li key={i} className="flex gap-2 text-sm text-slate-700">
                     <AlertTriangle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
                     {r}
@@ -834,6 +972,24 @@ export default function Reports() {
       {/* ─── Technical tab ─────────────────────────────────────────────────── */}
       {tab === "technical" && techData && (
         <div className="space-y-5">
+          {/* Top Technical Findings */}
+          {(() => {
+            const findings = buildTopFindings(techData);
+            if (findings.length === 0) return null;
+            return (
+              <SectionCard title="Top Technical Findings">
+                <ul className="space-y-2">
+                  {findings.map((f, i) => (
+                    <li key={i} className="flex gap-2 text-sm text-slate-700">
+                      <CheckCircle className="w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5" />
+                      {f}
+                    </li>
+                  ))}
+                </ul>
+              </SectionCard>
+            );
+          })()}
+
           {/* Operational Snapshot */}
           {techData.operational_snapshot && (() => {
             const snap = techData.operational_snapshot!;
