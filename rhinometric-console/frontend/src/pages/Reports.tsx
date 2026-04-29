@@ -9,6 +9,11 @@ interface KpiData {
   uptime: number;
   total_alerts: number;
   active_alerts: number;
+  anomalies_count?: number;
+  services_monitored?: number;
+  healthy_count?: number;
+  degraded_count?: number;
+  down_count?: number;
 }
 
 interface GroupedIncident {
@@ -57,6 +62,29 @@ interface AnomalyRow {
   severity: string;
   status: string;
   occurrence_count?: number;
+  score?: number;
+}
+
+interface ServiceRow {
+  name: string;
+  status: string;
+  url?: string;
+  last_checked_at?: string;
+  response_time_ms?: number;
+}
+
+interface OperationalSnapshot {
+  platform_status: string;
+  services_monitored: number;
+  services_healthy: number;
+  services_degraded: number;
+  services_down: number;
+  platform_components_total: number;
+  platform_components_healthy: number;
+  platform_components_down: number;
+  active_alerts: number;
+  anomalies_count: number;
+  incident_count: number;
 }
 
 interface TimelineEvent {
@@ -74,6 +102,8 @@ interface TechnicalReport {
   alert_volume_note?: string;
   anomalies: AnomalyRow[];
   timeline: TimelineEvent[];
+  services?: ServiceRow[];
+  operational_snapshot?: OperationalSnapshot;
   generated_at: string;
   time_range: string;
 }
@@ -317,6 +347,17 @@ function openPrint(html: string) {
 }
 
 function printExec(data: ExecutiveReport, range: string) {
+  const _svc = data.kpis.services_monitored;
+  const _degrad = (data.kpis.degraded_count ?? 0) + (data.kpis.down_count ?? 0);
+  const _anomCnt = data.kpis.anomalies_count ?? 0;
+  const _kpiServRow = _svc != null ? (
+    '<div class="kpi-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:10px;">' +
+    '<div class="kpi-card"><div class="kpi-label">Services Monitored</div><div class="kpi-value">' + _svc + '</div></div>' +
+    '<div class="kpi-card"><div class="kpi-label">Healthy Services</div><div class="kpi-value" style="color:#166534;">' + (data.kpis.healthy_count ?? 0) + '</div></div>' +
+    '<div class="kpi-card"><div class="kpi-label">Degraded / Down</div><div class="kpi-value" style="color:' + (_degrad > 0 ? '#991b1b' : '#166534') + ';">' + _degrad + '</div></div>' +
+    '<div class="kpi-card"><div class="kpi-label">Active Anomalies</div><div class="kpi-value" style="color:' + (_anomCnt > 0 ? '#92400e' : '#166534') + ';">' + _anomCnt + '</div></div>' +
+    '</div>'
+  ) : "";
   const kpiHtml = `
     <div class="kpi-grid">
       <div class="kpi-card">
@@ -324,8 +365,8 @@ function printExec(data: ExecutiveReport, range: string) {
         <div class="kpi-value">${data.kpis.total_incidents}</div>
       </div>
       <div class="kpi-card">
-        <div class="kpi-label">Total Alerts</div>
-        <div class="kpi-value">${data.kpis.total_alerts}</div>
+        <div class="kpi-label">Active Alerts</div>
+        <div class="kpi-value">${data.kpis.active_alerts ?? data.kpis.total_alerts}</div>
       </div>
       <div class="kpi-card">
         <div class="kpi-label">Platform Uptime</div>
@@ -335,7 +376,8 @@ function printExec(data: ExecutiveReport, range: string) {
         <div class="kpi-label">MTTR</div>
         <div class="kpi-value" style="font-size:15px;padding-top:3px;">${data.kpis.mttr_human}</div>
       </div>
-    </div>`;
+    </div>
+    ${_kpiServRow}`;
 
   const incRows = data.top_incidents.map(g => `
     <tr>
@@ -421,6 +463,45 @@ function printExec(data: ExecutiveReport, range: string) {
 }
 
 function printTech(data: TechnicalReport, range: string) {
+  const snap = data.operational_snapshot;
+  const snapHtml = snap ? `
+    <div class="kpi-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:22px;">
+      <div class="kpi-card">
+        <div class="kpi-label">Platform Status</div>
+        <div class="kpi-value" style="font-size:15px;">${chipHtml(snap.platform_status)}</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Services Monitored</div>
+        <div class="kpi-value">${snap.services_monitored}</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Active Alerts</div>
+        <div class="kpi-value" style="color:${snap.active_alerts > 0 ? '#991b1b' : '#166534'};">${snap.active_alerts}</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Active Anomalies</div>
+        <div class="kpi-value" style="color:${snap.anomalies_count > 0 ? '#92400e' : '#166534'};">${snap.anomalies_count}</div>
+      </div>
+    </div>
+    <div class="kpi-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:22px;">
+      <div class="kpi-card">
+        <div class="kpi-label">Healthy</div>
+        <div class="kpi-value" style="color:#166534;">${snap.services_healthy}</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Degraded</div>
+        <div class="kpi-value" style="color:${snap.services_degraded > 0 ? '#92400e' : '#166534'};">${snap.services_degraded}</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Down</div>
+        <div class="kpi-value" style="color:${snap.services_down > 0 ? '#991b1b' : '#166534'};">${snap.services_down}</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Platform Components</div>
+        <div class="kpi-value" style="font-size:14px;">${snap.platform_components_healthy}/${snap.platform_components_total} up</div>
+      </div>
+    </div>` : "";
+
   const incGroupRows = (data.grouped_incidents || []).map(g => `
     <tr>
       <td class="tbl-service">${g.service}</td>
@@ -460,6 +541,31 @@ function printTech(data: TechnicalReport, range: string) {
       </div>
     </div>`).join("") || `<p style="color:#9ca3af;font-size:11px;padding:8px 0;">No timeline events.</p>`;
 
+  // Service health rows
+  const svcRows = (data.services || []).slice(0, 30).map(s => `
+    <tr>
+      <td class="tbl-service">${s.name}</td>
+      <td>${chipHtml(s.status)}</td>
+      <td class="tbl-muted">${s.response_time_ms != null ? s.response_time_ms + " ms" : "—"}</td>
+      <td class="tbl-muted">${formatDt(s.last_checked_at)}</td>
+    </tr>`).join("") || `<tr><td colspan="4" style="text-align:center;color:#9ca3af;padding:14px;">No monitored services found.</td></tr>`;
+
+  const anomalyRows = (data.anomalies || []).map(a => `
+    <tr>
+      <td class="tbl-service">${a.entity_name}</td>
+      <td>${a.metric_name}</td>
+      <td>${sevHtml(a.severity)}</td>
+      <td>${chipHtml(a.status)}</td>
+      <td class="tbl-number">${a.occurrence_count ?? "—"}</td>
+    </tr>`).join("") || `<tr><td colspan="5" style="text-align:center;color:#9ca3af;padding:14px;">No anomalies detected in the selected period.</td></tr>`;
+
+  const snapSectionHtml = snap
+    ? '<div class="section"><div class="section-title">Operational Snapshot</div>' + snapHtml + '</div>'
+    : "";
+  const svcSectionHtml = (data.services && data.services.length > 0)
+    ? '<div class="section"><div class="section-title">Service Health Summary</div><div class="table-wrap"><table><thead><tr><th>Service</th><th>Status</th><th>Response Time</th><th>Last Checked</th></tr></thead><tbody>' + svcRows + '</tbody></table></div></div>'
+    : "";
+
   const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Rhinometric Technical Report</title>
   <style>${PDF_CSS}</style></head><body><div class="page">
 
@@ -476,6 +582,8 @@ function printTech(data: TechnicalReport, range: string) {
       <div class="report-meta">Time range: ${range} &nbsp;|&nbsp; Generated: ${formatDt(data.generated_at)}</div>
     </div>
   </div>
+
+  ${snapSectionHtml}
 
   <!-- Incidents by Service -->
   <div class="section">
@@ -499,6 +607,19 @@ function printTech(data: TechnicalReport, range: string) {
     </div>
   </div>
 
+  ${svcSectionHtml}
+
+  <!-- Anomaly Summary -->
+  <div class="section">
+    <div class="section-title">Anomaly Summary</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Service</th><th>Metric</th><th>Severity</th><th>Status</th><th>Occurrences</th></tr></thead>
+        <tbody>${anomalyRows}</tbody>
+      </table>
+    </div>
+  </div>
+
   <!-- Alert Groups -->
   <div class="section page-break">
     <div class="section-title">Alert Groups${data.total_alert_count > 0 ? ` — ${data.total_alert_count.toLocaleString()} total` : ""}</div>
@@ -509,6 +630,7 @@ function printTech(data: TechnicalReport, range: string) {
         <tbody>${alertRows}</tbody>
       </table>
     </div>
+    ${data.alerts.length === 0 ? `<p style="color:#9ca3af;font-size:11px;padding:8px 0;">No alert events were recorded in this period.</p>` : ""}
   </div>
 
   <!-- Event Timeline -->
@@ -712,6 +834,54 @@ export default function Reports() {
       {/* ─── Technical tab ─────────────────────────────────────────────────── */}
       {tab === "technical" && techData && (
         <div className="space-y-5">
+          {/* Operational Snapshot */}
+          {techData.operational_snapshot && (() => {
+            const snap = techData.operational_snapshot!;
+            return (
+              <SectionCard title="Operational Snapshot">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
+                  <KpiCard label="Platform Status" value={snap.platform_status} icon={Activity} accent={snap.platform_status === 'Operational' ? 'bg-emerald-100' : snap.platform_status === 'Degraded' ? 'bg-amber-100' : 'bg-red-100'} />
+                  <KpiCard label="Services Monitored" value={snap.services_monitored} icon={Shield} accent="bg-slate-100" />
+                  <KpiCard label="Active Alerts" value={snap.active_alerts} icon={AlertTriangle} accent={snap.active_alerts > 0 ? 'bg-red-100' : 'bg-emerald-100'} />
+                  <KpiCard label="Active Anomalies" value={snap.anomalies_count} icon={TrendingUp} accent={snap.anomalies_count > 0 ? 'bg-amber-100' : 'bg-emerald-100'} />
+                </div>
+                <div className="grid grid-cols-4 gap-3 text-center text-xs">
+                  <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3">
+                    <div className="text-2xl font-bold text-emerald-700">{snap.services_healthy}</div>
+                    <div className="text-emerald-600 font-medium">Healthy</div>
+                  </div>
+                  <div className={`rounded-lg p-3 border ${snap.services_degraded > 0 ? 'bg-amber-50 border-amber-200' : 'bg-slate-50 border-slate-200'}`}>
+                    <div className={`text-2xl font-bold ${snap.services_degraded > 0 ? 'text-amber-700' : 'text-slate-500'}`}>{snap.services_degraded}</div>
+                    <div className={snap.services_degraded > 0 ? 'text-amber-600 font-medium' : 'text-slate-500'}>Degraded</div>
+                  </div>
+                  <div className={`rounded-lg p-3 border ${snap.services_down > 0 ? 'bg-red-50 border-red-200' : 'bg-slate-50 border-slate-200'}`}>
+                    <div className={`text-2xl font-bold ${snap.services_down > 0 ? 'text-red-700' : 'text-slate-500'}`}>{snap.services_down}</div>
+                    <div className={snap.services_down > 0 ? 'text-red-600 font-medium' : 'text-slate-500'}>Down</div>
+                  </div>
+                  <div className="bg-slate-50 border border-slate-200 rounded-lg p-3">
+                    <div className="text-2xl font-bold text-slate-700">{snap.platform_components_healthy}/{snap.platform_components_total}</div>
+                    <div className="text-slate-500">Platform Comps</div>
+                  </div>
+                </div>
+              </SectionCard>
+            );
+          })()}
+
+          {/* Service Health */}
+          {techData.services && techData.services.length > 0 && (
+            <SectionCard title="Service Health Summary">
+              <Tbl
+                headers={["Service", "Status", "Response Time", "Last Checked"]}
+                rows={(techData.services || []).slice(0, 30).map(s => [
+                  <span className="font-medium text-slate-800">{s.name}</span>,
+                  <StatusChip status={s.status} />,
+                  s.response_time_ms != null ? `${s.response_time_ms} ms` : "—",
+                  fmtTime(s.last_checked_at),
+                ])}
+              />
+            </SectionCard>
+          )}
+
           {/* Grouped incidents */}
           <SectionCard title="Incidents by Service">
             <Tbl
