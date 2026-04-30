@@ -473,6 +473,11 @@ def _resolve_recovered_services(db: Session):
                 if event.entity_name not in truly_up_names:
                     continue  # Service is DEGRADED, not truly recovered from DOWN
 
+            # HIGH_LATENCY and DEGRADED_HEALTH manage their own alert resolution.
+            # Service being UP does not mean latency/health condition has cleared.
+            if rule_type in ('HIGH_LATENCY', 'DEGRADED_HEALTH'):
+                continue
+
             event.status = "resolved"
             event.ended_at = now
             resolved_count += 1
@@ -736,6 +741,54 @@ def _evaluate_service_down(db: Session, rule: AlertRule) -> int:
     return fired
 
 
+
+def _resolve_policy_alert(db, rule, svc) -> bool:
+    """Resolve a firing HIGH_LATENCY or DEGRADED_HEALTH alert when condition clears.
+    Called by evaluators when sustained_checks data confirms condition no longer met.
+    """
+    from models.alert_event import AlertEvent
+    from services.alert_noise_filter import on_recovery
+
+    entity_name = svc.name
+    alert_name = f"policy:{rule.rule_type or rule.name}:{entity_name}"
+    fp_seed = f"{alert_name}|{entity_name}|{rule.rule_type or rule.metric or ''}"
+    fingerprint = hashlib.sha256(fp_seed.encode()).hexdigest()[:16]
+    now = datetime.now(timezone.utc)
+
+    existing = db.query(AlertEvent).filter(
+        AlertEvent.fingerprint == fingerprint,
+        AlertEvent.status.in_(["firing", "escalated"]),
+    ).first()
+    if not existing:
+        return False
+
+    existing.status = "resolved"
+    existing.ended_at = now
+    db.flush()
+
+    if existing.incident_id:
+        try:
+            from routers.incidents import check_incident_resolution
+            check_incident_resolution(db, existing.incident_id)
+        except Exception as _inc_err:
+            logger.warning("[PolicyResolve] Incident resolution error: %s", _inc_err)
+
+    on_recovery(entity_name)
+
+    try:
+        from services.alert_email_service import resolve_alertmanager_alert
+        resolve_alertmanager_alert(
+            existing.alert_name, entity_name, existing.severity,
+            labels=existing.labels if isinstance(existing.labels, dict) else None,
+        )
+    except Exception as _recov_err:
+        logger.warning("[PolicyResolve] AM resolve (non-fatal): %s", _recov_err)
+
+    logger.info("[PolicyResolve] Auto-resolved %s alert for %s (condition cleared)",
+                rule.rule_type, entity_name)
+    return True
+
+
 def _evaluate_high_latency(db: Session, rule: AlertRule) -> int:
     """Evaluate HIGH_LATENCY rule."""
     services = _get_target_services(db, rule)
@@ -763,6 +816,9 @@ def _evaluate_high_latency(db: Session, rule: AlertRule) -> int:
             _fire_rule_alert(db, rule, avg, service=svc,
                              detail=f"Latency {avg:.0f}ms > {threshold_ms}ms for {sustained} checks")
             fired += 1
+        else:
+            # Condition cleared — resolve firing alert if any
+            _resolve_policy_alert(db, rule, svc)
 
     return fired
 
@@ -813,6 +869,9 @@ def _evaluate_degraded_health(db: Session, rule: AlertRule) -> int:
             _fire_rule_alert(db, rule, anomaly_score, service=svc,
                              detail=f"Health score {health_score:.0f}% (anomaly {anomaly_score:.0f} >= {score_threshold})")
             fired += 1
+        else:
+            # Condition cleared — resolve firing alert if any
+            _resolve_policy_alert(db, rule, svc)
 
     return fired
 
@@ -1201,9 +1260,17 @@ def _fire_rule_alert(db: Session, rule: AlertRule, current_value: float,
     # -- CREATION PATH: no existing firing event --
 
     # Noise filter: recovery buffer + transient failure checks
-    # Phase 1.5 Rule 4: SERVICE_DOWN bypasses noise filter (immediate alert)
-    if rule.rule_type == 'SERVICE_DOWN':
-        _should_alert, _nf_reason = True, "SERVICE_DOWN bypass"
+    # Phase 1.5 Rule 4: SERVICE_DOWN bypasses noise filter (immediate alert).
+    # Phase 1.5 Rule 6: HIGH_LATENCY and DEGRADED_HEALTH also bypass the
+    # generic noise filter. Their evaluators already enforce sustained_checks
+    # as the anti-noise condition (_evaluate_high_latency requires last N
+    # 'up' checks all exceed latency_threshold_ms; _evaluate_degraded_health
+    # requires anomaly_score >= threshold for sustained_checks checks).
+    # The generic noise filter uses _consecutive_failures which only
+    # increments on DOWN/ERROR — making it structurally incompatible with
+    # policies that fire for UP-but-slow or UP-but-degraded services.
+    if rule.rule_type in ('SERVICE_DOWN', 'HIGH_LATENCY', 'DEGRADED_HEALTH'):
+        _should_alert, _nf_reason = True, f"{rule.rule_type} bypass — anti-noise enforced by evaluator sustained_checks"
     else:
         _should_alert, _nf_reason = should_create_alert(entity_name, fingerprint, db)
     if not _should_alert:
