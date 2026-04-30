@@ -308,6 +308,10 @@ export function AlertsPage() {
         const data = await response.json().catch(() => ({}))
         throw new Error(data?.detail || 'Failed to run AI triage')
       }
+      const data = await response.json().catch(() => ({}))
+      const aiDecision = data?.ai_decision ?? null
+      // Update selectedAlert in-place so detail panel renders the result immediately
+      setSelectedAlert(prev => prev && prev.id === alert.id ? { ...prev, ai_decision: aiDecision } : prev)
       queryClient.invalidateQueries({ queryKey: ['alerts'] })
       setActionMessage({ type: 'success', text: 'AI triage decision generated successfully.' })
     } catch (e: any) {
@@ -315,7 +319,7 @@ export function AlertsPage() {
     } finally {
       setRunningAiAlertId(null)
     }
-  }, [token, queryClient])
+  }, [token, queryClient, setSelectedAlert])
 
   // ── Expire (delete) a silence ──
   const handleExpireSilence = useCallback(async (silenceId: string) => {
