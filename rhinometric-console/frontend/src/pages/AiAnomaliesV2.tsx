@@ -416,7 +416,7 @@ function AnomalyCard({ anomaly, validationMode, token, onAiDecisionCreated, isHi
   anomaly: AnomalyV2
   validationMode: boolean
   token: string | null
-  onAiDecisionCreated: () => void
+  onAiDecisionCreated: (fingerprint: string, decision: AiTriageDecision) => void
   isHistory?: boolean
   highlight?: boolean
   cardRef?: React.Ref<HTMLDivElement>
@@ -426,10 +426,10 @@ function AnomalyCard({ anomaly, validationMode, token, onAiDecisionCreated, isHi
   const c = SEVERITY_COLORS[anomaly.severity] || SEVERITY_COLORS.normal
 
   const handleRunAiDecision = useCallback(async () => {
-    if (!token || !anomaly.id) return
+    if (!token || !anomaly.fingerprint) return
     setRunningAi(true)
     try {
-      const response = await fetch(`/api/anomalies/db/${anomaly.id}/ai-decision`, {
+      const response = await fetch(`/api/anomalies/db/${anomaly.fingerprint}/ai-decision`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -437,11 +437,14 @@ function AnomalyCard({ anomaly, validationMode, token, onAiDecisionCreated, isHi
         },
       })
       if (!response.ok) throw new Error('Failed to run AI triage')
-      onAiDecisionCreated()
+      const result = await response.json() as { ai_decision: AiTriageDecision }
+      if (result.ai_decision) {
+        onAiDecisionCreated(anomaly.fingerprint, result.ai_decision)
+      }
     } finally {
       setRunningAi(false)
     }
-  }, [token, anomaly.id, onAiDecisionCreated])
+  }, [token, anomaly.fingerprint, onAiDecisionCreated])
 
   return (
     <div ref={cardRef} className={`rounded-lg border ${highlight ? 'ring-2 ring-indigo-400 ring-offset-1 ring-offset-white' : ''} ${isHistory ? 'border-slate-200 opacity-75' : c.border} overflow-hidden bg-white transition-all duration-500`}>
@@ -895,9 +898,15 @@ export function AiAnomaliesV2Page() {
   const [sortDesc, setSortDesc] = useState(true)
   const [tab, setTab] = useState<ViewTab>('active')
 
+  // --- Local AI decision overrides (optimistic updates, merge with fetched data) ---
+  const [aiDecisionOverrides, setAiDecisionOverrides] = useState<Record<string, AiTriageDecision>>({})
+  const handleAiDecisionCreated = useCallback((fingerprint: string, decision: AiTriageDecision) => {
+    setAiDecisionOverrides(prev => ({ ...prev, [fingerprint]: decision }))
+  }, [])
+
   // --- Data fetching ---
-  const { data: activeData, isLoading: loadingActive, error: activeError, refetch: refetchActive } =
-    useV2Fetch<AnomalyListResponse>('v2-active', `${V2_BASE}/active?limit=${PAGE_LIMIT}`)
+  const { data: activeData, isLoading: loadingActive, error: activeError } =
+    useV2Fetch<AnomalyListResponse>('v2-active', `/api/anomalies/v2-enriched/active?limit=${PAGE_LIMIT}`)
 
   const { data: historyData, isLoading: loadingHistory } =
     useV2Fetch<AnomalyListResponse>('v2-resolved', `${V2_BASE}/resolved?limit=${PAGE_LIMIT}`)
@@ -1178,10 +1187,10 @@ export function AiAnomaliesV2Page() {
           displayedAnomalies.map(a => (
             <AnomalyCard
               key={a.id}
-              anomaly={a}
+              anomaly={aiDecisionOverrides[a.fingerprint] ? { ...a, ai_decision: aiDecisionOverrides[a.fingerprint] } : a}
               validationMode={validationMode}
               token={useAuthStore.getState().token}
-              onAiDecisionCreated={() => { void refetchActive() }}
+              onAiDecisionCreated={handleAiDecisionCreated}
               isHistory={tab === 'history'}
               highlight={a.id === highlightId}
               cardRef={a.id === highlightId ? highlightRef : undefined}

@@ -1,4 +1,4 @@
-﻿from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from typing import Optional, List, Any, Dict
 import httpx
@@ -8,26 +8,27 @@ from datetime import datetime, timedelta, timezone
 import logging
 import time
 from itertools import groupby as itertools_groupby
-from sqlalchemy.orm import Session
 from config import settings
+from routers.auth import get_current_user
 from database import get_db
-from routers.auth import get_current_user, require_role
+from sqlalchemy.orm import Session
+from models.anomaly_ai_decision import AnomalyAiDecision
 from models.user import User as UserModel
 
 router = APIRouter()
 logger = logging.getLogger("anomalies")
 
-# ÔöÇÔöÇ Task 4: Retention ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+# Ã”Ã¶Ã‡Ã”Ã¶Ã‡ Task 4: Retention Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡
 MAX_RETENTION_DAYS = 30
 
 
-# ÔöÇÔöÇ Customer-facing filter ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+# Ã”Ã¶Ã‡Ã”Ã¶Ã‡ Customer-facing filter Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡
 # Only "service" and "website" entity types are customer-facing.
 # All "infrastructure" entities (node_exporter, cadvisor, internal
 # monitoring) are internal platform telemetry and must be hidden.
 # Additionally, any entity_name / source matching internal platform
 # services is excluded as a safety net.
-# ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+# Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡
 INTERNAL_SOURCES: set = {
     "node_exporter",
     "cadvisor",
@@ -85,7 +86,7 @@ def _get_existing_service_names() -> set:
     """Return the set of service names that currently exist in external_services.
 
     Task 5 fix: existence-based check.  Returns ALL names (lowercased).
-    If the table is empty, returns an empty set ÔÇö meaning every
+    If the table is empty, returns an empty set Ã”Ã‡Ã¶ meaning every
     service-type anomaly is orphaned and should be hidden.
     """
     try:
@@ -109,10 +110,10 @@ def _is_existing_service(g: dict) -> bool:
     """
     entity_type = (g.get("entity_type") or "").lower()
     if entity_type not in _SERVICE_ENTITY_TYPES:
-        return True  # not a service ÔåÆ always show
+        return True  # not a service Ã”Ã¥Ã† always show
     existing = _get_existing_service_names_cached()
     entity = (g.get("entity_name") or "").lower()
-    # If existing is empty (no services in DB) ÔåÆ orphan ÔåÆ hide
+    # If existing is empty (no services in DB) Ã”Ã¥Ã† orphan Ã”Ã¥Ã† hide
     if not existing:
         return False
     return entity in existing
@@ -211,6 +212,10 @@ class OccurrencesResponse(BaseModel):
 
 class StatusUpdateRequest(BaseModel):
     status: str
+
+
+class AIDecisionResponse(BaseModel):
+    ai_decision: Optional[Dict[str, Any]] = None
 
 
 # -- Priority + severity sort helpers ----------------------------
@@ -366,15 +371,15 @@ def _enrich_anomaly(normalized: dict) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# Operational Severity Classification — hard rules override ML softness
+# Operational Severity Classification â€” hard rules override ML softness
 # ---------------------------------------------------------------------------
 # The anomaly engine's ML model adapts to sustained failures, marking DOWN
 # services as "low" severity.  These rules enforce operational truth:
-#   availability == 0  →  DOWN / critical
-#   health < 30%       →  DOWN / critical
-#   error_rate >= 95%  →  DOWN / critical
+#   availability == 0  â†’  DOWN / critical
+#   health < 30%       â†’  DOWN / critical
+#   error_rate >= 95%  â†’  DOWN / critical
 # The generated explanation is authoritative and replaces the engine's
-# bland statistical text ("Current: 0.00, Expected: 0.00 …").
+# bland statistical text ("Current: 0.00, Expected: 0.00 â€¦").
 # ---------------------------------------------------------------------------
 
 _OP_STATE_DOWN = "DOWN"
@@ -408,7 +413,7 @@ def _classify_operational_state(
     cv = current_value
     dev = abs(deviation_percent)
 
-    # ── Availability metrics (0.0 = down, 1.0 = up) ──────────────
+    # â”€â”€ Availability metrics (0.0 = down, 1.0 = up) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if "availability" in ml:
         if cv <= 0.001:
             return _OP_STATE_DOWN, "critical"
@@ -420,7 +425,7 @@ def _classify_operational_state(
             return _OP_STATE_MINOR, max_severity(raw_severity, "medium")
         return _OP_STATE_NORMAL, raw_severity
 
-    # ── Health metrics (0-100 percentage) ─────────────────────────
+    # â”€â”€ Health metrics (0-100 percentage) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if "health" in ml:
         if cv < 30:
             return _OP_STATE_DOWN, "critical"
@@ -432,7 +437,7 @@ def _classify_operational_state(
             return _OP_STATE_MINOR, max_severity(raw_severity, "medium")
         return _OP_STATE_NORMAL, raw_severity
 
-    # ── Error / failure rate metrics (0.0-1.0 or 0-100) ──────────
+    # â”€â”€ Error / failure rate metrics (0.0-1.0 or 0-100) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if "error" in ml or "failure" in ml:
         # Normalise: if value > 1, assume percentage scale
         rate = cv / 100.0 if cv > 1.0 else cv
@@ -446,7 +451,7 @@ def _classify_operational_state(
             return _OP_STATE_MINOR, max_severity(raw_severity, "medium")
         return _OP_STATE_NORMAL, raw_severity
 
-    # ── Latency metrics (deviation-based) ─────────────────────────
+    # â”€â”€ Latency metrics (deviation-based) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if "latency" in ml or "response_time" in ml:
         if dev >= 500:
             return _OP_STATE_SEVERE, "critical"
@@ -456,7 +461,7 @@ def _classify_operational_state(
             return _OP_STATE_MINOR, max_severity(raw_severity, "medium")
         return _OP_STATE_NORMAL, raw_severity
 
-    # ── Generic fallback: deviation magnitude ─────────────────────
+    # â”€â”€ Generic fallback: deviation magnitude â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if dev >= 300:
         return _OP_STATE_SEVERE, max_severity(raw_severity, "high")
     if dev >= 100:
@@ -488,92 +493,92 @@ def _generate_severity_explanation(
     ml = metric_name.lower()
     dev = deviation_percent
 
-    # ── DOWN state explanations ───────────────────────────────────
+    # â”€â”€ DOWN state explanations â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if op_state == _OP_STATE_DOWN:
         if "availability" in ml:
             return (
-                f"**SERVICE DOWN** — {entity_name} is completely unavailable. "
+                f"**SERVICE DOWN** â€” {entity_name} is completely unavailable. "
                 f"Availability at {current_value*100:.1f}%, deviation {dev:+.1f}% from expected. "
                 f"Immediate investigation required."
             )
         if "health" in ml:
             return (
-                f"**SERVICE DOWN** — {entity_name} health critically low at {current_value:.1f}%. "
+                f"**SERVICE DOWN** â€” {entity_name} health critically low at {current_value:.1f}%. "
                 f"Service is non-functional or severely impaired. "
                 f"Immediate investigation required."
             )
         if "error" in ml or "failure" in ml:
             rate = current_value if current_value <= 1 else current_value / 100
             return (
-                f"**SERVICE DOWN** — {entity_name} error rate at {rate*100:.1f}%. "
+                f"**SERVICE DOWN** â€” {entity_name} error rate at {rate*100:.1f}%. "
                 f"Nearly all requests are failing. "
                 f"Immediate investigation required."
             )
         return (
-            f"**SERVICE DOWN** — {entity_name} is in a critical failure state. "
+            f"**SERVICE DOWN** â€” {entity_name} is in a critical failure state. "
             f"Current value: {current_value:.2f}, expected: {expected_value:.2f} "
             f"(deviation {dev:+.1f}%). Immediate investigation required."
         )
 
-    # ── SEVERE DEGRADATION explanations ───────────────────────────
+    # â”€â”€ SEVERE DEGRADATION explanations â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if op_state == _OP_STATE_SEVERE:
         if "availability" in ml:
             return (
-                f"**SEVERE DEGRADATION** — {entity_name} availability at {current_value*100:.1f}%, "
+                f"**SEVERE DEGRADATION** â€” {entity_name} availability at {current_value*100:.1f}%, "
                 f"well below acceptable threshold. Majority of requests are failing."
             )
         if "health" in ml:
             return (
-                f"**SEVERE DEGRADATION** — {entity_name} health at {current_value:.1f}%, "
+                f"**SEVERE DEGRADATION** â€” {entity_name} health at {current_value:.1f}%, "
                 f"significantly below operational threshold. Service is severely impaired."
             )
         if "error" in ml or "failure" in ml:
             rate = current_value if current_value <= 1 else current_value / 100
             return (
-                f"**SEVERE DEGRADATION** — {entity_name} error rate at {rate*100:.1f}%. "
+                f"**SEVERE DEGRADATION** â€” {entity_name} error rate at {rate*100:.1f}%. "
                 f"Majority of requests failing. Users experiencing widespread failures."
             )
         if "latency" in ml or "response_time" in ml:
             return (
-                f"**SEVERE DEGRADATION** — {entity_name} latency at {current_value:.2f}ms, "
+                f"**SEVERE DEGRADATION** â€” {entity_name} latency at {current_value:.2f}ms, "
                 f"{abs(dev):.0f}% above baseline of {expected_value:.2f}ms. "
                 f"Service is effectively unusable."
             )
         return (
-            f"**SEVERE DEGRADATION** — {entity_name} operating far outside normal parameters. "
+            f"**SEVERE DEGRADATION** â€” {entity_name} operating far outside normal parameters. "
             f"Current: {current_value:.2f}, expected: {expected_value:.2f} (deviation {dev:+.1f}%)."
         )
 
-    # ── DEGRADED explanations ─────────────────────────────────────
+    # â”€â”€ DEGRADED explanations â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if op_state == _OP_STATE_DEGRADED:
         if "availability" in ml:
             return (
-                f"**DEGRADED** — {entity_name} availability at {current_value*100:.1f}%, "
+                f"**DEGRADED** â€” {entity_name} availability at {current_value*100:.1f}%, "
                 f"below target. Users are experiencing intermittent failures."
             )
         if "health" in ml:
             return (
-                f"**DEGRADED** — {entity_name} health at {current_value:.1f}%, "
+                f"**DEGRADED** â€” {entity_name} health at {current_value:.1f}%, "
                 f"below operational target. Service reliability is impacted."
             )
         if "latency" in ml or "response_time" in ml:
             return (
-                f"**DEGRADED** — {entity_name} latency at {current_value:.2f}ms, "
+                f"**DEGRADED** â€” {entity_name} latency at {current_value:.2f}ms, "
                 f"{abs(dev):.0f}% above baseline of {expected_value:.2f}ms. "
                 f"Users are experiencing noticeable delays."
             )
         if "error" in ml or "failure" in ml:
             rate = current_value if current_value <= 1 else current_value / 100
             return (
-                f"**DEGRADED** — {entity_name} error rate at {rate*100:.1f}%. "
+                f"**DEGRADED** â€” {entity_name} error rate at {rate*100:.1f}%. "
                 f"Significant portion of requests failing."
             )
         return (
-            f"**DEGRADED** — {entity_name} operating outside normal parameters. "
+            f"**DEGRADED** â€” {entity_name} operating outside normal parameters. "
             f"Current: {current_value:.2f}, expected: {expected_value:.2f} (deviation {dev:+.1f}%)."
         )
 
-    # ── MINOR / NORMAL — return original or enhance ───────────────
+    # â”€â”€ MINOR / NORMAL â€” return original or enhance â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if original_explanation:
         # Block forbidden soft phrases for anything above NORMAL
         if op_state == _OP_STATE_MINOR and _SOFT_PHRASES.search(original_explanation):
@@ -651,7 +656,7 @@ def normalize_anomaly(raw: dict, index: int) -> dict:
     expected_value = float(raw.get("expected_value", 0))
     deviation_percent = float(raw.get("deviation_percent", 0))
 
-    # ── Operational severity override ─────────────────────────────
+    # â”€â”€ Operational severity override â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     # The ML model adapts to sustained failures and may mark DOWN
     # services as "low".  Hard rules enforce operational truth.
     op_state, corrected_severity = _classify_operational_state(
@@ -662,7 +667,7 @@ def normalize_anomaly(raw: dict, index: int) -> dict:
     if SEVERITY_ORDER.get(corrected_severity, 3) < SEVERITY_ORDER.get(severity, 3):
         logger.info(
             f"Severity override: {entity_name}/{base_metric} "
-            f"{severity}→{corrected_severity} (op_state={op_state})"
+            f"{severity}â†’{corrected_severity} (op_state={op_state})"
         )
         severity = corrected_severity
 
@@ -707,6 +712,7 @@ def _generate_fingerprint(entity_type: str, entity_name: str, metric_name: str, 
 
 # In-memory lifecycle status store (Phase 2.1)
 _status_overrides: Dict[str, str] = {}
+_ai_decision_overrides: Dict[str, Dict[str, Any]] = {}
 VALID_STATUSES = {"active", "acknowledged", "false_positive", "suppressed", "resolved", "alert_created"}
 # Auto-resolution: groups with no new occurrences within this window
 # are automatically transitioned to "resolved".
@@ -775,7 +781,7 @@ def _build_anomaly_groups(normalized_anomalies: list[dict]) -> list[dict]:
         g["occurrences"].sort(key=lambda o: o["timestamp"], reverse=True)
         g["status"] = _status_overrides.get(g["fingerprint"], "active")
 
-    # ÔöÇÔöÇ Auto-resolution pass ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+    # Ã”Ã¶Ã‡Ã”Ã¶Ã‡ Auto-resolution pass Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡
     # If a group's last_seen is older than AUTO_RESOLVE_WINDOW and its
     # status is eligible, automatically transition it to "resolved".
     now = datetime.utcnow()
@@ -793,6 +799,106 @@ def _build_anomaly_groups(normalized_anomalies: list[dict]) -> list[dict]:
             _status_overrides[g["fingerprint"]] = "resolved"
 
     return list(groups.values())
+
+
+# V2 Go anomaly engine URL (used to resolve fingerprint â†’ anomaly for AI decision)
+_ANOMALY_ENGINE_V2_URL = "http://rhinometric-anomaly-engine-v1:8091"
+
+
+def _generate_anomaly_ai_decision_from_v2(anomaly: dict) -> Dict[str, Any]:
+    """Generate rule-based AI triage decision from a Go engine V2 anomaly object."""
+    severity = (anomaly.get("severity") or "").lower()
+    status = (anomaly.get("status") or "").lower()
+    service_name = anomaly.get("service_name", "unknown")
+
+    if status in ("resolved", "false_positive", "suppressed"):
+        decision = "ignore"
+        risk = "low"
+        confidence = "high"
+    elif severity == "critical":
+        decision = "escalate"
+        risk = "high"
+        confidence = "high"
+    elif severity in ("high", "warning", "medium"):
+        decision = "notify"
+        risk = "medium"
+        confidence = "medium"
+    else:
+        decision = "monitor"
+        risk = "low"
+        confidence = "medium"
+
+    return {
+        "decision": decision,
+        "risk_level": risk,
+        "confidence": confidence,
+        "summary": f"Anomaly for {service_name} classified as {decision}.",
+        "reason": f"Based on severity={anomaly.get('severity')} and status={anomaly.get('status')}.",
+        "evidence": [
+            f"Service: {service_name}",
+            f"Severity: {anomaly.get('severity')}",
+            f"Anomaly score: {anomaly.get('anomaly_score')}",
+            f"Status: {anomaly.get('status')}",
+        ],
+        "recommended_actions": (
+            ["Immediate investigation and escalation."]
+            if decision == "escalate"
+            else ["Investigate anomaly and notify operators."]
+            if decision == "notify"
+            else ["Monitor anomaly trend and confidence."]
+            if decision == "monitor"
+            else ["No immediate operator action required."]
+        ),
+        "noise_assessment": "low_noise" if decision in ("monitor", "ignore") else "actionable",
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "source": "rule_based_v2",
+    }
+
+
+def _generate_anomaly_ai_decision(group: dict) -> Dict[str, Any]:
+    severity = (group.get("severity_current") or "").lower()
+    status = (group.get("status") or "").lower()
+    if status in ("resolved", "false_positive", "suppressed"):
+        decision = "ignore"
+        risk = "low"
+        confidence = "high"
+    elif severity == "critical":
+        decision = "escalate"
+        risk = "high"
+        confidence = "high"
+    elif severity in ("high", "warning", "medium"):
+        decision = "notify"
+        risk = "medium"
+        confidence = "medium"
+    else:
+        decision = "monitor"
+        risk = "low"
+        confidence = "medium"
+
+    return {
+        "decision": decision,
+        "risk_level": risk,
+        "confidence": confidence,
+        "summary": f"Anomaly group {group.get('entity_name', 'unknown')} classified as {decision}.",
+        "reason": f"Based on severity={group.get('severity_current')} and status={group.get('status')}.",
+        "evidence": [
+            f"Entity: {group.get('entity_name')}",
+            f"Metric: {group.get('metric_name')}",
+            f"Occurrences: {group.get('occurrence_count')}",
+        ],
+        "recommended_actions": (
+            ["Immediate investigation and escalation."]
+            if decision == "escalate"
+            else ["Investigate anomaly and notify operators."]
+            if decision == "notify"
+            else ["Monitor anomaly trend and confidence."]
+            if decision == "monitor"
+            else ["No immediate operator action required."]
+        ),
+        "noise_assessment": "low_noise" if decision in ("monitor", "ignore") else "actionable",
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "source": "rule_based_fallback",
+    }
 
 
 async def _fetch_and_normalize(time_range: str = "24h", limit: int = 500) -> list[dict]:
@@ -836,13 +942,13 @@ async def get_anomalies(
         normalized = await _fetch_and_normalize(time_range, page_size * 3)
         groups = _build_anomaly_groups(normalized)
 
-        # ÔöÇÔöÇ Task 2: strip internal platform telemetry ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+        # Ã”Ã¶Ã‡Ã”Ã¶Ã‡ Task 2: strip internal platform telemetry Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡
         groups = [g for g in groups if _is_customer_facing_group(g)]
 
-        # ÔöÇÔöÇ Task 5: existence-based service exclusion ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+        # Ã”Ã¶Ã‡Ã”Ã¶Ã‡ Task 5: existence-based service exclusion Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡
         groups = [g for g in groups if _is_existing_service(g)]
 
-        # ÔöÇÔöÇ Task 4: retention policy ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+        # Ã”Ã¶Ã‡Ã”Ã¶Ã‡ Task 4: retention policy Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡
         groups = _apply_retention_filter(groups)
 
         if entity_type:
@@ -972,6 +1078,42 @@ async def update_anomaly_status(
     logger.info(f"Anomaly {fingerprint} status -> {new_status} by {current_user.username}")
     return {"fingerprint": fingerprint, "status": new_status, "message": f"Status updated to {new_status}"}
 
+
+@router.get("/v2-enriched/active")
+async def get_v2_enriched_active(
+    limit: int = Query(50),
+    current_user: UserModel = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Proxy to Go V2 engine active list, enriched with persisted AI decisions from DB."""
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.get(
+                f"{_ANOMALY_ENGINE_V2_URL}/api/v2/anomalies/active",
+                params={"limit": limit},
+            )
+        if resp.status_code != 200:
+            raise HTTPException(status_code=502, detail="Anomaly engine unavailable")
+        data = resp.json()
+        anomalies = data.get("anomalies") or data.get("results") or []
+        fingerprints = [a.get("fingerprint") for a in anomalies if a.get("fingerprint")]
+        if fingerprints:
+            records = db.query(AnomalyAiDecision).filter(
+                AnomalyAiDecision.fingerprint.in_(fingerprints)
+            ).all()
+            decision_map = {r.fingerprint: r.ai_decision for r in records}
+            for a in anomalies:
+                fp = a.get("fingerprint")
+                if fp and fp in decision_map:
+                    a["ai_decision"] = decision_map[fp]
+        return data
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"get_v2_enriched_active error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/{fingerprint}")
 async def get_anomaly_group(
     fingerprint: str,
@@ -1000,85 +1142,73 @@ async def get_anomaly_group(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# ════════════════════════════════════════════════════════════════════
-# Phase 5.2 — AI Decision Engine endpoints for anomalies
-# ════════════════════════════════════════════════════════════════════
-
-@router.get("/db/{anomaly_id}/ai-decision")
+@router.get("/db/{anomaly_id}/ai-decision", response_model=AIDecisionResponse)
 async def get_anomaly_ai_decision(
     anomaly_id: str,
-    db: Session = Depends(get_db),
     current_user: UserModel = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ):
-    """Return the stored AI triage decision for an anomaly record (anomaly_engine_results_v1)."""
-    import uuid as _uuid
-    from sqlalchemy import text as _text
-    try:
-        aid = _uuid.UUID(anomaly_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid anomaly ID")
-    row = db.execute(
-        _text("SELECT ai_decision FROM anomaly_engine_results_v1 WHERE id = :id"),
-        {"id": str(aid)},
-    ).fetchone()
-    if not row:
-        raise HTTPException(status_code=404, detail="Anomaly not found")
-    return {"decision": row[0]}
+    # Read from DB (persistent), fall back to in-memory dict
+    record = db.query(AnomalyAiDecision).filter(
+        AnomalyAiDecision.fingerprint == anomaly_id
+    ).first()
+    if record:
+        return {"ai_decision": record.ai_decision}
+    return {"ai_decision": _ai_decision_overrides.get(anomaly_id)}
 
 
-@router.post("/db/{anomaly_id}/ai-decision")
+@router.post("/db/{anomaly_id}/ai-decision", response_model=AIDecisionResponse)
 async def create_anomaly_ai_decision(
     anomaly_id: str,
+    current_user: UserModel = Depends(get_current_user),
     db: Session = Depends(get_db),
-    current_user: UserModel = Depends(require_role(["OWNER", "ADMIN", "OPERATOR"])),
+    time_range: Optional[str] = Query("24h"),
 ):
-    """Generate (or regenerate) the AI triage decision for an anomaly record."""
-    import uuid as _uuid
-    from sqlalchemy import text as _text
-    from services.ai_decision_engine import evaluate_anomaly_decision
+    """Generate and persist an AI triage decision for an anomaly.
+    anomaly_id is the Go engine fingerprint (32-char hex) passed by the frontend.
+    """
     try:
-        aid = _uuid.UUID(anomaly_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid anomaly ID")
+        # Fetch from the V2 Go engine â€” same source as the frontend list
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.get(
+                f"{_ANOMALY_ENGINE_V2_URL}/api/v2/anomalies/active",
+                params={"limit": 500},
+            )
+            if resp.status_code != 200:
+                # Fall back to resolved list if not found in active
+                resp = await client.get(
+                    f"{_ANOMALY_ENGINE_V2_URL}/api/v2/anomalies/resolved",
+                    params={"limit": 200},
+                )
+        if resp.status_code != 200:
+            raise HTTPException(status_code=502, detail="Anomaly engine unavailable")
 
-    from sqlalchemy.orm import DeclarativeMeta
-    from sqlalchemy.ext.declarative import declarative_base
+        data = resp.json()
+        anomalies = data.get("anomalies") or data.get("results") or []
+        match = next((a for a in anomalies if a.get("fingerprint") == anomaly_id), None)
+        if not match:
+            raise HTTPException(status_code=404, detail="Anomaly group not found")
 
-    # Fetch as ORM-like object using text query, wrap in a simple namespace
-    row = db.execute(
-        _text("""
-            SELECT id, service_name, anomaly_score, severity, confidence_label,
-                   primary_category, occurrence_count, evidence_summary, status,
-                   first_seen_at, last_seen_at, predicted_risk_level
-            FROM anomaly_engine_results_v1 WHERE id = :id
-        """),
-        {"id": str(aid)},
-    ).fetchone()
-    if not row:
-        raise HTTPException(status_code=404, detail="Anomaly not found")
+        decision = _generate_anomaly_ai_decision_from_v2(match)
 
-    # Map row to a simple object the engine can read
-    class _AnomalyProxy:
-        def __init__(self, r):
-            self.id                = r[0]
-            self.service_name      = r[1]
-            self.anomaly_score     = r[2]
-            self.severity          = r[3]
-            self.confidence_label  = r[4]
-            self.primary_category  = r[5]
-            self.occurrence_count  = r[6]
-            self.evidence_summary  = r[7]
-            self.status            = r[8]
-            self.first_seen_at     = r[9]
-            self.last_seen_at      = r[10]
-            self.predicted_risk_level = r[11]
+        # Upsert to DB (persistent across restarts)
+        record = db.query(AnomalyAiDecision).filter(
+            AnomalyAiDecision.fingerprint == anomaly_id
+        ).first()
+        if record:
+            record.ai_decision = decision
+            record.updated_at = datetime.now(timezone.utc)
+        else:
+            record = AnomalyAiDecision(fingerprint=anomaly_id, ai_decision=decision)
+            db.add(record)
+        db.commit()
 
-    proxy = _AnomalyProxy(row)
-    decision = await evaluate_anomaly_decision(proxy, db)
+        # Keep in-memory dict for backward compatibility
+        _ai_decision_overrides[anomaly_id] = decision
 
-    db.execute(
-        _text("UPDATE anomaly_engine_results_v1 SET ai_decision = :d WHERE id = :id"),
-        {"d": __import__("json").dumps(decision), "id": str(aid)},
-    )
-    db.commit()
-    return {"decision": decision}
+        return {"ai_decision": decision}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"create_anomaly_ai_decision error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
