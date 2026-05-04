@@ -50,7 +50,7 @@ from metrics import (
     external_service_health_score,
 )
 
-from services.retention_cleanup import run_cleanup as _run_retention_cleanup, get_retention_days
+from services.retention_cleanup import run_cleanup as _run_retention_cleanup, get_retention_days, run_anomaly_cleanup as _run_anomaly_cleanup
 from services.state_repository import ensure_schema as _ensure_state_schema, load_all_states as _load_all_states, persist_state as _persist_state
 
 from models.service_assertion import ServiceAssertion
@@ -762,6 +762,13 @@ async def _scheduler_loop():
                 deleted, dur = await loop.run_in_executor(_executor, _run_retention_cleanup)
                 if deleted > 0:
                     logger.info("[HealthCheck] Retention cleanup: removed %d old checks in %ss", deleted, dur)
+                # P0: anomaly retention cleanup
+                try:
+                    a_res, a_hist, a_dur = await loop.run_in_executor(_executor, _run_anomaly_cleanup)
+                    if a_res > 0 or a_hist > 0:
+                        logger.info("[HealthCheck] Anomaly retention: removed %d results, %d history rows in %ss", a_res, a_hist, a_dur)
+                except Exception as _anomaly_cleanup_err:
+                    logger.warning("[HealthCheck] Anomaly retention error: %s", _anomaly_cleanup_err)
         except Exception as _cleanup_err:
             logger.warning("[HealthCheck] Retention cleanup error: %s", _cleanup_err)
 

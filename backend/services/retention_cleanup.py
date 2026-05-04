@@ -203,3 +203,117 @@ def get_storage_info():
         return {"error": str(e)}
     finally:
         db.close()
+
+
+# -- Anomaly Retention (P0 hardening) ---------------------------
+# P0 Retention: anomaly_engine_results_v1 (30 days)
+#               anomaly_engine_history_v1 (90 days)
+# Env vars:
+#   ANOMALY_RETENTION_DAYS          (default 30, min 7, max 365)
+#   ANOMALY_HISTORY_RETENTION_DAYS  (default 90, min 30, max 365)
+
+_DEFAULT_ANOMALY_RETENTION_DAYS = 30
+_DEFAULT_ANOMALY_HISTORY_RETENTION_DAYS = 90
+
+
+def get_anomaly_retention_days() -> int:
+    """Read and validate ANOMALY_RETENTION_DAYS from env."""
+    raw = os.environ.get("ANOMALY_RETENTION_DAYS", str(_DEFAULT_ANOMALY_RETENTION_DAYS))
+    try:
+        days = int(raw)
+    except (ValueError, TypeError):
+        return _DEFAULT_ANOMALY_RETENTION_DAYS
+    return max(7, min(365, days))
+
+
+def get_anomaly_history_retention_days() -> int:
+    """Read and validate ANOMALY_HISTORY_RETENTION_DAYS from env."""
+    raw = os.environ.get("ANOMALY_HISTORY_RETENTION_DAYS", str(_DEFAULT_ANOMALY_HISTORY_RETENTION_DAYS))
+    try:
+        days = int(raw)
+    except (ValueError, TypeError):
+        return _DEFAULT_ANOMALY_HISTORY_RETENTION_DAYS
+    return max(30, min(365, days))
+
+
+def run_anomaly_cleanup():
+    """
+    Delete anomaly_engine_results_v1 rows older than ANOMALY_RETENTION_DAYS
+    where status is 'resolved' (do NOT delete active anomalies).
+    Delete anomaly_engine_history_v1 rows older than ANOMALY_HISTORY_RETENTION_DAYS.
+
+    Returns:
+        (results_deleted, history_deleted, duration_seconds)
+    """
+    results_days = get_anomaly_retention_days()
+    history_days = get_anomaly_history_retention_days()
+    results_cutoff = datetime.now(timezone.utc) - timedelta(days=results_days)
+    history_cutoff = datetime.now(timezone.utc) - timedelta(days=history_days)
+
+    results_deleted = 0
+    history_deleted = 0
+    t0 = time.monotonic()
+
+    db = SessionLocal()
+    try:
+        # anomaly_engine_results_v1 — only resolved/inactive anomalies
+        while True:
+            result = db.execute(
+                text(
+                    "DELETE FROM anomaly_engine_results_v1 "
+                    "WHERE ctid IN ("
+                    "  SELECT ctid FROM anomaly_engine_results_v1 "
+                    "  WHERE last_seen_at < :cutoff "
+                    "  AND status NOT IN ('active', 'firing') "
+                    "  ORDER BY last_seen_at "
+                    "  LIMIT :batch"
+                    ")"
+                ),
+                {"cutoff": results_cutoff, "batch": _BATCH_SIZE},
+            )
+            db.commit()
+            deleted = result.rowcount
+            if deleted == 0:
+                break
+            results_deleted += deleted
+            if deleted == _BATCH_SIZE:
+                time.sleep(_BATCH_SLEEP_SECS)
+
+        # anomaly_engine_history_v1 — engine cycle records (no active state)
+        while True:
+            result = db.execute(
+                text(
+                    "DELETE FROM anomaly_engine_history_v1 "
+                    "WHERE ctid IN ("
+                    "  SELECT ctid FROM anomaly_engine_history_v1 "
+                    "  WHERE cycle_time < :cutoff "
+                    "  ORDER BY cycle_time "
+                    "  LIMIT :batch"
+                    ")"
+                ),
+                {"cutoff": history_cutoff, "batch": _BATCH_SIZE},
+            )
+            db.commit()
+            deleted = result.rowcount
+            if deleted == 0:
+                break
+            history_deleted += deleted
+            if deleted == _BATCH_SIZE:
+                time.sleep(_BATCH_SLEEP_SECS)
+
+    except Exception as e:
+        db.rollback()
+        logger.error("[retention] anomaly cleanup error: %s", e, exc_info=True)
+    finally:
+        db.close()
+
+    duration = round(time.monotonic() - t0, 2)
+    logger.info(
+        "[cleanup] anomaly_engine_results_v1 retention=%d days deleted=%d (resolved only)",
+        results_days, results_deleted,
+    )
+    logger.info(
+        "[cleanup] anomaly_engine_history_v1 retention=%d days deleted=%d duration=%ss",
+        history_days, history_deleted, duration,
+    )
+    return results_deleted, history_deleted, duration

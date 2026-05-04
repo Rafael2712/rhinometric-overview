@@ -1,3 +1,8 @@
+# =============================================================================
+# DEPRECATION WARNING (P0 - 2026-05-04)
+# Prometheus marked for future removal — VictoriaMetrics is primary metrics backend
+# This instance is retained for compatibility only. DO NOT add new scrape jobs.
+# =============================================================================
 # ═══════════════════════════════════════════════════════════════════════════
 #  PROMETHEUS CONFIGURATION - RHINOMETRIC v2.2.0 ENTERPRISE
 # ═══════════════════════════════════════════════════════════════════════════
