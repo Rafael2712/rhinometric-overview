@@ -1,6 +1,19 @@
-FROM rhinometric-console-backend:v2.6.4-licensing
-LABEL version=2.6.5-reports-anomalies-fix
-COPY routers/anomalies_v2_compat.py /app/routers/anomalies_v2_compat.py
-COPY routers/reports.py /app/routers/reports.py
-COPY services/report_service.py /app/services/report_service.py
+FROM rhinometric-console-backend:v2.6.5-reports-anomalies-fix
+LABEL version=2.6.6-ai-triage
+LABEL description=rhinometric-ai-triage
+
+# Phase 5.1 + 5.2 AI endpoints - routers
+COPY routers/anomalies.py /app/routers/anomalies.py
+COPY routers/incidents.py /app/routers/incidents.py
+COPY routers/alerts.py /app/routers/alerts.py
+# Phase 5.1 + 5.2 AI services
+COPY services/ai_decision_engine.py /app/services/ai_decision_engine.py
+COPY services/incident_briefing.py /app/services/incident_briefing.py
+# Phase 5.1 + 5.2 AI models
+COPY models/anomaly_ai_decision.py /app/models/anomaly_ai_decision.py
+COPY models/incident.py /app/models/incident.py
+COPY models/alert_event.py /app/models/alert_event.py
+# Config + main
+COPY config.py /app/config.py
+COPY routers/alert_rules.py /app/routers/alert_rules.py
 COPY main.py /app/main.py
