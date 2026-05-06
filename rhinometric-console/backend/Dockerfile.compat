@@ -1,0 +1,6 @@
+FROM rhinometric-console-backend:v2.6.4-licensing
+LABEL version=2.6.5-reports-anomalies-fix
+COPY routers/anomalies_v2_compat.py /app/routers/anomalies_v2_compat.py
+COPY routers/reports.py /app/routers/reports.py
+COPY services/report_service.py /app/services/report_service.py
+COPY main.py /app/main.py
